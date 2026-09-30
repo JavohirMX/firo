@@ -1,0 +1,166 @@
+{
+  "elementSchemaVersion": 1,
+  "recordSchemaVersion": 1,
+  "elementOrder": ["el-note-1", "el-note-2"],
+  "meta": {
+    "id": "board-fixture-v1",
+    "name": "Workshop board"
+  },
+  "collections": [
+    {
+      "id": "col-tasks",
+      "boardId": "board-fixture-v1",
+      "name": "Tasks",
+      "order": "a0",
+      "version": 1,
+      "columns": [
+        {
+          "id": "c-title",
+          "key": "title",
+          "name": "Title",
+          "type": "text"
+        },
+        {
+          "id": "c-done",
+          "key": "done",
+          "name": "Done",
+          "type": "boolean"
+        },
+        {
+          "id": "c-owner",
+          "key": "owner",
+          "name": "Owner",
+          "type": "person"
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "id": "el-note-1",
+      "type": "stickynote",
+      "text": "Frame the problem",
+      "fontSize": 20,
+      "fontFamily": 6,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "isContainer": false,
+      "x": 40,
+      "y": 60,
+      "width": 200,
+      "height": 200,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "#fff9b1",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roundness": null,
+      "roughness": 1,
+      "opacity": 100,
+      "version": 3,
+      "versionNonce": 112233,
+      "index": "a0",
+      "created": 1750000000000,
+      "updated": 1750000005000,
+      "groupIds": [],
+      "frameId": null,
+      "containerId": null,
+      "bindings": [],
+      "link": null,
+      "locked": false,
+      "isDeleted": false
+    },
+    {
+      "id": "el-note-2",
+      "type": "stickynote",
+      "text": "Vote on options",
+      "fontSize": 20,
+      "fontFamily": 6,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "isContainer": false,
+      "x": 320,
+      "y": 60,
+      "width": 200,
+      "height": 200,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "#c0f2c2",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roundness": null,
+      "roughness": 1,
+      "opacity": 100,
+      "version": 1,
+      "versionNonce": 445566,
+      "index": "a1",
+      "created": 1750000001000,
+      "updated": 1750000001000,
+      "groupIds": [],
+      "frameId": null,
+      "containerId": null,
+      "bindings": [
+        {
+          "elementId": "el-note-1",
+          "focus": 0,
+          "gap": 1
+        }
+      ],
+      "link": null,
+      "locked": false,
+      "isDeleted": false
+    }
+  ],
+  "records": [
+    {
+      "id": "rec-1",
+      "collectionId": "col-tasks",
+      "values": {
+        "title": {
+          "type": "text",
+          "value": "Interview five teams"
+        },
+        "done": {
+          "type": "boolean",
+          "value": false
+        },
+        "owner": {
+          "type": "person",
+          "value": "ada"
+        }
+      },
+      "created": 1750000000000,
+      "updated": 1750000000000,
+      "order": "a0",
+      "archived": false
+    },
+    {
+      "id": "rec-2",
+      "collectionId": "col-tasks",
+      "values": {
+        "title": {
+          "type": "text",
+          "value": "Draft the RFC"
+        },
+        "done": {
+          "type": "boolean",
+          "value": true
+        },
+        "owner": {
+          "type": "person",
+          "value": null
+        },
+        "priority": {
+          "type": "singleSelect",
+          "value": "high"
+        }
+      },
+      "created": 1750000002000,
+      "updated": 1750000003000,
+      "order": "a1",
+      "archived": false
+    }
+  ]
+}

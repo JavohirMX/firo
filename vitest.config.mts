@@ -70,6 +70,22 @@ export default defineConfig({
         find: /^@firo\/laser-pointer\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/laser-pointer/src/$1"),
       },
+      {
+        find: /^@firo\/schema$/,
+        replacement: path.resolve(__dirname, "./packages/schema/src/index.ts"),
+      },
+      {
+        find: /^@firo\/schema\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/schema/src/$1"),
+      },
+      {
+        find: /^@firo\/doc$/,
+        replacement: path.resolve(__dirname, "./packages/doc/src/index.ts"),
+      },
+      {
+        find: /^@firo\/doc\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/doc/src/$1"),
+      },
     ],
   },
   //@ts-ignore

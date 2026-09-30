@@ -24,7 +24,11 @@
       "@firo/utils": ["./utils/src/index.ts"],
       "@firo/utils/*": ["./utils/src/*"],
       "@firo/fractional-indexing": ["./fractional-indexing/src/index.ts"],
-      "@firo/fractional-indexing/*": ["./fractional-indexing/src/*"]
+      "@firo/fractional-indexing/*": ["./fractional-indexing/src/*"],
+      "@firo/schema": ["./schema/src/index.ts"],
+      "@firo/schema/*": ["./schema/src/*"],
+      "@firo/doc": ["./doc/src/index.ts"],
+      "@firo/doc/*": ["./doc/src/*"]
     }
   }
 }

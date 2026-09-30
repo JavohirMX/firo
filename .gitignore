@@ -55,3 +55,8 @@ src-tauri/target/
 firebase-project/
 stats.html
 
+# Intermediate `tsc` output. `gen:types` is `rimraf types && tsc`, which writes
+# into `dist/types` -- already covered by the `dist/` rule above -- but a stray
+# `packages/<name>/types` has appeared before and is generated output, so it is
+# ignored explicitly rather than relying on the build never producing it.
+packages/*/types
