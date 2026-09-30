@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.yarn/
+.pnp.*
+.pnp.js
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Test output
+coverage/
+.nyc_output/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+/data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# Tauri (Phase 10)
+src-tauri/target/
+
+# Inherited from the Excalidraw fork
+.vercel/
+.firebase/
+firebase-project/
+stats.html
+.excalidraw-app/

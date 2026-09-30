@@ -1,0 +1,78 @@
+# NOTICE
+
+## Third-party attribution
+
+### Excalidraw
+
+Firo is a derivative work of **Excalidraw**, originally created by the Excalidraw
+team and contributors.
+
+- Project: https://github.com/excalidraw/excalidraw
+- Copyright: `Copyright (c) 2020 Excalidraw`
+- License: MIT
+
+Firo began as a fork of the Excalidraw repository. Significant portions of the
+following originate from Excalidraw and are used under the MIT License:
+
+| Area | Origin in Excalidraw |
+| --- | --- |
+| Geometry primitives | `packages/math/` |
+| Constants, colours, utility types, event bus | `packages/common/` |
+| Element schema, mutation discipline, scene container | `packages/element/` (partially) |
+| Hit testing | `packages/element/src/collision.ts` |
+| Hand-drawn shape generation (roughjs) | `packages/element/src/shape.ts` |
+| Element canvas rendering and bitmap caching | `packages/element/src/renderElement.ts` |
+| File format migrations | `packages/excalidraw/data/restore.ts` |
+| Fractional indexing (z-order) | `packages/fractional-indexing/` (CC0-1.0, see below) |
+| Toolbar, panel, colour-picker, dialog UI primitives | `packages/excalidraw/components/` (partially) |
+
+The Excalidraw copyright notice and MIT permission notice must be retained in
+all copies or substantial portions of the Software.
+
+### @excalidraw/fractional-indexing — CC0-1.0
+
+The fractional-indexing package vendored from Excalidraw is licensed **CC0-1.0**
+(public domain dedication), *not* MIT. This is a deliberate upstream choice and
+is compatible with our MIT licence. If you replace it, preserve the CC0 notice
+or replace it with an equivalently permissive implementation.
+
+```
+CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
+Derived from rocicorp/fractional-indexing
+```
+
+### Virgil — REMOVED, NOT SHIPPED
+
+The Excalidraw repository ships the **Virgil** hand-drawn font. No licence file
+for Virgil is present anywhere in the upstream repository, so its redistribution
+terms are unknown.
+
+**Firo does not ship Virgil and must not.** See
+[`docs/adr/0013-replace-the-virgil-font.md`](docs/adr/0013-replace-the-virgil-font.md).
+The default hand-drawn face is a documented, explicitly-licensed substitute.
+
+### Other retained dependencies
+
+Retained from upstream, all permissive:
+
+| Package | Licence | Use |
+| --- | --- | --- |
+| `roughjs` | MIT | Hand-drawn shape rendering |
+| `perfect-freehand` | MIT | Pressure-variable freehand strokes |
+| `radix-ui` | MIT | Accessible UI primitives |
+| `jotai` | MIT | UI state atoms |
+| `pako` | MIT | Compression for shareable links |
+| `pica` | MIT | High-quality image resampling |
+| `browser-fs-access` | MIT | File System Access API fallback |
+| `nanoid` | MIT | Identifier generation |
+
+New dependencies introduced by Firo are recorded in
+[`docs/adr/`](docs/adr/) and in the root `package.json`.
+
+## Trademarks
+
+**Firo** is a working name and is not yet cleared for trademark registration.
+"Excalidraw" and "Miro" are trademarks of their respective owners. Firo is not
+affiliated with, endorsed by, or sponsored by either. See
+[`docs/adr/0009-mit-licence-and-donation-funding.md`](docs/adr/0009-mit-licence-and-donation-funding.md)
+and the naming section of [`docs/vision.md`](docs/vision.md).
