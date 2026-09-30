@@ -119,7 +119,7 @@ Licences verified against source, 30 September 2026.
 | [AFFiNE](https://github.com/toeverything/AFFiNE) | **Mixed** — `packages/backend` and `packages/common/native` under its own licence, rest MIT | 73k stars. Closest architectural analog. **Read the licence before adopting anything.** |
 | [AppFlowy](https://github.com/AppFlowy-IO/AppFlowy) | AGPL-3.0 | 77k stars. Flutter, so a mismatch for a canvas |
 | [Penpot](https://github.com/penpot/penpot) | MPL-2.0 | 60k stars. Best vector design. Not a workshop tool |
-| [Huly](https://github.com/huly-labs/huly) | EPL-2.0 | 28k stars. Excellent PM layer, no canvas. Worth mining for patterns |
+| [Huly](https://huly.dev) | EPL-2.0 | 28k stars. Excellent PM layer, no canvas. Worth mining for patterns |
 | [Docmost](https://github.com/docmost/docmost) | AGPL-3.0 | 22k stars. Yjs-based, which is corroboration for our CRDT choice |
 | [Anytype](https://github.com/anyproto/anytype-ts) | Custom (`NOASSERTION`) | The most interesting local-first object-graph reference. P2P, E2EE |
 | [Focalboard](https://github.com/mattermost-community/focalboard) | Mattermost custom | Last push 18 May 2026 — **dormant. Do not build on it** |

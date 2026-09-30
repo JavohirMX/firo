@@ -1,0 +1,10 @@
+# Firo is self-hosted. There is no public site to index, and a self-hoster's
+# board URLs are their own business, not ours to advertise to crawlers.
+#
+# Upstream shipped a sitemap reference to excalidraw.com here. Phase 0 removed
+# the Sitemap Vite plugin that generated it (Firo has no domain yet) and this
+# file with it. Restore a robots.txt, and point the Sitemap line at your own
+# origin, if you ever put Firo behind a public hostname.
+
+User-agent: *
+Disallow: /

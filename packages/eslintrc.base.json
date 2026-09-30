@@ -1,0 +1,21 @@
+{
+  "overrides": [
+    {
+      "files": ["src/**/*.{ts,tsx}"],
+      "rules": {
+        "@typescript-eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../../excalidraw", "../../../packages/editor", "@firo/editor"],
+                "message": "Do not import from '@firo/editor' package anything but types, as this package must be independent.",
+                "allowTypeImports": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

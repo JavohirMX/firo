@@ -1,0 +1,27 @@
+node_modules/
+build/
+package-lock.json
+.vscode/
+firebase/
+dist/
+public/workbox
+packages/editor/types
+examples/**/public
+dev-dist
+coverage
+
+# Firo documentation is hand-formatted, not prettier-formatted.
+#
+# The `prettier` scripts in package.json pass --ignore-path=.eslintignore, so this
+# is also the ignore path for `yarn test:other`. Our docs wrap prose at ~80 columns
+# for terminal readability and use `*emphasis*`; prettier unwraps prose to a single
+# line and rewrites `*emphasis*` to `_emphasis_`, which would produce a large diff
+# unrelated to any content change.
+#
+# Style for these files is documented in docs/contributing/documentation.md.
+docs/
+README.md
+AGENTS.md
+CLAUDE.md
+CONTRIBUTING.md
+NOTICE

@@ -1,0 +1,7 @@
+# Funding is handled through GitHub Sponsors and/or Open Collective, per
+# docs/adr/0009-mitre-licence-and-donation-funding.md.
+#
+# Upstream pointed `open_collective` at `excalidraw`, which meant a fork's
+# "Sponsor" button would have sent money to Excalidraw's collective. No handle
+# is configured because Firo does not have one yet — add `github: <user>` here
+# once a Sponsors account exists.

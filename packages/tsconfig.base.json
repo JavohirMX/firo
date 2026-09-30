@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "allowSyntheticDefaultImports": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "emitDeclarationOnly": true,
+    "paths": {
+      "@firo/common": ["./common/src/index.ts"],
+      "@firo/common/*": ["./common/src/*"],
+      "@firo/element": ["./element/src/index.ts"],
+      "@firo/element/*": ["./element/src/*"],
+      "@firo/editor": ["./editor/index.tsx"],
+      "@firo/editor/*": ["./editor/*"],
+      "@firo/laser-pointer": ["./laser-pointer/src/index.ts"],
+      "@firo/laser-pointer/*": ["./laser-pointer/src/*"],
+      "@firo/math": ["./math/src/index.ts"],
+      "@firo/math/*": ["./math/src/*"],
+      "@firo/utils": ["./utils/src/index.ts"],
+      "@firo/utils/*": ["./utils/src/*"],
+      "@firo/fractional-indexing": ["./fractional-indexing/src/index.ts"],
+      "@firo/fractional-indexing/*": ["./fractional-indexing/src/*"]
+    }
+  }
+}

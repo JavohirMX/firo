@@ -1,35 +1,71 @@
 # NOTICE
 
-## Third-party attribution
+## Provenance
 
-### Excalidraw
+Firo began as a fork of the **Excalidraw** repository. Every file under
+`packages/` and `apps/web/` originates there, unless listed under
+[Firo-authored](#firo-authored-code) below.
 
-Firo is a derivative work of **Excalidraw**, originally created by the Excalidraw
-team and contributors.
-
-- Project: https://github.com/excalidraw/excalidraw
-- Copyright: `Copyright (c) 2020 Excalidraw`
-- License: MIT
-
-Firo began as a fork of the Excalidraw repository. Significant portions of the
-following originate from Excalidraw and are used under the MIT License:
-
-| Area | Origin in Excalidraw |
+| | |
 | --- | --- |
-| Geometry primitives | `packages/math/` |
-| Constants, colours, utility types, event bus | `packages/common/` |
-| Element schema, mutation discipline, scene container | `packages/element/` (partially) |
-| Hit testing | `packages/element/src/collision.ts` |
-| Hand-drawn shape generation (roughjs) | `packages/element/src/shape.ts` |
-| Element canvas rendering and bitmap caching | `packages/element/src/renderElement.ts` |
-| File format migrations | `packages/excalidraw/data/restore.ts` |
-| Fractional indexing (z-order) | `packages/fractional-indexing/` (CC0-1.0, see below) |
-| Toolbar, panel, colour-picker, dialog UI primitives | `packages/excalidraw/components/` (partially) |
+| Upstream project | https://github.com/excalidraw/excalidraw |
+| Upstream commit | `35e854ecf7a1ace3467922965ce07ec1a6f0ea54` |
+| Upstream commit date | 2026-09-29 |
+| Upstream commit subject | `feat(app): label E+ banner Upgrade / Sign in (#12204)` |
+| Upstream licence | MIT — `Copyright (c) 2020 Excalidraw` |
+
+**The commit hash is load-bearing.** We do not track upstream
+([`docs/adr/0001-fork-excalidraw-and-refactor-aggressively.md`](docs/adr/0001-fork-excalidraw-and-refactor-aggressively.md)),
+so this is the only record of what we started from. Do not change it except via
+a superseding ADR.
 
 The Excalidraw copyright notice and MIT permission notice must be retained in
-all copies or substantial portions of the Software.
+all copies or substantial portions of the Software, and the notice in `LICENSE`
+must not be removed or altered.
 
-### @excalidraw/fractional-indexing — CC0-1.0
+## Where Excalidraw code now lives
+
+Phase 0 renamed package scopes and moved the app directory. Upstream paths are
+given so the origin stays traceable.
+
+| Area | Upstream path | Path in this repository |
+| --- | --- | --- |
+| Geometry primitives | `packages/math/` | `packages/math/` (unrenamed) |
+| Constants, colours, utility types, event bus | `packages/common/` | `packages/common/` |
+| Element schema, scene container | `packages/element/` | `packages/element/` |
+| Hit testing | `packages/element/src/collision.ts` | same |
+| Hand-drawn shape generation (roughjs) | `packages/element/src/shape.ts` | same |
+| Element canvas rendering, bitmap caches | `packages/element/src/renderElement.ts` | same |
+| Editor library (component, actions, renderer) | `packages/excalidraw/` | `packages/editor/` |
+| File-format migrations | `packages/excalidraw/data/restore.ts` | `packages/editor/data/restore.ts` |
+| Toolbar, panel, colour picker, dialogs | `packages/excalidraw/components/` | `packages/editor/components/` |
+| Host application | `excalidraw-app/` | `apps/web/` |
+| Fractional indexing (z-order) | `packages/fractional-indexing/` | same (CC0-1.0, see below) |
+
+`packages/math/` deliberately keeps its upstream directory name in Phase 0. The
+architecture documents describe it as `packages/geometry/`, which is where it
+lands when the package is curated in Phase 1 — renaming it now would only add
+churn to a phase whose job is to produce a working build.
+
+Internal `Excalidraw*` type and symbol names are also still upstream's. They are
+renamed in Phase 3, deliberately deferred so that the Phase 1 and 2 diffs stay
+reviewable against upstream.
+
+## Firo-authored code
+
+Phase 0 added or rewrote the following. They are ours, but they exist only
+because of the MIT grant above, and they are full of upstream idioms and
+structure.
+
+| Path | What it is |
+| --- | --- |
+| `docs/` | Product, technical and research documentation. Entirely Firo's |
+| `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` | Repository operating rules. Firo's |
+| `scripts/brand/generate-icons.py` | Icon generator. Firo's |
+| `apps/web/useIsOffline.ts` | Replaces upstream's socket-derived offline flag |
+| `FONT-LICENSES.md` | Font licence audit. Firo's |
+
+## @firo/fractional-indexing — CC0-1.0
 
 The fractional-indexing package vendored from Excalidraw is licensed **CC0-1.0**
 (public domain dedication), *not* MIT. This is a deliberate upstream choice and
@@ -41,38 +77,82 @@ CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
 Derived from rocicorp/fractional-indexing
 ```
 
-### Virgil — REMOVED, NOT SHIPPED
+## Fonts — see FONT-LICENSES.md
 
-The Excalidraw repository ships the **Virgil** hand-drawn font. No licence file
-for Virgil is present anywhere in the upstream repository, so its redistribution
-terms are unknown.
+**Virgil and Excalifont were removed in Phase 0 and are not shipped.** Virgil
+is a commercial font with no redistribution grant anywhere in the upstream
+repository; Excalifont is a modified Virgil and inherits the same problem. Virgil
+was also the *default* font, so removing it changed the product's default
+typeface.
 
-**Firo does not ship Virgil and must not.** See
-[`docs/adr/0013-replace-the-virgil-font.md`](docs/adr/0013-replace-the-virgil-font.md).
-The default hand-drawn face is a documented, explicitly-licensed substitute.
+```
+Virgil     — Four Black Studios. Commercial. No licence file upstream. NOT SHIPPED.
+Excalifont — Ján Filípek / DizajnDesign, derived from Virgil. NOT SHIPPED.
+```
 
-### Other retained dependencies
+**The remaining bundled fonts are not yet cleared.** The repository contains no
+licence file for any font. See [`FONT-LICENSES.md`](FONT-LICENSES.md) for the
+per-font audit, which is a **release blocker**: the default face (Nunito) is
+believed to be SIL OFL 1.1 but that is unverified, and no OFL text is shipped
+alongside the binaries.
 
-Retained from upstream, all permissive:
+`AGENTS.md` forbids shipping an unlicensed font file. Adding a font without
+adding its licence text in the same commit violates it.
+
+## Retained runtime dependencies
+
+Inherited from upstream. All believed permissive; the third-party `@excalidraw/*`
+packages below are **not** ours and were deliberately not renamed.
 
 | Package | Licence | Use |
 | --- | --- | --- |
 | `roughjs` | MIT | Hand-drawn shape rendering |
 | `perfect-freehand` | MIT | Pressure-variable freehand strokes |
+| `points-on-curve` | MIT | Curve sampling |
 | `radix-ui` | MIT | Accessible UI primitives |
-| `jotai` | MIT | UI state atoms |
-| `pako` | MIT | Compression for shareable links |
+| `jotai`, `jotai-scope` | MIT | UI state atoms |
+| `pako` | MIT | Compression |
 | `pica` | MIT | High-quality image resampling |
 | `browser-fs-access` | MIT | File System Access API fallback |
 | `nanoid` | MIT | Identifier generation |
+| `png-chunk-text`, `png-chunks-encode`, `png-chunks-extract` | MIT | PNG embedded-scene read/write |
+| `idb-keyval` | MIT | IndexedDB access |
+| `fuzzy` | MIT | Command-palette matching |
+| `uqr` | MIT | QR codes |
+| `tunnel-rat` | MIT | Web Worker RPC |
+| `clsx`, `lodash.debounce`, `lodash.throttle` | MIT | Utilities |
+| `tinycolor2` | MIT | Colour maths |
+| `pwacompat`, `es6-promise-pool`, `cross-env` | MIT | Browser/runtime shims |
+| `@braintree/sanitize-url` | MIT | Link sanitisation |
+| `@codemirror/*`, `@lezer/highlight` | MIT | Code-block rendering |
+| `i18next-browser-languagedetector` | MIT | Locale detection |
+| `image-blob-reduce` | MIT | Embedded-image downscaling |
+| `canvas-roundrect-polyfill` | MIT | `ctx.roundRect` |
+| `react`, `react-dom` | MIT | UI runtime |
+| `sass` | MIT | Stylesheet compilation |
+| `vite-plugin-html` | MIT | HTML templating |
+| `@excalidraw/mermaid-to-excalidraw` | MIT | Mermaid import. **Third-party**; the `@excalidraw` scope here is the upstream author's, not ours |
+| `@excalidraw/random-username` | MIT | Placeholder names. **Third-party** |
+
+Removed in Phase 0 along with the code that used them: `firebase`,
+`socket.io-client`, `@sentry/browser`, `vite-plugin-sitemap`.
 
 New dependencies introduced by Firo are recorded in
 [`docs/adr/`](docs/adr/) and in the root `package.json`.
+
+## Telemetry
+
+**Firo sends nothing anywhere.** Upstream reported crashes to Sentry and shipped
+a sitemap, an AI backend, a Firebase-backed share-link store and a Socket.IO
+collaboration server. All of it is removed. `TopErrorBoundary` now shows the
+error to the user and offers to copy it to the clipboard; it does not transmit
+anything. This is a requirement, not an accident — see NFR-3 in
+[`docs/prd/05-non-functional-requirements.md`](docs/prd/05-non-functional-requirements.md).
 
 ## Trademarks
 
 **Firo** is a working name and is not yet cleared for trademark registration.
 "Excalidraw" and "Miro" are trademarks of their respective owners. Firo is not
 affiliated with, endorsed by, or sponsored by either. See
-[`docs/adr/0009-mit-licence-and-donation-funding.md`](docs/adr/0009-mit-licence-and-donation-funding.md)
+[`docs/adr/0009-mitre-licence-and-donation-funding.md`](docs/adr/0009-mitre-licence-and-donation-funding.md)
 and the naming section of [`docs/vision.md`](docs/vision.md).

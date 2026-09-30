@@ -1,0 +1,19 @@
+*
+!.env.development
+!.env.production
+!.eslintrc.json
+!.npmrc
+!.prettierrc
+!apps/web/
+!package.json
+!public/
+!packages/
+!scripts/
+!tsconfig.json
+!yarn.lock
+
+# keep (sub)sub directories at the end to exclude from explicit included
+# e.g. ./packages/editor/{dist,node_modules}
+**/build
+**/dist
+**/node_modules

@@ -109,5 +109,5 @@ over `idb-keyval`.
 ## More Information
 
 - [y-indexeddb](https://github.com/yjs/y-indexeddb)
-- [idb-keyval](https://github.com/jaredwray/idb-keyval)
+- [idb-keyval](https://github.com/jakearchibald/idb-keyval)
 - [`../trd/07-persistence-and-formats.md`](../trd/07-persistence-and-formats.md)

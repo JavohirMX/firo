@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Firo</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, shrink-to-fit=no"
+    />
+    <meta name="referrer" content="origin" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#121212" />
+
+    <!--
+      Primary meta tags.
+
+      There is no canonical Firo URL yet: the product name is still a working
+      name pending a trademark check (see docs/roadmap.md), and the deployment
+      is self-hosted, so each team's own origin is the canonical one. Absolute
+      `og:url` / `canonical` values are therefore left for whoever picks the
+      domain. Until then a relative `og:image` is used, which resolves against
+      the serving origin on every host.
+    -->
+    <meta
+      name="title"
+      content="Firo — a free, local-first whiteboard for workshops"
+    />
+    <meta
+      name="description"
+      content="Firo is a free, MIT-licensed, local-first whiteboard for running workshops: Miro's object vocabulary, a hand-drawn canvas, and no per-seat pricing."
+    />
+    <meta name="image" content="/og-image.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="Firo" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Firo — a free, local-first whiteboard for workshops"
+    />
+    <meta property="og:image:alt" content="Firo" />
+    <meta
+      property="og:description"
+      content="Firo is a free, MIT-licensed, local-first whiteboard for running workshops: Miro's object vocabulary, a hand-drawn canvas, and no per-seat pricing."
+    />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:title"
+      content="Firo — a free, local-first whiteboard for workshops"
+    />
+    <meta
+      property="twitter:description"
+      content="Firo is a free, MIT-licensed, local-first whiteboard for running workshops: Miro's object vocabulary, a hand-drawn canvas, and no per-seat pricing."
+    />
+    <meta property="twitter:image" content="/og-image.png" />
+
+    <!------------------------------------------------------------------------->
+    <!--   to minimize white flash on load when user has dark mode enabled   -->
+    <script>
+      try {
+        function setTheme(theme) {
+          if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        }
+
+        function getTheme() {
+          const theme = window.localStorage.getItem("firo-theme");
+
+          if (theme && theme === "system") {
+            return window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          } else {
+            return theme || "light";
+          }
+        }
+
+        setTheme(getTheme());
+      } catch (e) {
+        console.error("Error setting dark mode", e);
+      }
+    </script>
+    <style>
+      html.dark {
+        background-color: #121212;
+        color: #fff;
+      }
+    </style>
+
+    <!--
+      The Google Fonts preconnects that were here are gone. Nothing loads fonts
+      from Google — the bundle self-hosts every face — so they were two DNS
+      lookups and TLS handshakes with a third party on every page load. See
+      scripts/woff2/woff2-vite-plugins.js for how fonts are resolved.
+    -->
+
+    <!------------------------------------------------------------------------->
+    <% if (typeof PROD != 'undefined' && PROD == true) { %>
+    <!-- Following placeholder is replaced during the build step -->
+    <!-- PLACEHOLDER:FIRO_APP_FONTS -->
+
+    <!-- Register Assistant as the UI font, before the scene inits -->
+    <link
+      rel="stylesheet"
+      href="../../packages/editor/fonts/fonts.css"
+      type="text/css"
+    />
+
+    <% } else { %>
+    <script>
+      window.FIRO_ASSET_PATH = window.origin;
+    </script>
+    <% } %>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+
+    <!-- Build version -->
+    <meta name="version" content="{version}" />
+
+    <% if (typeof VITE_APP_DEV_DISABLE_LIVE_RELOAD != 'undefined' &&
+    VITE_APP_DEV_DISABLE_LIVE_RELOAD == true) { %>
+    <script>
+      {
+        const _WebSocket = window.WebSocket;
+        window.WebSocket = function (url) {
+          if (/ws:\/\/localhost:.+?\/sockjs-node/.test(url)) {
+            console.info(
+              "[!!!] Live reload is disabled via VITE_APP_DEV_DISABLE_LIVE_RELOAD [!!!]",
+            );
+          } else {
+            return new _WebSocket(url);
+          }
+        };
+      }
+    </script>
+    <% } %>
+    <script>
+      // setting this so that libraries installation reuses this window tab.
+      window.name = "_firo";
+    </script>
+
+    <!-- FIXME: remove this when we update CRA (fix SW caching) -->
+    <style>
+      body,
+      html {
+        margin: 0;
+        -webkit-text-size-adjust: 100%;
+
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .visually-hidden {
+        position: absolute !important;
+        height: 1px;
+        width: 1px;
+        overflow: hidden;
+        clip: rect(1px, 1px, 1px, 1px);
+        white-space: nowrap;
+        user-select: none;
+      }
+
+      #root {
+        height: 100%;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      @media screen and (min-width: 1200px) {
+        #root {
+          -webkit-touch-callout: default;
+          -webkit-user-select: auto;
+          -khtml-user-select: auto;
+          -moz-user-select: auto;
+          -ms-user-select: auto;
+          user-select: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript> You need to enable JavaScript to run this app. </noscript>
+    <header>
+      <h1 class="visually-hidden">Firo</h1>
+    </header>
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+    <!--
+      Analytics removed in Phase 0.
+
+      Upstream loaded SimpleAnalytics from scripts.simpleanalyticscdn.com in
+      production and treated it as "100% privacy friendly". It is still an
+      outbound request to a third party on every page view, which is
+      incompatible with a self-hosted, local-first product: a team running Firo
+      on their own infrastructure has no business having their board views
+      reported to someone else's server, and an air-gapped install would fail
+      the request on every load.
+
+      `packages/editor/analytics.ts` keeps `trackEvent` as a no-op so call sites
+      do not have to be rewritten; do not re-add a loader here without an ADR.
+      See NOTICE and NFR-3 in docs/prd/05-non-functional-requirements.md.
+    -->
+  </body>
+</html>

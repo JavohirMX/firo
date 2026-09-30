@@ -1,0 +1,213 @@
+import clsx from "clsx";
+import React, { useState, useEffect } from "react";
+
+import { t } from "../../../i18n";
+import { TrashIcon, codeIcon, stackPushIcon, RetryIcon } from "../../icons";
+
+import type { TChat, TTTDDialog } from "../types";
+
+export const ChatMessage: React.FC<{
+  message: TChat.ChatMessage;
+  onMermaidTabClick?: (message: TChat.ChatMessage) => void;
+  onAiRepairClick?: (message: TChat.ChatMessage) => void;
+  onDeleteMessage?: (messageId: string) => void;
+  onInsertMessage?: (message: TChat.ChatMessage) => void;
+  onRetry?: (message: TChat.ChatMessage) => void;
+  rateLimitRemaining?: number;
+  isLastMessage?: boolean;
+  renderWarning?: TTTDDialog.renderWarning;
+  allowFixingParseError?: boolean;
+}> = ({
+  message,
+  onMermaidTabClick,
+  onAiRepairClick,
+  onDeleteMessage,
+  onInsertMessage,
+  onRetry,
+  rateLimitRemaining,
+  isLastMessage,
+  renderWarning,
+  allowFixingParseError,
+}) => {
+  const [canRetry, setCanRetry] = useState(false);
+
+  useEffect(() => {
+    if (!message.error || !isLastMessage) {
+      return;
+    }
+
+    if (message.error && !message.lastAttemptAt) {
+      setCanRetry(true);
+      return;
+    }
+
+    const timeSinceLastAttempt = Date.now() - message.lastAttemptAt!;
+    const remainingTime = Math.max(0, 5000 - timeSinceLastAttempt);
+
+    if (remainingTime === 0) {
+      setCanRetry(true);
+      return;
+    }
+
+    setCanRetry(false);
+    const timer = setTimeout(() => {
+      setCanRetry(true);
+    }, remainingTime);
+
+    return () => clearTimeout(timer);
+  }, [message.error, message.lastAttemptAt, isLastMessage]);
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  if (message.type === "warning") {
+    const customOverride = renderWarning?.(message);
+    return (
+      <div className="chat-message chat-message--system">
+        <div className="chat-message__content">
+          <div className="chat-message__header">
+            <span className="chat-message__role">{t("chat.role.system")}</span>
+            <span className="chat-message__timestamp">
+              {formatTime(message.timestamp)}
+            </span>
+          </div>
+          <div className="chat-message__body">
+            <div className="chat-message__text">
+              {customOverride ? (
+                customOverride
+              ) : message.warningType === "messageLimitExceeded" ? (
+                /*
+                  Upstream rendered a button here that opened
+                  plus.excalidraw.com with UTM tracking — an upsell to a paid
+                  service Firo does not have. There is no upgrade to offer, so
+                  the message stands on its own.
+
+                  This whole subtree is dead code: it is the text-to-diagram AI
+                  feature, deferred to v3 by ADR-0012, and it has no reachable
+                  trigger in Firo. It is removed in the AI work, not here —
+                  deleting 44 files is a larger change than Phase 0's rebrand
+                  should absorb, and leaving it lets the deletion land as one
+                  reviewable diff against a known-dead entry point.
+                */
+                <>{t("chat.rateLimit.messageLimit")}</>
+              ) : (
+                t("chat.rateLimit.generalRateLimit")
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`chat-message chat-message--${message.type}`}>
+      <div className="chat-message__content">
+        <div className="chat-message__header">
+          <span className="chat-message__role">
+            {message.type === "user"
+              ? t("chat.role.user")
+              : t("chat.role.assistant")}
+          </span>
+          <span className="chat-message__timestamp">
+            {formatTime(message.timestamp)}
+          </span>
+        </div>
+        <div className="chat-message__body">
+          {message.error ? (
+            <>
+              <div className="chat-message__error">{message.content}</div>
+              {message.errorType !== "parse" && (
+                <div className="chat-message__error_message">
+                  Error: {message.error || t("chat.errors.generationFailed")}
+                </div>
+              )}
+              {message.errorType === "parse" && allowFixingParseError && (
+                <div className="chat-message__error_message">
+                  <p>{t("chat.errors.invalidDiagram")}</p>
+                  <div className="chat-message__error-actions">
+                    {onMermaidTabClick && (
+                      <button
+                        className="chat-message__error-link"
+                        onClick={() => onMermaidTabClick(message)}
+                        type="button"
+                      >
+                        {t("chat.errors.fixInMermaid")}
+                      </button>
+                    )}
+                    {onAiRepairClick && (
+                      <button
+                        className="chat-message__error-link"
+                        onClick={() => onAiRepairClick(message)}
+                        disabled={rateLimitRemaining === 0}
+                        type="button"
+                      >
+                        {t("chat.errors.aiRepair")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="chat-message__text">
+              {message.content}
+              {message.isGenerating && (
+                <span className="chat-message__cursor">▋</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {message.type === "assistant" && !message.isGenerating && (
+        <div className="chat-message__actions">
+          {!message.error && onInsertMessage && (
+            <button
+              className="chat-message__action"
+              onClick={() => onInsertMessage(message)}
+              type="button"
+              aria-label={t("chat.insert")}
+              title={t("chat.insert")}
+            >
+              {stackPushIcon}
+            </button>
+          )}
+          {onMermaidTabClick && message.content && (
+            <button
+              className="chat-message__action"
+              onClick={() => onMermaidTabClick(message)}
+              type="button"
+              aria-label={t("chat.viewAsMermaid")}
+              title={t("chat.viewAsMermaid")}
+            >
+              {codeIcon}
+            </button>
+          )}
+          {onDeleteMessage && message.errorType !== "network" && (
+            <button
+              className="chat-message__action chat-message__action--danger"
+              onClick={() => onDeleteMessage(message.id)}
+              type="button"
+              aria-label={t("chat.deleteMessage")}
+              title={t("chat.deleteMessage")}
+            >
+              {TrashIcon}
+            </button>
+          )}
+          {message.errorType === "network" && onRetry && isLastMessage && (
+            <button
+              className={clsx("chat-message__action", { invisible: !canRetry })}
+              onClick={() => onRetry(message)}
+              type="button"
+              aria-label={t("chat.retry")}
+              title={t("chat.retry")}
+            >
+              {RetryIcon}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};

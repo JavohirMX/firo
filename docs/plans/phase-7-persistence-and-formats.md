@@ -22,7 +22,7 @@ are files he can read, diff, and put in git.
 
 ### 7.1 — Persistence wiring
 
-[`idb-keyval`](https://github.com/jaredwray/idb-keyval) for board metadata and
+[`idb-keyval`](https://github.com/jakearchibald/idb-keyval) for board metadata and
 assets; `y-indexeddb` for the Yjs document
 ([ADR-0005](../adr/0005-indexeddb-via-idb-keyval.md)).
 

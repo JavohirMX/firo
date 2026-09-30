@@ -50,6 +50,8 @@ deciders: <names or roles>
 | [0011](0011-plain-markdown-docs.md) | Plain Markdown docs, separate from inherited `dev-docs/` | Accepted | 2026-09-30 |
 | [0012](0012-no-ai-in-v1.md) | No AI in version 1 | Accepted | 2026-09-30 |
 | [0013](0013-replace-the-virgil-font.md) | Replace the Virgil font | Accepted | 2026-09-30 |
+| [0014](0014-font-position-after-phase-0.md) | Ship Nunito as the default face, keep roughness, and treat the font audit as a release blocker | Accepted (supersedes parts of 0013) | 2026-09-30 |
+| [0015](0015-delete-inherited-dev-docs.md) | Delete inherited `dev-docs/` | Accepted (supersedes part of 0011) | 2026-09-30 |
 
 ## Open questions
 
@@ -61,5 +63,6 @@ Deliberately deferred. Each is answered before the phase that depends on it.
 | Do projections need multi-level sort and filter composition? | Phase 6 |
 | Can a record live in more than one collection, and what merges? | Phase 6 |
 | Is Yjs still the right engine at 10,000 elements with 20 concurrent editors? | Phase 9 |
-| Font licence for the hand-drawn default | Phase 0 |
+| **Verified licence for every bundled font** — the audit found *no* licence file for any of them, including the new default. See [`../../FONT-LICENSES.md`](../../FONT-LICENSES.md) and ADR-0014. | **Before any public release** |
+| Which OFL hand-drawn face can survive 12 px diagram labels, measured on rendered output rather than assumed? | Phase 2 |
 | Product name and trademark clearance | Before any public release |

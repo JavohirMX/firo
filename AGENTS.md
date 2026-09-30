@@ -76,7 +76,7 @@ Elements and records are versioned. Adding, removing, or renaming a field
 requires a migration function in `@firo/schema` **and** a test that loads a
 fixture written by the previous version.
 
-Port the pattern from `packages/excalidraw/data/restore.ts` upstream: spread the
+Port the pattern from `packages/editor/data/restore.ts` upstream: spread the
 original object first to preserve unknown keys, then overwrite with normalised
 values. Never write a migration that drops unrecognised fields — that is how
 forward-compatibility dies. See
@@ -103,7 +103,7 @@ not element types. If you are about to add a `kanban` element type, stop and rea
 | `packages/geometry/`, `packages/common/` | Near-verbatim from Excalidraw. Keep diffs to upstream small. No behavioural changes without an ADR. |
 | `docs/adr/*.md` | Accepted ADRs are **immutable**. To change a decision, write a new ADR that supersedes it. |
 | `LICENSE`, `NOTICE` | Never remove or alter the Excalidraw copyright notice. |
-| Any font file | Virgil is removed for licensing reasons ([`ADR-0013`](docs/adr/0013-replace-the-virgil-font.md)). Do not reintroduce it or any unlicensed font. |
+| Any font file | Virgil and Excalifont are removed for licensing reasons ([`ADR-0013`](docs/adr/0013-replace-the-virgil-font.md), [ADR-0014](docs/adr/0014-font-position-after-phase-0.md)). Do not reintroduce them, and do not add any font whose licence is not recorded in [`FONT-LICENSES.md`](FONT-LICENSES.md) with its licence text committed alongside the binary. `packages/common/tests/fonts.test.ts` enforces both halves of that rule — do not weaken it |
 | `packages/*/package.json` workspace versions | Upstream pins them exactly (`"0.18.0"`, not `^`) for reproducible resolution. Do not switch to ranges. |
 
 ## Upstream policy
@@ -123,14 +123,14 @@ This means:
 ## Conventions
 
 - **TypeScript strict mode.** No `any` in our own packages. Branded types for
-  coordinates and angles, following `@excalidraw/math`.
+  coordinates and angles, following `@firo/math`.
 - **SCSS** for styles, co-located with components, themed via CSS custom
   properties. No CSS-in-JS, no Tailwind.
 - **Browser globals:** use `app.ownerDocument` / `app.ownerWindow`, never bare
   `document` or `window`, in library code. This is an inherited upstream rule and
   it exists so the editor can be embedded in iframes and shadow roots.
 - **Utility types:** use `Merge<Base, Overrides>` from
-  `@excalidraw/common/utility-types` rather than
+  `@firo/common/utility-types` rather than
   `Omit<Base, keyof Overrides> & Overrides`.
 - Tests use **vitest** with jsdom and `vitest-canvas-mock`. Match the existing
   assertion style in the file you are editing.

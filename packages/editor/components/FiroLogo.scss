@@ -1,0 +1,47 @@
+// Layout for the in-app logo placeholder. See FiroLogo.tsx for why the mark is
+// a placeholder rather than a designed identity.
+//
+// The `--logo-text--*` scale entries and the `__text` rules are gone with the
+// wordmark. The icon keeps the same size scale, so swapping in a real mark does
+// not move anything on the welcome screen.
+.excalidraw {
+  .FiroLogo {
+    --logo-icon--mobile: 1rem;
+    --logo-icon--xs: 2rem;
+    --logo-icon--small: 2.5rem;
+    --logo-icon--normal: 3rem;
+    --logo-icon--large: 90px;
+
+    display: flex;
+    align-items: center;
+
+    svg {
+      flex: 0 0 auto;
+    }
+
+    .FiroLogo-icon {
+      width: auto;
+      color: var(--color-logo-icon);
+    }
+
+    &.is-mobile .FiroLogo-icon {
+      height: var(--logo-icon--mobile);
+    }
+
+    &.is-xs .FiroLogo-icon {
+      height: var(--logo-icon--xs);
+    }
+
+    &.is-small .FiroLogo-icon {
+      height: var(--logo-icon--small);
+    }
+
+    &.is-normal .FiroLogo-icon {
+      height: var(--logo-icon--normal);
+    }
+
+    &.is-large .FiroLogo-icon {
+      height: var(--logo-icon--large);
+    }
+  }
+}

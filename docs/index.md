@@ -73,3 +73,14 @@ The decisions that shaped everything else:
   confirmed from a primary source, say so inline.
 - **Link, do not restate.** A document that duplicates another document will drift
   out of sync with it.
+
+## Repository records
+
+These live at the repository root, not under `docs/`, because they are legal
+records rather than design documents.
+
+| File | What it is |
+| --- | --- |
+| [`NOTICE`](../NOTICE) | Provenance. The exact upstream commit, a map of where Excalidraw code now lives, and the retained dependencies |
+| [`FONT-LICENSES.md`](../FONT-LICENSES.md) | Per-font licence audit. **Incomplete — a release blocker.** See [ADR-0014](adr/0014-font-position-after-phase-0.md) |
+| [`LICENSE`](../LICENSE) | MIT, with the Excalidraw notice embedded. Never alter it |

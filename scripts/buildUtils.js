@@ -1,0 +1,66 @@
+const path = require("path");
+
+const { build } = require("esbuild");
+const { sassPlugin } = require("esbuild-sass-plugin");
+
+const { woff2ServerPlugin } = require("./woff2/woff2-esbuild-plugins");
+
+// contains all dependencies bundled inside
+const getConfig = (outdir) => ({
+  outdir,
+  bundle: true,
+  format: "esm",
+  entryPoints: ["src/index.ts"],
+  entryNames: "[name]",
+  assetNames: "[dir]/[name]",
+  alias: {
+    "@firo/common": path.resolve(__dirname, "../packages/common/src"),
+    "@firo/element": path.resolve(__dirname, "../packages/element/src"),
+    "@firo/editor": path.resolve(__dirname, "../packages/editor"),
+    "@firo/math": path.resolve(__dirname, "../packages/math/src"),
+    "@firo/fractional-indexing": path.resolve(
+      __dirname,
+      "../packages/fractional-indexing/src",
+    ),
+    "@firo/utils": path.resolve(__dirname, "../packages/utils/src"),
+  },
+});
+
+function buildDev(config) {
+  return build({
+    ...config,
+    sourcemap: true,
+    plugins: [sassPlugin(), woff2ServerPlugin()],
+    define: {
+      "import.meta.env": JSON.stringify({ DEV: true }),
+    },
+  });
+}
+
+function buildProd(config) {
+  return build({
+    ...config,
+    minify: true,
+    plugins: [
+      sassPlugin(),
+      woff2ServerPlugin({
+        outdir: `${config.outdir}/assets`,
+      }),
+    ],
+    define: {
+      "import.meta.env": JSON.stringify({ PROD: true }),
+    },
+  });
+}
+
+const createESMRawBuild = async () => {
+  // development unminified build with source maps
+  await buildDev(getConfig("dist/dev"));
+
+  // production minified build without sourcemaps
+  await buildProd(getConfig("dist/prod"));
+};
+
+(async () => {
+  await createESMRawBuild();
+})();

@@ -96,7 +96,13 @@ Firo is a solo project at the moment. Contributions are welcome, but please read
 
 ## Licence and funding
 
-MIT. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+MIT. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) for provenance — including
+the exact Excalidraw commit this fork started from.
+
+Firo ships font binaries, and their licences are tracked separately in
+[`FONT-LICENSES.md`](FONT-LICENSES.md). **That audit is not finished**: several
+bundled faces are recorded as unverified, which is a release blocker rather than
+a to-do. See [ADR-0014](docs/adr/0014-font-position-after-phase-0.md).
 
 Firo will never charge for the software. If it becomes useful to you and you want
 to fund its maintenance, that will be handled through GitHub Sponsors and/or

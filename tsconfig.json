@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "rootDir": "./",
+    "target": "ESNext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@firo/common": ["./packages/common/src/index.ts"],
+      "@firo/common/*": ["./packages/common/src/*"],
+      "@firo/editor": ["./packages/editor/index.tsx"],
+      "@firo/editor/*": ["./packages/editor/*"],
+      "@firo/element": ["./packages/element/src/index.ts"],
+      "@firo/element/*": ["./packages/element/src/*"],
+      "@firo/fractional-indexing": ["./packages/fractional-indexing/src/index.ts"],
+      "@firo/fractional-indexing/*": ["./packages/fractional-indexing/src/*"],
+      "@firo/laser-pointer": ["./packages/laser-pointer/src/index.ts"],
+      "@firo/laser-pointer/*": ["./packages/laser-pointer/src/*"],
+      "@firo/math": ["./packages/math/src/index.ts"],
+      "@firo/math/*": ["./packages/math/src/*"],
+      "@firo/utils": ["./packages/utils/src/index.ts"],
+      "@firo/utils/*": ["./packages/utils/src/*"]
+    }
+  },
+  "include": ["packages", "apps/web"],
+  "exclude": ["examples", "dist", "types", "tests"]
+}
