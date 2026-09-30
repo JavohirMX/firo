@@ -1,0 +1,108 @@
+#!/bin/sh
+#
+# Enforce Conventional Commits on the subject line.
+#
+# ## Why this is a script and not commitlint
+#
+# Because the whole rule is one regular expression, and commitlint would be a
+# dependency (plus a config file, plus a lockfile entry) to evaluate it. A hook
+# this short can be read in full and audited, which matters more than feature
+# coverage when the thing being enforced is a formatting convention.
+#
+# It also means the rule is exactly as strict as we want rather than as strict as
+# a dependency defaults to. The checks below are the ones that keep a history
+# greppable; the ones it deliberately does not do (imperative mood, body
+# length, sign-off) are ones that produce false rejections on messages that are
+# fine.
+#
+# ## The format
+#
+#   <type>(<scope>)!: <description>
+#
+#   type:   what kind of change. One of the list below, and no others -- a
+#           closed list is what makes `git log --grep` and `git log --oneline
+#           -- path` able to answer questions.
+#   scope:  optional. Which part of the codebase.
+#   !:      optional. Breaking change. Also needs a BREAKING CHANGE: footer,
+#           which the human reviewer is better placed to write.
+#   description: imperative, lowercase, no trailing period.
+
+MSG_FILE="$1"
+
+# The subject is the first line that is not a comment. git's commit template puts
+# commented instructions above it, and a hook that read those would reject every
+# message a human wrote from an editor.
+SUBJECT=$(grep -v '^#' "$MSG_FILE" | grep -v '^[[:space:]]*$' | head -1)
+
+# Merge, revert and fixup commits are generated, not written, so they are exempt.
+case "$SUBJECT" in
+  Merge\ *|Revert\ \"*|fixup!*|squash!*)
+    exit 0
+    ;;
+esac
+
+TYPES='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+PATTERN="^($TYPES)(\([a-z0-9][a-z0-9._/-]*\))?!?: .{1,}$"
+
+fail() {
+  echo ""
+  echo "  commit message rejected: $1"
+  echo ""
+  echo "  Expected:  <type>(<scope>)!: <description>"
+  echo ""
+  echo "  type:      build, chore, ci, docs, feat, fix, perf, refactor,"
+  echo "             revert, style, test"
+  echo "  scope:     optional, e.g. doc, schema, bench, packages"
+  echo "  !:         breaking change; pair it with a BREAKING CHANGE: footer"
+  echo ""
+  echo "  Examples:"
+  echo "    feat(doc): add the document model"
+  echo "    fix(packages): stop advertising Excalidraw's repo in @firo/*"
+  echo "    docs(adr): record the write-path guard decision"
+  echo ""
+  echo "  Bypass with:  git commit --no-verify"
+  echo ""
+  exit 1
+}
+
+# 1. Shape. The load-bearing check.
+echo "$SUBJECT" | grep -Eq "$PATTERN" || fail "'$SUBJECT' does not match the format"
+
+# 2. Length. 72 is the width that stays readable in `git log` without wrapping.
+# The limit is a `git log --oneline` problem, not an aesthetic one: a 140-char
+# subject is unreadable in every tool that shows history.
+[ "${#SUBJECT}" -le 72 ] || fail "subject is ${#SUBJECT} chars, max 72"
+
+# 3. No trailing period. Conventional Commits describes a subject as a sentence
+# fragment, and a period invites a second sentence, which belongs in the body.
+case "$SUBJECT" in
+  *.) fail "subject ends with a period" ;;
+esac
+
+# 4. Not past tense. "Added the document model" reads as a changelog entry; the
+# subject describes what the commit does, and the log already implies the past.
+# Cheap to check, and it is the most common way these drift.
+FIRST_WORD=$(echo "$SUBJECT" | sed -E 's/^[a-z]+(\([^)]*\))?!?: //' | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
+case "$FIRST_WORD" in
+  added|fixed|updated|removed|changed|created|deleted|introduced|implemented|made)
+    fail "subject starts with '$FIRST_WORD' -- use the imperative ('add', 'fix', 'update')"
+    ;;
+esac
+
+# 5. Deliberately NOT checked: the case of the description.
+#
+# The obvious missing rule is "the description must be lowercase", and adding it
+# would reject three messages that are already correct:
+#
+#   feat(mcp): add the MCP tool server
+#   feat(ui): React 19 upgrade
+#   feat(ci): GitHub Actions runner
+#
+# A lowercase rule cannot tell a capitalised proper noun or acronym from a
+# capitalised sentence. The Conventional Commits spec does not mandate case
+# either. The past-tense check above catches the failure mode that actually
+# matters -- a subject written in changelog voice -- without the false
+# positives.
+
+exit 0
+
