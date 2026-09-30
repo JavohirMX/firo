@@ -38,14 +38,14 @@
   "publishConfig": {
     "access": "public"
   },
-  "description": "Excalidraw as a React component",
+  "description": "The Firo editor as a React component",
   "license": "MIT",
   "keywords": [
-    "excalidraw",
-    "excalidraw-embed",
+    "firo",
+    "whiteboard",
     "react",
-    "npm",
-    "npm excalidraw"
+    "canvas",
+    "editor"
   ],
   "browserslist": {
     "production": [
@@ -66,9 +66,6 @@
       "last 1 safari version"
     ]
   },
-  "repository": "https://github.com/excalidraw/excalidraw",
-  "bugs": "https://github.com/excalidraw/excalidraw/issues",
-  "homepage": "https://github.com/excalidraw/excalidraw/tree/master/packages/editor",
   "scripts": {
     "gen:types": "rimraf types && tsc",
     "build:esm": "rimraf dist && node ../../scripts/buildPackage.js && yarn gen:types"

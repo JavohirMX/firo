@@ -1,7 +1,7 @@
 {
   "name": "@firo/laser-pointer",
   "version": "0.1.0",
-  "description": "Generate outline for laser pointer tool",
+  "description": "Outline generation for the Firo laser pointer tool",
   "type": "module",
   "types": "./dist/types/laser-pointer/src/index.d.ts",
   "main": "./dist/prod/index.js",
@@ -18,11 +18,10 @@
     "dist/*"
   ],
   "keywords": [
-    "excalidraw",
-    "laserpointer"
+    "firo",
+    "whiteboard",
+    "laser-pointer"
   ],
-  "bugs": "https://github.com/excalidraw/excalidraw/issues",
-  "repository": "https://github.com/excalidraw/excalidraw",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

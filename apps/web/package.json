@@ -2,7 +2,6 @@
   "name": "@firo/web",
   "version": "0.1.0",
   "private": true,
-  "homepage": ".",
   "browserslist": {
     "production": [
       ">0.2%",
@@ -48,5 +47,12 @@
     "serve": "npx http-server build -a localhost -p 5001 -o",
     "build:preview": "yarn build && vite preview --port 5000"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "description": "Firo — the local-first, self-hostable whiteboard web app",
+  "keywords": [
+    "firo",
+    "whiteboard",
+    "canvas",
+    "app"
+  ]
 }
