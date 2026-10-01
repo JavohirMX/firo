@@ -21,7 +21,11 @@
  * that function and miss every reason a canvas app actually stutters: event
  * handling, state updates, reconciliation, and compositing.
  */
-import { chromium } from "playwright";
+import {
+  launchBenchBrowser,
+  readCanvasRenderer,
+  type CanvasRenderer,
+} from "./browser.js";
 
 import type { sceneStats } from "./scene.js";
 
@@ -42,6 +46,11 @@ export type FrameReport = {
 export type BenchOptions = {
   /** Scene size. */
   count: number;
+  /**
+   * Launch windowed so the canvas gets hardware acceleration. Off by default
+   * because headless is scriptable and this opens a window.
+   */
+  gpu?: boolean;
   profile: SceneProfile;
   seed: number;
   /**
@@ -94,6 +103,12 @@ export type RunReport = {
   idleHeapBytes: number | null;
   /** Chrome version, so a number is attributable to a renderer build. */
   userAgent: string;
+  /**
+   * What actually rasterised the canvas. Read back from the page, not assumed
+   * from the launch flags, because headless Chromium accepts `--enable-gpu` and
+   * still lands on SwiftShader.
+   */
+  renderer: CanvasRenderer;
 };
 
 const DEFAULTS = {
@@ -271,7 +286,7 @@ export const runBenchmark = async (
     url.searchParams.set("roughness", String(options.roughness));
   }
 
-  const browser: Browser = await chromium.launch();
+  const browser: Browser = await launchBenchBrowser(options.gpu ?? false);
   try {
     const page = await browser.newPage({ viewport: options.viewport });
 
@@ -366,6 +381,7 @@ export const runBenchmark = async (
       zoom: zoomReport,
       idleHeapBytes,
       userAgent: await page.evaluate(() => navigator.userAgent),
+      renderer: await readCanvasRenderer(browser),
     };
   } finally {
     await browser.close();
@@ -472,6 +488,28 @@ export const formatReport = (report: RunReport): string => {
   lines.push(
     `  browser   ${report.userAgent.replace(/^.*?(Chrome\/[\d.]+).*$/, "$1")}`,
   );
+
+  /*
+   * The renderer line is not metadata. Every millisecond above depends on it: a
+   * software blit measured 4.8 us and a hardware one is several times cheaper,
+   * so a number printed without this is not comparable to any other machine's,
+   * including a user's. A `--gpu` run that still reports software has failed, and
+   * says so here rather than passing software figures off as hardware.
+   */
+  lines.push(
+    `  canvas    ${report.renderer.kind.toUpperCase()}  ${
+      report.renderer.raw || "(renderer not reported)"
+    }`,
+  );
+  if (report.options.gpu && report.renderer.kind !== "gpu") {
+    lines.push(
+      "            WARNING: --gpu was requested but the canvas is not hardware",
+    );
+    lines.push(
+      "            accelerated. These numbers are software-rasterised. Do not",
+    );
+    lines.push("            compare them against a GPU run.");
+  }
   lines.push("");
   lines.push(
     "  fps is derived from the mean interval; p50/p95/max are the real signal.",

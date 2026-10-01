@@ -83,6 +83,7 @@ const profile = async () => {
       baseUrl: arg("url", "http://localhost:3000"),
       count: Number.parseInt(arg("count", "10000"), 10),
       durationMs: Number.parseInt(arg("ms", "4000"), 10),
+      gpu: flag("gpu"),
       samplingIntervalUs: Number.parseInt(arg("interval", "100"), 10),
     });
     console.log("");
@@ -125,6 +126,17 @@ const main = async () => {
     width: Number.parseInt(arg("width", "1280"), 10),
     height: Number.parseInt(arg("height", "800"), 10),
   };
+  /*
+   * `--gpu` launches windowed so the canvas is hardware accelerated.
+   *
+   * Headless Chromium rasterises in software (SwiftShader), where one blit costs
+   * 4.8 us. That is the number the renderer plan currently turns on, and it is
+   * several times more expensive than the same blit on a GPU -- so the plan's
+   * sizing may be an artefact of the test environment rather than a real limit.
+   * The report states which renderer it actually got, so this cannot quietly
+   * report software figures under a GPU label.
+   */
+  const gpu = flag("gpu");
 
   const { dir, outfile } = await bundle(join(ROOT, "scripts", "bench", "harness.ts"));
   try {
@@ -136,6 +148,7 @@ const main = async () => {
       sampleMs,
       baseUrl,
       viewport,
+      gpu,
       ...(worldSize !== undefined ? { worldSize } : {}),
       ...(roughnessArg ? { roughness: Number.parseInt(roughnessArg, 10) } : {}),
       ...(zoomArg ? { zoomLevels, zoomSampleMs: 1200 } : {}),

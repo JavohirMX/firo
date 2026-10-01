@@ -171,6 +171,59 @@ it averages over a scene whose elements overlap heavily at 100% zoom in a 1024 p
 world; 2.4 (caching) may move it substantially, so the figure should be re-measured
 after the cache work rather than treated as final.
 
+#### 2.1d — The measurement environment was the bottleneck, not the renderer
+
+2.1c sized everything from 4.8 µs per element and concluded a 10 ms draw budget
+holds ~2,100 elements. That number was produced by a software rasteriser, and it is
+wrong for the machine any user will run this on.
+
+`chromium.launch()` with no options runs headless, and headless Chromium on macOS
+rasterises through SwiftShader — a CPU rasteriser. Launching the same page windowed
+gets Metal on real hardware. Same scene, same code, same machine, 9,766 elements
+visible, each measured against the "draw nothing" control:
+
+| | drawing costs | per element | 10 ms budget holds |
+| --- | --- | --- | --- |
+| software (SwiftShader) | 46.5 ms | 4.76 µs | ~2,100 elements |
+| GPU (Apple M5, Metal) | 5.4 ms | 0.55 µs | ~18,000 elements |
+
+**Software rasterisation makes a blit 8.6× more expensive.** The whole premise of
+this phase was built on the inflated number.
+
+The inherited renderer, unchanged, draws all 9,766 visible elements at **73 fps** on
+an M5. A GPU five times slower than an M5 — a rough stand-in for the "five-year-old
+laptop" in criterion 1 — still holds ~3,600 elements in budget. So the target this
+phase was written to hit, "60 fps at 10,000 elements", **is already met by the code
+we inherited.**
+
+Two things follow, and they point in opposite directions:
+
+1. **Do not rewrite the renderer for speed.** There is no measured performance
+   problem at the target scale. Tasks 2.2 through 2.5 were justified by a cost model
+   that does not hold on real hardware, and 2.3 (level of detail) in particular was
+   about to absorb effort on the strength of a software-rasterisation artefact.
+2. **The rewrite may still be worth doing — for other reasons.** Culling is a linear
+   scan (`Renderer.ts:200`) and stays O(n) in *total* elements, not visible ones;
+   `elementWithCanvasCache` is a `WeakMap` with one bitmap per element and no
+   zoom-level fan-out, so a zoom invalidates every element at once and costs the
+   82–160 MB heap measured earlier; and `isElementInViewport` recomputes the
+   viewport rect twice per element, allocating 20,000 objects a frame. Those are real
+   and none of them are about frame rate. But they are ordinary engineering, not a
+   phase.
+
+**What is needed is a decision, not more measurement**: whether a renderer rewrite is
+justified by maintainability and memory, given that it is not justified by speed. That
+is a judgement call about the project, not something a benchmark can settle.
+
+### A note on measuring below 16.7 ms
+
+Windowed mode also removes the vsync floor: the empty-canvas control measured 8.3 ms
+at 120 fps, where the headless control was pinned at 16.7 ms. Any future work that
+needs to resolve frame costs *under* one refresh must measure windowed, or it is
+measuring the clock instead of the renderer. This is the same trap as 2.1a, in a
+different disguise.
+
+
 ### 2.2 — Culling
 
 `rbush` R-tree of element bounds, queried against the viewport plus a margin.

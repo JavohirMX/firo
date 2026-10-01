@@ -17,14 +17,15 @@
  * the per-element cost is fixed loop overhead versus actual drawing. The profile
  * answers it directly, where reasoning about it has been wrong twice.
  */
-import { chromium } from "playwright";
-
+import { launchBenchBrowser } from "./browser.js";
 import { pan, settle } from "./harness.js";
 
 import type { Browser, CDPSession, Page } from "playwright";
 
 export type ProfileOptions = {
   baseUrl: string;
+  /** Launch windowed for hardware acceleration. See `browser.ts`. */
+  gpu?: boolean;
   count: number;
   /**
    * World size. This is the lever that sets how many elements are on screen:
@@ -313,7 +314,7 @@ export const profileScenes = async (
 }> => {
   const options = { ...DEFAULTS, ...overrides };
 
-  const browser = await chromium.launch();
+  const browser = await launchBenchBrowser(options.gpu ?? false);
   try {
     const toReport = (
       label: string,
