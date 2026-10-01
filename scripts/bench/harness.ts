@@ -113,7 +113,7 @@ const DEFAULTS = {
  * because Playwright can hold a modifier across a drag without a raw input
  * event, which is one fewer thing to trust.
  */
-const pan = async (page: Page, durationMs: number, distancePx = 400) => {
+export const pan = async (page: Page, durationMs: number, distancePx = 400) => {
   const { width, height } = page.viewportSize() ?? DEFAULTS.viewport;
   const startX = Math.round(width / 2);
   const startY = Math.round(height / 2);
@@ -222,7 +222,7 @@ const zoomSweep = async (
 };
 
 /** Let the browser settle: fonts loaded, shape cache filled, rAF quiet. */
-const settle = async (page: Page) => {
+export const settle = async (page: Page) => {
   await page.waitForFunction(
     () => {
       const bench = (window as { __bench?: { ready(): boolean } }).__bench;

@@ -67,6 +67,36 @@ const bundle = async (entry) => {
   return { outfile };
 };
 
+/**
+ * Profile mode: `node scripts/bench/run.mjs --profile`
+ *
+ * A separate path rather than a flag on the benchmark run, because the two
+ * answer different questions. The benchmark asks "how fast", the profiler asks
+ * "why", and mixing them tends to produce a number with a story attached before
+ * the story is earned.
+ */
+const profile = async () => {
+  const { dir, outfile } = await bundle(join(ROOT, "scripts", "bench", "profile.ts"));
+  try {
+    const { profileScenes, formatProfile } = await import(pathToFileURL(outfile).href);
+    const report = await profileScenes({
+      baseUrl: arg("url", "http://localhost:3000"),
+      count: Number.parseInt(arg("count", "10000"), 10),
+      durationMs: Number.parseInt(arg("ms", "4000"), 10),
+      samplingIntervalUs: Number.parseInt(arg("interval", "100"), 10),
+    });
+    console.log("");
+    console.log(`  ${new Date().toISOString()}`);
+    console.log(formatProfile(report));
+    if (flag("json")) {
+      console.log("");
+      console.log(JSON.stringify(report, null, 2));
+    }
+  } finally {
+    // Left in place; see the note in `bundle`.
+  }
+};
+
 const main = async () => {
   const count = Number.parseInt(arg("count", "10000"), 10);
   const profile = arg("profile", "realistic");
@@ -127,9 +157,18 @@ const main = async () => {
   }
 };
 
-main().catch((error) => {
+if (flag("profile")) {
+  profile().catch((error) => {
+    console.error("");
+    console.error(`  profile failed: ${error?.message ?? error}`);
+    console.error("");
+    process.exit(1);
+  });
+} else {
+  main().catch((error) => {
   console.error("");
-  console.error(`  benchmark failed: ${error?.message ?? error}`);
-  console.error("");
-  process.exit(1);
-});
+    console.error(`  benchmark failed: ${error?.message ?? error}`);
+    console.error("");
+    process.exit(1);
+  });
+}
