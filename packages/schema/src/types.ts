@@ -114,6 +114,8 @@ export const ELEMENT_TYPES = [
   "rectangle",
   "diamond",
   "ellipse",
+  "arrow",
+  "line",
 ] as const;
 
 export type ElementType = typeof ELEMENT_TYPES[number];
@@ -125,12 +127,32 @@ export type ElementType = typeof ELEMENT_TYPES[number];
  * mirror Excalidraw's binding geometry, which the inherited renderer needs for
  * elbow routing.
  */
+/**
+ * Whether a connector may reach inside the shape it is bound to.
+ *
+ * Excalidraw's `BindMode`, inherited. Missing here until the bridge needed it,
+ * which makes it the fourth divergence between this schema and the renderer
+ * found by the bridge rather than by a test. A connector bound to a fixed point
+ * says whether it may come inside the shape or must stay outside, so a document
+ * that cannot express that cannot reproduce the connector it was given.
+ */
+export type BindMode = "inside" | "orbit" | "skip";
+
 export type Binding = Readonly<{
   elementId: ElementId;
   focus: number;
   gap: number;
-  /** Fixed-point, only meaningful for linear elements. */
+  /** Fixed-point ratio, only meaningful for linear elements. */
   fixedPoint?: readonly [number, number];
+  /**
+   * Whether the connector may reach inside the shape.
+   *
+   * `undefined` alongside an absent `fixedPoint` is the ordinary case: a connector
+   * bound to a shape's edge follows the edge rather than a point on it. Required
+   * whenever `fixedPoint` is present, because a fixed-point binding with no mode
+   * is not a thing the renderer can draw.
+   */
+  mode?: BindMode;
 }>;
 
 /** Style and geometry, verbatim from Excalidraw's base. */
@@ -164,6 +186,34 @@ export type ElementStyle = Readonly<{
  * one that went in.
  */
 export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag";
+
+/**
+ * The head on the end of a connector.
+ *
+ * The cardinality variants are inherited rather than dropped: a connector that
+ * means "one to many" is a real thing on a real board, and the renderer draws
+ * them. `AnyArrowhead` in the renderer also admits the legacy set, which a file
+ * can still contain; those are read, drawn, and normalised rather than rejected.
+ */
+export type Arrowhead =
+  | "arrow"
+  | "bar"
+  | "circle"
+  | "circle_outline"
+  | "triangle"
+  | "triangle_outline"
+  | "diamond"
+  | "diamond_outline"
+  | "dot"
+  | "crowfoot_one"
+  | "crowfoot_many"
+  | "crowfoot_one_or_many"
+  | "cardinality_one"
+  | "cardinality_many"
+  | "cardinality_one_or_many"
+  | "cardinality_exactly_one"
+  | "cardinality_zero_or_one"
+  | "cardinality_zero_or_many";
 export type StrokeStyle = "solid" | "dashed" | "dotted";
 /**
  * Corner-rounding algorithm, matching Excalidraw's `ROUNDNESS` numeric enum.
@@ -284,7 +334,27 @@ export type ShapeElement = ElementBase &
 /** Which of the three. */
 export type ShapeType = ShapeElement["type"];
 
-export type FiroElement = StickyNoteElement | ShapeElement;
+/**
+ * A connector: a path rather than a box.
+ *
+ * `x`, `y`, `width` and `height` are the bounding box of the path, not where it
+ * starts -- the path is in `points`, relative to `x`/`y`. `bindings` is ordered:
+ * the first entry is the start of the connector and the second is the end.
+ */
+export type LinearElement = ElementBase &
+  Readonly<{
+    type: "arrow" | "line";
+    /** `[x, y, pressure]` triples, relative to the element's origin. */
+    points: readonly (readonly [number, number, number])[];
+    startArrowhead: Arrowhead | null;
+    endArrowhead: Arrowhead | null;
+    elbowed: boolean;
+  }>;
+
+/** Which of the two. */
+export type LinearType = LinearElement["type"];
+
+export type FiroElement = StickyNoteElement | ShapeElement | LinearElement;
 
 /** Narrowing helper, so callers do not repeat the discriminant check. */
 export const isElementType = <T extends ElementType>(

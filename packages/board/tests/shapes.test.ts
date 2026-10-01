@@ -188,12 +188,13 @@ describe("shape fold", () => {
 
   it("still skips a type the document has no schema for", () => {
     /*
-     * The gap is real and growing: `arrow`, `line` and `freedraw` are not types
-     * yet, so a connector a user draws is not in their document. Skipping beats
-     * throwing — throwing would freeze the board — but it is a hole, not a
-     * virtue, and it is why connectors are the obvious next types.
+     * The gap is narrowing: `freedraw`, `image` and `frame` are not types yet.
+     * Skipping beats throwing -- throwing would freeze the board over something
+     * the user can see -- but it is a hole, not a virtue, and freehand is the
+     * next one because it is what people reach for when they are not thinking
+     * about structure.
      */
-    const arrow = { ...editorShape("rectangle"), type: "arrow" };
-    expect(fromEditorElements([arrow] as never)).toHaveLength(0);
+    const freedraw = { ...editorShape("rectangle"), type: "freedraw" };
+    expect(fromEditorElements([freedraw] as never)).toHaveLength(0);
   });
 });

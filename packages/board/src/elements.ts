@@ -37,8 +37,10 @@ import type {
 } from "@firo/element/types";
 
 import type {
+  Binding,
   ElementId,
   FiroElement,
+  LinearElement,
   ShapeElement,
   StickyNoteElement,
 } from "@firo/schema";
@@ -130,6 +132,54 @@ export const EDITOR_OWNED_FIELDS = [
   "textAlign",
   "verticalAlign",
 ] as const;
+
+/**
+ * A Firo binding as the renderer wants one.
+ *
+ * Only a binding carrying a `fixedPoint` becomes a `FixedPointBinding`; anything
+ * else stays `null` so the renderer draws the connector following the shape's
+ * edge rather than pinning it to a point. The `focus` and `gap` the document
+ * keeps have no field here -- the renderer moved off them -- which is why they
+ * are preserved in the document and dropped on the way to the canvas.
+ */
+/**
+ * The renderer's `FixedPointBinding` as a Firo binding.
+ *
+ * `focus` and `gap` are set to the values the renderer would have implied, and
+ * they are *not* recovered from the drawing: the renderer does not store them, so
+ * a connector's focus is not knowable from the editor and is recorded as the
+ * default. The document keeps whatever the connector's own geometry implies, and
+ * this is the one field on a connector that a round trip through the editor
+ * cannot preserve exactly. Said here rather than left to be discovered.
+ */
+const fromFixedPointBinding = (binding: {
+  elementId: string;
+  fixedPoint?: readonly [number, number];
+  mode?: string;
+}): Binding => ({
+  elementId: binding.elementId as ElementId,
+  focus: 0,
+  gap: 1,
+  ...(binding.fixedPoint
+    ? {
+        fixedPoint: binding.fixedPoint,
+        mode: (binding.mode ?? "orbit") as NonNullable<Binding["mode"]>,
+      }
+    : {}),
+});
+
+const toFixedPointBinding = (
+  binding: FiroElement["bindings"][number] | undefined,
+): Record<string, unknown> | null => {
+  if (!binding?.fixedPoint) {
+    return null;
+  }
+  return {
+    elementId: binding.elementId,
+    fixedPoint: binding.fixedPoint,
+    mode: binding.mode ?? "orbit",
+  };
+};
 
 /**
  * The fields every element shares, in the editor's shape.
@@ -270,6 +320,32 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
     ];
   }
 
+  if (element.type === "arrow" || element.type === "line") {
+    /*
+     * A connector is one editor element, and the one place where a projection has
+     * to *reinterpret* rather than merely copy.
+     *
+     * Firo's `bindings` is an unordered set. The renderer needs to know which end
+     * of the connector a binding belongs to, or it cannot follow the edge or place
+     * an arrowhead. So the array order carries it: first is the start, second is
+     * the end. See the note on `LinearElement` for why that is a convention here
+     * and not a second relation.
+     */
+    const [start, end] = element.bindings;
+    return [
+      {
+        ...sharedBaseFor(element),
+        type: element.type,
+        points: element.points,
+        startArrowhead: element.startArrowhead,
+        endArrowhead: element.endArrowhead,
+        elbowed: element.elbowed,
+        startBinding: toFixedPointBinding(start),
+        endBinding: toFixedPointBinding(end),
+      } as unknown as ExcalidrawElement,
+    ];
+  }
+
   if (element.type !== "stickynote") {
     throw new Error(
       `@firo/board: cannot draw element type "${element.type}" (id ${element.id}). ` +
@@ -376,8 +452,20 @@ const sharedDocumentFields = (element: ExcalidrawElement) => {
     groupIds: element.groupIds,
     frameId: element.frameId,
     /*
-     * The editor's `boundElements` is `{ id, type }` with no geometry; see the
-     * note on `toBoundElements` for what is lost and why the document keeps it.
+     * A shape's bindings are a *marker*, not a copy of the geometry.
+     *
+     * The relation is stored on both endpoints, but only the connector's copy
+     * carries anything: the renderer keeps the binding geometry on the
+     * connector's `startBinding`/`endBinding` and reduces the shape's side to
+     * `{ id, type }` in `boundElements`. So the shape's binding is written with
+     * default `focus` and `gap`, and those defaults are not recoverable from the
+     * editor.
+     *
+     * That is fine for drawing — the renderer never reads them from this side —
+     * and worth knowing for merging: two clients can hold different `focus`/`gap`
+     * on the same relation without either being wrong, because neither value came
+     * from the drawing. The connector's copy is the one that matters, and it
+     * round trips exactly.
      */
     bindings: (element.boundElements ?? []).map((bound) => ({
       elementId: bound.id as ElementId,
@@ -453,15 +541,78 @@ export const fromEditorElements = (
       continue;
     }
 
+    if (element.type === "arrow" || element.type === "line") {
+      const connector = element as unknown as {
+        points: unknown;
+        startArrowhead: unknown;
+        endArrowhead: unknown;
+        elbowed: unknown;
+        startBinding: {
+          elementId: string;
+          fixedPoint?: readonly [number, number];
+          mode?: string;
+        } | null;
+        endBinding: {
+          elementId: string;
+          fixedPoint?: readonly [number, number];
+          mode?: string;
+        } | null;
+      };
+      /*
+       * A connector, and the only element whose bindings the fold has to
+       * *assemble* rather than read.
+       *
+       * The renderer splits a connector's bindings into `startBinding` and
+       * `endBinding`; the document keeps them as one ordered list. So the fold
+       * puts start first and end second, and the projection above reads them back
+       * the same way. The two must agree, which is the reason both directions
+       * live next to each other rather than in separate files.
+       */
+      const fields = sharedDocumentFields(element);
+      const { containerId, ...linearCustomData } = (element.customData ??
+        {}) as { containerId?: unknown } & Record<string, unknown>;
+
+      folded.push({
+        ...fields,
+        type: element.type,
+        points: connector.points as LinearElement["points"],
+        startArrowhead: (connector.startArrowhead ??
+          null) as LinearElement["startArrowhead"],
+        endArrowhead: (connector.endArrowhead ??
+          null) as LinearElement["endArrowhead"],
+        elbowed: connector.elbowed === true,
+        /*
+         * Order matters and is load-bearing. `fields.bindings` came from the
+         * editor's `boundElements`, which for a connector is *not* where the
+         * geometry lives -- that is in `startBinding`/`endBinding` -- so the
+         * bindings built there are replaced wholesale by these.
+         */
+        bindings: [
+          ...(connector.startBinding
+            ? [fromFixedPointBinding(connector.startBinding)]
+            : []),
+          ...(connector.endBinding
+            ? [fromFixedPointBinding(connector.endBinding)]
+            : []),
+        ].slice(0, 2) as unknown as FiroElement["bindings"],
+        ...(typeof containerId === "string" ? { containerId } : {}),
+        ...(Object.keys(linearCustomData).length
+          ? { customData: linearCustomData }
+          : {}),
+      } as unknown as LinearElement);
+      continue;
+    }
+
     if (element.type !== "stickynote") {
-      // A shape the editor can draw that Firo has no type for yet — `arrow`,
-      // `line`, `freedraw`, `image`. Skipped rather than thrown: a board may
+      // A shape the editor can draw that Firo has no type for yet — `freedraw`,
+      // `image`, `frame`, `embeddable`. Skipped rather than thrown: a board may
       // legitimately hold an element type this version does not understand, and
       // refusing to sync would freeze the board over something the user can see.
       //
-      // This is a real and growing gap, not a hypothetical. It is why `arrow`
-      // and `line` are the obvious next types: until they exist, connectors a
-      // user draws are not in their document.
+      // The gap is narrowing rather than hypothetical: shapes and connectors are
+      // in, so what remains is drawing, images and frames. `freedraw` is next
+      // because freehand is the one people reach for when they are not thinking
+      // about structure.
       continue;
     }
 

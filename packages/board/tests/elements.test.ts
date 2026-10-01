@@ -234,7 +234,7 @@ describe("fromEditorElements", () => {
      * throwing -- throwing would freeze the board over something the user can
      * see -- but it is a hole, not a virtue.
      */
-    const foreign = { type: "arrow", id: "r1" } as never;
+    const foreign = { type: "freedraw", id: "r1" } as never;
     expect(fromEditorElements([foreign])).toHaveLength(0);
   });
 

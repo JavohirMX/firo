@@ -8,6 +8,7 @@
  *
  * Add new types here, in the order they were introduced.
  */
+import "./linear.js";
 import "./shape.js";
 import "./stickynote.js";
 
