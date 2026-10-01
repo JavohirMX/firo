@@ -36,6 +36,8 @@ import type { SceneProfile } from "./scene.js";
 export type FrameReport = {
   frames: number;
   durations: number[];
+  /** Wall-clock ms actually sampled. Independent of `durations`. */
+  elapsedMs: number;
   p50: number;
   p95: number;
   max: number;
@@ -420,19 +422,20 @@ export const formatReport = (report: RunReport): string => {
   lines.push("");
 
   lines.push(
-    `  ${"scenario".padEnd(8)}${"mean".padStart(8)}${"fps".padStart(
-      7,
-    )}${"frames".padStart(8)}${"p50".padStart(8)}${"p95".padStart(
+    `  ${"scenario".padEnd(8)}${"fps".padStart(7)}${"mean*".padStart(
       8,
-    )}${"max".padStart(8)}${"dropped".padStart(9)}`,
+    )}${"frames".padStart(8)}${"elapsed".padStart(9)}${"p50".padStart(
+      8,
+    )}${"p95".padStart(8)}${"max".padStart(8)}${"dropped".padStart(9)}`,
   );
-  lines.push(`  ${"-".repeat(64)}`);
+  lines.push(`  ${"-".repeat(72)}`);
   for (const { name, frames } of report.scenarios) {
     lines.push(
-      `  ${name.padEnd(8)}${frames.meanMs.toFixed(1).padStart(8)}` +
-        `${frames.fps.toFixed(1).padStart(7)}${frames.frames
+      `  ${name.padEnd(8)}${frames.fps.toFixed(1).padStart(7)}` +
+        `${frames.meanMs.toFixed(1).padStart(8)}${frames.frames
           .toString()
           .padStart(8)}` +
+        `${(frames.elapsedMs / 1000).toFixed(1).padStart(9)}` +
         `${frames.p50.toFixed(1).padStart(8)}${frames.p95
           .toFixed(1)
           .padStart(8)}` +
@@ -441,15 +444,28 @@ export const formatReport = (report: RunReport): string => {
           .padStart(9)}`,
     );
   }
+  lines.push("");
+  lines.push(
+    "  fps is frames over wall clock, and is the figure to trust. mean* is",
+  );
+  lines.push(
+    "  the mean gap between consecutive rAF callbacks: under a long block the",
+  );
+  lines.push(
+    "  callback and the timeout run back to back, so it reports the gap after",
+  );
+  lines.push("  the block rather than the block itself.");
 
   lines.push("");
   if (report.zoom.length) {
     lines.push("");
     lines.push("  ZOOM SWEEP — criterion 5: 10% to 400%, no frame over 100 ms");
     lines.push(
-      `  ${"zoom".padEnd(7)}${"applied".padStart(9)}${"mean".padStart(
+      `  ${"zoom".padEnd(7)}${"applied".padStart(9)}${"fps".padStart(
+        7,
+      )}${"mean*".padStart(8)}${"frames".padStart(8)}${"max".padStart(
         8,
-      )}${"frames".padStart(8)}${"max".padStart(8)}${"over100ms".padStart(11)}`,
+      )}${"over100ms".padStart(11)}`,
     );
     lines.push(`  ${"-".repeat(51)}`);
     for (const level of report.zoom) {
@@ -468,6 +484,7 @@ export const formatReport = (report: RunReport): string => {
           `  ${`${Math.round(level.requested * 100)}%`.padEnd(7)}` +
             `${applied.padStart(9)}` +
             `${"NO DATA".padStart(8)}` +
+            `${"-".padStart(8)}` +
             `${"0".padStart(8)}` +
             `${"-".padStart(8)}` +
             `${"-".padStart(11)}`,
@@ -477,6 +494,7 @@ export const formatReport = (report: RunReport): string => {
       lines.push(
         `  ${`${Math.round(level.requested * 100)}%`.padEnd(7)}` +
           `${applied.padStart(9)}` +
+          `${level.frames.fps.toFixed(2).padStart(7)}` +
           `${level.frames.meanMs.toFixed(1).padStart(8)}` +
           `${level.frames.frames.toString().padStart(8)}` +
           `${level.frames.max.toFixed(1).padStart(8)}` +
@@ -550,9 +568,6 @@ export const formatReport = (report: RunReport): string => {
     lines.push("            compare them against a GPU run.");
   }
   lines.push("");
-  lines.push(
-    "  fps is derived from the mean interval; p50/p95/max are the real signal.",
-  );
   lines.push("  'dropped' counts frames over one 60 Hz budget (16.7 ms).");
 
   return lines.join("\n");

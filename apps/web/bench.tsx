@@ -124,6 +124,16 @@ export type FrameReport = {
   frames: number;
   /** Inter-frame durations in ms, sorted ascending. */
   durations: number[];
+  /**
+   * Wall-clock milliseconds actually spent sampling.
+   *
+   * Independent of `durations`, and the reason `fps` is a frame count over this
+   * rather than `1000 / meanMs`. When the main thread blocks, the rAF callback
+   * and the timeout run back to back once it clears, so the recorded gap between
+   * them is milliseconds and the block that preceded them is nowhere in
+   * `durations`. Zero when no frame was recorded at all.
+   */
+  elapsedMs: number;
   /*
    * Mean inter-frame duration in ms. This is the primary cost signal, and the
    * percentiles below are secondary, for a reason that is easy to get wrong.
@@ -162,18 +172,34 @@ const percentile = (sorted: readonly number[], p: number): number => {
   return sorted[index];
 };
 
-const summarise = (durations: number[]): FrameReport => {
+const summarise = (durations: number[], elapsedMs: number): FrameReport => {
   const sorted = [...durations].sort((a, b) => a - b);
   const total = durations.reduce((sum, d) => sum + d, 0);
   const meanMs = durations.length ? total / durations.length : 0;
   return {
     frames: durations.length,
     durations: sorted,
+    elapsedMs,
     meanMs,
     p50: percentile(sorted, 50),
     p95: percentile(sorted, 95),
     max: sorted[sorted.length - 1] ?? 0,
-    fps: meanMs ? 1000 / meanMs : 0,
+    /*
+     * Throughput, not `1000 / meanMs`.
+     *
+     * The two agree when frames are plentiful and disagree badly when they are
+     * not, and the disagreement is the whole point. `durations` holds the gaps
+     * between consecutive rAF callbacks, so when the main thread blocks, the
+     * pending rAF callback and the pending timeout both become runnable and run
+     * back to back -- recording the gap *between* them, which is milliseconds,
+     * rather than the block that preceded them, which is seconds.
+     *
+     * So a scene so slow it manages five frames in six seconds reported a mean of
+     * 29.8 ms, implying 33 fps at roughly 0.8 real. The frame count over measured
+     * wall clock does not have that failure mode: it cannot be fooled by what the
+     * callbacks did after being unblocked.
+     */
+    fps: elapsedMs > 0 ? (durations.length / elapsedMs) * 1000 : 0,
     /*
      * A dropped frame is one that *missed* a refresh, not one that landed a
      * microsecond late.
@@ -203,6 +229,8 @@ type PendingMeasurement = {
   durations: number[];
   last: number;
   warmupLeft: number;
+  /** rAF timestamp of the first recorded frame, or 0 before sampling starts. */
+  startedAt: number;
 };
 
 export type BenchSurface = {
@@ -284,11 +312,34 @@ const installDriverSurface = () => {
       const durations: number[] = [];
       const warmupLeft = BENCH_OPTIONS.warmup;
       return new Promise<FrameReport>((resolve) => {
-        pending = { resolve, durations, last: 0, warmupLeft };
+        /*
+         * Start the clock now, not at the first recorded frame.
+         *
+         * Setting it on the first frame looks reasonable and is wrong in exactly
+         * the case that matters: if the main thread blocks for six seconds before
+         * any frame is recorded, the first frame's timestamp is already at t=6s,
+         * so the six seconds of blocking fall outside the window and the run
+         * reports three frames over 111 ms as 27 fps. Time before the first frame
+         * is time the scene spent not delivering frames, and throughput has to
+         * count it.
+         */
+        pending = {
+          resolve,
+          durations,
+          last: 0,
+          warmupLeft,
+          startedAt: performance.now(),
+        };
         setTimeout(() => {
           if (pending) {
+            const startedAt = pending.startedAt;
             pending = null;
-            resolve(summarise(durations));
+            resolve(
+              summarise(
+                durations,
+                startedAt === 0 ? 0 : performance.now() - startedAt,
+              ),
+            );
           }
         }, durationMs);
       });

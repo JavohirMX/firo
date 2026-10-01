@@ -15,6 +15,7 @@ import { formatReport, type RunReport } from "./harness";
 const frame = (over: Partial<RunReport["scenarios"][0]["frames"]> = {}) => ({
   frames: 100,
   durations: [8, 9, 10],
+  elapsedMs: 900,
   meanMs: 9,
   p50: 9,
   p95: 10,
@@ -101,6 +102,19 @@ describe("formatReport", () => {
       }),
     );
     expect(out).toContain("FAILS criterion 5");
+  });
+
+  it("leads with throughput, not the mean gap", () => {
+    // The mean gap between rAF callbacks misreports under a long block, so the
+    // column order is part of the contract: fps first, mean demoted and marked.
+    const out = formatReport(report());
+    const header = out.slice(out.indexOf("scenario"));
+    expect(header.indexOf("fps")).toBeLessThan(header.indexOf("mean*"));
+    expect(header).toContain("elapsed");
+  });
+
+  it("explains why the mean is not the figure to trust", () => {
+    expect(formatReport(report())).toContain("the figure to trust");
   });
 
   it("states the renderer, since the numbers depend on it", () => {
