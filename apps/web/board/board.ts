@@ -128,18 +128,36 @@ export const commitBoard = (): void => {
  * `import.meta.env.DEV` is replaced at build time, so this whole block is dead in
  * production and nothing of it reaches the bundle.
  *
- * Two things, for two different reasons. `read` and `editorElements` distinguish a
- * note that reached the *document* from one that is merely *drawn*, which looking
- * at a canvas cannot do and which is the whole question the wiring exists to
- * answer.
+ * Three things, for three different reasons.
+ *
+ * `read` and `editorElements` distinguish a note that reached the *document* from
+ * one that is merely *drawn*, which looking at a canvas cannot do and which is the
+ * whole question the wiring exists to answer.
  *
  * `appState` is here because an editor action can refuse to run for reasons that
  * are invisible from outside — `executeHistoryAction` blocks undo while any
  * gesture flag is set, and a stuck flag looks exactly like "the shortcut is not
  * bound". That diagnosis took several wrong guesses before reading the flags, so
  * the next person does not repeat them.
+ *
+ * `live` is here because both the editor and the document *tombstone* rather than
+ * drop: an undone creation keeps its element with `isDeleted: true`, so it can be
+ * restored. Every element list reachable from this probe therefore has a stable
+ * length across an undo, and `.length` on it reports an undo as a no-op.
+ *
+ * That is not hypothetical. Undo was misdiagnosed as broken for a long stretch
+ * because both counters used to check it — `read` here and `h.elements` in tests —
+ * include tombstones, while the delta history was recording and inverting
+ * correctly the entire time. Use `live` to ask how many shapes a person can see.
+ *
+ * `read` and `editorElements` stay because sometimes the tombstone *is* the
+ * question — whether an undo left a restorable element behind, for instance.
+ * Reach for `live` first and the raw lists when the tombstone matters.
  */
 if (import.meta.env.DEV) {
+  const isLive = (element: unknown) =>
+    (element as { isDeleted?: boolean } | null)?.isDeleted !== true;
+
   (
     window as unknown as {
       __firoBoard: {
@@ -147,6 +165,7 @@ if (import.meta.env.DEV) {
         revision: () => number;
         editorElements: () => unknown;
         appState: () => unknown;
+        live: () => { document: number; editor: number };
       };
     }
   ).__firoBoard = {
@@ -154,5 +173,9 @@ if (import.meta.env.DEV) {
     revision: () => doc.revision,
     editorElements: () => activeElements?.() ?? null,
     appState: () => activeAppState?.() ?? null,
+    live: () => ({
+      document: (doc.read().elements ?? []).filter(isLive).length,
+      editor: ((activeElements?.() ?? []) as unknown[]).filter(isLive).length,
+    }),
   };
 }

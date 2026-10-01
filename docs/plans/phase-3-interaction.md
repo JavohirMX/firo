@@ -74,6 +74,53 @@ Undo is local and per-user; a collaborator's change is never in the stack.
 **Test:** undo a group, undo a nest, undo a move of a nested container, and assert
 the tree is correct at every step.
 
+#### Settled: the editor's own undo already works, and the document is not in its path
+
+The inherited editor's history was suspected broken and was, in fact, working the
+whole time. Recorded here so the question does not get reopened.
+
+Measured in the app, three shapes drawn, then undo/redo one step at a time:
+
+```
+start:      { document: 3, editor: 3 }
+undo 1:     { document: 2, editor: 2 }
+undo 2:     { document: 1, editor: 1 }
+undo 3:     { document: 0, editor: 0 }
+redo 1:     { document: 1, editor: 1 }
+redo 2:     { document: 2, editor: 2 }
+redo 3:     { document: 3, editor: 3 }
+```
+
+No errors. The recorded delta for a creation is a removal, and applying it flips
+`isDeleted`.
+
+**The trap.** Undo *tombstones*: it flips `isDeleted` and leaves the element in the
+scene, so a restored shape has its identity and history back. Every element list
+therefore has a **stable length across an undo**, and `.length` on one reports a
+working undo as a no-op. Both counters used to check it had this shape —
+`__firoBoard.read` in the browser and `h.elements` in tests — and both were
+including tombstones. A correct undo looked exactly like a broken one for a long
+stretch, and cost a wrong "fix" to the store's `EVENTUALLY` guard along the way
+(that change was reverted: the guard was correct, and `EVENTUALLY` commits
+genuinely produce nothing, so the "fix" was a no-op with a confident story on it).
+
+Rules that follow, and are enforced by `packages/editor/tests/historyBasic.test.tsx`:
+
+- **Count live elements, never all elements.** `h.elements` and
+  `getSceneElementsIncludingDeleted()` include tombstones.
+- **`__firoBoard.live()`** exists for browser checks, for this reason. Use it.
+- The document tombstones the same way, by design, so a concurrent edit cannot
+  resurrect a deleted element silently.
+- The basic case was untested. `history.test.tsx` had fourteen tests, all corners —
+  corrupted entries, empty deltas, redo-stack clearing, drag-and-drop and paste
+  imports — and none for "draw, undo, gone". That gap is why a working undo could
+  go unverified. The missing test is now the missing test.
+
+One genuine quirk, not a bug: the first `Cmd+Z` after a click that deselected
+restores the *selection highlight* and does not change the element count. That is a
+real visible change, so history correctly stops there rather than eating two entries
+in one press.
+
 ### 3.6 — Keyboard and command palette
 
 Every function reachable by keyboard. This is a hard requirement
