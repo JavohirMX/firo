@@ -124,6 +124,24 @@ export type FrameReport = {
   frames: number;
   /** Inter-frame durations in ms, sorted ascending. */
   durations: number[];
+  /*
+   * Mean inter-frame duration in ms. This is the primary cost signal, and the
+   * percentiles below are secondary, for a reason that is easy to get wrong.
+   *
+   * rAF timestamps land on the vsync grid, so every *individual* duration is
+   * rounded up to the next 16.67 ms multiple. Below one budget that is
+   * invisible. Well above it, the rounding becomes the dominant term in the
+   * measurement: at a true 70 ms frame cost the reported interval is 83.3 ms,
+   * and percentiles computed off such samples resolve in 16.7 ms steps. Three
+   * runs of one build at one zoom reported p50 values of 16.7, 133.3 and 200.0
+   * ms -- spread that describes the grid, not the renderer.
+   *
+   * The mean is not quantised, because the grid phase does not repeat. What it
+   * costs instead is sample size: a 3 s window at 80 ms per frame collects
+   * about 37 samples, so a window has to be long enough to collect a few
+   * hundred before the mean is worth quoting at all.
+   */
+  meanMs: number;
   p50: number;
   p95: number;
   max: number;
@@ -147,13 +165,15 @@ const percentile = (sorted: readonly number[], p: number): number => {
 const summarise = (durations: number[]): FrameReport => {
   const sorted = [...durations].sort((a, b) => a - b);
   const total = durations.reduce((sum, d) => sum + d, 0);
+  const meanMs = durations.length ? total / durations.length : 0;
   return {
     frames: durations.length,
     durations: sorted,
+    meanMs,
     p50: percentile(sorted, 50),
     p95: percentile(sorted, 95),
     max: sorted[sorted.length - 1] ?? 0,
-    fps: durations.length ? 1000 / (total / durations.length) : 0,
+    fps: meanMs ? 1000 / meanMs : 0,
     /*
      * A dropped frame is one that *missed* a refresh, not one that landed a
      * microsecond late.

@@ -60,6 +60,65 @@ before these are done.
 budget, Excalidraw's two-canvas split is load-bearing and we keep it. Finding that out
 in a spike costs two days; finding it out in the renderer costs a month.
 
+#### 2.1a — The measurement environment, which invalidates everything above
+
+Recorded before the spikes, because two spikes were run and both produced numbers
+that had to be thrown away.
+
+**1. Headless Chromium here rasterises in software.** `WEBGL_debug_renderer_info`
+reports `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device …), SwiftShader driver)`.
+There is no GPU. Rasterisation cost measured here is software-raster cost and is
+*not* representative of a user's machine, which has a GPU. Ratios between
+configurations may survive; absolute milliseconds will not. Criterion 1's
+"five-year-old laptop" cannot be satisfied in this environment at all, so it needs
+either a GPU-backed browser or a real machine.
+
+**2. The frame-time metric was vsync-quantised.** `measure` collects rAF timestamp
+deltas, and those land on the 16.7 ms grid. Under one budget that is invisible; far
+above it, it dominates: at a true 70 ms frame cost the reported interval is 83.3 ms.
+Three runs of one build at one zoom reported p50 values of 16.7, 133.3 and 200.0 ms,
+and one reported 0.0. That spread describes the grid, not the renderer.
+
+The fix is to quote the **mean**, which is not quantised because the grid phase does
+not repeat, and to collect enough samples for it to mean something — a 3 s window at
+80 ms per frame is about 37 samples. `FrameReport.meanMs` now carries it and the
+report leads with it. `p50`/`p95` are demoted to secondary and are only meaningful
+below one frame budget.
+
+**3. The machine has to be quiet or nothing is measurable.** A CPU-bound render
+benchmark is the one measurement that cannot survive contention. With a raytracer
+from another project saturating all cores, the A/B on the `setTransform` change
+(7 runs per side) gave medians of 66.2 ms without and 67.6 ms with — a difference
+smaller than the run-to-run spread of 63.6–84.3 ms. The same contention made four
+unrelated tests fail under a parallel `vitest run` and pass when re-run alone. Load
+average reached 157 on 10 cores.
+
+So the rule for the spikes: **check `uptime` before and during, and re-run any A/B
+whose two sides overlap in range.** A benchmark that cannot tell two builds apart is
+not evidence that they are equal — it is evidence that it cannot measure.
+
+#### 2.1b — What the CPU profile did and did not show
+
+A CPU profile of a dense board (10,000 elements, ~9,766 visible, 1024 px world,
+100% zoom, ~66–72 ms per frame, ~7 µs per element) attributed **80% of per-element
+self time to `setTransform`** — a native canvas call — with the `drawImage` blit
+itself under 6%. That pointed at a redundant native call in the hot loop, and
+`renderElement.ts` did have one: `getTransform()` and `setTransform()` ran once per
+element unconditionally, to undo a transform that the snapping branch only sets when
+`canSnapElement` is true, which is rare. Both are now conditional.
+
+**The fix is correct and strictly removes work, but no win was measured.** The A/B
+above is the reason, and it is not evidence that the fix does not help — it is
+evidence that the measurement could not detect anything.
+
+More important is what the profile *cannot* see. Roughly 80% of the frame is
+unattributed to any JS frame, which is what software rasterisation looks like from
+inside a JS CPU profiler. So the profile is not a reliable guide to the dominant
+cost in this environment, and acting on its top line as though it were is the exact
+error this phase exists to avoid.
+
+**Therefore: the lever is still unidentified.** The plan's three spikes stand.
+
 ### 2.2 — Culling
 
 `rbush` R-tree of element bounds, queried against the viewport plus a margin.

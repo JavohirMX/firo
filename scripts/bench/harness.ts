@@ -404,18 +404,23 @@ export const formatReport = (report: RunReport): string => {
   lines.push("");
 
   lines.push(
-    `  ${"scenario".padEnd(8)}${"fps".padStart(8)}${"p50".padStart(
-      9,
-    )}${"p95".padStart(9)}${"max".padStart(9)}${"dropped".padStart(9)}`,
+    `  ${"scenario".padEnd(8)}${"mean".padStart(8)}${"fps".padStart(
+      7,
+    )}${"frames".padStart(8)}${"p50".padStart(8)}${"p95".padStart(
+      8,
+    )}${"max".padStart(8)}${"dropped".padStart(9)}`,
   );
-  lines.push(`  ${"-".repeat(52)}`);
+  lines.push(`  ${"-".repeat(64)}`);
   for (const { name, frames } of report.scenarios) {
     lines.push(
-      `  ${name.padEnd(8)}${frames.fps.toFixed(1).padStart(8)}` +
-        `${frames.p50.toFixed(1).padStart(9)}${frames.p95
+      `  ${name.padEnd(8)}${frames.meanMs.toFixed(1).padStart(8)}` +
+        `${frames.fps.toFixed(1).padStart(7)}${frames.frames
+          .toString()
+          .padStart(8)}` +
+        `${frames.p50.toFixed(1).padStart(8)}${frames.p95
           .toFixed(1)
-          .padStart(9)}` +
-        `${frames.max.toFixed(1).padStart(9)}${frames.dropped
+          .padStart(8)}` +
+        `${frames.max.toFixed(1).padStart(8)}${frames.dropped
           .toString()
           .padStart(9)}`,
     );
@@ -426,11 +431,11 @@ export const formatReport = (report: RunReport): string => {
     lines.push("");
     lines.push("  ZOOM SWEEP — criterion 5: 10% to 400%, no frame over 100 ms");
     lines.push(
-      `  ${"zoom".padEnd(7)}${"applied".padStart(9)}${"p50".padStart(
-        9,
-      )}${"p95".padStart(9)}${"max".padStart(9)}${"over100ms".padStart(11)}`,
+      `  ${"zoom".padEnd(7)}${"applied".padStart(9)}${"mean".padStart(
+        8,
+      )}${"frames".padStart(8)}${"max".padStart(8)}${"over100ms".padStart(11)}`,
     );
-    lines.push(`  ${"-".repeat(54)}`);
+    lines.push(`  ${"-".repeat(51)}`);
     for (const level of report.zoom) {
       const breaches = level.frames.durations.filter((d) => d > 100).length;
       const applied =
@@ -438,9 +443,9 @@ export const formatReport = (report: RunReport): string => {
       lines.push(
         `  ${`${Math.round(level.requested * 100)}%`.padEnd(7)}` +
           `${applied.padStart(9)}` +
-          `${level.frames.p50.toFixed(1).padStart(9)}` +
-          `${level.frames.p95.toFixed(1).padStart(9)}` +
-          `${level.frames.max.toFixed(1).padStart(9)}` +
+          `${level.frames.meanMs.toFixed(1).padStart(8)}` +
+          `${level.frames.frames.toString().padStart(8)}` +
+          `${level.frames.max.toFixed(1).padStart(8)}` +
           `${breaches.toString().padStart(11)}`,
       );
     }
