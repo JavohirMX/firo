@@ -255,11 +255,20 @@ no monotonic relationship at all: a 2,441-element scene is *slower* than a
 9,766-element one, and the fastest case is the most compressed. So it is not fill rate
 from overlapping geometry.
 
-**And the harness cannot resolve this case.** At 0.8 to 8 fps a 6 s window collects 5
-to 47 frames, and a mean over four intervals is not a measurement. Frames per second
-is the right metric down here and the mean is not. That change is not made here
-because it would alter every other number in the report, and it deserves doing
-properly rather than as a side effect of chasing this.
+**The harness had to be fixed before any of this could be measured.** The report led
+with the mean gap between rAF callbacks, and that metric cannot see a stall: when the
+main thread blocks, the pending rAF callback and the pending timeout both become
+runnable and run back to back, so the recorded gap is the milliseconds between them
+while the seconds that caused it appear nowhere. A scene managing five frames in six
+seconds reported a mean of 29.8 ms — implying 33 fps at a real 0.8. Optimistic, in
+exactly the case where being optimistic is most costly.
+
+`fps` is now frames over measured wall clock, which cannot be fooled that way, and
+the report leads with it. The same sweep then reads **3.3 fps at 10% against 101 fps
+at 50%** — the size of the problem rather than a guess. At the extreme the frame
+count in a 6 s window is sometimes 4 and sometimes 0, and the run reports NO DATA
+rather than a number when it is 0, so the honest reading at 10% is "somewhere under
+1 fps, varying wildly, and not yet characterised."
 
 So: the low-zoom cost is real, reproducible, outside the renderer's JavaScript, and
 **its mechanism is unknown.** Anyone picking this up should start with a trace that
