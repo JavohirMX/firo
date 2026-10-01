@@ -27,6 +27,8 @@
       "@firo/element/*": ["./packages/element/src/*"],
       "@firo/schema": ["./packages/schema/src/index.ts"],
       "@firo/schema/*": ["./packages/schema/src/*"],
+      "@firo/board": ["./packages/board/src/index.ts"],
+      "@firo/board/*": ["./packages/board/src/*"],
       "@firo/doc": ["./packages/doc/src/index.ts"],
       "@firo/doc/*": ["./packages/doc/src/*"],
       "@firo/fractional-indexing": ["./packages/fractional-indexing/src/index.ts"],

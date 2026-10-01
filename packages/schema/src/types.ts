@@ -34,6 +34,8 @@
 
 import { validateOrderKey } from "@firo/fractional-indexing";
 
+import type { ROUNDNESS } from "@firo/common";
+
 import type { Radians } from "@firo/math";
 import type { FractionalIndex } from "@firo/element/types";
 
@@ -141,7 +143,20 @@ export type ElementStyle = Readonly<{
 
 export type FillStyle = "hachure" | "cross-hatch" | "solid";
 export type StrokeStyle = "solid" | "dashed" | "dotted";
-export type RoundnessType = "radius" | "proportional";
+/**
+ * Corner-rounding algorithm, matching Excalidraw's `ROUNDNESS` numeric enum.
+ *
+ * This was `"radius" | "proportional"` — strings — which contradicted this file's
+ * own claim to copy Excalidraw's style fields verbatim, and matched nothing the
+ * renderer actually accepts. The bridge hit it immediately: a Firo note would
+ * carry a `roundness.type` the canvas cannot interpret, and the mismatch would
+ * have surfaced as notes rendering with the wrong corners rather than as an error.
+ *
+ * Numeric because the renderer's constants are numeric, and a translation layer
+ * would be a second thing to keep in step. `roundness.test.ts` asserts these stay
+ * equal to `ROUNDNESS`, so the two cannot drift apart again.
+ */
+export type RoundnessType = typeof ROUNDNESS[keyof typeof ROUNDNESS];
 
 /**
  * The base every element shares.
