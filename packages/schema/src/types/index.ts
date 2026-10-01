@@ -8,6 +8,7 @@
  *
  * Add new types here, in the order they were introduced.
  */
+import "./shape.js";
 import "./stickynote.js";
 
 export { STICKY_NOTE_SPEC } from "./stickynote.js";

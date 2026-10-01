@@ -18,6 +18,8 @@ import {
 
 import boardV1 from "./fixtures/v1/board.json";
 
+import type { FiroElement, StickyNoteElement } from "../src/types.js";
+
 const note = (over: Record<string, unknown> = {}) => ({
   id: "el-1",
   type: "stickynote",
@@ -99,6 +101,20 @@ describe("rule 1 has a shape that is easy to get wrong, and these are those case
     ).toThrow(/Unknown element type/);
   });
 
+  /*
+   * `migrateElement` returns the document's element union, which now also holds
+   * shapes. A shape has no `isContainer` and no `fontSize`, so reading those off
+   * the union is a type error — and rightly so: the test would be assuming a
+   * sticky note where the signature only promises "an element". Narrowing here
+   * makes the assumption explicit and fails loudly if the type changes.
+   */
+  const asNote = (element: FiroElement): StickyNoteElement => {
+    if (element.type !== "stickynote") {
+      throw new Error(`expected a sticky note, got a ${element.type}`);
+    }
+    return element;
+  };
+
   test("a removed field is preserved too, because that is the conservative choice", () => {
     // Removing a field in a future version does not make it unknown here: this
     // build still lists it as known and will overwrite it. That is the gap the
@@ -108,7 +124,7 @@ describe("rule 1 has a shape that is easy to get wrong, and these are those case
       new RepairLog(),
     );
     // `isContainer` is known here, so it is normalised, not carried.
-    expect(element.isContainer).toBe(false);
+    expect(asNote(element).isContainer).toBe(false);
   });
 
   test("a known field the file omits gets a documented default, not `undefined`", () => {
@@ -116,10 +132,11 @@ describe("rule 1 has a shape that is easy to get wrong, and these are those case
       { id: "x", type: "stickynote", text: "t" },
       new RepairLog(),
     );
-    expect(element.backgroundColor).toBe("#fff9b1");
-    expect(element.roughness).toBe(1);
-    expect(element.fontSize).toBe(20);
-    expect(element.width).toBe(150);
+    const migrated = asNote(element);
+    expect(migrated.backgroundColor).toBe("#fff9b1");
+    expect(migrated.roughness).toBe(1);
+    expect(migrated.fontSize).toBe(20);
+    expect(migrated.width).toBe(150);
   });
 });
 

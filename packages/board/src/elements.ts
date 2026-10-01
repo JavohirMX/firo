@@ -36,7 +36,12 @@ import type {
   NonDeletedExcalidrawElement,
 } from "@firo/element/types";
 
-import type { ElementId, FiroElement, StickyNoteElement } from "@firo/schema";
+import type {
+  ElementId,
+  FiroElement,
+  ShapeElement,
+  StickyNoteElement,
+} from "@firo/schema";
 
 /**
  * Where Firo's `containerId` is kept, since Excalidraw *shapes* have no such field.
@@ -126,6 +131,42 @@ export const EDITOR_OWNED_FIELDS = [
   "verticalAlign",
 ] as const;
 
+/**
+ * The fields every element shares, in the editor's shape.
+ *
+ * `seed` is derived here for every type rather than per type, because the rule
+ * is the same everywhere: the same element must draw the same way every time.
+ */
+const sharedBaseFor = (element: FiroElement) => ({
+  id: element.id,
+  x: element.x,
+  y: element.y,
+  width: element.width,
+  height: element.height,
+  angle: element.angle,
+  strokeColor: element.strokeColor,
+  backgroundColor: element.backgroundColor,
+  fillStyle: element.fillStyle as FiroElement["fillStyle"],
+  strokeWidth: element.strokeWidth,
+  strokeStyle: element.strokeStyle,
+  roundness: element.roundness as FiroElement["roundness"],
+  roughness: element.roughness,
+  opacity: element.opacity,
+  seed: seedForId(element.id),
+  version: element.version,
+  versionNonce: element.versionNonce,
+  index: element.index,
+  isDeleted: element.isDeleted,
+  groupIds: element.groupIds,
+  frameId: element.frameId,
+  created: element.created,
+  updated: element.updated,
+  link: element.link,
+  locked: element.locked,
+  boundElements: toBoundElements(element),
+  ...customDataFor(element),
+});
+
 const baseFor = (element: StickyNoteElement) => ({
   id: element.id,
   x: element.x,
@@ -135,10 +176,10 @@ const baseFor = (element: StickyNoteElement) => ({
   angle: element.angle,
   strokeColor: element.strokeColor,
   backgroundColor: element.backgroundColor,
-  fillStyle: element.fillStyle,
+  fillStyle: element.fillStyle as FiroElement["fillStyle"],
   strokeWidth: element.strokeWidth,
   strokeStyle: element.strokeStyle,
-  roundness: element.roundness,
+  roundness: element.roundness as FiroElement["roundness"],
   roughness: element.roughness,
   opacity: element.opacity,
   seed: seedForId(element.id),
@@ -166,7 +207,7 @@ const baseFor = (element: StickyNoteElement) => ({
 });
 
 const toBoundElements = (
-  element: StickyNoteElement,
+  element: FiroElement,
 ): readonly BoundElement[] | null =>
   element.bindings.length === 0
     ? null
@@ -188,7 +229,7 @@ const toBoundElements = (
  * is the same rule the migration chain follows: never drop a field you do not
  * recognise.
  */
-const customDataFor = (element: StickyNoteElement): Record<string, unknown> => {
+const customDataFor = (element: FiroElement): Record<string, unknown> => {
   const merged: Record<string, unknown> = { ...(element.customData ?? {}) };
   if (element.containerId) {
     merged[CONTAINER_ID_KEY] = element.containerId;
@@ -214,6 +255,21 @@ const customDataFor = (element: StickyNoteElement): Record<string, unknown> => {
  * a board loses content without anyone noticing.
  */
 export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
+  if (
+    element.type === "rectangle" ||
+    element.type === "diamond" ||
+    element.type === "ellipse"
+  ) {
+    // A shape is one editor element, unlike a note. No label, so no second
+    // element, nothing to consume and nothing to fold back.
+    return [
+      {
+        ...sharedBaseFor(element),
+        type: element.type,
+      } as ExcalidrawElement,
+    ];
+  }
+
   if (element.type !== "stickynote") {
     throw new Error(
       `@firo/board: cannot draw element type "${element.type}" (id ${element.id}). ` +
@@ -280,6 +336,72 @@ export const toEditorScene = (
  * to its container, and emitting it as well would give every note a stray sibling
  * in the document that would render as a duplicate.
  */
+/**
+ * The fields every element shares, in the document's shape.
+ *
+ * The counterpart to `sharedBaseFor`. Written once because the fold needs it for
+ * every type, and three copies of a twenty-field object is three chances to
+ * forget one field — and a forgotten field is a field that silently stops
+ * round-tripping.
+ */
+/**
+ * Cast at the single point where the two vocabularies meet.
+ *
+ * `FillStyle` and `RoundnessType` are declared once in each package, so they are
+ * structurally identical but nominally distinct to TypeScript. That is a
+ * duplication problem, not a design one — both are derived from the renderer's
+ * constants and pinned by tests — so the cast is here rather than a translation
+ * table that would have to be kept in step forever.
+ */
+const sharedDocumentFields = (element: ExcalidrawElement) => {
+  return {
+    id: element.id as ElementId,
+    x: element.x,
+    y: element.y,
+    width: element.width,
+    height: element.height,
+    angle: element.angle,
+    strokeColor: element.strokeColor,
+    backgroundColor: element.backgroundColor,
+    fillStyle: element.fillStyle,
+    strokeWidth: element.strokeWidth,
+    strokeStyle: element.strokeStyle,
+    roundness: element.roundness,
+    roughness: element.roughness,
+    opacity: element.opacity,
+    version: element.version,
+    versionNonce: element.versionNonce,
+    index: element.index,
+    isDeleted: element.isDeleted,
+    groupIds: element.groupIds,
+    frameId: element.frameId,
+    /*
+     * The editor's `boundElements` is `{ id, type }` with no geometry; see the
+     * note on `toBoundElements` for what is lost and why the document keeps it.
+     */
+    bindings: (element.boundElements ?? []).map((bound) => ({
+      elementId: bound.id as ElementId,
+      focus: 0,
+      gap: 1,
+    })),
+    link: element.link,
+    locked: element.locked,
+    created: element.created ?? null,
+    updated: element.updated,
+    /*
+     * One cast for the whole shape.
+     *
+     * The document and the editor declare `FillStyle`, `RoundnessType` and
+     * `GroupId` separately, so they are structurally identical but nominally
+     * distinct. That is duplication, not a difference in meaning, and both sides
+     * are pinned to the renderer's constants by tests. Casting once here is
+     * better than a field-by-field translation table, which would be a third
+     * place to keep in step and would hide the fact that nothing is actually
+     * being translated.
+     */
+  } as unknown as Omit<ShapeElement, "type"> & { type: ShapeElement["type"] };
+};
+
 export const fromEditorElements = (
   elements: readonly ExcalidrawElement[],
 ): FiroElement[] => {
@@ -300,11 +422,46 @@ export const fromEditorElements = (
       continue;
     }
 
+    if (
+      element.type === "rectangle" ||
+      element.type === "diamond" ||
+      element.type === "ellipse"
+    ) {
+      /*
+       * A shape, and a single editor element — so nothing to consume and nothing
+       * to fold. The fields come straight off it.
+       *
+       * This branch is why the document can be the board's source of truth.
+       * Before it existed the fold skipped every type it did not recognise, which
+       * meant a rectangle drawn in the app was drawn, looked fine, and reached
+       * the document as nothing at all: the editor held four elements and the
+       * document held zero. Skipping is still right for a type this version
+       * genuinely does not know, and that case is below.
+       */
+      const fields = sharedDocumentFields(element);
+      const { containerId, ...shapeCustomData } = (element.customData ??
+        {}) as { containerId?: unknown } & Record<string, unknown>;
+
+      folded.push({
+        ...fields,
+        type: element.type,
+        ...(typeof containerId === "string" ? { containerId } : {}),
+        ...(Object.keys(shapeCustomData).length
+          ? { customData: shapeCustomData }
+          : {}),
+      } as ShapeElement);
+      continue;
+    }
+
     if (element.type !== "stickynote") {
-      // Another shape the editor can draw that Firo has no type for yet. Skipped
-      // rather than thrown: a board may legitimately hold an element type this
-      // version does not understand, and refusing to sync would be worse than
-      // leaving it out of the document until it does.
+      // A shape the editor can draw that Firo has no type for yet — `arrow`,
+      // `line`, `freedraw`, `image`. Skipped rather than thrown: a board may
+      // legitimately hold an element type this version does not understand, and
+      // refusing to sync would freeze the board over something the user can see.
+      //
+      // This is a real and growing gap, not a hypothetical. It is why `arrow`
+      // and `line` are the obvious next types: until they exist, connectors a
+      // user draws are not in their document.
       continue;
     }
 
@@ -323,10 +480,10 @@ export const fromEditorElements = (
       angle: element.angle,
       strokeColor: element.strokeColor,
       backgroundColor: element.backgroundColor,
-      fillStyle: element.fillStyle,
+      fillStyle: element.fillStyle as FiroElement["fillStyle"],
       strokeWidth: element.strokeWidth,
       strokeStyle: element.strokeStyle,
-      roundness: element.roundness,
+      roundness: element.roundness as FiroElement["roundness"],
       roughness: element.roughness,
       opacity: element.opacity,
       version: element.version,

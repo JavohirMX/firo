@@ -101,8 +101,20 @@ export type GroupId = string & { readonly __brand: "GroupId" };
 /** Cast a string to an `ElementId`. Only for values already known to be ids. */
 export const asElementId = (id: string): ElementId => id as ElementId;
 
-/** Discriminant values for the element types that exist in Phase 1. */
-export const ELEMENT_TYPES = ["stickynote"] as const;
+/**
+ * The element types the document can hold.
+ *
+ * The point of this list is that the document knows what a board contains. A
+ * board the user can draw a rectangle on is a board whose rectangle the document
+ * does not have, which is one store's worth of content one save away from being
+ * lost.
+ */
+export const ELEMENT_TYPES = [
+  "stickynote",
+  "rectangle",
+  "diamond",
+  "ellipse",
+] as const;
 
 export type ElementType = typeof ELEMENT_TYPES[number];
 
@@ -141,7 +153,17 @@ export type ElementStyle = Readonly<{
   opacity: number;
 }>;
 
-export type FillStyle = "hachure" | "cross-hatch" | "solid";
+/**
+ * Fill style, matching the renderer's.
+ *
+ * `"zigzag"` was missing here. The same drift as `RoundnessType` below, and it
+ * surfaced the same way: the bridge handed a shape to the canvas and the types
+ * refused to assign, because a shape the renderer can draw had a fill style the
+ * document could not represent. A file containing one would have been coerced to
+ * `"solid"` on load — a shape that came out of the app looking different from the
+ * one that went in.
+ */
+export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag";
 export type StrokeStyle = "solid" | "dashed" | "dotted";
 /**
  * Corner-rounding algorithm, matching Excalidraw's `ROUNDNESS` numeric enum.
@@ -249,7 +271,20 @@ export type StickyNoteElement = ElementBase &
     isContainer: false;
   }>;
 
-export type FiroElement = StickyNoteElement;
+/**
+ * A shape: geometry, style and bindings, differing only in the discriminant.
+ *
+ * `angle` is in radians, matching Excalidraw rather than degrees, because the
+ * renderer and the hit tester both work in radians and a conversion at the
+ * boundary is a conversion to get wrong.
+ */
+export type ShapeElement = ElementBase &
+  Readonly<{ type: "rectangle" | "diamond" | "ellipse" }>;
+
+/** Which of the three. */
+export type ShapeType = ShapeElement["type"];
+
+export type FiroElement = StickyNoteElement | ShapeElement;
 
 /** Narrowing helper, so callers do not repeat the discriminant check. */
 export const isElementType = <T extends ElementType>(

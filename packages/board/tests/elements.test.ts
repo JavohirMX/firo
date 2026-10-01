@@ -227,10 +227,14 @@ describe("fromEditorElements", () => {
     expect(fromEditorElements([orphan])).toHaveLength(0);
   });
 
-  it("skips a shape Firo has no type for, rather than failing the whole sync", () => {
-    // A board may legitimately hold something this version does not understand.
-    // Refusing to sync would be worse than leaving it out until it does.
-    const foreign = { type: "rectangle", id: "r1" } as never;
+  it("skips a type the document has no schema for, rather than failing the whole sync", () => {
+    /*
+     * The gap is real and growing: `arrow`, `line` and `freedraw` are not types
+     * yet, so a connector a user draws is not in their document. Skipping beats
+     * throwing -- throwing would freeze the board over something the user can
+     * see -- but it is a hole, not a virtue.
+     */
+    const foreign = { type: "arrow", id: "r1" } as never;
     expect(fromEditorElements([foreign])).toHaveLength(0);
   });
 
