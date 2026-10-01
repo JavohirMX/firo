@@ -26,6 +26,17 @@ export type ProfileOptions = {
   baseUrl: string;
   /** Launch windowed for hardware acceleration. See `browser.ts`. */
   gpu?: boolean;
+  /**
+   * Zoom to hold while sampling.
+   *
+   * Cost is not invariant in zoom, and not in a way the self-time diff could see:
+   * the dense and light scenes are compared at the same zoom, so a cost that only
+   * appears at one zoom cancels out of the difference entirely. 10% is currently
+   * pathological -- about half a second a frame against 8.3 ms at 50% and above,
+   * with the same elements visible -- and a profiler that cannot select a zoom
+   * cannot be pointed at it.
+   */
+  zoom?: number;
   count: number;
   /**
    * World size. This is the lever that sets how many elements are on screen:
@@ -302,6 +313,22 @@ const openScene = async (
     );
   }
   await settle(page);
+
+  /*
+   * Set the zoom through the bench surface rather than a query parameter, so the
+   * page needs no new entry point for this. Done after the first settle, then
+   * settled again: arriving at a new zoom invalidates every cached bitmap, and
+   * profiling that invalidation would report a cost no user ever sees.
+   */
+  if (options.zoom !== undefined) {
+    await page.evaluate((value) => {
+      (
+        window as unknown as { __bench: { setZoom: (v: number) => void } }
+      ).__bench.setZoom(value);
+    }, options.zoom);
+    await settle(page);
+  }
+
   return page;
 };
 

@@ -224,6 +224,50 @@ measuring the clock instead of the renderer. This is the same trap as 2.1a, in a
 different disguise.
 
 
+#### 2.1e — An open problem at low zoom, cause unknown
+
+Criterion 5 asks for 10% to 400% with no frame over 100 ms. **10% does not come
+close**, and it is the one exit criterion this phase cannot demonstrate.
+
+| zoom | mean frame | frames in 3 s |
+| --- | --- | --- |
+| 10% | 29.5 ms | 11 |
+| 25% | 11.0 ms | 84 |
+| 50% and above | 8.3 ms | 124 |
+
+Roughly half a second a frame at 10%, against 8.3 ms everywhere from 50% up. It is
+not a warm-up cost: 10% is slow whether it comes first, in the middle, or last, and a
+15 s window yields two frames rather than none, so it is slow rather than hung. The
+inherited renderer fails this criterion on hardware, and the plan should say so
+rather than quietly measuring 25% to 400%.
+
+**Where the time goes: not in JavaScript.** A CPU profile at 10% zoom, on a scene and
+a build identical to one that does 8.3 ms, attributes 81-93% of the time to `(idle)`
+and `(program)` -- the main thread waiting, and browser-internal work. Two runs split
+those two differently (52/41 and 73/7) so the ratio is not trustworthy, but their sum
+is. Every individual JS function is under 3%, and `drawElementFromCanvas` does not
+reach the top fifteen. So this is not culling, not level of detail, not the bitmap
+cache, and not anything else reachable from the renderer's own code.
+
+**One explanation was tested and is wrong.** Overdraw looked right -- at 10% zoom all
+10,000 elements land inside 506x506 px -- but sweeping world size at fixed zoom gives
+no monotonic relationship at all: a 2,441-element scene is *slower* than a
+9,766-element one, and the fastest case is the most compressed. So it is not fill rate
+from overlapping geometry.
+
+**And the harness cannot resolve this case.** At 0.8 to 8 fps a 6 s window collects 5
+to 47 frames, and a mean over four intervals is not a measurement. Frames per second
+is the right metric down here and the mean is not. That change is not made here
+because it would alter every other number in the report, and it deserves doing
+properly rather than as a side effect of chasing this.
+
+So: the low-zoom cost is real, reproducible, outside the renderer's JavaScript, and
+**its mechanism is unknown.** Anyone picking this up should start with a trace that
+can account for `(program)` -- a Chrome tracing run rather than a JS CPU profile,
+because the JS profiler has now said twice that the answer is not in this code.
+Guessing a third time from the same data would be the third wrong answer.
+
+
 ### 2.2 — Culling
 
 `rbush` R-tree of element bounds, queried against the viewport plus a margin.

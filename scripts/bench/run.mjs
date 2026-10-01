@@ -84,6 +84,7 @@ const profile = async () => {
       count: Number.parseInt(arg("count", "10000"), 10),
       durationMs: Number.parseInt(arg("ms", "4000"), 10),
       gpu: flag("gpu"),
+      ...(arg("profile-zoom", "") ? { zoom: Number.parseFloat(arg("profile-zoom", "")) } : {}),
       samplingIntervalUs: Number.parseInt(arg("interval", "100"), 10),
     });
     console.log("");
