@@ -23,6 +23,14 @@
  * relation to keep consistent with the two-way `bindings` already on the base.
  * For a shape the order means nothing, which is why it can be a convention
  * instead of a rule.
+ *
+ * ## Points are not two long
+ *
+ * `points` has one entry per vertex, and a polyline has as many as the person
+ * clicked. It is tempting to read the two-binding rule above as a general shape
+ * and cap it at two, and that mistake was made here: it meant a bent connector
+ * loaded as a straight one, with no error and nothing in the file to explain it.
+ * The two-item cap belongs to `bindings` alone.
  */
 import { allKnownFields, registerElementType } from "../registry.js";
 
@@ -81,7 +89,6 @@ const KNOWN_FIELDS = [
   "isDeleted",
 ] as const;
 
-/** A point is `[x, y, pressure]`. A two-number point is normalised, not rejected. */
 /**
  * One point, as `[x, y]`.
  *
@@ -113,7 +120,7 @@ const points = (raw: unknown, log: RepairLog) =>
     (item, index) => point(item, log, `points[${index}]`),
     log,
     "points",
-  ).slice(0, 2) as unknown as LinearElement["points"];
+  ) as unknown as LinearElement["points"];
 
 const arrowhead = (raw: unknown, log: RepairLog, field: string) =>
   raw === null || raw === undefined
@@ -233,6 +240,12 @@ const makeValidator =
       containerId: (raw.containerId as ElementId | null) ?? null,
       // At most two: one per end. A third is not a relation the renderer can
       // place, so it is dropped rather than stored and ignored.
+      //
+      // This two-item limit is real and specific to bindings — a connector has two
+      // ends. It is *not* a limit on `points`, which is one entry per vertex and is
+      // routinely dozens long. A limit of 2 was once applied to `points` as well,
+      // by copy-paste from here, which silently straightened every bend in every
+      // polyline on load. `points.test.ts` pins the distinction.
       bindings: bindings(raw.bindings, log).slice(0, 2),
 
       link: (raw.link as string | null) ?? null,
