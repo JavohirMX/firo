@@ -41,3 +41,5 @@ export {
 } from "./elements.js";
 
 export { createStickyNote, STICKY_NOTE_DEFAULTS } from "./defaults.js";
+
+export { BoardSync, type EditorBridge } from "./sync.js";
