@@ -344,8 +344,21 @@ export type ShapeType = ShapeElement["type"];
 export type LinearElement = ElementBase &
   Readonly<{
     type: "arrow" | "line";
-    /** `[x, y, pressure]` triples, relative to the element's origin. */
-    points: readonly (readonly [number, number, number])[];
+    /**
+     * The path, as `[x, y]` pairs relative to the element's origin.
+     *
+     * Two components, matching the renderer's `LocalPoint`. This was three --
+     * `[x, y, pressure]` -- on the assumption that a point carried pen pressure.
+     * It does not: the renderer's point is a two-tuple, the third component was
+     * never read, and a connector in the document was carrying a number nothing
+     * looked at. Found by the conformance test in
+     * `tests/conformance.test.ts`, on its first run, which is the entire reason
+     * that file exists.
+     *
+     * `x`, `y`, `width` and `height` are the bounding box of the path, not where
+     * it is.
+     */
+    points: readonly (readonly [number, number])[];
     startArrowhead: Arrowhead | null;
     endArrowhead: Arrowhead | null;
     elbowed: boolean;

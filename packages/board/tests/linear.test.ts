@@ -28,8 +28,8 @@ const editorConnector = (
     width: 100,
     height: 50,
     points: [
-      [0, 0, 0.5],
-      [100, 50, 0.5],
+      [0, 0],
+      [100, 50],
     ],
     ...over,
   } as never);
@@ -57,8 +57,8 @@ const documentConnector = (
     roughness: 1,
     opacity: 100,
     points: [
-      [0, 0, 0.5],
-      [100, 50, 0.5],
+      [0, 0],
+      [100, 50],
     ],
     startArrowhead: null,
     endArrowhead: null,
@@ -86,10 +86,25 @@ describe("connector projection", () => {
     },
   );
 
+  it("carries a two-component path, because that is what a point is", () => {
+    /*
+     * `[x, y, pressure]` was in the document for one commit. The renderer's point
+     * is a two-tuple and never read a third, so every connector was carrying a
+     * number nothing looked at. The conformance test caught it; this pins the
+     * shape so it cannot come back quietly.
+     */
+    const [projected] = toEditorElements(
+      documentConnector("arrow", { points: [[1, 2]] }),
+    );
+    expect(
+      (projected as unknown as { points: readonly number[][] }).points[0],
+    ).toHaveLength(2);
+  });
+
   it("carries the path across, since the path is the element", () => {
     const points = [
-      [1, 2, 0.5],
-      [30, 40, 0.5],
+      [1, 2],
+      [30, 40],
     ];
     const [projected] = toEditorElements(
       documentConnector("arrow", { points }),
@@ -195,8 +210,8 @@ describe("connector fold", () => {
 
   it("keeps the path across a round trip", () => {
     const points = [
-      [5, 6, 0.5],
-      [70, 80, 0.5],
+      [5, 6],
+      [70, 80],
     ];
     const [projected] = toEditorElements(
       documentConnector("arrow", { points }),

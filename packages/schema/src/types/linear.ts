@@ -82,18 +82,29 @@ const KNOWN_FIELDS = [
 ] as const;
 
 /** A point is `[x, y, pressure]`. A two-number point is normalised, not rejected. */
+/**
+ * One point, as `[x, y]`.
+ *
+ * A third component is dropped with a note rather than kept. It was once assumed
+ * to be pen pressure; the renderer's point is a two-tuple, so a third number is
+ * something no version of Firo has ever read. Keeping it would mean a file
+ * accumulates numbers that look meaningful and are not.
+ */
 const point = (raw: unknown, log: RepairLog, field: string) => {
   if (!Array.isArray(raw) || raw.length < 2) {
-    log.dropped(field, "a point needs at least x and y");
+    log.dropped(field, "a point needs an x and a y");
     return null;
   }
-  const x = number(raw[0], 0, log, `${field}[0]`);
-  const y = number(raw[1], 0, log, `${field}[1]`);
-  // Pressure is optional in every writer that has ever produced one of these, and
-  // the renderer treats its absence as 0.5. A rejected point is a lost connector.
-  const pressure =
-    raw.length > 2 ? number(raw[2], 0.5, log, `${field}[2]`) : 0.5;
-  return [x, y, pressure] as const;
+  if (raw.length > 2) {
+    log.dropped(
+      `${field}[2]`,
+      "a point is [x, y]; a third component is read by nothing",
+    );
+  }
+  return [
+    number(raw[0], 0, log, `${field}[0]`),
+    number(raw[1], 0, log, `${field}[1]`),
+  ] as const;
 };
 
 const points = (raw: unknown, log: RepairLog) =>
