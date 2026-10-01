@@ -53,6 +53,9 @@ let sync: BoardSync | null = null;
 /** The editor's current elements, for the dev hook's inspection. */
 let activeElements: (() => readonly unknown[]) | null = null;
 
+/** The editor's app state, for diagnosing blocked actions. */
+let activeAppState: (() => unknown) | null = null;
+
 /** The document, for the few places that read or write it directly. */
 export const boardDoc = () => doc;
 
@@ -96,6 +99,7 @@ export const attachBoard = (
   sync?.stop();
   const bridge = bridgeFor(excalidrawAPI);
   activeElements = () => bridge.read();
+  activeAppState = () => excalidrawAPI.getAppState();
   sync = new BoardSync(
     doc as unknown as ConstructorParameters<typeof BoardSync>[0],
     bridge,
@@ -119,13 +123,21 @@ export const commitBoard = (): void => {
 };
 
 /*
- * A read-only window onto the document, for browser tests.
+ * A read-only window onto the document and the editor, for browser tests.
  *
  * `import.meta.env.DEV` is replaced at build time, so this whole block is dead in
- * production and nothing of it reaches the bundle. The alternative — asserting
- * that a note was saved by looking at the canvas — cannot tell a note that reached
- * the document from one that is merely drawn, and those are exactly the two things
- * the wiring is supposed to distinguish.
+ * production and nothing of it reaches the bundle.
+ *
+ * Two things, for two different reasons. `read` and `editorElements` distinguish a
+ * note that reached the *document* from one that is merely *drawn*, which looking
+ * at a canvas cannot do and which is the whole question the wiring exists to
+ * answer.
+ *
+ * `appState` is here because an editor action can refuse to run for reasons that
+ * are invisible from outside — `executeHistoryAction` blocks undo while any
+ * gesture flag is set, and a stuck flag looks exactly like "the shortcut is not
+ * bound". That diagnosis took several wrong guesses before reading the flags, so
+ * the next person does not repeat them.
  */
 if (import.meta.env.DEV) {
   (
@@ -134,11 +146,13 @@ if (import.meta.env.DEV) {
         read: () => unknown;
         revision: () => number;
         editorElements: () => unknown;
+        appState: () => unknown;
       };
     }
   ).__firoBoard = {
     read: () => doc.read(),
     revision: () => doc.revision,
     editorElements: () => activeElements?.() ?? null,
+    appState: () => activeAppState?.() ?? null,
   };
 }
