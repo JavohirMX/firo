@@ -843,9 +843,30 @@ const drawElementFromCanvas = (
   let drawY =
     (y1 + positionOffset.y + appState.scrollY) * devicePixelRatio - padding;
 
-  const transform = context.getTransform();
+  /*
+   * Read the transform only when snapping will change it, and restore it only
+   * then too.
+   *
+   * Both calls used to be unconditional, and both are native canvas calls made
+   * once per element per frame. `canSnapElement` is false for almost every
+   * element in almost every frame, so the common path was paying for a
+   * `getTransform()` and a `setTransform()` that moved nothing -- 10,000
+   * wasted native calls on a frame with 10,000 visible elements.
+   *
+   * A CPU profile of a dense board put 80% of the per-element self time in
+   * `setTransform`, with the `drawImage` blit itself under 6% (see
+   * `docs/plans/phase-2-renderer.md`). Skipping the redundant call is the
+   * cheapest win available. Level of detail and harder culling would both be
+   * aimed at a cost that is not the dominant one.
+   *
+   * Correctness is unaffected. When `canSnapElement` is false, nothing between
+   * here and the blit modifies the transform, so the context is already in the
+   * state the restore was reinstating.
+   */
+  const snapping = canSnapElement(element, appState);
+  const transform = snapping ? context.getTransform() : null;
 
-  if (canSnapElement(element, appState)) {
+  if (snapping) {
     // blit the cached bitmap on whole device pixels. Nearest-neighbor at a
     // fractional offset is a pixel-exact copy shifted to the nearest pixel
     // — except at an exact half pixel, where a GPU-accelerated canvas
@@ -860,7 +881,7 @@ const drawElementFromCanvas = (
     // and the origin is an exact integer even in the canvas's float32
     // matrix. Rounding `drawX` itself only lands on device pixels at 100%
     // zoom.
-    const { a, b, c, d, e, f } = transform;
+    const { a, b, c, d, e, f } = transform!;
     const container = isTextElement(element)
       ? getContainerElement(element, allElementsMap)
       : null;
@@ -907,7 +928,9 @@ const drawElementFromCanvas = (
     elementWithCanvas.canvas!.height / elementWithCanvas.scale,
   );
 
-  context.setTransform(transform);
+  if (transform) {
+    context.setTransform(transform);
+  }
 
   if (
     import.meta.env.VITE_APP_DEBUG_ENABLE_TEXT_CONTAINER_BOUNDING_BOX ===
