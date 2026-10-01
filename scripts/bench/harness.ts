@@ -63,6 +63,18 @@ export type BenchOptions = {
   sampleMs: number;
   /** Base URL of an already-running dev server. */
   baseUrl: string;
+  /** Zoom levels for the criterion-5 sweep. Empty to skip it. */
+  zoomLevels?: readonly number[];
+  /** Sample window per zoom level. */
+  zoomSampleMs?: number;
+};
+
+export type ZoomLevelReport = {
+  /** The zoom asked for. */
+  requested: number;
+  /** The zoom the editor actually applied, which may be clamped. */
+  applied: number | null;
+  frames: FrameReport;
 };
 
 export type ScenarioReport = {
@@ -76,6 +88,8 @@ export type RunReport = {
   options: BenchOptions;
   scene: ReturnType<typeof sceneStats>;
   scenarios: ScenarioReport[];
+  /** Criterion 5. Empty unless a zoom sweep was requested. */
+  zoom: ZoomLevelReport[];
   /** Heap after everything, with caches warm. The "idle" figure. */
   idleHeapBytes: number | null;
   /** Chrome version, so a number is attributable to a renderer build. */
@@ -128,7 +142,7 @@ const pan = async (page: Page, durationMs: number, distancePx = 400) => {
  * frame over 100 ms). Every wheel tick invalidates the bitmap cache at a new
  * scale, so this measures re-rasterisation rather than blitting.
  */
-const zoom = async (page: Page, durationMs: number) => {
+const wheelZoom = async (page: Page, durationMs: number) => {
   const { width, height } = page.viewportSize() ?? DEFAULTS.viewport;
   const x = Math.round(width / 2);
   const y = Math.round(height / 2);
@@ -140,6 +154,71 @@ const zoom = async (page: Page, durationMs: number) => {
     // cache eviction in both directions.
     await page.mouse.wheel(0, tick % 2 === 0 ? -120 : 120);
   }
+};
+
+/**
+ * A controlled zoom sweep, for exit criterion 5: 10% to 400%, no frame over 100 ms.
+ *
+ * Each level is *set* rather than nudged by a wheel gesture. A wheel reports
+ * whatever fraction the browser chose, which varies per platform and per device
+ * pixel ratio, so a wheel sweep cannot land on 0.1 or 4.0 -- the two levels the
+ * criterion actually names.
+ *
+ * ## The first version of this measured nothing
+ *
+ * It set the zoom, waited, and sampled. But a canvas that is not changing does
+ * not repaint, so every sampled interval was just rAF cadence: a flat 16.7 ms at
+ * every level, including 100% on a scene that costs 133 ms to actually draw. The
+ * numbers looked like a pass and proved nothing.
+ *
+ * So each level now pans continuously *while* sampling. That is what a person
+ * does at a given zoom -- they move around the board -- and it forces a real
+ * repaint every frame, so the number is the cost of rendering at that zoom.
+ */
+const zoomSweep = async (
+  page: Page,
+  levels: readonly number[],
+  sampleMsPerLevel: number,
+): Promise<ZoomLevelReport[]> => {
+  const reports: ZoomLevelReport[] = [];
+
+  for (const level of levels) {
+    await page.evaluate((zoom) => {
+      (
+        window as unknown as {
+          __bench: { setZoom: (v: number) => void };
+        }
+      ).__bench.setZoom(zoom);
+    }, level);
+
+    // Let the re-rasterisation finish and the caches refill, so this measures the
+    // board settled at that zoom rather than the zoom step itself.
+    await page.waitForTimeout(500);
+
+    const applied = await page.evaluate(() =>
+      (
+        window as unknown as { __bench: { getZoom: () => number | null } }
+      ).__bench.getZoom(),
+    );
+
+    // Sample while panning, so frames actually render.
+    const [frames] = await Promise.all([
+      page.evaluate(
+        (ms) =>
+          (
+            window as unknown as {
+              __bench: { measure: (ms: number) => Promise<FrameReport> };
+            }
+          ).__bench.measure(ms),
+        sampleMsPerLevel,
+      ),
+      pan(page, sampleMsPerLevel, 250),
+    ]);
+
+    reports.push({ requested: level, applied, frames });
+  }
+
+  return reports;
 };
 
 /** Let the browser settle: fonts loaded, shape cache filled, rAF quiet. */
@@ -229,7 +308,7 @@ export const runBenchmark = async (
 
     for (const [name, drive] of [
       ["pan", pan],
-      ["zoom", zoom],
+      ["wheel-zoom", wheelZoom],
     ] as const) {
       // Start the sampler, then drive. The page's `measure` resolves after
       // `sampleMs`, so the driver's own duration is the same window -- the input
@@ -248,6 +327,17 @@ export const runBenchmark = async (
       ]);
       scenarios.push({ name, frames, heapBytes: heapBytes as number | null });
     }
+
+    // Criterion 5 last, after the pan and zoom scenarios, so it runs against
+    // caches already warm rather than adding a cold-start confound.
+    const zoomReport =
+      options.zoomLevels && options.zoomLevels.length
+        ? await zoomSweep(
+            page,
+            options.zoomLevels,
+            options.zoomSampleMs ?? 1200,
+          )
+        : [];
 
     // Idle heap: after the work, with caches warm. The exit criterion is "under
     // 500 MB idle", and "idle" is only meaningful once the caches have settled
@@ -273,6 +363,7 @@ export const runBenchmark = async (
       options,
       scene: scene as RunReport["scene"],
       scenarios,
+      zoom: zoomReport,
       idleHeapBytes,
       userAgent: await page.evaluate(() => navigator.userAgent),
     };
@@ -331,6 +422,41 @@ export const formatReport = (report: RunReport): string => {
   }
 
   lines.push("");
+  if (report.zoom.length) {
+    lines.push("");
+    lines.push("  ZOOM SWEEP — criterion 5: 10% to 400%, no frame over 100 ms");
+    lines.push(
+      `  ${"zoom".padEnd(7)}${"applied".padStart(9)}${"p50".padStart(
+        9,
+      )}${"p95".padStart(9)}${"max".padStart(9)}${"over100ms".padStart(11)}`,
+    );
+    lines.push(`  ${"-".repeat(54)}`);
+    for (const level of report.zoom) {
+      const breaches = level.frames.durations.filter((d) => d > 100).length;
+      const applied =
+        level.applied === null ? "?" : `${Math.round(level.applied * 100)}%`;
+      lines.push(
+        `  ${`${Math.round(level.requested * 100)}%`.padEnd(7)}` +
+          `${applied.padStart(9)}` +
+          `${level.frames.p50.toFixed(1).padStart(9)}` +
+          `${level.frames.p95.toFixed(1).padStart(9)}` +
+          `${level.frames.max.toFixed(1).padStart(9)}` +
+          `${breaches.toString().padStart(11)}`,
+      );
+    }
+    const worst = Math.max(...report.zoom.map((z) => z.frames.max));
+    lines.push("");
+    lines.push(
+      worst <= 100
+        ? `  PASSES criterion 5: worst frame ${worst.toFixed(
+            1,
+          )} ms against a 100 ms budget.`
+        : `  FAILS criterion 5: worst frame ${worst.toFixed(
+            1,
+          )} ms against a 100 ms budget.`,
+    );
+  }
+
   lines.push(
     `  heap      ${
       report.idleHeapBytes === null

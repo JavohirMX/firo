@@ -79,6 +79,16 @@ const main = async () => {
    * in what is drawn, not in how much.
    */
   const roughnessArg = arg("roughness", "");
+  /*
+   * Criterion 5 names specific levels, so the sweep takes them explicitly rather
+   * than a fixed list: a sweep that silently used the wrong levels would report a
+   * pass it never tested.
+   */
+  const zoomArg = arg("zoom", "0.1,0.25,0.5,1,1.5,2,3,4");
+  const zoomLevels = zoomArg
+    .split(",")
+    .map((v) => Number.parseFloat(v.trim()))
+    .filter((v) => Number.isFinite(v));
   const worldArg = arg("world", "");
   const worldSize = worldArg ? Number.parseInt(worldArg, 10) : undefined;
   const viewport = {
@@ -97,9 +107,8 @@ const main = async () => {
       baseUrl,
       viewport,
       ...(worldSize !== undefined ? { worldSize } : {}),
-      ...(roughnessArg !== undefined && roughnessArg !== ""
-        ? { roughness: Number.parseInt(roughnessArg, 10) }
-        : {}),
+      ...(roughnessArg ? { roughness: Number.parseInt(roughnessArg, 10) } : {}),
+      ...(zoomArg ? { zoomLevels, zoomSampleMs: 1200 } : {}),
     });
 
     console.log("");

@@ -36,9 +36,14 @@
 import { StrictMode, useCallback, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 
+import { CaptureUpdateAction } from "@firo/element";
+
 import { Excalidraw } from "@firo/editor";
 
-import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
+import type {
+  ExcalidrawImperativeAPI,
+  NormalizedZoomValue,
+} from "@firo/editor/types";
 
 import { generateScene, sceneStats } from "../../scripts/bench/scene";
 
@@ -186,6 +191,20 @@ export type BenchSurface = {
   ready: () => boolean;
   heap: () => { usedBytes: number; limitBytes: number } | null;
   measure: (durationMs: number) => Promise<FrameReport>;
+  /**
+   * Set the viewport zoom, exactly.
+   *
+   * A wheel gesture cannot produce a controlled sweep: it reports whatever
+   * fraction the browser chose, which differs per platform, per device pixel
+   * ratio and per gesture. Criterion 5 names specific levels -- 10% to 400% --
+   * so the levels have to be set rather than nudged.
+   *
+   * `Zoom` is a plain readonly `{ value }`, so this needs no constructor and no
+   * reach into the editor's internals.
+   */
+  setZoom: (value: number) => void;
+  /** The current zoom, as the editor reports it. */
+  getZoom: () => number | null;
   frameBudgetMs: number;
 };
 
@@ -253,6 +272,18 @@ const installDriverSurface = () => {
           }
         }, durationMs);
       });
+    },
+    setZoom: (value: number) => {
+      excalidrawApi?.updateScene({
+        appState: { zoom: { value: value as NormalizedZoomValue } },
+        // Never recorded: the sweep is a viewport change, not an edit, and
+        // capturing it would put every zoom step in the undo stack.
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    },
+    getZoom: () => {
+      const state = excalidrawApi?.getAppState();
+      return state ? state.zoom.value : null;
     },
     frameBudgetMs: FRAME_BUDGET_MS,
   };
