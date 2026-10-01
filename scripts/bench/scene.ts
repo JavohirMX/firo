@@ -42,7 +42,7 @@ import {
 } from "@firo/element";
 import { pointFrom } from "@firo/math";
 
-import type { LocalPoint } from "@firo/math";
+import type { LocalPoint, Radians } from "@firo/math";
 import type { ExcalidrawElement } from "@firo/element/types";
 
 /**
@@ -85,6 +85,29 @@ class Rng {
   chance(p: number): boolean {
     return this.next() < p;
   }
+
+  /**
+   * A fresh value in [0, 1).
+   *
+   * Public because a caller legitimately needs the raw value for a
+   * threshold comparison, and reaching into the private field to get it would
+   * mean every such caller is one refactor away from a compile error.
+   */
+  unit(): number {
+    return this.next();
+  }
+
+  /**
+   * A value in [-pi, pi), branded as an angle.
+   *
+   * The cast is at the boundary on purpose. `Radians` is a nominal brand over
+   * `number` that exists to stop someone passing degrees by mistake; the one
+   * legitimate place to cross it is code that is generating radians, which is
+   * this. Widening the brand to anything numeric would delete the check.
+   */
+  angle(): Radians {
+    return this.float(-Math.PI, Math.PI) as Radians;
+  }
 }
 
 export type SceneProfile =
@@ -122,10 +145,95 @@ export type SceneOptions = {
    * merely gets wider would make culling look better than it is.
    */
   worldSize?: number;
+  /**
+   * Excalidraw's `roughness`, from 0 (clean) to 2 (roughest). Default 1.
+   *
+   * ## Why this is a generator option and not a renderer flag
+   *
+   * Because `roughness` is what decides whether a shape needs roughjs at all.
+   * At 0 Excalidraw draws a plain geometric path; at 1 and 2 it generates a
+   * jittered rough shape. So setting it to 0 is not "the same scene drawn
+   * differently" -- it is a *different render path*, and it is exactly what the
+   * Level of Detail work proposes for low zoom.
+   *
+   * That makes it the cleanest available probe of how much of the renderer's
+   * cost is roughjs. Comparing roughness 1 against roughness 0 on an identical
+   * scene answers the question Phase 2 task 2.3 is really asking, without
+   * writing any renderer yet.
+   */
+  roughness?: number;
 };
 
-const DEFAULT_WORLD_SIZE = 20000;
 const DEFAULT_SEED = 1;
+
+/**
+ * The expected number of elements visible in a 1280x800 viewport.
+ *
+ * Not a rendering budget -- a *workload* target. Around 400 visible elements is
+ * enough that per-frame work is dominated by drawing rather than by measurement
+ * overhead, and few enough to be comparable to what a person actually sees on a
+ * busy board.
+ */
+export const TARGET_VISIBLE_ELEMENTS = 400;
+
+/** The viewport the target is defined against. */
+const TARGET_VIEWPORT_AREA = 1280 * 800;
+
+/**
+ * World size that puts ~`TARGET_VISIBLE_ELEMENTS` on screen.
+ *
+ * Density is held constant across scene sizes, so a measurement at 1k elements
+ * and one at 10k measure the same per-frame load. Deriving it rather than
+ * hard-coding a number is what makes that true by construction: a fixed world
+ * size means a 200-element scene has a handful on screen and a 10,000-element
+ * scene has a few dozen, so both measure a nearly empty canvas and the number
+ * says nothing about the renderer.
+ */
+const derivedWorldSize = (count: number): number =>
+  Math.round(
+    Math.sqrt((TARGET_VIEWPORT_AREA * count) / TARGET_VISIBLE_ELEMENTS),
+  );
+
+/**
+ * How much `overlap-heavy` compresses the world.
+ *
+ * 20x, so a 10,000-element board occupies a region small enough that essentially
+ * every element is in the viewport no matter where you pan. That is the whole
+ * point of the profile: it is the case a spatial index cannot rescue.
+ */
+const OVERLAP_COMPRESSION = 20;
+
+/** The floor, so a tiny scene is still a scene rather than a single pile. */
+const MIN_WORLD_SIZE = 500;
+
+/**
+ * The world size actually used, profile compression included.
+ *
+ * ## Why this is one function
+ *
+ * `generateScene` compresses `overlap-heavy` by 20x while `expectedVisible`
+ * originally read the *uncompressed* size, so the reported visible count was off
+ * by a factor of 20 for exactly the profile whose whole purpose is to be dense.
+ * The estimate has to be derived from the same value the generator uses, so both
+ * call this.
+ *
+ * An explicit `worldSize` is honoured as given, compression included. That is
+ * deliberate: an explicit value is a caller who knows what they want, and
+ * silently rescaling it would be worse than the original bug.
+ */
+export const worldSizeFor = (options: SceneOptions): number => {
+  if (options.worldSize !== undefined) {
+    return options.worldSize;
+  }
+  const derived = derivedWorldSize(options.count);
+  return options.profile === "overlap-heavy"
+    ? Math.max(MIN_WORLD_SIZE, Math.round(derived / OVERLAP_COMPRESSION))
+    : Math.max(MIN_WORLD_SIZE, derived);
+};
+
+/** The world size for a scene of `count` elements at the target density. */
+export const defaultWorldSize = (count: number): number =>
+  Math.max(MIN_WORLD_SIZE, derivedWorldSize(count));
 
 /**
  * The fixed timestamp every generated element carries.
@@ -229,16 +337,18 @@ const makeShape = (
   x: number,
   y: number,
   type: "rectangle" | "ellipse" | "diamond",
+  roughness: number,
 ) =>
   newElement({
     type,
     x,
     y,
+    roughness,
     width: rng.float(40, 220),
     height: rng.float(40, 180),
     // A minority are rotated, because rotated bounds are what a spatial index
     // gets wrong and a scene of axis-aligned boxes never finds out.
-    angle: rng.chance(0.15) ? rng.float(-Math.PI, Math.PI) : 0,
+    angle: rng.chance(0.15) ? rng.angle() : (0 as Radians),
   });
 
 /**
@@ -265,8 +375,10 @@ export const generateScene = (options: SceneOptions): ExcalidrawElement[] => {
     count,
     seed = DEFAULT_SEED,
     profile = "realistic",
-    worldSize = DEFAULT_WORLD_SIZE,
+    roughness = 1,
   } = options;
+
+  const worldSize = worldSizeFor(options);
 
   if (!Number.isInteger(count) || count < 0) {
     throw new RangeError(
@@ -279,16 +391,10 @@ export const generateScene = (options: SceneOptions): ExcalidrawElement[] => {
   const elements: ExcalidrawElement[] = [];
 
   for (let index = 0; index < count; index += 1) {
-    /*
-     * Position. `overlap-heavy` compresses the spread by 20x, which is what makes
-     * it pathological: every element still lands on the board, but a viewport
-     * query returns nearly all of them, so culling cannot save the frame.
-     */
-    const spread = profile === "overlap-heavy" ? worldSize / 20 : worldSize;
-    const x = rng.float(0, spread);
-    const y = rng.float(0, spread);
+    const x = rng.float(0, worldSize);
+    const y = rng.float(0, worldSize);
 
-    const roll = rng.next();
+    const roll = rng.unit();
     let element: ExcalidrawElement;
     if (roll < mix.shape) {
       /*
@@ -305,7 +411,7 @@ export const generateScene = (options: SceneOptions): ExcalidrawElement[] => {
           : rng.chance(0.5)
           ? "ellipse"
           : "diamond";
-      element = makeShape(rng, x, y, type);
+      element = makeShape(rng, x, y, type, roughness);
     } else if (roll < mix.shape + mix.arrow) {
       element = makeArrow(rng, x, y);
     } else if (roll < mix.shape + mix.arrow + mix.text) {
@@ -334,6 +440,27 @@ export type SceneStats = {
   byType: Record<string, number>;
   /** Bounding box of every element, in board coordinates. */
   extent: { minX: number; minY: number; maxX: number; maxY: number };
+  /** Expected elements inside a 1280x800 viewport at 100% zoom. */
+  expectedVisible: number;
+};
+
+/**
+ * How many elements the scene puts inside a 1280x800 viewport.
+ *
+ * Analytic, from area rather than from a culling query: `viewportArea /
+ * worldArea * count`. It is the number that makes a measurement interpretable --
+ * "60 fps at 10,000 elements" means something very different when 400 of them
+ * are on screen than when 12 are, and reporting it next to the fps figure is the
+ * difference between a result and a number.
+ *
+ * Approximate by construction. Elements are scattered uniformly, so this is the
+ * expected value rather than the exact one; it is the right quantity to report
+ * and the wrong one to assert on.
+ */
+export const expectedVisible = (options: SceneOptions): number => {
+  const worldSize = worldSizeFor(options);
+  const fraction = Math.min(1, TARGET_VIEWPORT_AREA / (worldSize * worldSize));
+  return Math.round(options.count * fraction);
 };
 
 export const sceneStats = (
@@ -360,12 +487,13 @@ export const sceneStats = (
     count: elements.length,
     profile: options.profile ?? "realistic",
     seed: options.seed ?? DEFAULT_SEED,
-    worldSize: options.worldSize ?? DEFAULT_WORLD_SIZE,
+    worldSize: worldSizeFor(options),
     byType,
     // An empty scene has no extent; zero rather than Infinity, so a consumer
     // printing the result does not print "Infinity".
     extent: elements.length
       ? { minX, minY, maxX, maxY }
       : { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+    expectedVisible: expectedVisible(options),
   };
 };

@@ -14,7 +14,13 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { generateScene, makeRng, sceneStats } from "./scene.js";
+import {
+  defaultWorldSize,
+  generateScene,
+  makeRng,
+  sceneStats,
+  TARGET_VISIBLE_ELEMENTS,
+} from "./scene.js";
 
 describe("determinism", () => {
   test("the same options produce a byte-identical scene", () => {
@@ -42,11 +48,15 @@ describe("determinism", () => {
 
   test("generation is repeatable in count: a prefix of a bigger scene matches", () => {
     // Holds because ids derive from the index and the PRNG sequence is a
-    // function of call count. If a future change makes element content depend on
-    // the total, this catches it -- and that change would quietly break
-    // comparability between a 1k and a 10k measurement.
-    const small = generateScene({ count: 20, seed: 3 });
-    const large = generateScene({ count: 100, seed: 3 });
+    // function of call count -- *when the world size is pinned*. If a future
+    // change makes element content depend on the total, this catches it.
+    //
+    // `worldSize` is explicit here on purpose: it is now derived from `count`, so
+    // a 20-element scene and a 100-element scene use different worlds by design.
+    // That is the density model working, not a regression.
+    const opts = { seed: 3, worldSize: 8000 };
+    const small = generateScene({ ...opts, count: 20 });
+    const large = generateScene({ ...opts, count: 100 });
     expect(JSON.stringify(small)).toBe(JSON.stringify(large.slice(0, 20)));
   });
 
@@ -124,6 +134,55 @@ describe("the PRNG", () => {
   });
 });
 
+describe("density is held constant across scene sizes", () => {
+  // The property that makes a 1k-element measurement comparable to a 10k one.
+  // It is derived rather than hard-coded, so it needs asserting.
+
+  test("the derived world puts the target number on screen", () => {
+    for (const count of [1000, 10000, 50000]) {
+      const stats = sceneStats(generateScene({ count }), { count });
+      expect(stats.expectedVisible, `count ${count}`).toBe(
+        TARGET_VISIBLE_ELEMENTS,
+      );
+    }
+  });
+
+  test("a scene smaller than the target shows all of itself", () => {
+    // 200 elements cannot put 400 on screen. The world would have to be smaller
+    // than the target density implies, so the estimate saturates at the count --
+    // and the test has to say so, because "the target is a target" is the
+    // difference between a documented cap and a bug.
+    const stats = sceneStats(generateScene({ count: 200 }), { count: 200 });
+    expect(stats.expectedVisible).toBe(200);
+    expect(TARGET_VISIBLE_ELEMENTS).toBeGreaterThan(200);
+  });
+
+  test("a bigger scene gets a proportionally bigger world, not more density", () => {
+    // sqrt, so area -- and therefore density -- is what stays fixed.
+    expect(defaultWorldSize(10000) / defaultWorldSize(1000)).toBeCloseTo(
+      Math.sqrt(10),
+      1,
+    );
+  });
+
+  test("the world never collapses below the floor", () => {
+    // Below ~500px the elements are bigger than the world and the scene becomes a
+    // single overlapping pile, which is the pathological case, not a small board.
+    expect(defaultWorldSize(1)).toBeGreaterThanOrEqual(500);
+    expect(defaultWorldSize(0)).toBeGreaterThanOrEqual(500);
+  });
+
+  test("expectedVisible is capped at the full count", () => {
+    // overlap-heavy divides the world by 20, so the analytic estimate can exceed
+    // the scene. It is an expectation; it cannot be more than what exists.
+    const stats = sceneStats(
+      generateScene({ count: 200, profile: "overlap-heavy" }),
+      { count: 200, profile: "overlap-heavy" },
+    );
+    expect(stats.expectedVisible).toBeLessThanOrEqual(200);
+  });
+});
+
 describe("scene shape", () => {
   test("produces exactly the requested number of elements", () => {
     // The two renderer variants must be measured on the same workload. An
@@ -156,12 +215,21 @@ describe("scene shape", () => {
 
   test("overlap-heavy is genuinely denser", () => {
     // The profile exists to defeat culling, so it has to actually compress.
-    const normal = sceneStats(generateScene({ count: 300 }), { count: 300 });
+    // Measured by `expectedVisible`, not by the extent: at small counts the world
+    // is smaller than the elements themselves, so the extent is dominated by
+    // element size and stops being a measure of spread.
+    // A count above the target, so the normal world does not saturate and the two
+    // profiles are actually distinguishable. At 300 elements both saturate at the
+    // count and the comparison proves nothing.
+    const count = 3000;
+    const normal = sceneStats(generateScene({ count }), { count });
     const dense = sceneStats(
-      generateScene({ count: 300, profile: "overlap-heavy" }),
-      { count: 300, profile: "overlap-heavy" },
+      generateScene({ count, profile: "overlap-heavy" }),
+      { count, profile: "overlap-heavy" },
     );
-    expect(dense.extent.maxX).toBeLessThan(normal.extent.maxX / 10);
+    expect(dense.expectedVisible).toBe(count);
+    expect(normal.expectedVisible).toBe(TARGET_VISIBLE_ELEMENTS);
+    expect(dense.expectedVisible / normal.expectedVisible).toBeGreaterThan(5);
   });
 });
 
