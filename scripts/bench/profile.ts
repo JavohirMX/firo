@@ -44,6 +44,14 @@ export type FunctionCost = {
   where: string;
   /** Self time in ms, summed across all samples. */
   selfMs: number;
+  /**
+   * Inclusive time in ms: this function plus everything it called. Left at 0 by
+   * the self-time pass, which does not walk the tree. Kept separate from
+   * `selfMs` rather than overloading it, because a field that means two
+   * different things depending on which pass filled it in is how a report ends
+   * up labelling per-sample numbers as per-frame.
+   */
+  inclMs: number;
   samples: number;
 };
 
@@ -55,7 +63,19 @@ export type ProfileReport = {
   /** Frames the profiler saw, for context on the totals. */
   frames: number;
   totalSelfMs: number;
+  /**
+   * Sum of inclusive time across all functions. Larger than `totalSelfMs`,
+   * because a sample is counted once per distinct function on its stack. It is
+   * a scale figure, not a frame time: do not divide it by anything and call the
+   * result milliseconds per frame.
+   */
+  totalInclMs: number;
+  /** The root-to-node chain that owns the most sampled time, outermost first. */
+  heaviestPath: string[];
+  /** Flat self-time pass, ranked by self time. */
   functions: FunctionCost[];
+  /** Tree pass, ranked by inclusive time. Same shape, different meaning. */
+  inclusive: FunctionCost[];
 };
 
 const DEFAULTS: ProfileOptions = {
@@ -71,7 +91,7 @@ const DEFAULTS: ProfileOptions = {
 /* Profiling                                                                   */
 /* -------------------------------------------------------------------------- */
 
-type CpuProfile = {
+export type CpuProfile = {
   nodes: {
     id: number;
     callFrame: { functionName: string; url: string; lineNumber: number };
@@ -106,7 +126,7 @@ const whereOf = (url: string, lineNumber: number): string => {
   return file;
 };
 
-function aggregate(profile: CpuProfile): FunctionCost[] {
+export function aggregate(profile: CpuProfile): FunctionCost[] {
   const byId = new Map(profile.nodes.map((node) => [node.id, node]));
   // sampleTime[i] is the time spent in samples[i]'s node since the previous sample
   const deltas = profile.timeDeltas ?? [];
@@ -127,13 +147,119 @@ function aggregate(profile: CpuProfile): FunctionCost[] {
     // a whole bucket of them is itself a finding.
     const name = functionName || "(anonymous)";
     const key = `${name}|${where}`;
-    const entry = totals.get(key) ?? { name, where, selfMs: 0, samples: 0 };
+    const entry = totals.get(key) ?? {
+      name,
+      where,
+      selfMs: 0,
+      inclMs: 0,
+      samples: 0,
+    };
     entry.selfMs += ms;
     entry.samples += 1;
     totals.set(key, entry);
   }
 
   return [...totals.values()].sort((a, b) => b.selfMs - a.selfMs);
+}
+
+/**
+ * Self time alone cannot answer "where does the frame go".
+ *
+ * Self time says a function was *on the stack* when a sample was taken. It does
+ * not say what that function was *responsible for*. A blit that costs 5 us
+ * attributed to `setTransform` looks identical to one attributed to whatever
+ * called it, and the two call for completely different fixes.
+ *
+ * Inclusive time sums a function together with everything it called, so
+ * `renderScene` owning 60 ms of a 66 ms frame is a statement about the frame,
+ * not about one instruction. The two views disagree often enough that reading
+ * only one of them is reading half the profile.
+ *
+ * ## Recursion
+ *
+ * Naively walking the tree and adding each node's self time to every ancestor
+ * double-counts: `renderScene -> renderElements -> renderScene` would charge the
+ * inner `renderScene` twice. A node already on the current path is skipped, so
+ * each sample contributes to each *distinct* function at most once.
+ */
+export function inclusive(profile: CpuProfile): {
+  totals: FunctionCost[];
+  heaviestPath: string[];
+} {
+  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const deltas = profile.timeDeltas ?? [];
+  const samples = profile.samples ?? [];
+
+  // Parent links, so a sample can be walked up its stack.
+  const parentOf = new Map<number, number>();
+  for (const node of profile.nodes) {
+    for (const child of node.children ?? []) {
+      parentOf.set(child, node.id);
+    }
+  }
+
+  const totals = new Map<string, FunctionCost>();
+  // The stack of the single most expensive sample. A ranked list says which
+  // functions cost; this says what the frame was actually doing, which is the
+  // question a list cannot answer.
+  let heaviestMs = 0;
+  let heaviestPath: string[] = [];
+
+  for (const [index, nodeId] of samples.entries()) {
+    const ms = (deltas[index] ?? 0) / 1000;
+    if (ms <= 0 || !byId.has(nodeId)) {
+      continue;
+    }
+
+    /*
+     * Charge this sample to every distinct function on its stack, once.
+     *
+     * Walking the tree and adding each node's self time to every ancestor is the
+     * obvious implementation and it is wrong: a recursive call reappears as a
+     * node with its ancestors' time already folded in, so the function gets
+     * charged again for time it was not on the stack for. Chrome reports the
+     * render loop as genuinely recursive, so that is the normal shape here, not
+     * a corner case.
+     *
+     * Charging per sample per distinct function has no such fold to double, and
+     * it means the total for any one function can never exceed the time actually
+     * sampled -- which is the invariant worth being able to assert.
+     */
+    const onStack = new Set<number>();
+    const stack: string[] = [];
+    let current: number | undefined = nodeId;
+
+    while (current !== undefined && !onStack.has(current)) {
+      onStack.add(current);
+      const node = byId.get(current);
+      if (!node) {
+        break;
+      }
+      const name = node.callFrame.functionName || "(anonymous)";
+      const where = whereOf(node.callFrame.url, node.callFrame.lineNumber);
+      const key = `${name}|${where}`;
+      const entry = totals.get(key) ?? {
+        name,
+        where,
+        selfMs: 0,
+        inclMs: 0,
+        samples: 0,
+      };
+      entry.inclMs += ms;
+      totals.set(key, entry);
+      stack.push(`${name} (${where})`);
+      current = parentOf.get(current);
+    }
+
+    // `stack` is innermost first; the report reads outermost first.
+    if (ms > heaviestMs) {
+      heaviestMs = ms;
+      heaviestPath = stack.reverse();
+    }
+  }
+
+  const list = [...totals.values()].sort((a, b) => b.inclMs - a.inclMs);
+  return { totals: list, heaviestPath };
 }
 
 const capture = async (
@@ -196,13 +322,17 @@ export const profileScenes = async (
       profile: CpuProfile,
     ): ProfileReport => {
       const functions = aggregate(profile);
+      const incl = inclusive(profile);
       return {
         label,
         worldSize,
         expectedVisible,
         frames: (profile.samples ?? []).length,
         totalSelfMs: functions.reduce((sum, f) => sum + f.selfMs, 0),
+        totalInclMs: incl.totals.reduce((sum, f) => sum + f.inclMs, 0),
+        heaviestPath: incl.heaviestPath,
         functions,
+        inclusive: incl.totals,
       };
     };
 
@@ -306,6 +436,36 @@ export const formatProfile = (
         fn.name
       }  (${fn.where})`,
     );
+  }
+
+  /*
+   * Inclusive time, which is the view that says what is *responsible* for the
+   * frame rather than what was on the stack when a sample landed.
+   *
+   * These totals are not a frame time and must not be divided into one. A
+   * sample on a stack six frames deep is counted once for each of those six
+   * functions, so the column sums to more than the wall clock by design.
+   */
+  lines.push("");
+  lines.push("  DENSE SCENE, INCLUSIVE TIME — who owns the frame");
+  lines.push(`  ${"ms".padStart(10)}${"share".padStart(8)}  function`);
+  lines.push(`  ${"-".repeat(66)}`);
+  const inclTotal = Math.max(1, dense.totalInclMs);
+  for (const fn of dense.inclusive.slice(0, topN)) {
+    lines.push(
+      `  ${fn.inclMs.toFixed(0).padStart(10)}${pct(
+        fn.inclMs,
+        inclTotal,
+      ).padStart(8)}  ${fn.name}  (${fn.where})`,
+    );
+  }
+
+  if (dense.heaviestPath.length) {
+    lines.push("");
+    lines.push("  HEAVIEST CALL PATH (the frame, outermost first)");
+    for (const frame of dense.heaviestPath.slice(0, 10)) {
+      lines.push(`    ${frame}`);
+    }
   }
 
   const deltaTotal = delta.reduce((sum, d) => sum + Math.max(0, d.selfMs), 0);

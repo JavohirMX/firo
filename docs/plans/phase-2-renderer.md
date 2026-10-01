@@ -119,6 +119,58 @@ error this phase exists to avoid.
 
 **Therefore: the lever is still unidentified.** The plan's three spikes stand.
 
+#### 2.1c — The correction: it *is* a per-element drawing cost
+
+The paragraph above reaches the wrong conclusion, and a positive control is what
+shows it. Its reasoning was: "`setTransform` is 80% of self time, but removing it
+changed nothing, so the profile is not a reliable guide." Both halves are true. The
+error was assuming the cost had moved somewhere unmeasured, rather than testing
+that.
+
+**The control.** Inject `return;` as the first statement of `drawElementFromCanvas`,
+so the element loop still runs and draws nothing:
+
+| | mean frame |
+| --- | --- |
+| all 9,766 elements drawn | 63.2 ms |
+| nothing drawn | 16.7 ms — the vsync floor, not work |
+
+So **46.5 ms of a 63 ms frame is the per-element draw: 4.8 µs per element.** A
+control like this is what makes a null result mean something. Without one, "the fix
+did not help" is equally consistent with "the fix never ran" and "the fix was
+irrelevant". With one, the null result is real — the `setTransform` call is close to
+free, and Chrome charges the sample to it rather than charging it for the work.
+
+Worth noting how nearly this went the other way. A file-swap A/B could easily have
+been silently inert — a stale dev-server module serves the same bytes for both sides
+and reports a tidy, meaningless zero. The control is what distinguishes that from a
+genuine null, and it cost three runs.
+
+**What this corrects.** 2.1b concluded this was "not a Level of Detail problem, not a
+culling problem, and not a rasterisation problem... a small local fix rather than a
+rewrite." That is wrong. The cost is per-element drawing, so *drawing fewer elements
+is the lever* — which is exactly what 2.2 (culling) and 2.3 (level of detail) are
+for. The plan's priorities were right and the profile was misleading. A ranked
+profile is not a substitute for a control.
+
+**The budget this implies.** At 4.8 µs per element, a 10 ms draw budget — leaving
+headroom inside a 16.7 ms frame — holds about **2,100 elements**. Past that, no
+micro-optimisation inside the draw path rescues it, because the work is one blit per
+element and there is no cheaper blit. So the spikes must answer two concrete
+questions:
+
+1. How many elements are on screen in practice? If a real board rarely exceeds
+   2,000 visible, 2.3 is unnecessary and the renderer is nearly done.
+2. What does it cost to decide *not* to draw? If the visibility test costs more than
+   the 4.8 µs it saves, culling has to be spatial (an R-tree, 2.2) rather than
+   per-element.
+
+Two caveats on the 4.8 µs. It is a software-rasterised number and a real GPU will be
+cheaper, so 2,100 is a floor on the useful element count rather than a ceiling. And
+it averages over a scene whose elements overlap heavily at 100% zoom in a 1024 px
+world; 2.4 (caching) may move it substantially, so the figure should be re-measured
+after the cache work rather than treated as final.
+
 ### 2.2 — Culling
 
 `rbush` R-tree of element bounds, queried against the viewport plus a margin.
