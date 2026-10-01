@@ -456,6 +456,24 @@ export const formatReport = (report: RunReport): string => {
       const breaches = level.frames.durations.filter((d) => d > 100).length;
       const applied =
         level.applied === null ? "?" : `${Math.round(level.applied * 100)}%`;
+      /*
+       * A level that collected no frames has no result, and printing 0.0 for it
+       * is the single most dangerous thing this report can do: 0.0 is the best
+       * possible frame time, so an empty measurement reads as a perfect one.
+       * That happened -- a level that starved to zero frames reported "0.0" and
+       * the run still printed PASSES. A missing measurement must look missing.
+       */
+      if (level.frames.frames === 0) {
+        lines.push(
+          `  ${`${Math.round(level.requested * 100)}%`.padEnd(7)}` +
+            `${applied.padStart(9)}` +
+            `${"NO DATA".padStart(8)}` +
+            `${"0".padStart(8)}` +
+            `${"-".padStart(8)}` +
+            `${"-".padStart(11)}`,
+        );
+        continue;
+      }
       lines.push(
         `  ${`${Math.round(level.requested * 100)}%`.padEnd(7)}` +
           `${applied.padStart(9)}` +
@@ -465,17 +483,38 @@ export const formatReport = (report: RunReport): string => {
           `${breaches.toString().padStart(11)}`,
       );
     }
+
+    /*
+     * A pass requires evidence from every level the criterion names. A level with
+     * no frames is not a fast level, it is an unmeasured one, and the verdict has
+     * to say so rather than pass on the levels that happened to report.
+     */
+    const starved = report.zoom.filter((z) => z.frames.frames === 0);
     const worst = Math.max(...report.zoom.map((z) => z.frames.max));
     lines.push("");
-    lines.push(
-      worst <= 100
-        ? `  PASSES criterion 5: worst frame ${worst.toFixed(
-            1,
-          )} ms against a 100 ms budget.`
-        : `  FAILS criterion 5: worst frame ${worst.toFixed(
-            1,
-          )} ms against a 100 ms budget.`,
-    );
+    if (starved.length) {
+      lines.push(
+        `  CANNOT JUDGE criterion 5: no frames collected at ${starved
+          .map((z) => `${Math.round(z.requested * 100)}%`)
+          .join(", ")}.`,
+      );
+      lines.push(
+        "  A level with no frames is unmeasured, not fast. The other levels'",
+      );
+      lines.push("  numbers say nothing about it.");
+    } else if (worst <= 100) {
+      lines.push(
+        `  PASSES criterion 5: worst frame ${worst.toFixed(
+          1,
+        )} ms against a 100 ms budget.`,
+      );
+    } else {
+      lines.push(
+        `  FAILS criterion 5: worst frame ${worst.toFixed(
+          1,
+        )} ms against a 100 ms budget.`,
+      );
+    }
   }
 
   lines.push(
