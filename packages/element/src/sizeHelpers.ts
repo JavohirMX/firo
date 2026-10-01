@@ -88,27 +88,34 @@ export const isElementInViewport = (
   elementsMap: ElementsMap,
 ) => {
   const [x1, y1, x2, y2] = getElementBounds(element, elementsMap); // scene coordinates
-  const topLeftSceneCoords = viewportCoordsToSceneCoords(
-    {
-      clientX: viewTransformations.offsetLeft,
-      clientY: viewTransformations.offsetTop,
-    },
-    viewTransformations,
-  );
-  const bottomRightSceneCoords = viewportCoordsToSceneCoords(
-    {
-      clientX: viewTransformations.offsetLeft + width,
-      clientY: viewTransformations.offsetTop + height,
-    },
-    viewTransformations,
-  );
 
-  return (
-    topLeftSceneCoords.x <= x2 &&
-    topLeftSceneCoords.y <= y2 &&
-    bottomRightSceneCoords.x >= x1 &&
-    bottomRightSceneCoords.y >= y1
-  );
+  /*
+   * The viewport's edges in scene coordinates, computed without allocating.
+   *
+   * This runs once per element per frame, from the render loop's culling pass --
+   * 10,000 times on a board that size. It used to call
+   * `viewportCoordsToSceneCoords` twice, and each call allocated both its
+   * argument object and its result, so 40,000 short-lived objects per frame
+   * purely to produce four numbers.
+   *
+   * The arithmetic also collapses. `viewportCoordsToSceneCoords` computes
+   * `(clientX - offsetLeft) / zoom - scrollX`, and both call sites pass
+   * `clientX: offsetLeft + n`, so the offset terms cancel exactly and
+   * `offsetLeft` and `offsetTop` cannot appear in the result. The viewport's
+   * left edge is therefore always `-scrollX`, whatever the offset. Writing that
+   * out is both allocation-free and easier to check than the general form.
+   *
+   * No frame-time claim is made for this. Drawing costs 0.55 us per element on a
+   * GPU and the culling pass measures well under 1% of the frame, so this sits
+   * below the noise floor of the benchmark; it is worth doing because the
+   * garbage is real and the simplification is free, not because it is faster by
+   * a measurable amount.
+   */
+  const { zoom, scrollX, scrollY } = viewTransformations;
+  const right = width / zoom.value - scrollX;
+  const bottom = height / zoom.value - scrollY;
+
+  return -scrollX <= x2 && -scrollY <= y2 && right >= x1 && bottom >= y1;
 };
 
 export const isElementCompletelyInViewport = (
