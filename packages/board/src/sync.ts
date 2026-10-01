@@ -95,6 +95,17 @@ export class BoardSync {
 
   private suspended = false;
 
+  /**
+   * True while this class is inside its own `commit`.
+   *
+   * Needed because the content check below compares against `lastDocElements`,
+   * which is only updated *after* the commit returns -- so a notification that
+   * arrives during the commit would find the old state and decide it was someone
+   * else's change. A flag is the only thing that can answer that question at the
+   * moment it is asked.
+   */
+  private committing = false;
+
   constructor(
     private readonly doc: {
       read: () => { elements: FiroElement[] };
@@ -155,9 +166,16 @@ export class BoardSync {
       return [];
     }
 
-    this.doc.commit(mutations);
+    this.committing = true;
+    try {
+      this.doc.commit(mutations);
+    } finally {
+      this.committing = false;
+    }
     // Re-read rather than assuming: the document stamps `updated` and assigns
-    // the fractional index, so the committed state is not what we sent.
+    // the fractional index, so the committed state is not what we sent. Setting
+    // it after the commit is also what lets the content guard catch a
+    // notification that arrives asynchronously rather than during the call.
     this.lastDocElements = this.doc.read().elements;
     this.pushedElements = this.lastDocElements;
     return mutations;
@@ -225,9 +243,32 @@ export class BoardSync {
    * fresh copies mid-gesture.
    */
   private onDocumentChanged = (): void => {
-    if (this.suspended) {
+    if (this.suspended || this.committing) {
       return;
     }
+
+    /*
+     * Ignore a change this class made.
+     *
+     * Every `push` commits, and committing notifies subscribers -- including this
+     * one. Without this check the sync reacts to its own write by pushing the
+     * document back into the editor, in the middle of whatever the user was doing.
+     *
+     * The symptom is not a crash and not a loop. It is text loss: the editor
+     * holds a sticky note's label in two fields, a commit rewrites the elements
+     * the label lives in, and a note being typed into comes back empty. The
+     * keystrokes were in the textarea; they were gone by the time it closed.
+     *
+     * Compared by content rather than flagged with a boolean, because a commit
+     * can be observed before or after `push` updates its baseline depending on
+     * whether the document notifies synchronously -- and a flag that is only right
+     * for one of those orders is worse than no flag.
+     */
+    const current = this.doc.read().elements;
+    if (sameElements(current, this.lastDocElements)) {
+      return;
+    }
+
     this.pull();
   };
 
@@ -278,6 +319,30 @@ const changedFields = (
   }
   return changes;
 };
+
+/**
+ * Whether two document states are the same set of elements, in the same order.
+ *
+ * Identity by `id` and value by everything else. A Yjs read allocates fresh
+ * objects each time, so reference equality would never hold and the guard above
+ * would never fire.
+ */
+const sameElements = (
+  a: readonly FiroElement[],
+  b: readonly FiroElement[],
+): boolean =>
+  a.length === b.length &&
+  a.every((element, index) => {
+    const other = b[index];
+    return (
+      other !== undefined &&
+      element.id === other.id &&
+      sameValue(
+        { ...element, version: 0, versionNonce: 0 },
+        { ...other, version: 0, versionNonce: 0 },
+      )
+    );
+  });
 
 const sameValue = (a: unknown, b: unknown): boolean => {
   if (a === b) {

@@ -80,6 +80,29 @@ export type CommitResult = {
  * up the write guard, and a guard installed after the first write has already
  * missed it.
  */
+/**
+ * A document, for callers that should not know Yjs exists.
+ *
+ * ## Why this exists
+ *
+ * Importing `yjs` at the call site loads a *second* copy of the module alongside
+ * the one inside this package, and Yjs says so loudly:
+ *
+ *     Yjs was already imported. This breaks constructor checks and will lead to
+ *     issues! -- https://github.com/yjs/yjs/issues/438
+ *
+ * That is not cosmetic. Yjs identifies values with `instanceof` in its own
+ * internals, so two copies means a `Y.Doc` from one is not a `Y.Doc` to the
+ * other, and the failures surface far from the cause — as a document that
+ * silently stops applying updates.
+ *
+ * The app is the caller that would otherwise do this: it needs a document and
+ * nothing else. Making it import Yjs to get one puts a transport detail in the
+ * app's hands for no benefit, and puts the two-copies hazard one careless import
+ * away.
+ */
+export const createFiroDoc = (): FiroDoc => new FiroDoc(new Y.Doc());
+
 export class FiroDoc {
   /**
    * The guarded document.

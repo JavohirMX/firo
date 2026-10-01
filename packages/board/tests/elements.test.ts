@@ -138,6 +138,52 @@ describe("fromEditorElements", () => {
     );
   });
 
+  it("stores the text the user typed, not the layout's wrapped version", () => {
+    /*
+     * The regression this guards. A sticky note's label carries `text` (wrapped
+     * to fit, with hard line breaks) alongside `originalText` (what was typed).
+     * Reading `text` stores the layout as content: the note still looks correct,
+     * so nothing looks broken, but each save bakes in the current wrapping and
+     * the next pass wraps text that already has breaks in it. Caught by drawing
+     * a note, typing "hello board", and finding "hello\nboard" stored.
+     */
+    const [sticky, label] = toEditorElements(note({ text: "alpha beta" }));
+    // Emulate the renderer: `text` is the wrapped form, `originalText` is not.
+    const wrapped = {
+      ...label,
+      text: "alpha\nbeta",
+      originalText: "alpha beta",
+    };
+    expect(label.type === "text" && label.originalText).toBe("alpha beta");
+
+    const folded = fromEditorElements([sticky, wrapped] as never);
+    expect(folded[0].type === "stickynote" && folded[0].text).toBe(
+      "alpha beta",
+    );
+  });
+
+  it("does not accumulate line breaks across repeated round trips", () => {
+    const original = note({ text: "one two three four" });
+    let current = original;
+    for (let i = 0; i < 5; i++) {
+      const projected = toEditorElements(current);
+      const [sticky, label] = projected;
+      // Emulate a layout that wraps at a different width each time.
+      const wrapped = {
+        ...label,
+        text: (label as { originalText: string }).originalText.replace(
+          " ",
+          "\n",
+        ),
+        originalText: (label as { originalText: string }).originalText,
+      };
+      const [next] = fromEditorElements([sticky, wrapped] as never);
+      current = next as typeof current;
+    }
+    // Five layouts later, the content is unchanged: still no line breaks.
+    expect(current.text).toBe("one two three four");
+  });
+
   it("does not emit the label as a document element of its own", () => {
     // Otherwise every note would also be a stray text element rendering a second
     // copy of its words. Firo has no standalone text element type, so the check

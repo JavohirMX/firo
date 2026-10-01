@@ -117,11 +117,19 @@ describe("BoardSync", () => {
       const sync = new BoardSync(doc, editor.bridge);
       sync.start();
 
+      // `originalText`, not `text`: a sticky note's label keeps the typed string
+      // in `originalText` and the layout's wrapped form in `text`, so this is
+      // what a real edit writes.
       const [, label] = editor.elements;
       editor.set(
         editor.elements.map((element) =>
           element.id === label.id
-            ? { ...element, text: "edited", version: 99 }
+            ? {
+                ...element,
+                originalText: "edited",
+                text: "edited",
+                version: 99,
+              }
             : element,
         ),
       );
@@ -145,6 +153,58 @@ describe("BoardSync", () => {
 
       editor.set(editor.elements.map((element) => ({ ...element })));
       expect(sync.push()).toEqual([]);
+    });
+
+    it("does not push the document back after its own commit", () => {
+      /*
+       * The regression that cost an afternoon. Every commit notifies subscribers,
+       * including this sync, so reacting to one means rewriting the editor's
+       * elements mid-edit. The editor holds a sticky note's label in two fields;
+       * replacing the elements wipes what is being typed.
+       *
+       * The symptom is invisible in unit terms: no crash, no loop, the document
+       * still ends up with the right elements. A person types a word into a note
+       * and it vanishes on the way out. So the assertion is on the *editor's*
+       * contents, not the document's.
+       */
+      const doc = newDoc();
+      doc.commit([{ kind: "createElement", element: note("a") }]);
+      const editor = fakeEditor();
+      const sync = new BoardSync(doc, editor.bridge);
+      sync.start();
+
+      const writesAfterStart = editor.writes;
+      const [sticky, label] = editor.elements;
+
+      // The user is typing. The editor is mid-edit and holds the new text.
+      editor.set(
+        editor.elements.map((element) =>
+          element.id === label.id
+            ? { ...element, originalText: "typed", text: "typed" }
+            : element,
+        ),
+      );
+      sync.push();
+
+      // The commit must not have sent the document back over what is on screen.
+      expect(editor.writes).toBe(writesAfterStart);
+      const live = editor.elements.find((e) => e.id === label.id);
+      expect(live?.originalText).toBe("typed");
+      expect(sticky.id).toBe("a");
+    });
+
+    it("still pushes a change that came from somewhere else", () => {
+      // The guard must not swallow genuine remote changes, or collaboration
+      // would silently stop working when it is added.
+      const doc = newDoc();
+      const editor = fakeEditor();
+      const sync = new BoardSync(doc, editor.bridge);
+      sync.start();
+
+      const writesAfterStart = editor.writes;
+      doc.commit([{ kind: "createElement", element: note("remote") }]);
+      expect(editor.writes).toBeGreaterThan(writesAfterStart);
+      expect(editor.elements.some((e) => e.id === "remote")).toBe(true);
     });
 
     it("stops listening when stopped", () => {

@@ -346,7 +346,24 @@ export const fromEditorElements = (
         focus: 0,
         gap: 1,
       })),
-      text: label?.text ?? "",
+      /*
+       * `originalText`, not `text`.
+       *
+       * A sticky note's bound label carries two strings: `originalText` is what
+       * the user typed, and `text` is that string after `wrapText` has inserted
+       * hard line breaks to fit the note's width (element/src/stickyNote.ts).
+       *
+       * Reading `text` stores the *layout* as if it were the content. The note
+       * still looks right, so nothing appears broken — but every save bakes the
+       * current wrapping into the document, and the next layout pass wraps text
+       * that already has breaks in it. Notes that have been edited enough times
+       * accumulate line breaks, and the corruption is invisible until someone
+       * widens the note and finds the text is not where they left it.
+       *
+       * Found by drawing a note, typing "hello board", and finding "hello
+       * newline board" in the document.
+       */
+      text: label?.originalText ?? "",
       fontSize: label?.fontSize ?? 20,
       fontFamily: label?.fontFamily ?? 1,
       textAlign: label?.textAlign ?? "center",

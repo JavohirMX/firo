@@ -20,7 +20,7 @@
  * without a browser, and why the TRD puts it before the renderer
  * ([`../../../docs/plans/phase-1-document-model.md`](../../../docs/plans/phase-1-document-model.md)).
  */
-export { FiroDoc } from "./doc.js";
+export { FiroDoc, createFiroDoc } from "./doc.js";
 export {
   UnauthoredWriteError,
   WriteGuard,

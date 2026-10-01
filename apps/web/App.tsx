@@ -93,6 +93,8 @@ import DebugCanvas, {
   loadSavedDebugState,
 } from "./components/DebugCanvas";
 
+import { attachBoard, boardElements, commitBoard } from "./board/board";
+
 import "./index.scss";
 
 polyfill();
@@ -263,6 +265,28 @@ const initializeScene = async (opts: {
     }
   }
 
+  /*
+   * Elements come from the document model, not from LocalData.
+   *
+   * This is the seam where the two halves of the app meet. Everything above this
+   * line assembles a scene out of Excalidraw's own storage; from here on the
+   * document model is authoritative and the editor is a view of it.
+   *
+   * An empty projection is *not* treated as "no board": on a first run the
+   * document is empty, and falling back to LocalData there would quietly restore
+   * a board the document does not have — the exact two-sources-of-truth problem
+   * this is meant to end.
+   */
+  const boardOwned = boardElements();
+  if (boardOwned.length > 0) {
+    // `restoreElements` returns a mutable, ordered array; the projection builds a
+    // fresh one per call, so there is nothing to share and nothing to freeze.
+    scene = {
+      ...scene,
+      elements: restoreElements(boardOwned, null, { repairBindings: true }),
+    };
+  }
+
   if (scene) {
     return isExternalScene && jsonBackendMatch
       ? {
@@ -413,6 +437,17 @@ const ExcalidrawWrapper = () => {
       return;
     }
 
+    /*
+     * Attach before the scene resolves, not after.
+     *
+     * `initialData` is applied by the editor on its first render, and that fires
+     * the change event. A sync attached afterwards would see those changes with
+     * no baseline to compare against and commit the initial board straight back
+     * to the document — harmless once, but it stamps `updated` on every element
+     * at load and makes the first real edit indistinguishable from setup.
+     */
+    const detachBoard = attachBoard(excalidrawAPI);
+
     initializeScene({ excalidrawAPI }).then(async (data) => {
       loadImages(data, /* isInitialLoad */ true);
       initialStatePromiseRef.current.promise.resolve(data.scene);
@@ -524,6 +559,11 @@ const ExcalidrawWrapper = () => {
         visibilityChange,
         false,
       );
+      // Detach the document before the editor goes away. A leaked sync keeps a
+      // document subscription alive and pushes into an editor that no longer
+      // exists, which surfaces as an error on every keystroke after a hot reload
+      // rather than at the moment of the leak.
+      detachBoard();
     };
   }, [excalidrawAPI, setLangCode, loadImages]);
 
@@ -557,6 +597,17 @@ const ExcalidrawWrapper = () => {
     appState: AppState,
     files: BinaryFiles,
   ) => {
+    /*
+     * The document model sees every change first.
+     *
+     * Before `LocalData`, because the document is the source of truth and
+     * anything that fails downstream is a problem with the app's own storage, not
+     * with the board. And it is safe to call on every change: `BoardSync`
+     * recognises its own writes coming back and commits nothing for them, which
+     * is what stops this from being a feedback loop.
+     */
+    commitBoard();
+
     // this check is redundant, but since this is a hot path, it's best
     // not to evaludate the nested expression every time
     if (!LocalData.isSavePaused()) {
