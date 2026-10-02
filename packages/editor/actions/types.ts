@@ -138,6 +138,21 @@ export type ActionName =
   | "elementStats"
   | "searchMenu"
   | "copyElementLink"
+  /*
+   * Firo's own actions, registered by the host through
+   * `excalidrawAPI.registerAction`.
+   *
+   * The union is closed on purpose upstream — an action name is an identifier the
+   * menu, the command palette and the keyboard all key off, and letting them be typed
+   * as arbitrary strings would mean no autocomplete and no way to notice a typo. But
+   * the union is also the only thing standing between a host and the supported
+   * extension point, and a host that cannot name its own actions cannot use it.
+   *
+   * So the names are added here rather than the union being opened. Two, because
+   * there are two: getting a board out of the browser as a file, and putting one back.
+   */
+  | "exportFiroFile"
+  | "importFiroFile"
   | "linkToElement"
   | "cropEditor"
   | "wrapSelectionInFrame"
@@ -205,7 +220,15 @@ export interface Action<TData = any> {
           | "collab"
           | "hyperlink"
           | "search_menu"
-          | "shape_switch";
+          | "shape_switch"
+          /*
+           * Firo's own. The category list is closed for the same reason the action
+           * names are — it is an analytics taxonomy, and an unconstrained one stops
+           * being a taxonomy. These two are added rather than opening the union,
+           * because the two file actions are genuinely export and import and belong
+           * beside the existing export actions.
+           */
+          | "file";
         action?: string;
         predicate?: (
           appState: Readonly<AppState>,

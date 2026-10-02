@@ -236,20 +236,30 @@ export const loadFixture = (fixture: Fixture): LoadedBoard =>
 /**
  * JSON with every object's keys in sorted order.
  *
- * ## Why not `JSON.stringify` and compare
+ * ## Why not `JSON.stringify`
  *
- * Because that compares *bytes*, and byte equality here is a property of the
- * loader's key insertion order rather than of the data. A validator that spreads
- * `{ ...base }` and overlays normalised fields emits keys in whatever order that
- * produces, so a stringify comparison fails on a board that round-tripped
- * perfectly -- and would pass on a board that lost a field, as long as both
- * sides happened to order the rest the same way.
+ * Because `JSON.stringify` emits keys in *insertion* order, and insertion order here
+ * is a property of the loader's object literals rather than of the data. A validator
+ * that spreads `{ ...base }` and overlays normalised fields emits keys in whatever
+ * order that produces, so a stringify comparison fails on a board that round-tripped
+ * perfectly -- and passes on a board that *lost* a field, as long as both sides
+ * happened to order the rest the same way.
  *
- * The claim under test is "no data loss", and key order is not data. Sorting
- * keys compares exactly that, and it keeps the test from being a standing
- * invitation to reorder the loader's object literals.
+ * Key order is not data. Sorting keys compares exactly the claim that matters, and it
+ * stops the file format being a standing invitation to reorder object literals.
+ *
+ * ## Why this is exported rather than kept here
+ *
+ * Because it is the `.firo` file format's writer, not a test helper. Phase 7 requires
+ * an export that round-trips **byte-identically**, which cannot be done with
+ * `JSON.stringify`: two boards with identical content serialise to different bytes
+ * purely because of key order, so `git diff` on a board someone did not touch would
+ * show a whole-file rewrite.
+ *
+ * One implementation, used by the export and by the round-trip tests. If the file
+ * writer and the comparison disagreed, "the export round-trips" would mean nothing.
  */
-const canonicalJson = (value: unknown): string => {
+export const canonicalJson = (value: unknown): string => {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value) ?? "undefined";
   }
@@ -263,6 +273,61 @@ const canonicalJson = (value: unknown): string => {
     .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
     .join(",")}}`;
 };
+
+/**
+ * A board as the bytes of a `.firo` file.
+ *
+ * Pretty-printed, because the plan's exit criterion is that a board can be read as
+ * text and `git diff`ed, and minified JSON defeats both. Canonical key order, which
+ * is what makes a re-export of an unchanged board byte-identical — see
+ * `canonicalJson`.
+ *
+ * Written as a recursive walk rather than by pretty-printing the compact form with a
+ * regular expression. The regex version was tried first and is shorter, but it
+ * indents inside strings too: a note containing `", {"` would come back with a
+ * newline and two spaces in the middle of its text, and the file would no longer
+ * parse as the thing it was exported from. A board is mostly strings someone typed,
+ * so that is not a corner case.
+ */
+const prettyJson = (value: unknown, indent: string): string => {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value) ?? "undefined";
+  }
+
+  const inner = `${indent}  `;
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return "[]";
+    }
+    // One item per line even for a short array. A board's `elements` is long enough
+    // that the compaction is not worth a line that re-wraps unpredictably.
+    return `[\n${value
+      .map((item) => `${inner}${prettyJson(item, inner)}`)
+      .join(",\n")}\n${indent}]`;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+
+  if (entries.length === 0) {
+    return "{}";
+  }
+
+  return `{\n${entries
+    .map(([k, v]) => `${inner}${JSON.stringify(k)}: ${prettyJson(v, inner)}`)
+    .join(",\n")}\n${indent}}`;
+};
+
+/**
+ * A board as the bytes of a `.firo` file.
+ *
+ * Two-space indent and a trailing newline, so the file behaves in a terminal and in
+ * a diff the way a text file is expected to.
+ */
+export const serializeBoardFile = (board: SerializedBoard): string =>
+  `${prettyJson(board, "")}\n`;
 
 /**
  * Load a fixture and serialise it again.

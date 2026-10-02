@@ -141,6 +141,71 @@ export const SaveAsImage = () => {
 };
 SaveAsImage.displayName = "SaveAsImage";
 
+/**
+ * Firo's board file actions, in the same menu as the image export.
+ *
+ * ## Why the behaviour is not here
+ *
+ * These actions read and replace a `FiroDoc`, which is the app's, not the editor's.
+ * So the editor holds the *descriptor* — the name, label and keywords that put them in
+ * the menu, the command palette and the keyboard — and the app fills in the behaviour
+ * through `excalidrawAPI.registerAction`. The lookup by name below is what connects
+ * the two.
+ *
+ * Without the lookup the editor would need a reference to a document it knows nothing
+ * about, and an embed that has none would offer a menu item that throws.
+ *
+ * ## Why they live here at all
+ *
+ * `AppMainMenu` is a list of menu items; this is a reusable pair of them. Firo has one
+ * menu and one board, so a component per item in the editor is more structure than the
+ * problem needs — but the alternative is duplicating the label, the icon and the
+ * action lookup in the app, and a second place to keep them in step.
+ *
+ * Labels are literals rather than translation keys. Every inherited label here is a
+ * key resolved against Excalidraw's locale files, and a key with no entry renders as
+ * the key itself — which this menu already shows, since several inherited labels are
+ * missing. Firo has no locale files yet, so a literal is honest about being
+ * untranslated rather than rendering `firo.exportBoard`.
+ */
+export const SaveAsFiroFile = () => {
+  const actionManager = useExcalidrawActionManager();
+  const action = actionManager.actions.exportFiroFile;
+  if (!action) {
+    return null;
+  }
+  return (
+    <DropdownMenuItem
+      icon={save}
+      data-testid="firo-export-button"
+      onSelect={() => actionManager.executeAction(action)}
+      aria-label="Export board as .firo file"
+    >
+      {"Export board as .firo file..."}
+    </DropdownMenuItem>
+  );
+};
+SaveAsFiroFile.displayName = "SaveAsFiroFile";
+
+export const LoadFromFiroFile = () => {
+  const actionManager = useExcalidrawActionManager();
+  const action = actionManager.actions.importFiroFile;
+  if (!action) {
+    return null;
+  }
+  return (
+    <DropdownMenuItem
+      icon={LoadIcon}
+      data-testid="firo-import-button"
+      onSelect={() => actionManager.executeAction(action)}
+      aria-label="Import board from .firo file"
+    >
+      {"Import board from .firo file..."}
+    </DropdownMenuItem>
+  );
+};
+LoadFromFiroFile.displayName = "LoadFromFiroFile";
+
 export const CommandPalette = (opts?: { className?: string }) => {
   const setAppState = useExcalidrawSetAppState();
   const { t } = useI18n();

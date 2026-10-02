@@ -35,6 +35,25 @@ export const AppMainMenu: React.FC<{
       <MainMenu.DefaultItems.CommandPalette className="highlighted" />
       <MainMenu.DefaultItems.SearchMenu />
       <MainMenu.DefaultItems.Help />
+      {/*
+       * Firo's board file.
+       *
+       * Beside "Export image..." because that is the same intent — getting the board
+       * off the screen — and someone looking for one will look near the other. The
+       * image export produces a picture; this produces the board, which is the thing
+       * they actually came back for.
+       *
+       * These belong *here* rather than in the editor's fallback menu. The app supplies
+       * its own menu through `MainMenuTunnel`, so `LayerUI`'s `__fallback` list is
+       * never rendered — a fact that cost an hour to find, because the items were
+       * added to the fallback first and simply never appeared, with no error.
+       *
+       * Both return `null` when the host has not registered the matching action, which
+       * is the case for a bare Excalidraw embed: the behaviour needs a document, and an
+       * embed has none.
+       */}
+      <MainMenu.DefaultItems.SaveAsFiroFile />
+      <MainMenu.DefaultItems.LoadFromFiroFile />
       <MainMenu.DefaultItems.ClearCanvas />
       {isDevEnv() && (
         <MainMenu.Item

@@ -38,6 +38,8 @@ import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 
 import { debounce, restoreBoard, saveBoard } from "./storage";
 
+import { registerFileActions } from "./fileActions";
+
 import type { RestoreResult } from "./storage";
 
 /**
@@ -68,6 +70,35 @@ let activeAppState: (() => unknown) | null = null;
 
 /** The document, for the few places that read or write it directly. */
 export const boardDoc = () => doc;
+
+/**
+ * Editors the file actions have been registered with.
+ *
+ * A `WeakSet` keyed on the editor, rather than a single boolean, and the difference
+ * matters in both directions:
+ *
+ * - A boolean. React double-invokes effects in development, so the first mount
+ *   registers with an editor that is immediately torn down, the second mount returns
+ *   early, and the editor you are actually looking at has no file actions in its menu.
+ *   That is what happened, and it is invisible in production — the actions simply are
+ *   not there in dev, which reads as "the wiring is wrong" rather than "the guard is".
+ * - Per editor. Two attaches of the *same* editor register once, so there are no
+ *   duplicate menu entries. Two attaches of *different* editors each register, which
+ *   is right, because each menu needs its own.
+ *
+ * `WeakSet` rather than a `Set` because entries should not outlive the editor they
+ * name. There is no way to unregister an action — the action manager has no removal
+ * API — so the only thing that can be managed here is not registering twice.
+ */
+const fileActionsRegistered = new WeakSet<ExcalidrawImperativeAPI>();
+
+const registerFileActionsOnce = (api: ExcalidrawImperativeAPI): void => {
+  if (fileActionsRegistered.has(api)) {
+    return;
+  }
+  fileActionsRegistered.add(api);
+  registerFileActions(api, () => doc);
+};
 
 /*
  * Restore, once, and report when it is done.
@@ -200,6 +231,20 @@ const bridgeFor = (excalidrawAPI: ExcalidrawImperativeAPI): EditorBridge => ({
 export const attachBoard = (
   excalidrawAPI: ExcalidrawImperativeAPI,
 ): (() => void) => {
+  /*
+   * `.firo` export and import, in the editor's own menu.
+   *
+   * Registered here rather than in the app shell because `registerAction` is the
+   * supported extension point, and because the app shell deliberately renders no chrome
+   * of its own — `renderTopRightUI` returns null — so two buttons would be the first
+   * new UI surface in the product, with no design behind it.
+   *
+   * Not called on every attach: there is no supported way to *remove* an action, so a
+   * second registration would leave two identically-named entries in the menu. In
+   * development React mounts twice, and this is the seam where that would show.
+   */
+  registerFileActionsOnce(excalidrawAPI);
+
   sync?.stop();
   const bridge = bridgeFor(excalidrawAPI);
   activeElements = () => bridge.read();

@@ -75,8 +75,6 @@ this section asked for.
 
 #### What is not done
 
-- **No `.firo` export or import yet.** The format is the same and round-trips, but
-  there is no UI, and no byte-identical round-trip guarantee.
 - **No `navigator.storage.persist()`**, so a board is still evictable under pressure.
 - **No visible save state** (AC-10). A failed save warns in the console, which is not
   the same as showing it.
@@ -86,6 +84,70 @@ this section asked for.
   no opinion about it and never will.
 - No compaction. The JSON grows with tombstones, and editing a note's text creates one
   per keystroke session (see §7.2).
+- Import refuses a board that already has content. See below.
+
+### 7.1a — `.firo` export and import
+
+Done, and AC-6 passes. Both live in the app's own menu
+(`apps/web/components/AppMainMenu.tsx`), beside "Export image...", because that is the
+same intent and someone looking for one will look near the other.
+
+#### The file format round-trips byte-identically
+
+Every fixture, and every board: export, import, export again, same bytes. This is not
+free, and the reason is worth recording.
+
+`JSON.stringify` emits keys in **insertion order**, and insertion order is a property
+of the *loader's object literals* rather than of the data — a validator that spreads
+`{ ...base }` and overlays normalised fields emits keys in whatever order that
+produces. So `JSON.stringify` cannot support byte-identity: two boards with identical
+content serialise to different bytes, and `git diff` on a board nobody touched shows a
+whole-file rewrite.
+
+`canonicalJson` in `packages/schema/src/fixtures.ts` sorts keys, and is now exported
+as the format's writer rather than kept as a test helper. **One implementation, used
+by the export and by the round-trip tests** — if the file writer and the comparison
+disagreed, "the export round-trips" would mean nothing. The same reasoning retired a
+`JSON.stringify` comparison that was passing on boards which had lost fields, as long
+as both sides happened to order the rest the same way.
+
+Pretty-printing is a recursive walk, not a regular expression over the compact form.
+The regex version was tried first and is shorter; it indents inside strings, so a note
+containing `", {"` comes back with a newline and two spaces in the middle of its text
+and the file stops being what it was exported from. A board is mostly strings someone
+typed, so that is the ordinary case.
+
+#### Import refuses a non-empty board, on purpose
+
+The document is a CRDT: a delete writes a tombstone, and an id cannot be reused
+afterwards. Importing a file into a browser that already has an autosaved board — which
+is every browser, since the autosave exists — means resolving a tombstoned node against
+a new element with the same id, and there is no "replace this element" mutation to
+reach for.
+
+Rewriting the incoming ids works, and was written, and is not what shipped. It renames
+elements, so a note's label and its connector bindings have to be rewritten in the same
+pass or the board draws with detached arrows, and it produces ids the document did not
+mint. That is the kind of damage which is invisible now and obvious later.
+
+So the flow is: export what you have, start a new board, import. Both halves already
+exist and neither can lose anything. The alternative is a merge strategy, which is real
+design and belongs in an ADR rather than in a Friday.
+
+#### The menu the app does not use
+
+Worth knowing before adding a menu item: `LayerUI` has a `DefaultMainMenu`, and it is
+**never rendered**. The app supplies its own menu through `MainMenuTunnel`, which is
+what `__fallback` means.
+
+Two items were added to the fallback list first. They did not appear, produced no
+error, and the action they referred to was registered and present in the action manager
+the whole time — every check said it should be there. The tell was logging the
+children `MainMenu` actually receives: fourteen entries, none of them mine, and
+including `CommandPalette` and `Preferences`, which the fallback list has never had.
+The app's menu has its own composition and it is the one on screen.
+
+So: **`apps/web/components/AppMainMenu.tsx` is the menu.**
 
 ### 7.2 — Compaction
 
