@@ -3,6 +3,51 @@
 **Goal:** a canvas you can actually work on — tools, selection, transforms, binding,
 undo, and full keyboard operation.
 
+## Settled before the phase started
+
+Two questions that were open are now answered by measurement. Both are recorded
+here so they are not re-opened.
+
+### A note's text does reach the document
+
+This was carried as unverified for a long time, because the test for it
+*emulated* the renderer — it hand-built a label with an `originalText` field rather
+than going through what Excalidraw writes when a person types. Verified in the app
+instead: draw a note, double-click it, type, read the document. Three note sizes,
+including one small enough to wrap five times. In every case the document holds
+exactly the string that was typed, with no hard line breaks baked in — which is the
+specific corruption the fold's `originalText` comment warns about.
+
+It did not work at first, and the cause was not what it looked like.
+
+### Editing a note leaves two labels bound to one container
+
+Double-clicking a note does not edit its bound label. It **tombstones the label and
+creates a replacement bound to the same container**:
+
+```
+after draw:     note 3KqHnq + label XcLcXL          (live)
+after dblclick: note 3KqHnq + label gbDe2B (live) + label XcLcXL (deleted)
+```
+
+So for as long as the note lives there are two labels pointing at it. The fold built
+its label lookup with `set()`, which is last-write-wins, so which label supplied the
+note's text depended on scene order. Measured both ways: on a note small enough to
+wrap, the tombstone sorted last and overwrote the live one, and the document held an
+empty string while the canvas showed the text. On a larger note the order came out
+the other way and it worked. Intermittent, and really just ordering.
+
+The fold now skips tombstoned labels. Two tests cover it, one per order, because the
+bug *was* that the answer depended on order — a single test would have passed on
+whichever side of the coin it landed.
+
+**The editor behaviour is still worth a decision.** Tombstoning a label and creating
+another for every edit is churn: a Yjs tombstone per keystroke-session, and a note
+that accumulates dead labels over its life. It is also why this was hard to see —
+the scene is correct, just noisier than it needs to be. Phase 3 should decide whether
+double-click edits the existing bound label instead. Not urgent: it is correct today,
+only wasteful.
+
 ## Exit criterion
 
 - Every tool in the Miro/Excalidraw overlap set works: select, hand, rectangle, ellipse,

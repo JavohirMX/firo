@@ -614,9 +614,21 @@ export const fromEditorElements = (
   elements: readonly ExcalidrawElement[],
 ): FiroElement[] => {
   // Labels first, so a note can find its own without a second pass.
+  //
+  // Only *live* labels. A tombstone is skipped, and that is the whole point:
+  // double-clicking a note to type in it tombstones the note's original label and
+  // creates a replacement bound to the same container, so a note in mid-edit has
+  // two labels pointing at it -- one deleted, one current.
+  //
+  // Taking whichever came last in scene order made note text a coin flip. Measured:
+  // typing "the quick brown fox..." into a note left the document holding an empty
+  // string while the canvas showed the text, because the tombstone sorted last and
+  // overwrote the live label in this map. The same edit on a differently-sized note
+  // happened to keep the text, so it looked intermittent and was really just
+  // scene order.
   const labelByContainer = new Map<string, ExcalidrawTextElement>();
   for (const element of elements) {
-    if (element.type === "text" && element.containerId) {
+    if (element.type === "text" && element.containerId && !element.isDeleted) {
       labelByContainer.set(element.containerId, element);
     }
   }

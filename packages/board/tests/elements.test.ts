@@ -115,6 +115,131 @@ describe("toEditorElements", () => {
     expect(scene).toHaveLength(2);
     expect(scene[1].type).toBe("text");
   });
+
+  /*
+   * The state a note is actually in while its text is being edited.
+   *
+   * Double-clicking a note to type in it does not edit the note's bound label. It
+   * tombstones that label and creates a replacement bound to the same container, so
+   * for as long as the note lives there are two labels pointing at it — one deleted,
+   * one current. Measured in the app, in both directions:
+   *
+   *   after draw:     note 3KqHnq + label XcLcXL (live)
+   *   after dblclick: note 3KqHnq + label gbDe2B (live) + label XcLcXL (deleted)
+   *
+   * Two consequences, both of which the fold has to survive.
+   *
+   * The second label is a real edit in its own right, so a note's text is carried
+   * by whichever of the two the fold happens to pick. And a note can end up with
+   * *no* live label at all — edited to empty — in which case folding a tombstone
+   * would hand back the text the person had just erased.
+   *
+   * The scene order here is the tombstone last, which is the arrangement that
+   * failed. Both orders are covered below, because the bug was that the answer
+   * depended on it.
+   */
+  describe("a note being edited", () => {
+    const editingNote = (opts: {
+      /** The label the editor created to replace the original. */
+      live: { id: string; originalText: string };
+      /** The label it tombstoned. */
+      tombstoned: { id: string; originalText: string };
+    }) => {
+      const scene = toEditorScene([note()]) as unknown as Array<
+        Record<string, unknown>
+      >;
+      const containerId = scene[0].id;
+
+      const label = (id: string, originalText: string, deleted: boolean) => ({
+        ...scene[1],
+        id,
+        containerId,
+        originalText,
+        text: originalText,
+        isDeleted: deleted,
+      });
+
+      const live = label(opts.live.id, opts.live.originalText, false);
+      const dead = label(
+        opts.tombstoned.id,
+        opts.tombstoned.originalText,
+        true,
+      );
+
+      // `order` decides which of the two comes last, which is the whole point.
+      return [scene[0], live, dead];
+    };
+
+    it("reads the live label when the tombstone sorts last", () => {
+      const folded = fromEditorElements(
+        editingNote({
+          live: { id: "new-label", originalText: "hello board" },
+          tombstoned: { id: "old-label", originalText: "" },
+        }) as never,
+      );
+
+      expect(folded).toHaveLength(1);
+      expect(folded[0].type === "stickynote" && folded[0].text).toBe(
+        "hello board",
+      );
+    });
+
+    it("reads the live label when it sorts last", () => {
+      // The same two labels, opposite order. Before the fix this passed by luck.
+      const scene = editingNote({
+        live: { id: "new-label", originalText: "hello board" },
+        tombstoned: { id: "old-label", originalText: "" },
+      });
+      const folded = fromEditorElements([
+        scene[0],
+        scene[2],
+        scene[1],
+      ] as never);
+
+      expect(folded[0].type === "stickynote" && folded[0].text).toBe(
+        "hello board",
+      );
+    });
+
+    it("prefers the live label even when the tombstone still has text", () => {
+      // A label tombstoned while holding the *old* text must not resurrect it. This
+      // is the reverse of the bug: not an empty string, but a stale one.
+      const folded = fromEditorElements(
+        editingNote({
+          live: { id: "new-label", originalText: "edited" },
+          tombstoned: { id: "old-label", originalText: "the original" },
+        }) as never,
+      );
+
+      expect(folded[0].type === "stickynote" && folded[0].text).toBe("edited");
+    });
+
+    it("reports empty text when the live label was erased", () => {
+      // Editing a note to nothing deletes its label and leaves a tombstone. Reading
+      // the tombstone would hand back the text the person just removed.
+      const folded = fromEditorElements(
+        editingNote({
+          live: { id: "new-label", originalText: "" },
+          tombstoned: { id: "old-label", originalText: "something typed" },
+        }) as never,
+      );
+
+      expect(folded[0].type === "stickynote" && folded[0].text).toBe("");
+    });
+
+    it("still produces exactly one document element for the pair", () => {
+      // The asymmetry is the contract: two labels in, one note out. A tombstone is
+      // not a second note.
+      const folded = fromEditorElements(
+        editingNote({
+          live: { id: "new-label", originalText: "x" },
+          tombstoned: { id: "old-label", originalText: "y" },
+        }) as never,
+      );
+
+      expect(folded).toHaveLength(1);
+    });
+  });
 });
 
 describe("fromEditorElements", () => {
