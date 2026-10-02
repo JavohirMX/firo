@@ -62,6 +62,8 @@ The decisions that shaped everything else:
 | [0011](adr/0011-plain-markdown-docs.md) | Plain Markdown docs, separate from inherited `dev-docs/` |
 | [0012](adr/0012-no-ai-in-v1.md) | No AI in version 1 |
 | [0013](adr/0013-replace-the-virgil-font.md) | Replace the Virgil font |
+| [0016](adr/0016-enforce-the-write-path-with-a-proxy.md) | Enforce the write path with a Proxy, not a `beforeTransaction` listener |
+| [0017](adr/0017-do-not-rewrite-the-renderer.md) | Keep the inherited renderer; the rewrite was justified by a measurement artefact |
 
 ## Document conventions
 

@@ -15,13 +15,28 @@ half-finished phases.
 
 ## Commits
 
-**We do not use conventional commits.** The reason for a decision lives in an ADR, not
-in a commit message, so there is nothing for a commit-type prefix to disambiguate.
-
-Write a message that answers **why**, not what. The diff already says what.
+**Subject lines follow Conventional Commits**, enforced by
+[`.husky/commit-msg`](../../.husky/commit-msg):
 
 ```
-Fix the culling index going stale during fast drags
+<type>(<scope>)!: <description>
+```
+
+`type` is from a closed list, `scope` is optional, and `!` marks a breaking change.
+The hook rejects anything else, so there is no judgement call to make at commit time.
+
+**This reverses an earlier decision in this document**, which said the project does not
+use conventional commits and that the reason for a decision belongs in an ADR rather
+than in a commit-type prefix. That reasoning was sound and the conclusion was wrong:
+it was tried, and 36 commits of unpaced `git log --oneline` is a wall of text where
+`git log --oneline --grep '^fix'` answers a question instantly. The ADR still holds
+the reasoning; only the format changed.
+
+**The body still answers *why*, not what.** The diff already says what, and the subject
+line is a label rather than a sentence. This part did not change:
+
+```
+fix(element): keep the culling index coherent during fast drags
 
 The spatial index was updated in an effect, which runs after paint. A drag
 moving faster than one frame therefore queried an index that did not yet
@@ -30,19 +45,17 @@ contain the element's new position, and the element vanished for a frame.
 Moving the update into the mutation itself removes the window entirely.
 
 Elements no longer flicker when dragged at speed. Verified with the 10k-element
-scene at 60fps.
+scene at 60fps, windowed, on an otherwise idle machine.
 ```
 
-Not:
-
-```
-fix: update spatial index in mutation instead of effect
-```
+The subject line is a label. The body is where the reasoning lives, and the last
+paragraph of the body is where the verification goes — including the conditions the
+measurement needed, because a number without its environment is not evidence.
 
 **Reference the ADR** when a change implements or constrains one:
 
 ```
-Add the record projection interface
+feat(records): add the board projection over the record store
 
 Implements the interface described in ADR-0003. The board projection is the
 first implementation; table and grid follow.
