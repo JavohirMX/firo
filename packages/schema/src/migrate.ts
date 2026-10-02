@@ -546,6 +546,76 @@ export const loadBoard = (input: unknown): LoadedBoard => {
 };
 
 /**
+ * Drop a board's tombstones, for writing to a *file*.
+ *
+ * ## Why this exists and why it is not just "the serialiser"
+ *
+ * The document keeps a tombstone for every deleted element, and
+ * `doc.read()` returns them. That is correct and it is load-bearing: the document is a
+ * CRDT, a tombstone is what stops a stale write from resurrecting a deleted element,
+ * and it is what lets an undone deletion be restored. **The autosave must keep them**,
+ * and nothing in this function should be applied to that path.
+ *
+ * A *file* is a different thing. It is a snapshot handed to a person, not a replica of
+ * a live document, and the two things a tombstone buys are both absent from it:
+ *
+ * - **Undo history.** Not in the file at all. `serializeBoard` has never carried a
+ *   history, so a tombstone in a file restores nothing — there is no stack to push it
+ *   onto.
+ * - **Resurrection protection.** Only matters when something else holds stale writes
+ *   about the same document. A file on disk has no concurrent writer.
+ *
+ * What a tombstone *costs* in a file is unbounded growth. Measured: create five notes,
+ * delete two, and the export carries all five. Every edit-and-undo adds another, and
+ * nothing ever removes them, so a board someone worked on for a week is mostly dead
+ * elements — and `git diff` on a board nobody touched still churns.
+ *
+ * ## What is *not* compacted, and why
+ *
+ * **Archived records.** `archived: true` is a state, not a tombstone: the projection
+ * can bring the record back, which is the stated reason for archiving rather than
+ * deleting. Dropping it would lose a card someone deliberately removed from a board
+ * *view* but not from the board.
+ *
+ * ## Determinism
+ *
+ * Pure, order-preserving and idempotent, so an exported board still round-trips
+ * byte-identically and compacting an already-compact board changes nothing. `git diff`
+ * depends on that as much as it depends on the canonical key order.
+ */
+export const compactBoard = (board: SerializedBoard): SerializedBoard => {
+  const live = board.elements.filter(
+    (element) =>
+      !plainObject(element) ||
+      (element as { isDeleted?: unknown }).isDeleted !== true,
+  );
+
+  if (live.length === board.elements.length) {
+    // Already compact. Returning the same object rather than a copy keeps
+    // idempotence obvious, and avoids rebuilding a large board for nothing.
+    return board;
+  }
+
+  /*
+   * `elementOrder` is filtered to the ids that survived, in the same order.
+   *
+   * `loadBoard` would cope with a dangling id — it drops one that matched no element
+   * and reports it — but it would do so by *reporting*, which means the warning fires
+   * on every load of a perfectly valid file. A file this function writes should be one
+   * `loadBoard` has nothing to complain about.
+   */
+  const surviving = new Set(
+    live.map((element) => (element as { id?: unknown }).id),
+  );
+
+  return {
+    ...board,
+    elements: live,
+    elementOrder: (board.elementOrder ?? []).filter((id) => surviving.has(id)),
+  };
+};
+
+/**
  * Serialise a board.
  *
  * The inverse of `loadBoard`, and written as its own function rather than as

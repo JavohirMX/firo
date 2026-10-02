@@ -82,9 +82,12 @@ this section asked for.
   should be removed, in its own commit where the reload behaviour can be verified on
   its own. Its `appState` half — zoom, theme, scroll — stays; the document model has
   no opinion about it and never will.
-- No compaction. The JSON grows with tombstones, and editing a note's text creates one
-  per keystroke session (see §7.2).
 - Import refuses a board that already has content. See below.
+- §7.2 compaction is answered for the *file* (see above) but not for the document
+  itself. The autosave grows with tombstones indefinitely, which is correct for a CRDT
+  and wrong for a long-lived board: a year of edits accumulates dead elements that are
+  rewritten on every save. That is a document-level compaction — rewriting the Yjs
+  history — and it is a different piece of work from dropping tombstones on export.
 
 ### 7.1a — `.firo` export and import
 
@@ -116,6 +119,49 @@ The regex version was tried first and is shorter; it indents inside strings, so 
 containing `", {"` comes back with a newline and two spaces in the middle of its text
 and the file stops being what it was exported from. A board is mostly strings someone
 typed, so that is the ordinary case.
+
+#### Tombstones: kept in the autosave, dropped from the file
+
+The question the format could not answer by default, now settled. `doc.read()` returns
+deleted elements, so `serializeBoard` writes them — and for the autosave it must.
+
+The two paths want opposite things, and getting either wrong is silent:
+
+| | tombstones | why |
+| --- | --- | --- |
+| **autosave** | **kept** | the document is a CRDT. A tombstone stops a stale write resurrecting a deleted element, and it is what lets an undone deletion be restored after a reload. |
+| **`.firo` file** | **dropped** | a file is a snapshot, not a replica. It carries no undo history for a tombstone to restore, and has no concurrent writer for one to protect against. |
+
+What a tombstone costs in a file is unbounded growth. Measured before this: five notes
+with two deleted exported all five. Every edit-and-undo added another and nothing ever
+removed them — so a board someone worked on for a week was mostly dead elements, and
+`git diff` on a board nobody touched still churned.
+
+`compactBoard` in `@firo/schema` does it, and it is a **named function rather than a flag
+on the serialiser** so the autosave cannot pick it up by accident. The autosave calls
+`serializeBoard` and does not know compaction exists; the file calls `compactBoard` and
+has to ask for it.
+
+What it does *not* compact, which is the mistake available in the other direction:
+**archived records.** `archiveRecords` exists *because* deleting is wrong for a record —
+archiving takes it out of a projection's view and lets it come back. Compacting it would
+lose a card someone deliberately removed from a board *view* but not from the board, and
+unlike an element tombstone there is no flag saying "this was temporary".
+
+It also filters `elementOrder`, not just `elements`. `loadBoard` copes with a dangling id
+by dropping it *and reporting it*, so a file with one would warn on every load. A file
+this function writes should be one `loadBoard` has nothing to complain about.
+
+Verified in the app — six shapes, three undone, so three live and three tombstoned:
+
+```
+document / autosave:  6 elements, 3 tombstones   (kept)
+.firo file:           3 elements, 0 tombstones   (dropped), elementOrder 3
+```
+
+Both directions are tested through the app's own paths rather than by inspecting a
+serialised string, because the two paths differ by one call and a test that only checked
+one would pass with the other broken.
 
 #### Import refuses a non-empty board, on purpose
 

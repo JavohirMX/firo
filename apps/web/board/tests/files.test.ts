@@ -3,6 +3,7 @@ import { createFiroDoc } from "@firo/doc";
 import { createStickyNote } from "@firo/board/defaults";
 
 import { exportBoard, exportFilename, importBoard, parseBoard } from "../files";
+import { restoreBoard, saveBoard } from "../storage";
 
 /*
  * `.firo` files, in and out.
@@ -196,6 +197,74 @@ describe("the AC-6 round trip", () => {
     importBoard(reloaded, bytesOf(original).bytes);
 
     expect(bytesOf(reloaded).bytes).toBe(bytesOf(original).bytes);
+  });
+});
+
+describe("tombstones: kept in the autosave, dropped from the file", () => {
+  /*
+   * The split, asserted from both sides at once, because getting it backwards in either
+   * direction is silent and bad:
+   *
+   * - Compact the autosave and an undone element cannot be brought back, and a stale
+   *   write can resurrect a deleted one. The document is a CRDT; the tombstone is load-
+   *   bearing.
+   * - Keep tombstones in the file and it grows without bound. Measured before this
+   *   existed: five notes with two deleted exported all five, and every edit-and-undo
+   *   added another.
+   *
+   * The two paths differ by one call — `compactBoard` — and by nothing else, so a test
+   * that only checked one of them would pass with the other broken.
+   */
+  const seeded = () => {
+    const doc = board();
+    seed(doc, 4);
+    doc.commit([{ kind: "deleteElements", ids: ["n1", "n2"] }]);
+    return doc;
+  };
+
+  it("drops deleted elements from an exported file", () => {
+    const doc = seeded();
+    expect(doc.read().elements).toHaveLength(4); // including the two tombstones
+
+    const bytes = bytesOf(doc).bytes;
+    const parsed = JSON.parse(bytes);
+
+    expect(parsed.elements).toHaveLength(2);
+    expect(
+      parsed.elements.every(
+        (element: { isDeleted?: boolean }) => !element.isDeleted,
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps them in the autosave, where they are load-bearing", async () => {
+    // The other direction, through the real persistence path rather than by
+    // inspecting a serialised string. An undone element has to still be restorable
+    // after a reload, and that works only if the tombstone survived.
+    const doc = seeded();
+    await saveBoard(doc);
+
+    const restored = board();
+    await restoreBoard(restored);
+    const elements = restored.read().elements;
+
+    expect(elements).toHaveLength(4);
+    expect(elements.filter((element) => element.isDeleted)).toHaveLength(2);
+  });
+
+  it("round-trips the live half of a board that has tombstones", () => {
+    // The point of compacting: what the file *does* carry must still be everything
+    // that is actually on the canvas. Compaction drops dead elements, not live ones.
+    const doc = seeded();
+    const file = bytesOf(doc).bytes;
+
+    const reloaded = board();
+    importBoard(reloaded, file);
+
+    const live = reloaded
+      .read()
+      .elements.filter((element) => !element.isDeleted);
+    expect(live.map((element) => element.id)).toEqual(["n0", "n3"]);
   });
 });
 

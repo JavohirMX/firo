@@ -40,7 +40,12 @@
  * is a merge strategy, which is a real piece of design and belongs in an ADR rather
  * than in a Friday.
  */
-import { loadBoard, serializeBoard, serializeBoardFile } from "@firo/schema";
+import {
+  compactBoard,
+  loadBoard,
+  serializeBoard,
+  serializeBoardFile,
+} from "@firo/schema";
 
 import type { FiroDoc } from "@firo/doc";
 
@@ -105,10 +110,22 @@ export const exportFilename = (now: Date = new Date()): string => {
  */
 export const exportBoard = (doc: FiroDoc, now?: Date): ExportResult => {
   try {
+    /*
+     * Compacted, and *only* here.
+     *
+     * The autosave deliberately keeps tombstones: the document is a CRDT, a tombstone
+     * is what stops a stale write resurrecting a deleted element, and it is what lets
+     * an undone deletion be restored. A file is a snapshot, not a replica — it carries
+     * no undo history for a tombstone to restore and has no concurrent writer for one
+     * to protect against — so a tombstone in a file is pure growth.
+     *
+     * Measured: five notes with two deleted exported all five. Every edit-and-undo
+     * added another, and `git diff` on a board nobody touched still churned.
+     */
     return {
       ok: true,
       filename: exportFilename(now),
-      bytes: serializeBoardFile(serializeBoard(doc.read())),
+      bytes: serializeBoardFile(compactBoard(serializeBoard(doc.read()))),
     };
   } catch (error) {
     return {
