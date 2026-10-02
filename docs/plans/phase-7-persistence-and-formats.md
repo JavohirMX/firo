@@ -89,6 +89,35 @@ this section asked for.
   rewritten on every save. That is a document-level compaction — rewriting the Yjs
   history — and it is a different piece of work from dropping tombstones on export.
 
+#### The export refuses a board with an image, on purpose
+
+`image` reached the document model after the rest of this section was written, and it
+is the first element type whose *content* is not in the document.
+
+An image element holds a content-addressed reference into the asset store
+(`@firo/doc`'s `library.ts`), and the store is a separate IndexedDB database — the
+right call, since bytes inside a CRDT update are broadcast on every sync. But a
+`.firo` file is a single JSON document, so it can carry the reference and not the
+picture.
+
+So the export **refuses** rather than writing a file that imports cleanly and draws a
+broken image, with nothing in either file saying so. That is the silent-loss failure
+this section exists to prevent, arriving from a direction it did not anticipate: the
+element survives, its content does not. A tombstoned image does not count — it is not
+in the file either, and counting it would make a board unexportable for ever after
+somebody deleted a picture from it.
+
+**This is a position, not the fix.** §7.3 specifies the fix — a manifest, a
+`board.json`, and a content-addressed `assets/` directory — and that is a *different
+file layout* from the single canonical JSON that round-trips byte-identically and
+diffs legibly. Both properties are wanted and they are in tension: a `.firo` that is
+one file cannot carry its assets, and a `.firo` that is a directory is no longer one
+download. Choosing between them is real design and belongs in an ADR, so the refusal
+stands in the meantime and makes the gap visible rather than silent.
+
+Covered by `apps/web/board/tests/files.test.ts`, including the tombstone case and a
+board of frames, which carries no assets and must keep exporting normally.
+
 ### 7.1a — `.firo` export and import
 
 Done, and AC-6 passes. Both live in the app's own menu

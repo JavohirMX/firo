@@ -108,7 +108,19 @@ export const registerFileActions = (
       const result = exportBoard(getDocument());
 
       if (!result.ok) {
-        complain(api, `The board could not be exported: ${result.detail}`);
+        /*
+         * The two failures need different words. "Could not be exported" describes a
+         * transient problem — a quota, a serialisation bug — and invites a retry. The
+         * asset case is not transient and not an error in the board: the format does
+         * not carry image bytes yet, so saying so is the whole message, and a retry
+         * would only produce the same refusal.
+         */
+        complain(
+          api,
+          result.reason === "assets-not-carried"
+            ? `This board cannot be exported yet. ${result.detail}`
+            : `The board could not be exported: ${result.detail}`,
+        );
         return false;
       }
 

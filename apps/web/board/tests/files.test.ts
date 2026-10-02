@@ -59,6 +59,144 @@ describe("export", () => {
     expect(bytesOf(doc).bytes).toBe(bytesOf(doc).bytes);
   });
 
+  describe("refuses a board it cannot export without losing something", () => {
+    /*
+     * An image element holds a content-addressed *reference* into the asset store,
+     * and the store is a separate IndexedDB database from the document — deliberately,
+     * since bytes inside a CRDT update are broadcast on every sync. A `.firo` file is a
+     * single JSON document, so it can carry the reference and not the picture.
+     *
+     * Which means an export of a board with an image on it would produce a file that
+     * imports cleanly and draws a broken picture, with nothing in either file saying
+     * so. That is the silent-loss failure this module exists to avoid, arriving from a
+     * new direction: the element survives, its content does not.
+     *
+     * So the export refuses. A visible "this board cannot be exported yet" is a
+     * limitation somebody can report; a file that looks complete and is not is a trap
+     * laid for whoever opens it in six months. Phase 7 §7.3's manifest-and-assets
+     * directory is what fixes it properly, and choosing between that and this file's
+     * single canonical JSON is a decision for an ADR rather than for this file.
+     */
+
+    const image = (id: string, over: Record<string, unknown> = {}) => ({
+      id,
+      type: "image",
+      x: 0,
+      y: 0,
+      width: 320,
+      height: 240,
+      angle: 0,
+      fileId: "abc123",
+      status: "saved",
+      scale: [1, 1],
+      crop: null,
+      strokeColor: "#1e1e1e",
+      backgroundColor: "transparent",
+      fillStyle: "solid",
+      strokeWidth: 2,
+      strokeStyle: "solid",
+      roundness: null,
+      roughness: 1,
+      opacity: 100,
+      version: 1,
+      versionNonce: 1,
+      index: "a0",
+      isDeleted: false,
+      groupIds: [],
+      frameId: null,
+      containerId: null,
+      bindings: [],
+      link: null,
+      locked: false,
+      created: 1,
+      updated: 2,
+      ...over,
+    });
+
+    it("refuses a board with an image, and says why", () => {
+      const doc = board();
+      doc.commit([{ kind: "createElement", element: image("im1") as never }]);
+
+      const result = exportBoard(doc);
+
+      expect(result.ok).toBe(false);
+      expect(result.ok === false && result.reason).toBe("assets-not-carried");
+      expect(result.ok === false && result.detail).toMatch(/1 image/);
+    });
+
+    it("distinguishes an image with no stored file from one with", () => {
+      // The pending case: placed on the board, bytes not read yet. That image is
+      // missing from the board's *own* copy as well as from any file, and a person
+      // reading the message needs to be able to tell those two situations apart.
+      const doc = board();
+      doc.commit([
+        {
+          kind: "createElement",
+          element: image("im1", { fileId: null, status: "pending" }) as never,
+        },
+      ]);
+
+      const result = exportBoard(doc);
+      expect(result.ok === false && result.detail).toMatch(/no stored file/);
+    });
+
+    it("says the autosave is unaffected, because it is", () => {
+      // The refusal is about the *file*. The board still autosaves, and the bytes are
+      // still in the asset store. A message that implied otherwise would push someone
+      // to delete the board.
+      const doc = board();
+      doc.commit([{ kind: "createElement", element: image("im1") as never }]);
+
+      const result = exportBoard(doc);
+      expect(result.ok === false && result.detail).toMatch(
+        /autosave is unaffected/,
+      );
+    });
+
+    it("does not count a tombstoned image, which is not on the board", () => {
+      // An exported file is a snapshot and drops tombstones, so a deleted image is not
+      // in it. Refusing over a deleted image would make a board unexportable for ever
+      // after someone removed a picture from it — which is the opposite of a fix.
+      const doc = board();
+      doc.commit([{ kind: "createElement", element: image("im1") as never }]);
+      doc.commit([{ kind: "deleteElements", ids: ["im1" as never] }]);
+
+      expect(exportBoard(doc).ok).toBe(true);
+    });
+
+    it("exports a board with no images, unchanged", () => {
+      // The ordinary case must not regress. `bytesOf` throws if the export refuses, so
+      // reaching the assertion is itself the test.
+      const doc = board();
+      seed(doc, 2);
+
+      expect(exportBoard(doc).ok).toBe(true);
+    });
+
+    it("exports a board of frames, which carry no assets", () => {
+      // A frame is geometry and a name, so it goes in a file like any other element.
+      // Only images hit the refusal.
+      const doc = board();
+      doc.commit([
+        {
+          kind: "createElement",
+          element: {
+            ...image("fr1"),
+            type: "frame",
+            name: "Discovery",
+            fileId: undefined,
+            status: undefined,
+            scale: undefined,
+            crop: undefined,
+          } as never,
+        },
+      ]);
+
+      const result = exportBoard(doc);
+      expect(result.ok).toBe(true);
+    });
+  });
+
   it("writes bytes that parse back into the same board", () => {
     const doc = board();
     seed(doc, 4);

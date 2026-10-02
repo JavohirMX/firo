@@ -108,6 +108,11 @@ export const asElementId = (id: string): ElementId => id as ElementId;
  * board the user can draw a rectangle on is a board whose rectangle the document
  * does not have, which is one store's worth of content one save away from being
  * lost.
+ *
+ * In introduction order, which is also the order the fold gained the ability to
+ * read each one. `frame` and `image` closed the last asymmetry: the renderer could
+ * draw both and the document could hold neither, so a board could contain a frame
+ * or a picture that no file, no autosave and no sync update would ever mention.
  */
 export const ELEMENT_TYPES = [
   "stickynote",
@@ -118,6 +123,8 @@ export const ELEMENT_TYPES = [
   "line",
   "freedraw",
   "text",
+  "frame",
+  "image",
 ] as const;
 
 export type ElementType = typeof ELEMENT_TYPES[number];
@@ -502,12 +509,105 @@ export type TextElement = Omit<ElementBase, "text"> &
 /** Which of the two. */
 export type LinearType = LinearElement["type"];
 
+/**
+ * A frame: a named region of the board, and a container.
+ *
+ * ## Why this type needs one field and not three
+ *
+ * A frame is geometry and a name. Everything else a frame does, the base already
+ * carries, which is the reason it is a small type rather than a large one:
+ *
+ * - **Membership** is `frameId` on the element inside the frame. Inherited.
+ * - **Nesting** is `frameId` on a frame, plus `containerId` for the general
+ *   container case ([ADR-0007](../../../docs/adr/0007-arbitrary-container-nesting.md)).
+ * - **Ordering and z-order** is `index`. Inherited.
+ *
+ * So a frame is `ElementBase` and a `name`. Adding a `children` array would be a
+ * second source of truth for something `frameId` already says, and the two would
+ * disagree the first time an element moved between frames.
+ *
+ * `name` is nullable because `null` is a real state — a frame nobody has named yet —
+ * and a validator that turned it into `""` would make "unnamed" and "named with
+ * nothing in it" the same value.
+ */
+export type FrameElement = ElementBase &
+  Readonly<{
+    type: "frame";
+    /** Inherited from Excalidraw. `null` is an unnamed frame. */
+    name: string | null;
+  }>;
+
+/**
+ * An image: a placed picture, referenced rather than embedded.
+ *
+ * ## The bytes are not here, and that is the design
+ *
+ * `fileId` is a content-addressed reference into the asset store, not data. A 2 MB
+ * image inside a CRDT update is broadcast on every sync and duplicated in every
+ * peer, and the CRDT's own efficiency is irrelevant next to that — the same
+ * reasoning that keeps assets out of the document in the first place, recorded in
+ * [`../../packages/doc/src/library.ts`](../../packages/doc/src/library.ts).
+ *
+ * **The consequence is that a `.firo` file holding an image is not self-contained**,
+ * and that is a property of the format rather than a defect in the type. The file
+ * writer refuses to emit a board whose asset bytes it cannot carry, rather than
+ * writing a reference to something the file does not contain. Making the format
+ * carry the bytes — a manifest and a content-addressed assets directory, per
+ * `docs/plans/phase-7-persistence-and-formats.md` §7.3 — is separate work, and the
+ * refusal is what makes its absence visible rather than silent.
+ *
+ * ## `status` is inherited and is not about the document
+ *
+ * It is Excalidraw's "whether the respective file is persisted", and it is stored
+ * because the renderer's field set and the document's must be identical for the
+ * conformance test to mean anything. It describes the *editor's* relationship with
+ * its own blob store. The document's own truth is whether `fileId` resolves in the
+ * asset store, which is a question about a different store entirely.
+ */
+export type ImageElement = ElementBase &
+  Readonly<{
+    type: "image";
+    /** Content-addressed reference into the asset store. Never bytes. */
+    fileId: string | null;
+    /** Inherited. Whether the editor has persisted the file it is holding. */
+    status: "pending" | "saved" | "error";
+    /**
+     * Per-axis scale, each in `(-1, 1)`, for flipping.
+     *
+     * A pair rather than a scalar because the axes are independent: a mirrored
+     * image is `[-1, 1]`, and one number could not say that.
+     */
+    scale: readonly [number, number];
+    /** The crop window and the image's natural size, or `null` for uncropped. */
+    crop: ImageCrop | null;
+  }>;
+
+/**
+ * A crop window, with the natural size it was taken from.
+ *
+ * Inherited from the renderer's `ImageCrop` verbatim, including carrying the
+ * natural dimensions on the crop itself. They look derivable from the asset and are
+ * not: the asset is addressed by hash and knows nothing about how it was placed, so
+ * without them a cropped image cannot be re-cropped to a different window after a
+ * reload without decoding the original first.
+ */
+export type ImageCrop = Readonly<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  naturalWidth: number;
+  naturalHeight: number;
+}>;
+
 export type FiroElement =
   | StickyNoteElement
   | ShapeElement
   | LinearElement
   | FreedrawElement
-  | TextElement;
+  | TextElement
+  | FrameElement
+  | ImageElement;
 
 /** Narrowing helper, so callers do not repeat the discriminant check. */
 export const isElementType = <T extends ElementType>(

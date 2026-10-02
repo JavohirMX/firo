@@ -35,7 +35,9 @@ import { ELEMENT_TYPES } from "../src/types.js";
 import type {
   ElementBase,
   ElementType,
+  FrameElement,
   FreedrawElement,
+  ImageElement,
   LinearElement,
   ShapeElement,
   StickyNoteElement,
@@ -76,6 +78,8 @@ type ByType = {
   line: LinearElement;
   freedraw: FreedrawElement;
   text: TextElement;
+  frame: FrameElement;
+  image: ImageElement;
 };
 
 /**
@@ -118,6 +122,8 @@ describe("ADR-0004: no text field is a plain string", () => {
     const line: Acceptable<"line"> = true;
     const freedraw: Acceptable<"freedraw"> = true;
     const text: Acceptable<"text"> = true;
+    const frame: Acceptable<"frame"> = true;
+    const image: Acceptable<"image"> = true;
 
     // Referenced so the assertions are not read as unused.
     expect([
@@ -129,19 +135,30 @@ describe("ADR-0004: no text field is a plain string", () => {
       line,
       freedraw,
       text,
-    ]).toHaveLength(8);
+      frame,
+      image,
+    ]).toHaveLength(10);
   });
 
   it("covers every type in ELEMENT_TYPES, so a new type cannot slip past", () => {
     // The assertion above is a fixed list, which means a type added to the registry
     // would simply not be checked. This one closes that gap: the fixed list must
     // account for the whole set.
+    //
+    // `frame` and `image` are here because a frame has a *name* and a label drawn from
+    // it, and somebody reading this file in a year should have to decide whether a
+    // frame's name is a text field before adding a third exception rather than
+    // assuming it is not one. The answer for both is that neither carries `text` at
+    // all: a frame's name is a short identifier, not content, and an image's content
+    // is its bytes.
     expect([...ELEMENT_TYPES].sort()).toEqual(
       [
         "arrow",
         "diamond",
         "ellipse",
+        "frame",
         "freedraw",
+        "image",
         "line",
         "rectangle",
         "stickynote",

@@ -188,17 +188,55 @@ describe("shape fold", () => {
 
   it("still skips a type the document has no schema for", () => {
     /*
-     * The gap is narrowing: `image` and `frame` are not types yet. Skipping beats
-     * throwing -- throwing would freeze the board over something the user can see
-     * -- but it is a hole, not a virtue.
+     * A hole, not a virtue — but a necessary one. A board may legitimately hold an
+     * element type this version does not understand, and skipping beats throwing:
+     * throwing would freeze the board's sync over something the user can plainly see.
      *
-     * This named `freedraw` for a long time, which was right when written and
-     * quietly wrong once `freedraw` gained a schema. It kept passing: the element
-     * was a rectangle relabelled, so the shape branch skipped it for lack of
-     * points, and the assertion held for a reason that had nothing to do with the
-     * schema. `freedraw.test.ts` covers the type this used to stand in for.
+     * This named `freedraw` for a long time, then `image`, and each was right when
+     * written and quietly wrong once that type gained a schema. It kept passing both
+     * times: the element was a rectangle relabelled, so the shape branch skipped it
+     * for lack of the fields it was pretending to have, and the assertion held for a
+     * reason that had nothing to do with the schema. A test that keeps passing after
+     * the thing it describes stops being true is worse than one that fails, because
+     * it looks like coverage.
+     *
+     * So it names `selection` now, which is the honest example and will not be given
+     * a schema: a rubber-band rectangle is UI state, and rule 1 in AGENTS.md is that
+     * ephemeral state never enters the document. `embeddable`, `iframe` and
+     * `magicframe` are the other three, and `conformance.test.ts` holds that list.
      */
-    const image = { ...editorShape("rectangle"), type: "image" };
-    expect(fromEditorElements([image] as never)).toHaveLength(0);
+    const selection = { ...editorShape("rectangle"), type: "selection" };
+    expect(fromEditorElements([selection] as never)).toHaveLength(0);
+  });
+
+  it("does not skip anything a person can draw with the toolbar", () => {
+    /*
+     * The assertion that would have caught `image` and `frame` when the fold was
+     * skipping them, rather than when somebody exported a board and found the
+     * picture missing from the file.
+     *
+     * Derived rather than hand-written, so a new type cannot be added to the toolbar's
+     * reach without this failing. A hand-written list catches a field somebody thought
+     * of, which is how four were missed at once in `EDITOR_OWNED_FIELDS`.
+     */
+    const drawable = [
+      "rectangle",
+      "diamond",
+      "ellipse",
+      "arrow",
+      "line",
+      "freedraw",
+      "text",
+      "frame",
+      "image",
+    ] as const;
+
+    const skipped = drawable.filter(
+      (type) =>
+        fromEditorElements([{ ...editorShape("rectangle"), type }] as never)
+          .length === 0,
+    );
+
+    expect(skipped).toEqual([]);
   });
 });

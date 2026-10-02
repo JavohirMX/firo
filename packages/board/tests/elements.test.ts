@@ -104,7 +104,14 @@ describe("toEditorElements", () => {
 
   it("refuses a type it cannot draw rather than dropping it", () => {
     // Silently skipping is how a board loses content without anyone noticing.
-    expect(() => toEditorElements({ type: "frame" } as never)).toThrow(
+    //
+    // `magicframe` rather than `frame`: this named `frame` for as long as frames had
+    // no schema, and kept passing for the wrong reason once they did — the projection
+    // walked into the frame branch and then threw on a missing `bindings` array, which
+    // matched neither the assertion nor the message. A guard that fires for an
+    // unrelated reason is not a guard, so the example is now a type that will not gain
+    // a schema: Excalidraw's AI frame, which ADR-0012 keeps out of v1.
+    expect(() => toEditorElements({ type: "magicframe" } as never)).toThrow(
       /cannot draw/,
     );
   });
@@ -424,20 +431,23 @@ describe("fromEditorElements", () => {
 
   it("skips a type the document has no schema for, rather than failing the whole sync", () => {
     /*
-     * The gap is real and shrinking: `image` and `frame` are not types yet, so a
-     * picture or a frame a user drops is not in their document. Skipping beats
-     * throwing -- throwing would freeze the board over something the user can
-     * see -- but it is a hole, not a virtue.
+     * A necessary hole. A board may legitimately hold an element type this version
+     * does not understand, and skipping beats throwing — throwing would freeze the
+     * board's sync over something the user can plainly see.
      *
-     * This used to name `freedraw`, which was correct when written and stopped
-     * being correct the moment `freedraw` gained a schema. It then asserted that a
-     * type the document fully supports is skipped, and it passed for the wrong
-     * reason: the branch it hit was a shape's, which skipped it because the shape
-     * branch had no points. A test that keeps passing after the thing it describes
-     * stops being true is worse than one that fails, because it looks like
-     * coverage.
+     * This has now named three types in a row, and each was right when written and
+     * wrong once that type gained a schema: `freedraw`, then `image`. Both times it
+     * kept passing for the wrong reason — the element was a bare object with no
+     * points, so the shape branch skipped it — and a test that keeps passing after the
+     * thing it describes stops being true is worse than one that fails, because it
+     * looks like coverage.
+     *
+     * `selection` is the example now, and it is not going anywhere: a rubber-band
+     * rectangle is UI state, and rule 1 in AGENTS.md is that ephemeral state never
+     * enters the document. `conformance.test.ts` holds the full list of types the
+     * document declines, and this is one of them.
      */
-    const foreign = { type: "image", id: "r1" } as never;
+    const foreign = { type: "selection", id: "r1" } as never;
     expect(fromEditorElements([foreign])).toHaveLength(0);
   });
 
@@ -459,13 +469,55 @@ describe("fromEditorElements", () => {
     ).toBe(true);
   });
 
-  it("preserves containerId through customData", () => {
-    // Firo nests shapes; Excalidraw has no field for it, so it rides in
-    // customData. Losing it would be silent data loss the day sections exist.
+  it("preserves containerId through customData, as the field and not a copy", () => {
+    /*
+     * Firo nests anything in anything (ADR-0007); Excalidraw shapes have no field for
+     * it, so it rides in `customData` on the way to the canvas and has to be lifted
+     * back out on the way home.
+     *
+     * This asserted the wrong thing for a long time. It checked that the value
+     * survived *inside* `customData` under `firo.containerId`, which it did — the fold
+     * wrote the key it was given and the key was never read. So the value was never
+     * destroyed and nothing looked broken, while the document's `containerId` field
+     * was `undefined` from the first fold onward.
+     *
+     * Measured over four trips, one shape in a section:
+     *
+     *     cycle 0: containerId="sec1"   customData=undefined
+     *     cycle 1: containerId=undefined customData={"firo.containerId":"sec1"}
+     *
+     * It survived in a place nothing reads. The field is what ADR-0007 is about and
+     * what anything computing a container's children will look at, and Phase 4 is that
+     * consumer — so this would have surfaced as nesting that renders and then quietly
+     * stops nesting.
+     *
+     * Asserted on both halves now: the field is set, *and* the duplicate is gone. Two
+     * representations of one value can disagree, which is the same argument that keeps
+     * a frame from also listing its children.
+     */
     const { folded } = roundTrip({ containerId: asElementId("section7") });
+
+    expect(folded.containerId).toBe("section7");
     expect(
-      (folded.customData as Record<string, unknown>)["firo.containerId"],
-    ).toBe("section7");
+      (folded.customData as Record<string, unknown> | undefined)?.[
+        "firo.containerId"
+      ],
+    ).toBeUndefined();
+  });
+
+  it("still keeps a host application's own customData alongside a containerId", () => {
+    // The lift must take Firo's key and nothing else. Dropping the whole object would
+    // be the other way to break it, and less visibly: an application that stashed
+    // something on an element would find it gone after a reload.
+    const { folded } = roundTrip({
+      containerId: asElementId("section7"),
+      customData: { "app.example": 7 },
+    });
+
+    expect(folded.containerId).toBe("section7");
+    expect((folded.customData as Record<string, unknown>)["app.example"]).toBe(
+      7,
+    );
   });
 
   it("leaves a host application's customData alone", () => {

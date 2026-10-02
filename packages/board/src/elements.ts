@@ -42,7 +42,10 @@ import type {
   Binding,
   ElementId,
   FiroElement,
+  FrameElement,
   FreedrawElement,
+  ImageCrop,
+  ImageElement,
   LinearElement,
   ShapeElement,
   StickyNoteElement,
@@ -63,6 +66,55 @@ import type {
  * it cannot collide with a host application's own keys.
  */
 const CONTAINER_ID_KEY = "firo.containerId";
+
+/**
+ * Split an editor element's `customData` into Firo's `containerId` and everything else.
+ *
+ * ## Why this is one function and not seven destructurings
+ *
+ * It was seven, each written as `const { containerId, ...rest } = element.customData` —
+ * reading a key literally named `containerId` from an object whose only key is
+ * `firo.containerId`. Every one of them found `undefined`, so the document's
+ * `containerId` was never set on the way back.
+ *
+ * Measured, projecting and folding one shape four times:
+ *
+ * ```
+ * cycle 0: containerId="sec1"  customData=undefined
+ * cycle 1: containerId=undefined customData={"firo.containerId":"sec1"}
+ * cycle 2: containerId=undefined customData={"firo.containerId":"sec1"}
+ * ```
+ *
+ * The value was never destroyed — it rode along in `customData` — so the existing test
+ * asserting it was "preserved" passed, and nothing looked broken. But the *field* was
+ * gone from the first fold onward, which is the field ADR-0007 and rule 4 in
+ * `AGENTS.md` are about, and the field anything reading a container's children will
+ * look at. It survived in a place nobody reads.
+ *
+ * So it is lifted out here, once, and the duplicate is **removed** rather than left
+ * behind. Leaving it would be two representations of one value that could disagree,
+ * which is the same argument that keeps a frame from also listing its children.
+ *
+ * A note's own text is not affected: Excalidraw's `containerId` on a text element
+ * means "this is a bound label", which the fold handles by consuming the element
+ * before it ever reaches here. This key is Firo's own and means nesting.
+ */
+const splitCustomData = (element: {
+  customData?: Record<string, unknown>;
+}): {
+  containerId?: ElementId;
+  customData?: Record<string, unknown>;
+} => {
+  const { [CONTAINER_ID_KEY]: rawContainerId, ...rest } =
+    element.customData ?? {};
+
+  return {
+    ...(typeof rawContainerId === "string"
+      ? { containerId: rawContainerId as ElementId }
+      : {}),
+    ...(Object.keys(rest).length ? { customData: rest } : {}),
+  };
+};
 
 /**
  * The id given to a note's bound label.
@@ -214,6 +266,36 @@ export const EDITOR_OWNED_FIELDS = [
   "endArrowhead",
   "polygon",
   "elbowed",
+  /*
+   * A frame's name.
+   *
+   * One field, and it is here for the same reason as every other entry: a rename
+   * that is not in this list compares equal on everything that is, so the push is
+   * discarded as an echo and the frame keeps the name it was created with while the
+   * canvas shows the new one. Nothing looks missing, because the frame is still
+   * there — it is just under the wrong name, which is the hardest kind of stale to
+   * notice and the easiest to blame on the renderer.
+   */
+  "name",
+  /*
+   * An image's own fields, all four, and all four change how the picture draws.
+   *
+   * `fileId` is the one that matters most: it is the reference to the bytes, so a
+   * missing entry here means the document keeps pointing at the first blob an image
+   * ever had. `scale` is a pair, and the echo check compares with `sameValue` rather
+   * than `===` precisely so that an array-valued field can be on this list at all —
+   * with `===` a listed array field would mean no push is ever an echo, the guard
+   * would do nothing, and the loop it exists to stop would become possible.
+   *
+   * `status` is included even though it describes the editor's relationship with
+   * its own blob store rather than the document's. Leaving it off would freeze the
+   * field at whatever it was first written with, and the field would then be a
+   * number nothing had ever agreed on.
+   */
+  "fileId",
+  "status",
+  "scale",
+  "crop",
 ] as const;
 
 /**
@@ -262,6 +344,34 @@ const toFixedPointBinding = (
     fixedPoint: binding.fixedPoint,
     mode: binding.mode ?? "orbit",
   };
+};
+
+/**
+ * Whether a value has the shape of a crop window.
+ *
+ * Structural rather than a cast, for the reason the fold reads its fields
+ * defensively everywhere: this runs over the whole scene on every editor change,
+ * and a crop missing two of its six numbers is a corrupt element rather than a
+ * reason to stop syncing the board. Returns a narrowed value so the caller copies
+ * it without a second assertion.
+ *
+ * All six are required. A crop cannot be expressed against an image whose natural
+ * size is unknown, so a partial one is not a crop with defaults — it is nothing, and
+ * the schema's validator drops it for the same reason.
+ */
+const plainCrop = (value: unknown): value is ImageCrop => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const crop = value as Record<string, unknown>;
+  return (
+    typeof crop.x === "number" &&
+    typeof crop.y === "number" &&
+    typeof crop.width === "number" &&
+    typeof crop.height === "number" &&
+    typeof crop.naturalWidth === "number" &&
+    typeof crop.naturalHeight === "number"
+  );
 };
 
 /**
@@ -520,6 +630,55 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
     ];
   }
 
+  if (element.type === "frame") {
+    /*
+     * A frame is one editor element and a straight copy, like a shape.
+     *
+     * `name` is passed through as it stands, `null` included. The renderer reads it
+     * to draw the label at the top-left of the frame and draws nothing for `null`,
+     * which is exactly what an unnamed frame should look like.
+     *
+     * There is no `children` to project, and that is not an omission. Membership
+     * travels the other way: the elements inside the frame carry its id in
+     * `frameId`, and the renderer collects them by asking which elements name this
+     * frame. A frame that also listed its children would be holding the same
+     * relation twice, and the two copies would disagree the first time somebody
+     * dragged a shape from one frame to another.
+     */
+    return [
+      {
+        ...sharedBaseFor(element),
+        type: "frame",
+        name: element.name,
+      } as unknown as ExcalidrawElement,
+    ];
+  }
+
+  if (element.type === "image") {
+    /*
+     * An image is one editor element and a straight copy of four fields.
+     *
+     * `fileId` is the reference the asset store is keyed by, and it is copied
+     * verbatim. The renderer hands it to whoever loads the bytes; this package does
+     * not fetch, decode or draw, and a projection that tried to would be a second
+     * place where image loading lives.
+     *
+     * The `scale` pair and the crop object are copied rather than shared, for the
+     * stroke's reason: the editor may replace them or mutate them, and today it
+     * happens to replace. Sharing would be safe by accident.
+     */
+    return [
+      {
+        ...sharedBaseFor(element),
+        type: "image",
+        fileId: element.fileId,
+        status: element.status,
+        scale: [element.scale[0], element.scale[1]] as [number, number],
+        crop: element.crop ? { ...element.crop } : null,
+      } as unknown as ExcalidrawElement,
+    ];
+  }
+
   if (element.type !== "stickynote") {
     throw new Error(
       `@firo/board: cannot draw element type "${element.type}" (id ${element.id}). ` +
@@ -747,9 +906,8 @@ export const fromEditorElements = (
       };
 
       const textFields = sharedDocumentFields(element);
-      const { containerId, ...textCustomData } = (element.customData ?? {}) as {
-        containerId?: unknown;
-      } & Record<string, unknown>;
+      const { containerId, customData: textCustomData } =
+        splitCustomData(element);
 
       folded.push({
         ...textFields,
@@ -768,10 +926,8 @@ export const fromEditorElements = (
         verticalAlign: annotation.verticalAlign,
         autoResize: annotation.autoResize,
         lineHeight: annotation.lineHeight,
-        ...(typeof containerId === "string" ? { containerId } : {}),
-        ...(Object.keys(textCustomData).length
-          ? { customData: textCustomData }
-          : {}),
+        ...(containerId ? { containerId } : {}),
+        ...(textCustomData ? { customData: textCustomData } : {}),
       } as unknown as TextElement);
       continue;
     }
@@ -793,16 +949,14 @@ export const fromEditorElements = (
        * genuinely does not know, and that case is below.
        */
       const fields = sharedDocumentFields(element);
-      const { containerId, ...shapeCustomData } = (element.customData ??
-        {}) as { containerId?: unknown } & Record<string, unknown>;
+      const { containerId, customData: shapeCustomData } =
+        splitCustomData(element);
 
       folded.push({
         ...fields,
         type: element.type,
-        ...(typeof containerId === "string" ? { containerId } : {}),
-        ...(Object.keys(shapeCustomData).length
-          ? { customData: shapeCustomData }
-          : {}),
+        ...(containerId ? { containerId } : {}),
+        ...(shapeCustomData ? { customData: shapeCustomData } : {}),
       } as ShapeElement);
       continue;
     }
@@ -836,8 +990,8 @@ export const fromEditorElements = (
       };
 
       const fields = sharedDocumentFields(element);
-      const { containerId, ...strokeCustomData } = (element.customData ??
-        {}) as { containerId?: unknown } & Record<string, unknown>;
+      const { containerId, customData: strokeCustomData } =
+        splitCustomData(element);
 
       folded.push({
         ...fields,
@@ -851,11 +1005,92 @@ export const fromEditorElements = (
           variability: stroke.strokeOptions?.variability ?? "variable",
           streamline: stroke.strokeOptions?.streamline ?? 0.4,
         },
-        ...(typeof containerId === "string" ? { containerId } : {}),
-        ...(Object.keys(strokeCustomData).length
-          ? { customData: strokeCustomData }
-          : {}),
+        ...(containerId ? { containerId } : {}),
+        ...(strokeCustomData ? { customData: strokeCustomData } : {}),
       } as unknown as FreedrawElement);
+      continue;
+    }
+
+    if (element.type === "frame") {
+      /*
+       * A frame, and a single editor element — nothing to consume, nothing to fold,
+       * the same as a shape.
+       *
+       * `name` is copied straight across, including `null`. An unnamed frame is a
+       * real state and not a missing value, and folding it to `""` would make every
+       * unnamed frame on a board indistinguishable from a frame someone cleared.
+       *
+       * A frame's *membership* arrives on the elements inside it, as `frameId`, and
+       * those are folded by their own branches. There is deliberately no list of
+       * children here: the base already carries the relation, and a second copy of it
+       * is a second thing to disagree.
+       */
+      const frame = element as unknown as { name?: string | null };
+
+      const fields = sharedDocumentFields(element);
+      const { containerId, customData: frameCustomData } =
+        splitCustomData(element);
+
+      folded.push({
+        ...fields,
+        type: "frame",
+        name: typeof frame.name === "string" ? frame.name : null,
+        ...(containerId ? { containerId } : {}),
+        ...(frameCustomData ? { customData: frameCustomData } : {}),
+      } as FrameElement);
+      continue;
+    }
+
+    if (element.type === "image") {
+      /*
+       * An image, and a single editor element. The last type the fold did not know,
+       * so the last one that could be drawn, autosaved in the editor's own copy,
+       * and then absent from every file.
+       *
+       * Read defensively, like the stroke branch and for the same reason: the fold
+       * runs over the whole scene on every editor change, so a spread of an element
+       * whose `scale` is missing would take the entire board's sync down rather than
+       * lose one picture.
+       *
+       * `fileId` is folded as `null` when absent rather than defaulted to anything.
+       * An image with no reference is the renderer's pending case — placed, not yet
+       * read — and inventing an id for it would produce an element pointing at bytes
+       * that do not exist. That is the state the file writer refuses to export, so it
+       * has to be representable rather than papered over.
+       */
+      const image = element as unknown as {
+        fileId?: string | null;
+        status?: string;
+        scale?: unknown;
+        crop?: ImageCrop | null;
+      };
+
+      const fields = sharedDocumentFields(element);
+      const { containerId, customData: imageCustomData } =
+        splitCustomData(element);
+
+      folded.push({
+        ...fields,
+        type: "image",
+        fileId: typeof image.fileId === "string" ? image.fileId : null,
+        status:
+          image.status === "pending" || image.status === "error"
+            ? image.status
+            : "saved",
+        /*
+         * Copied rather than shared, for the stroke's reason. The editor may or may
+         * not replace this array rather than mutate it — that is current behaviour,
+         * not an invariant — and an element handed the document's own pair and then
+         * written into would change the document with no commit, no diff and no undo
+         * entry.
+         */
+        scale: Array.isArray(image.scale)
+          ? ([image.scale[0], image.scale[1]] as [number, number])
+          : [1, 1],
+        crop: plainCrop(image.crop) ? { ...image.crop } : null,
+        ...(containerId ? { containerId } : {}),
+        ...(imageCustomData ? { customData: imageCustomData } : {}),
+      } as unknown as ImageElement);
       continue;
     }
 
@@ -887,8 +1122,8 @@ export const fromEditorElements = (
        * live next to each other rather than in separate files.
        */
       const fields = sharedDocumentFields(element);
-      const { containerId, ...linearCustomData } = (element.customData ??
-        {}) as { containerId?: unknown } & Record<string, unknown>;
+      const { containerId, customData: linearCustomData } =
+        splitCustomData(element);
 
       folded.push({
         ...fields,
@@ -913,31 +1148,30 @@ export const fromEditorElements = (
             ? [fromFixedPointBinding(connector.endBinding)]
             : []),
         ].slice(0, 2) as unknown as FiroElement["bindings"],
-        ...(typeof containerId === "string" ? { containerId } : {}),
-        ...(Object.keys(linearCustomData).length
-          ? { customData: linearCustomData }
-          : {}),
+        ...(containerId ? { containerId } : {}),
+        ...(linearCustomData ? { customData: linearCustomData } : {}),
       } as unknown as LinearElement);
       continue;
     }
 
     if (element.type !== "stickynote") {
-      // A shape the editor can draw that Firo has no type for yet — `freedraw`,
-      // `image`, `frame`, `embeddable`. Skipped rather than thrown: a board may
-      // legitimately hold an element type this version does not understand, and
-      // refusing to sync would freeze the board over something the user can see.
+      // A shape the editor can draw that Firo has no type for — `embeddable`, and
+      // `magicframe`. Skipped rather than thrown: a board may legitimately hold an
+      // element type this version does not understand, and refusing to sync would
+      // freeze the board over something the user can see.
       //
-      // The gap is narrowing rather than hypothetical: shapes and connectors are
-      // in, so what remains is drawing, images and frames. `freedraw` is next
-      // because freehand is the one people reach for when they are not thinking
-      // about structure.
+      // The gap is now empty of everything a person can draw with the toolbar. It was
+      // not: `freedraw`, `image` and `frame` were all in this branch, which means a
+      // stroke, a picture or a frame drawn in the app reached the document as nothing
+      // at all — drawn correctly, saved by the editor's own redundant copy, and
+      // absent from every `.firo` file. Anything added here needs an element type in
+      // `@firo/schema` and a branch above, in the same commit.
       continue;
     }
 
     const label = labelByContainer.get(element.id);
-    const { containerId, ...customData } = (element.customData ?? {}) as {
-      containerId?: unknown;
-    } & Record<string, unknown>;
+    const { containerId, customData: noteCustomData } =
+      splitCustomData(element);
 
     folded.push({
       id: element.id as ElementId,
@@ -999,8 +1233,8 @@ export const fromEditorElements = (
       locked: element.locked,
       created: element.created ?? null,
       updated: element.updated,
-      ...(typeof containerId === "string" ? { containerId } : {}),
-      ...(Object.keys(customData).length ? { customData } : {}),
+      ...(containerId ? { containerId } : {}),
+      ...(noteCustomData ? { customData: noteCustomData } : {}),
     } as unknown as StickyNoteElement);
   }
 

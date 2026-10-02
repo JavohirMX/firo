@@ -9,11 +9,15 @@
  * Add new types here, in the order they were introduced.
  */
 import "./freedraw.js";
+import "./frame.js";
+import "./image.js";
 import "./linear.js";
 import "./shape.js";
 import "./stickynote.js";
 import "./text.js";
 
 export { FREEDRAW_SPEC } from "./freedraw.js";
+export { FRAME_SPEC } from "./frame.js";
+export { IMAGE_SPEC } from "./image.js";
 export { TEXT_SPEC } from "./text.js";
 export { STICKY_NOTE_SPEC } from "./stickynote.js";

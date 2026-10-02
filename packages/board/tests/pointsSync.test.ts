@@ -377,6 +377,22 @@ describe("EDITOR_OWNED_FIELDS covers what the editor owns", () => {
     ["freedraw", editorPath("freedraw", { id: "x" })],
     ["line", editorPath("line", { id: "x" })],
     ["rectangle", { type: "rectangle" }],
+    // A frame's only field beyond the base is its name, and a name that is not on the
+    // list freezes at whatever it was created with while the canvas shows the new one.
+    ["frame", { type: "frame", name: "Discovery" }],
+    // All four of an image's own fields change how the picture draws. `fileId` is the
+    // important one: it is the reference to the bytes, so leaving it off means the
+    // document keeps pointing at the first blob the image ever had.
+    [
+      "image",
+      {
+        type: "image",
+        fileId: "abc123",
+        status: "saved",
+        scale: [1, 1],
+        crop: null,
+      },
+    ],
   ])("holds every field a %s has that is not excluded", (name, element) => {
     const missing = Object.keys(element)
       .filter((field) => !(field in EXCLUDED))
@@ -414,6 +430,19 @@ describe("EDITOR_OWNED_FIELDS covers what the editor owns", () => {
         fontFamily: 1,
         textAlign: "center",
         verticalAlign: "middle",
+      },
+      // `frame` and `image`, so the five fields they contribute are covered in both
+      // directions. Without them this test reported them as orphans the moment they
+      // were added — which is the test working, and the reason it is derived from
+      // fixtures rather than from a hand-written list that nobody would remember to
+      // extend.
+      { type: "frame", name: "Discovery" },
+      {
+        type: "image",
+        fileId: "abc123",
+        status: "saved",
+        scale: [1, 1],
+        crop: null,
       },
     ];
 

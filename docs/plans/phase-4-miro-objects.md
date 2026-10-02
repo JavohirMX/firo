@@ -36,6 +36,15 @@ Title, optional body, optional metadata row, optional status pill. A card with n
 
 ### 4.3 — Frames and sections
 
+> **Started early.** `frame` is in `@firo/schema` and in the fold, because the fold
+> was skipping it: a frame drawn in the app reached the document as nothing at all, so
+> a board could contain content that no file and no autosave ever mentioned. What the
+> document holds is `ElementBase` and a nullable `name` — nesting is `frameId` on the
+> inner frame and `containerId` for the general case, so no containment structure of
+> its own was needed. What is left for this phase is everything a frame *does*:
+> hideable, page order, presentation slides, and the sections that are lighter grouping
+> with none of it.
+
 **The distinction is load-bearing and must be clear in the UI:** frames structure
 *output*; sections structure the *board*.
 

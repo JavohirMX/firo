@@ -238,6 +238,11 @@ proving nothing. A negative test that passes is not evidence.
 - **Element types other than `stickynote` do not exist yet.** The registry is the
   mechanism; the other types land with their phases. `ELEMENT_TYPES` and the
   registry are checked against each other at registration, so they cannot drift.
+  **Superseded:** true when written. The document now holds ten types —
+  `stickynote`, the three shapes, the two connectors, `freedraw`, `text`, `frame` and
+  `image` — each added with a validator, a conformance assertion and both halves of
+  the fold. The mechanism held; the types arrived one at a time, and each one closed a
+  case where the editor could draw something the document could not hold.
 
 ## Still open
 

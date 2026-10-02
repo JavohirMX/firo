@@ -58,8 +58,10 @@ import type {
   AnyArrowhead as RendererAnyArrowhead,
   BindMode as RendererBindMode,
   ExcalidrawElement,
+  ExcalidrawFrameElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawGenericElement,
+  ExcalidrawImageElement,
   ExcalidrawTextElement,
   FillStyle as RendererFillStyle,
   StrokeStyle as RendererStrokeStyle,
@@ -99,7 +101,9 @@ import type {
   ElementType,
   FillStyle as SchemaFillStyle,
   FiroElement,
+  FrameElement,
   FreedrawElement,
+  ImageElement,
   TextElement,
   StrokeStyle as SchemaStrokeStyle,
   StrokeVariability as SchemaStrokeVariability,
@@ -170,13 +174,190 @@ export const schemaArrowheadsAreDrawable: AssertSubset<
 /*
  * Every element type the document can hold must be something the renderer can
  * draw. The reverse does not hold and is not expected to: the renderer draws
- * images and frames, which the document has no types for yet. That asymmetry is
- * the roadmap, and this assertion is what will fail loudly when a type is added on
- * one side and forgotten on the other.
+ * `embeddable` and `magicframe`, which the document has no types for and has no
+ * plans to. `magicframe` is Excalidraw's AI frame and ADR-0012 keeps AI out of v1.
+ *
+ * That asymmetry used to be wider. It included `image` and `frame`, which meant the
+ * renderer could draw a picture or a frame onto a board and the document could hold
+ * neither — so a board could contain content that no file, no autosave and no sync
+ * update would ever mention. Both were added; the assertion below holds the
+ * remaining gap shut.
  */
 export const everyDocumentTypeIsDrawable: AssertSubset<
   ElementType,
   ExcalidrawElement["type"]
+> = true;
+
+/*
+ * The converse, as a list rather than a type assertion.
+ *
+ * This cannot be `AssertSame` in the other direction, because the two sides are
+ * deliberately different sets: the renderer has types Firo will not hold. What it
+ * must not do is *drift* — so the renderer's types the document does not have are
+ * pinned by name, and adding one to `ELEMENT_TYPES` without removing it here fails
+ * the test rather than passing unnoticed.
+ *
+ * This is the assertion that would have caught the image and frame gap when the fold
+ * was skipping them, rather than when somebody exported a board and found the
+ * picture missing from the file.
+ */
+/**
+ * Every renderer type the document deliberately does not hold.
+ *
+ * This cannot be `AssertSame` in the other direction, because the two sides are
+ * different sets by design: the renderer has types Firo will not hold. What it must
+ * not do is *drift* — so the unheld types are pinned by name, and adding one to
+ * `ELEMENT_TYPES` without removing it here fails the test rather than passing
+ * unnoticed.
+ *
+ * This is the assertion that would have caught the image and frame gap when the fold
+ * was skipping them, rather than when somebody exported a board and found the
+ * picture missing from the file. It found the two entries below it did not predict
+ * on its first run, which is the argument for having it.
+ *
+ * Each entry carries its reason, because "the document does not hold this" is only
+ * a decision rather than an oversight if the reason is written down:
+ *
+ * - `selection` is the rubber-band rectangle. It is UI state, and rule 1 in
+ *   `AGENTS.md` is that ephemeral state never enters the document — a selection
+ *   rectangle in a CRDT would be synced, persisted and undoable, and would mean
+ *   something different to every collaborator looking at the board.
+ * - `embeddable` and `iframe` are remote content. `embeddable` was already deleted
+ *   from the app in Phase 0 as Excalidraw+ product surface, and `iframe` is the same
+ *   idea with a different discriminant. NFR-3 and ADR-0012: no remote content, no
+ *   AI, in v1.
+ * - `magicframe` is Excalidraw's AI-generated frame. ADR-0012 again — it is v3 work
+ *   at the earliest, and a type in the schema is a promise to load files that
+ *   contain it.
+ */
+export const UNHELD_RENDERER_TYPES = [
+  "selection",
+  "embeddable",
+  "iframe",
+  "magicframe",
+] as const;
+
+export const theOnlyUnheldTypesAreKnown: AssertSame<
+  Extract<ExcalidrawElement["type"], string>,
+  ElementType | typeof UNHELD_RENDERER_TYPES[number]
+> = true;
+
+/*
+ * A frame's fields, held against the renderer's.
+ *
+ * One field, and the assertion is here because one is exactly what a missing test
+ * would not notice. A frame that quietly acquired the wrong name would still compile
+ * and still draw — with the label reading as an unnamed frame rather than as an
+ * error.
+ */
+type RendererFrameFields = Omit<
+  ExcalidrawFrameElement,
+  keyof ExcalidrawGenericElement | "type"
+>;
+
+type SchemaFrameFields = Omit<FrameElement, keyof ElementBase | "type">;
+
+export const frameFieldsAreTheSame: AssertSame<
+  Extract<keyof RendererFrameFields, string>,
+  Extract<keyof SchemaFrameFields, string>
+> = true;
+
+export const frameNameIsTheSame: AssertSame<
+  RendererFrameFields["name"],
+  SchemaFrameFields["name"]
+> = true;
+
+/*
+ * An image's fields, held against the renderer's.
+ *
+ * All four are load-bearing and all four fail silently rather than loudly, which is
+ * why this is checked field by field and not only by name:
+ *
+ * - `fileId` is the reference to the bytes. Lost, and the picture becomes a
+ *   placeholder pointing at nothing.
+ * - `status` decides whether the renderer waits for the file or draws the failure
+ *   state. Lost, and a slow-loading image either never appears or appears as a
+ *   permanent error.
+ * - `scale` is a *pair*, for flipping. Reduced to one number it could not express a
+ *   mirrored image, and the picture would come back the right way round.
+ * - `crop` is a window plus the natural size it was taken from. The natural size
+ *   looks derivable from the asset and is not — the asset is keyed by hash and knows
+ *   nothing about how it was placed — so a crop without it cannot be re-expressed
+ *   after a reload.
+ *
+ * `FileId` is branded on the renderer and the document stores a plain string: the
+ * brand is a compile-time marker rather than a value, so it is stripped for the same
+ * reason `LocalPoint` is.
+ */
+type RendererImageFields = Omit<
+  ExcalidrawImageElement,
+  keyof ExcalidrawGenericElement | "type"
+>;
+
+type SchemaImageFields = Omit<ImageElement, keyof ElementBase | "type">;
+
+export const imageFieldsAreTheSame: AssertSame<
+  Extract<keyof RendererImageFields, string>,
+  Extract<keyof SchemaImageFields, string>
+> = true;
+
+/**
+ * The renderer's branded `FileId`, as the plain string the document stores.
+ *
+ * The brand is stripped and the `null` is kept. The first version of this stripped
+ * both, because `T extends string ? string : never` distributes over `FileId | null`
+ * and collapses the null arm to `never` — so it silently asserted that the document
+ * holds a non-nullable string, which is the opposite of what the renderer says. A
+ * conditional type that is too eager is as wrong as one that is too loose, and only
+ * a test that compares the two sides notices.
+ */
+type UnbrandedFileId = NonNullable<
+  RendererImageFields["fileId"]
+> extends infer T
+  ? T extends string
+    ? string
+    : never
+  : never;
+
+export const imageFileIdIsAString: AssertSame<
+  UnbrandedFileId | Extract<RendererImageFields["fileId"], null>,
+  SchemaImageFields["fileId"]
+> = true;
+
+export const imageStatusIsTheSame: AssertSame<
+  RendererImageFields["status"],
+  SchemaImageFields["status"]
+> = true;
+
+/**
+ * `scale`, compared by shape.
+ *
+ * The renderer declares a mutable `[number, number]` and the document a `readonly`
+ * one, which `AssertSame` reports as a difference because a `readonly` tuple is not
+ * assignable *to* a mutable one. That is the same class of thing as `LocalPoint`'s
+ * brand and `lineHeight`'s unit: a compile-time marker rather than a value, and one
+ * the document is stricter about on purpose — everything in `@firo/schema` is
+ * `readonly`, because a Yjs mutation produces new objects and a caller that mutates
+ * one in place has broken undo.
+ *
+ * Loosening the document's `scale` to match the renderer would make the type assignable
+ * in one direction and weaker in the other, to buy nothing: there is no bug a mutable
+ * `scale` prevents.
+ */
+type MutableScale<T> = T extends readonly [infer A, infer B]
+  ? [A, B]
+  : T extends readonly unknown[]
+  ? { mutableArity: T["length"] }
+  : never;
+
+export const imageScaleIsTheSame: AssertSame<
+  MutableScale<SchemaImageFields["scale"]>,
+  MutableScale<RendererImageFields["scale"]>
+> = true;
+
+export const imageCropIsTheSame: AssertSame<
+  RendererImageFields["crop"],
+  SchemaImageFields["crop"]
 > = true;
 
 /*
@@ -466,7 +647,11 @@ describe("schema and renderer agree at runtime", () => {
     // else registered the same names. This names the modules explicitly, so a
     // forgotten `import "./x.js"` in `types/index.ts` is caught here rather than
     // surfacing later as an unknown type in a user's file.
-    expect(SHAPE_TYPES.length + LINEAR_TYPES.length + 3).toBe(
+    //
+    // The `+ 5` is the singleton modules: stickynote, freedraw, text, frame, image.
+    // The two family modules are counted from their own lists so a third shape or a
+    // fourth connector is picked up without editing this line.
+    expect(SHAPE_TYPES.length + LINEAR_TYPES.length + 5).toBe(
       ELEMENT_TYPES.length,
     );
   });

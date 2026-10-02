@@ -52,7 +52,11 @@ import type { FiroDoc } from "@firo/doc";
 /** What an export produced. */
 export type ExportResult =
   | { ok: true; filename: string; bytes: string }
-  | { ok: false; reason: "failed"; detail: string };
+  | {
+      ok: false;
+      reason: "failed" | "assets-not-carried";
+      detail: string;
+    };
 
 /** What an import did. Nothing is applied to the document unless this says `ok`. */
 export type ImportResult =
@@ -100,6 +104,58 @@ export const exportFilename = (now: Date = new Date()): string => {
 };
 
 /**
+ * Elements the file format cannot carry without its bytes alongside it.
+ *
+ * An image element holds a content-addressed *reference* into the asset store, and
+ * the store is a separate IndexedDB database from the document — deliberately, since
+ * bytes inside a CRDT update are broadcast on every sync. A `.firo` file is a single
+ * JSON document, so it can carry the reference and not the picture.
+ *
+ * Which means an export of a board with an image on it produces a file that imports
+ * cleanly and draws a broken picture, with nothing in either file saying so. That is
+ * the silent-loss failure this whole module exists to avoid, in a new direction: the
+ * element survives and its content does not.
+ *
+ * So the export refuses instead. A visible "this board cannot be exported yet" is a
+ * limitation somebody can report; a file that looks complete and is not is a trap
+ * laid for whoever opens the file in six months.
+ *
+ * **This is a temporary position and it is a decision, not an omission.** Phase 7
+ * §7.3 specifies the format that fixes it — a manifest, a `board.json`, and a
+ * content-addressed `assets/` directory — and that is a different file layout from the
+ * single canonical JSON this module round-trips byte-identically. Choosing between
+ * them is real design and belongs in an ADR. Until then the refusal is what makes the
+ * gap visible.
+ */
+const uncarriedAssetTypes = (
+  elements: readonly { type: string; isDeleted?: boolean }[],
+): { images: number; pending: number } => {
+  let images = 0;
+  let pending = 0;
+  for (const element of elements) {
+    if (element.type !== "image") {
+      continue;
+    }
+    /*
+     * Tombstones skipped, and not as an optimisation. `doc.read()` returns deleted
+     * elements — the document is a CRDT and a tombstone is how an undone deletion is
+     * restored — and `compactBoard` drops them on the way into a file. So a deleted
+     * image is genuinely not in the exported file, and counting it would make a board
+     * permanently unexportable the moment somebody deleted a picture from it. The
+     * opposite of a fix.
+     */
+    if (element.isDeleted === true) {
+      continue;
+    }
+    images += 1;
+    if ((element as { fileId?: string | null }).fileId == null) {
+      pending += 1;
+    }
+  }
+  return { images, pending };
+};
+
+/**
  * The document as `.firo` bytes.
  *
  * The canonical writer, so exporting an unchanged board twice produces identical bytes
@@ -110,6 +166,32 @@ export const exportFilename = (now: Date = new Date()): string => {
  */
 export const exportBoard = (doc: FiroDoc, now?: Date): ExportResult => {
   try {
+    const board = doc.read();
+
+    const { images, pending } = uncarriedAssetTypes(board.elements);
+    if (images > 0) {
+      return {
+        ok: false,
+        reason: "assets-not-carried",
+        detail:
+          `${
+            `This board has ${images} image${
+              images === 1 ? "" : "s"
+            }, and the ` +
+            `file format carries an image's reference but not its bytes. Exporting ` +
+            `now would produce a file that opens with the picture missing.`
+          }${
+            pending > 0
+              ? ` ${pending} of them ha${
+                  pending === 1 ? "s" : "ve"
+                } no stored file ` +
+                `at all, so they would be missing even from the board's own copy.`
+              : ""
+          } The autosave is unaffected — the images are in the board — and this ` +
+          `is fixed by the asset-carrying format in Phase 7 §7.3.`,
+      };
+    }
+
     /*
      * Compacted, and *only* here.
      *
@@ -125,7 +207,7 @@ export const exportBoard = (doc: FiroDoc, now?: Date): ExportResult => {
     return {
       ok: true,
       filename: exportFilename(now),
-      bytes: serializeBoardFile(compactBoard(serializeBoard(doc.read()))),
+      bytes: serializeBoardFile(compactBoard(serializeBoard(board))),
     };
   } catch (error) {
     return {
