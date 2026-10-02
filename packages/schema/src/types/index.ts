@@ -12,6 +12,8 @@ import "./freedraw.js";
 import "./linear.js";
 import "./shape.js";
 import "./stickynote.js";
+import "./text.js";
 
 export { FREEDRAW_SPEC } from "./freedraw.js";
+export { TEXT_SPEC } from "./text.js";
 export { STICKY_NOTE_SPEC } from "./stickynote.js";

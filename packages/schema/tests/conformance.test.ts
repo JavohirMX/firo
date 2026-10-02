@@ -60,6 +60,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawGenericElement,
+  ExcalidrawTextElement,
   FillStyle as RendererFillStyle,
   StrokeStyle as RendererStrokeStyle,
   StrokeVariability as RendererStrokeVariability,
@@ -99,6 +100,7 @@ import type {
   FillStyle as SchemaFillStyle,
   FiroElement,
   FreedrawElement,
+  TextElement,
   StrokeStyle as SchemaStrokeStyle,
   StrokeVariability as SchemaStrokeVariability,
 } from "../src/types.js";
@@ -247,6 +249,81 @@ export const freedrawStrokeOptionsAreTheSame: AssertSame<
 > = true;
 
 /*
+ * A text annotation's fields, held against the renderer's.
+ *
+ * Same argument as the freedraw assertion, and for the same reason: the discriminant
+ * check says `text` is a type the renderer draws, and says nothing about whether the
+ * document keeps what the annotation needs to look the same after a reload.
+ *
+ * Two fields here are load-bearing in a way that is easy to miss. `lineHeight` decides
+ * where every line sits, so a lost one re-spaces the whole annotation. `autoResize`
+ * decides its shape -- an annotation that grows with its text and one that wraps to a
+ * fixed box are different objects.
+ *
+ * Deliberately *not* compared, each for a stated reason:
+ *
+ * - `containerId` and `baseFontSize` are what make a text element a note's *label*
+ *   rather than an annotation, and the schema forces both to `null`. An annotation that
+ *   claimed a container would be swallowed by the note it named, silently, with its
+ *   text appearing inside a note nobody put it in.
+ * - `originalText` is the *input* string, and it is what the document's `text` field
+ *   already holds. Storing it twice would be two copies of one value that could
+ *   disagree, and the fold reads `originalText` precisely so that only one is written.
+ * - `labelPosition` places a label along a container's edge. An annotation has no
+ *   container and therefore no edge, so the field is meaningless here; it is also
+ *   optional on the renderer, so a file could carry it with nothing to attach it to.
+ * - `text` is excluded from both sides and deserves its own note. `ElementBase`
+ *   declares `text?: ProseMirrorDoc` — that is ADR-0004's field, and it is the *right*
+ *   default. A sticky note already overrides it with a plain string, on the argument
+ *   that a short label in a box is not a document; this type takes the same exception
+ *   for the same reason, and `types/text.ts` says so at length.
+ *
+ *   Overriding rather than renaming is deliberate. Renaming to something like
+ *   `plainText` would remove the collision, and would also mean that when Phase 4
+ *   gives this element real formatting there would be a field to migrate and a second
+ *   one to leave behind. Keeping the name means the migration is "this field's type
+ *   changes", which is what the sticky note's already is.
+ *
+ * The last two were found by this assertion failing on its first run, which is the
+ * argument for having it.
+ */
+type RendererTextFields = Omit<
+  ExcalidrawTextElement,
+  | keyof ExcalidrawGenericElement
+  | "type"
+  | "containerId"
+  | "baseFontSize"
+  | "originalText"
+  | "labelPosition"
+  // ADR-0004's ProseMirror field, overridden by this type. See the note above.
+  | "text"
+>;
+
+type SchemaTextFields = Omit<TextElement, keyof ElementBase | "type">;
+
+export const textFieldsAreTheSame: AssertSame<
+  Extract<keyof RendererTextFields, string>,
+  Extract<keyof SchemaTextFields, string>
+> = true;
+
+/*
+ * `lineHeight` is branded `unitlessLineHeight` on the renderer, to say "not pixels".
+ * Compared by shape for the same reason `LocalPoint` is: the brand is not the claim,
+ * and comparing it directly fails for a reason that has nothing to do with the value.
+ */
+type Unbranded<T> = T extends number ? number : never;
+
+export const textLineHeightIsTheSame: AssertSame<
+  Unbranded<RendererTextFields["lineHeight"]>,
+  Unbranded<SchemaTextFields["lineHeight"]>
+> = true;
+
+export const textAutoResizeIsTheSame: AssertSame<
+  RendererTextFields["autoResize"],
+  SchemaTextFields["autoResize"]
+> = true;
+
+/*
  * Width variation, held against the renderer's. Like `BindMode` and `FillStyle`
  * before it: a two-value union the renderer branches on in three places, and a
  * missing value coerces a tapered stroke into an even one.
@@ -389,7 +466,7 @@ describe("schema and renderer agree at runtime", () => {
     // else registered the same names. This names the modules explicitly, so a
     // forgotten `import "./x.js"` in `types/index.ts` is caught here rather than
     // surfacing later as an unknown type in a user's file.
-    expect(SHAPE_TYPES.length + LINEAR_TYPES.length + 2).toBe(
+    expect(SHAPE_TYPES.length + LINEAR_TYPES.length + 3).toBe(
       ELEMENT_TYPES.length,
     );
   });

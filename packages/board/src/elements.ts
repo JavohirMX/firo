@@ -46,6 +46,7 @@ import type {
   LinearElement,
   ShapeElement,
   StickyNoteElement,
+  TextElement,
 } from "@firo/schema";
 
 /**
@@ -428,6 +429,57 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
     ];
   }
 
+  if (element.type === "text") {
+    /*
+     * A free-standing annotation, and one editor element.
+     *
+     * The asymmetry with a note is the whole point: a note projects to *two* elements
+     * because its label is derived state, whereas an annotation is a single object. A
+     * projection that emitted two here would leave a stray label in the scene for the
+     * fold to trip over on the next change.
+     *
+     * `text` and `originalText` are both set from the stored value, and that is not a
+     * shortcut. The stored value is the *input* string -- the fold reads
+     * `originalText`, not the wrapped `text` -- and the renderer re-wraps on render and
+     * writes the result back to `text`, separating the two as soon as it lays the text
+     * out.
+     */
+    const annotation = element as unknown as {
+      text: string;
+      fontSize: number;
+      fontFamily: number;
+      textAlign: ExcalidrawTextElement["textAlign"];
+      verticalAlign: ExcalidrawTextElement["verticalAlign"];
+      autoResize: boolean;
+      lineHeight: number;
+    };
+
+    return [
+      {
+        ...sharedBaseFor(element),
+        type: "text",
+        text: annotation.text,
+        originalText: annotation.text,
+        fontSize: annotation.fontSize,
+        fontFamily:
+          annotation.fontFamily as ExcalidrawTextElement["fontFamily"],
+        textAlign: annotation.textAlign,
+        verticalAlign: annotation.verticalAlign,
+        autoResize: annotation.autoResize,
+        lineHeight: annotation.lineHeight,
+        // No container: that is what makes this an annotation and not a label.
+        containerId: null,
+        /*
+         * `null` rather than a copied size. The field is the size the user picked, from
+         * which auto-fit derives `fontSize`, and only a sticky note's label has one. An
+         * annotation must not claim to be a label -- see the note on the renderer's
+         * `baseFontSize`.
+         */
+        baseFontSize: null,
+      } as unknown as ExcalidrawElement,
+    ];
+  }
+
   if (element.type === "freedraw") {
     /*
      * A freehand stroke is one editor element and a straight copy, unlike a note.
@@ -662,9 +714,65 @@ export const fromEditorElements = (
   const folded: FiroElement[] = [];
 
   for (const element of elements) {
-    // A label. Already consumed by its container, or an orphan with no note to
-    // belong to — in which case there is nothing to put it in.
     if (element.type === "text") {
+      /*
+       * A text element is one of two things, and which one is a single nullable
+       * field.
+       *
+       * With a `containerId` it is a *label*: already consumed by its container above,
+       * or an orphan with no note to belong to, and either way there is nothing to put
+       * it in. Consumed.
+       *
+       * Without one it is a *free-standing annotation* — the text tool's output, with
+       * no box around it — and it is a document element in its own right.
+       *
+       * This branch is why that distinction is drawn here rather than by type. Both are
+       * `type: "text"` in the editor, so a fold that skipped the type outright dropped
+       * every annotation: measured, the editor held `["freedraw", "text"]` and the
+       * document held `[]`. It drew correctly, because the canvas never asks the
+       * document.
+       */
+      if (element.containerId) {
+        continue;
+      }
+
+      const annotation = element as unknown as {
+        originalText: string;
+        fontSize: number;
+        fontFamily: number;
+        textAlign: TextElement["textAlign"];
+        verticalAlign: TextElement["verticalAlign"];
+        autoResize: boolean;
+        lineHeight: number;
+      };
+
+      const textFields = sharedDocumentFields(element);
+      const { containerId, ...textCustomData } = (element.customData ?? {}) as {
+        containerId?: unknown;
+      } & Record<string, unknown>;
+
+      folded.push({
+        ...textFields,
+        type: "text",
+        /*
+         * `originalText`, not `text` — the same reasoning as a note's label, and the
+         * same bug if it is ignored. `text` is the input after wrapping inserted hard
+         * breaks to fit the width, so storing it bakes the current layout into the
+         * document; every later edit then wraps text that already has breaks in it, and
+         * the damage only becomes visible when someone widens the element.
+         */
+        text: annotation.originalText,
+        fontSize: annotation.fontSize,
+        fontFamily: annotation.fontFamily,
+        textAlign: annotation.textAlign,
+        verticalAlign: annotation.verticalAlign,
+        autoResize: annotation.autoResize,
+        lineHeight: annotation.lineHeight,
+        ...(typeof containerId === "string" ? { containerId } : {}),
+        ...(Object.keys(textCustomData).length
+          ? { customData: textCustomData }
+          : {}),
+      } as unknown as TextElement);
       continue;
     }
 

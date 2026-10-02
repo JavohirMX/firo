@@ -117,6 +117,7 @@ export const ELEMENT_TYPES = [
   "arrow",
   "line",
   "freedraw",
+  "text",
 ] as const;
 
 export type ElementType = typeof ELEMENT_TYPES[number];
@@ -302,9 +303,22 @@ export type ElementBase = Readonly<
     }
 >;
 
-export type StickyNoteElement = ElementBase &
+export type StickyNoteElement = Omit<ElementBase, "text"> &
   Readonly<{
     type: "stickynote";
+    /*
+     * `Omit<ElementBase, "text">` above, and this is why.
+     *
+     * The base declares `text?: ProseMirrorDoc` — ADR-0004's field. Intersecting it
+     * with a `text: string` produced `ProseMirrorDoc & string`, an impossible type, and
+     * nothing complained only because `ProseMirrorDoc` was `any` until very recently.
+     * So the exception is now *in the type*: a note's text is a string, the base's
+     * ProseMirror field does not apply to it, and a reader can see that rather than
+     * infer it.
+     *
+     * See `types/stickynote.ts` for why the exception is argued at all, and
+     * `tests/richText.test.ts` for the gate that keeps it to two.
+     */
     /** Excalidraw's sticky notes already carry this; extended, not reinvented. */
     text: string;
     fontSize: number;
@@ -436,6 +450,55 @@ export type FreedrawElement = ElementBase &
  */
 export type StrokeVariability = "variable" | "constant";
 
+/**
+ * A free-standing text annotation: the text tool's output, with no box around it.
+ *
+ * Distinct from a sticky note's label in the only way that matters here — a label has
+ * a `containerId` and is consumed *into* that container by the fold, while this is a
+ * document element in its own right. Getting that backwards is not a type error: both
+ * are `type: "text"` in the editor and the difference is a single nullable field, so
+ * the distinction lives in the fold and is worth stating here.
+ *
+ * `text` is a plain string rather than a ProseMirror document, against ADR-0004's
+ * general rule. The exception is deliberate and the reasoning is in `types/text.ts`:
+ * Excalidraw's text element has no rich text at all, so a document here could only
+ * ever hold a single text node.
+ */
+export type TextElement = Omit<ElementBase, "text"> &
+  Readonly<{
+    type: "text";
+    /*
+     * `Omit<ElementBase, "text">` above, for the same reason as the sticky note: the
+     * base declares `text?: ProseMirrorDoc`, and intersecting that with a `text:
+     * string` is a contradiction. Making the exception explicit in the type is better
+     * than an intersection that silently means nothing.
+     */
+    /**
+     * What the person typed.
+     *
+     * Not the laid-out form: the renderer keeps `originalText` as the input and `text`
+     * as that input after wrapping inserted hard breaks, and storing the latter bakes
+     * the current layout into the document. Every edit then wraps text that already
+     * has breaks in it, and the corruption only shows when the element is later
+     * widened.
+     */
+    text: string;
+    fontSize: number;
+    fontFamily: number;
+    textAlign: "left" | "center" | "right";
+    verticalAlign: "top" | "middle" | "bottom";
+    /**
+     * Whether the width follows the text or the text wraps to the width.
+     *
+     * Persisted because it decides the shape. An annotation that grows with its text
+     * and one that wraps to a fixed box are different objects, and re-wrapping a
+     * saved one on load moves every line.
+     */
+    autoResize: boolean;
+    /** A multiplier of the font size, not pixels. */
+    lineHeight: number;
+  }>;
+
 /** Which of the two. */
 export type LinearType = LinearElement["type"];
 
@@ -443,7 +506,8 @@ export type FiroElement =
   | StickyNoteElement
   | ShapeElement
   | LinearElement
-  | FreedrawElement;
+  | FreedrawElement
+  | TextElement;
 
 /** Narrowing helper, so callers do not repeat the discriminant check. */
 export const isElementType = <T extends ElementType>(

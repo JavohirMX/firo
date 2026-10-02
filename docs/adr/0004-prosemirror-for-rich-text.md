@@ -55,6 +55,14 @@ and file paths. A frame name is a filename-like identifier where formatting is
 meaningless, and a ProseMirror instance per frame is a real cost on a board with 200
 of them.
 
+**Two more, added later and enforced as exceptions.** A **sticky note** holds a short
+label in a box — the same argument, and Excalidraw's own note stores a string. A
+**free-standing text annotation** is stronger still: Excalidraw's text element has no
+rich text at all, so a ProseMirror document could only ever hold a single text node and
+the renderer would draw a plain string regardless. Both become migrations, not
+breaking changes, if either gains formatting. See the Confirmation section for the test
+that keeps the list at two.
+
 ## Consequences
 
 - (+) Concurrent text edits merge structurally, via `y-prosemirror`. Two people
@@ -88,6 +96,26 @@ of them.
   any text-bearing field is typed `string`. This is rule 3 in
   [`../../AGENTS.md`](../../AGENTS.md) and it is the rule most likely to be violated
   by a well-meaning "temporary" simplification.
+
+  **That test did not exist until the second exception did.** Two types hold `text` as
+  a plain string — `stickynote`, argued in `packages/schema/src/types/stickynote.ts`,
+  and `text`, the free-standing annotation, argued in `types/text.ts`. Both arguments
+  are sound; the problem was that nothing was counting, so an exception with no gate is
+  a precedent and a precedent with no gate is how a third arrives silently. The gate is
+  [`packages/schema/tests/richText.test.ts`](../../packages/schema/tests/richText.test.ts),
+  which walks `ELEMENT_TYPES` and fails on any text-bearing field that is a string
+  unless the type is on an allow-list where every entry carries a stated reason.
+
+  Writing it exposed why nobody had: **`ProseMirrorDoc` was `any`.** It was
+  `ReturnType<ProseMirrorNode["toJSON"]>`, and ProseMirror types `toJSON()` as
+  returning `any`. So the rule's central comparison resolved to both branches and
+  accepted everything — the promised test could not have failed, for any input. The
+  type is now written out structurally, and that immediately surfaced two contradictory
+  intersections (`ProseMirrorDoc & string`) that `any` had been quietly absorbing. Both
+  exceptions now declare `Omit<ElementBase, "text">`, which puts the exception in the
+  type instead of leaving it to be inferred from an intersection that means nothing.
+
+  The two deliberate exceptions above stand, and are now enforced as *two*.
 - Overlay alignment is tested at 0.1×, 0.5×, 1×, 1.5×, 3.7×, and at 200% browser
   zoom.
 - Concurrent-edit behaviour is tested: two simulated users editing one card, both

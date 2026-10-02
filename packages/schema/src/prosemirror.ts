@@ -131,7 +131,33 @@ export const firoTextSchema = new Schema({
  * so a future Firo that changes its schema can still read this, and a file
  * written by a future Firo is recognisable rather than arbitrary.
  */
-export type ProseMirrorDoc = ReturnType<ProseMirrorNode["toJSON"]>;
+/**
+ * ProseMirror's own `NodeJSON`, written out.
+ *
+ * This was `ReturnType<ProseMirrorNode["toJSON"]>`, and ProseMirror types `toJSON()`
+ * as returning `any`. So `ProseMirrorDoc` *was* `any` — and the schema's central
+ * content type was unchecked in both directions.
+ *
+ * The cost was concrete rather than theoretical. ADR-0004's rule is "no text field in
+ * the schema is a string", enforced by comparing each element's text field against
+ * `ProseMirrorDoc`; against `any` that comparison resolves to both branches and
+ * accepts everything. The promised test could not have failed, for any input, and the
+ * two existing string exceptions were the visible cost.
+ *
+ * The shape below is what `toJSON()` actually returns: a node has a `type`, may have
+ * `content`, and may carry attrs and marks under their own keys. It is deliberately
+ * loose about those — a future Firo's schema can add node types and attributes without
+ * this type needing to change, which is the same reason the comment above prefers
+ * ProseMirror's published format over a Firo-invented shape.
+ *
+ * `isProseMirrorDoc` remains the runtime guard, and it is unchanged.
+ */
+export type ProseMirrorDoc = {
+  type: string;
+  content?: ProseMirrorDoc[];
+  /** Node attributes and marks, keyed by whatever names the schema gives them. */
+  [key: string]: unknown;
+};
 
 /** Build a document from stored JSON. Throws if the JSON is not valid. */
 export const parseProseMirrorDoc = (json: unknown): ProseMirrorNode => {
