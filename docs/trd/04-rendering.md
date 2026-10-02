@@ -3,24 +3,47 @@
 **This document describes new code. It is the riskiest part of the project and the
 Phase 2 gate exists precisely because of it.**
 
+> **Partly superseded by
+> [`ADR-0017`](../adr/0017-do-not-rewrite-the-renderer.md), which cancelled the
+> rewrite.** The "Replace" column below did not happen and will not: the inherited
+> renderer already holds 10,000 elements at 60 fps on a GPU, so the culling index, the
+> level-of-detail ladder and the compositor were cancelled as work whose justification
+> was a software-rasterisation artefact.
+>
+> **What still stands** is everything describing the inherited code — the bitmap cache,
+> the shape cache, device-pixel snapping, the two-canvas split, and the requirements in
+> the later sections. **What does not** is the architecture diagram, the culler and the
+> `AppState` split.
+>
+> Read it as a record of a design that was measured and declined, not as a
+> specification to build.
+
 ## What we keep and what we replace
 
 Excalidraw's renderer is two stacked canvases with a per-element `WeakMap` bitmap
 cache, invalidated by a random `canvasNonce` bumped on every structural change. The
 caching is genuinely good and worth keeping. The orchestration is not: it lives
-inside a 12,942-line class component whose invalidation rules are documented only
+inside a 12,946-line class component whose invalidation rules are documented only
 in code comments, and adding element types with new visual states fights it
 constantly.
 
-| Keep | Replace |
+**This table is the decision ADR-0017 was asked to make.** The right column is what a
+rewrite would have replaced, and it is kept here so the reasoning stays attached to
+the measurements rather than to a commit message.
+
+| Keep | Replace — not done |
 | --- | --- |
-| `element/shape.ts` — roughjs option mapping, `ShapeCache` | `App.tsx` — 12,942 lines of orchestration |
+| `element/shape.ts` — roughjs option mapping, `ShapeCache` | `components/App.tsx` — 12,946 lines of orchestration |
 | `element/renderElement.ts` — bitmap cache, device-pixel snapping | `scene/Renderer.ts` — the nonce-driven invalidation |
 | `renderer/staticScene.ts` — element drawing pass | The interactive-canvas layering strategy |
 | `renderer/staticSvgScene.ts` — the SVG export path | The React component boundary around the canvas |
 | `element/collision.ts` — hit testing | The `AppState` object as a single god-state |
 
 ## Architecture
+
+**Cancelled.** Kept because the shape of it is the right answer to a question nobody
+has needed answered yet, and because a reader comparing it against the inherited
+`scene/Renderer.ts` will get further than by reading prose.
 
 ```
                  ┌──────────────────────────────────────────┐

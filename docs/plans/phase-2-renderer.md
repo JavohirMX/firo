@@ -6,6 +6,18 @@ to Excalidraw for the element types we inherited.
 **This is the phase the project succeeds or quietly fails on.** Everything before it
 is setup and everything after it depends on it.
 
+**Status: the rewrite is cancelled. The renderer is kept.**
+[`ADR-0017`](../adr/0017-do-not-rewrite-the-renderer.md) records the decision and the
+measurements behind it. In short: the cost model this plan was written around was
+measured on a software rasteriser, and on a GPU the **inherited renderer already meets
+criterion 1** at 73 fps with 9,766 visible elements. Tasks 2.2 and 2.3 are cancelled;
+2.4 to 2.6 describe code that was kept.
+
+**Read that status before the rest of this document.** The phase's premise is
+withdrawn, and sections 2.1a to 2.1e are the record of how: four measurements that had
+to be thrown away, and a positive control that is what makes the surviving numbers
+mean anything. What remains open is criterion 5, one problem, cause unknown.
+
 ## Exit criterion — the gate
 
 All five must hold. These are numbers, not judgements
@@ -25,7 +37,12 @@ All five must hold. These are numbers, not judgements
 
 ## What we keep and what we build
 
-| Keep (MIT, port directly) | Build (new) |
+**Decided in [`ADR-0017`](../adr/0017-do-not-rewrite-the-renderer.md): the left
+column is the whole list.** Nothing in the right column is being built as a phase.
+The table is kept because the reasoning is worth reading, and because the abandoned
+optimisations are the ones to reach for if a measurement ever says they are needed.
+
+| Keep (MIT, port directly) | Build (new) — all cancelled |
 | --- | --- |
 | `element/shape.ts` — roughjs mapping, `ShapeCache` | The stage compositor |
 | `element/renderElement.ts` — bitmap cache, device-pixel snapping | Viewport culling with a spatial index |
@@ -33,6 +50,10 @@ All five must hold. These are numbers, not judgements
 | `renderer/staticSvgScene.ts` — the SVG export path | The render loop and scheduling |
 | `element/collision.ts` — hit testing | Layout passes and resize |
 | Browser limits: `AREA_LIMIT`, `WIDTH_HEIGHT_LIMIT` | |
+
+Two items survive as maintenance rather than as a phase: culling is still a linear
+scan, and the bitmap cache still has no zoom fan-out. Both are real, and neither is
+about frame rate — see ADR-0017's consequences.
 
 | Discard | Why |
 | --- | --- |
@@ -305,7 +326,18 @@ because the JS profiler has now said twice that the answer is not in this code.
 Guessing a third time from the same data would be the third wrong answer.
 
 
-### 2.2 — Culling
+### 2.2 — Culling — **cancelled**
+
+`rbush` R-tree of element bounds, queried against the viewport plus a margin.
+
+**Not built.** The linear scan it replaces is invisible at the target scale: at
+100% zoom on a 10,000-element board, 9,766 elements are visible and a spatial index
+saves 2% of the work. At 10% zoom — where the frame is 300 ms — every element is
+visible and a spatial index saves nothing. It is a real inefficiency for a board much
+larger than the one this product targets.
+
+The index design below is kept because it is the right answer *if* a measurement
+ever says a scan is too slow.
 
 `rbush` R-tree of element bounds, queried against the viewport plus a margin.
 
@@ -316,7 +348,24 @@ Guessing a third time from the same data would be the third wrong answer.
 | Containers | A collapsed container culls its children; expand lazily |
 | Empty result | Must not throw or render a frame late |
 
-### 2.3 — Level of detail
+### 2.3 — Level of detail — **cancelled**
+
+**Not built.** LoD exists to cut the cost of drawing elements you cannot resolve
+anyway, and the measurement says that cost is 0.55 µs per element on a GPU. There is
+nothing to save.
+
+**This is the item the software-rasterisation number was about to spend the most on**,
+and it is worth being explicit about why: at 4.8 µs per element a board of 10,000
+holds 2,100 elements in a 10 ms budget, so a level-of-detail ladder looked like the
+difference between shipping and not shipping. The ladder is designed for 25% zoom,
+which is precisely the range where the real cost is 11 ms and needs nothing.
+
+Note for whoever picks up criterion 5: **a LoD ladder is not the fix for the 10% zoom
+stall.** That stall is not in the renderer's JavaScript at all, so it is not a
+function of how many elements are drawn. Do not build this and expect the sweep to
+change.
+
+The design below is kept for the same reason as 2.2's.
 
 Hysteresis-damped thresholds, or the canvas flickers as the user oscillates around
 one.
@@ -331,7 +380,7 @@ one.
 **Vector LoD, not raster LoD.** Miro published the result: swapping cached rasters
 for re-connected Bézier control points at low zoom saved ~20% memory on 4,000 curves.
 
-### 2.4 — Caching
+### 2.4 — Caching — **kept as inherited; one item still open**
 
 Three layers, ported from Excalidraw's design:
 
@@ -346,22 +395,33 @@ Three layers, ported from Excalidraw's design:
 gesture. A 150% zoom label offset lands on a half-pixel often enough that float noise
 makes it flicker without this.
 
-### 2.5 — Excalidraw's published optimisations
+**The one item here still open** is the bitmap cache's zoom fan-out. One bitmap per
+element, keyed on the element, means a zoom invalidates every element at once — the
+82–160 MB heap measured before the measurement environment was fixed. That figure has
+not been re-measured on a GPU, so it is a hypothesis rather than a number. It is the
+optimisation to reach for first if memory ever turns out to matter, and it is
+maintenance rather than a phase.
 
-All four are applicable and all four are cheap to implement
-([source](https://medium.com/miro-engineering/fighting-for-bytes-in-the-frontend-419c48103ef8)):
+### 2.5 — Excalidraw's published optimisations — **deferred, not cancelled**
 
-| Optimisation | Reported effect |
-| --- | --- |
-| Vector LoD instead of raster LoD | 4,000 curves: 256 MB vs 316 MB |
-| Merge adjacent freedraw strokes of constant style | 1,000 squares: 160 MB → 105 MB |
-| Typed arrays instead of point objects | 3× reduction; 165 MB → 130 MB |
-| **Combined** | **~40–50% total** |
+All four are memory optimisations rather than frame-rate ones, so the measurement in
+2.1d does not argue against them; it argues that they are not urgent. Two of the four
+are also entangled with 2.3, which is cancelled: vector LoD *is* a level-of-detail
+ladder, and building it without the rest would be building 2.3 by the back door.
+The reported effects are Miro's, from
+[their write-up](https://medium.com/miro-engineering/fighting-for-bytes-in-the-frontend-419c48103ef8).
 
-The freedraw merging is the most visible: a board of hand-drawn diagrams is exactly
-where it pays.
+| Optimisation | Reported effect | Position |
+| --- | --- | --- |
+| Vector LoD instead of raster LoD | 4,000 curves: 256 MB vs 316 MB | Deferred — depends on 2.3 |
+| Merge adjacent freedraw strokes of constant style | 1,000 squares: 160 MB → 105 MB | **Best candidate.** Independent of 2.3, and a board of hand-drawn diagrams is exactly where it pays |
+| Typed arrays instead of point objects | 3× reduction; 165 MB → 130 MB | Deferred — `points` is in the document model now, so this is a schema question, not a renderer one |
+| **Combined** | **~40–50% total** | |
 
-### 2.6 — Text on canvas
+### 2.6 — Text on canvas — **kept as inherited; Phase 3 owns the overlay**
+
+The first two are how the inherited renderer already works. The third is the reason
+rich text is a Phase 3 and 4 problem rather than a renderer one.
 
 - **Layout from ProseMirror.** Do not write a text layout engine.
 - **Cache `measureText`** per `(font, size, weight, text)`. Naive per-node measurement
@@ -389,6 +449,15 @@ bounds-exceeding elements, and inside nested containers.
 
 ## The fallback
 
+**Not triggered.** Criterion 1 is met by the inherited renderer, measured on a GPU, so
+the condition this section guards against — a renderer that cannot hold the target
+scale — did not occur. [`ADR-0017`](../adr/0017-do-not-rewrite-the-renderer.md)
+records the decision and the measurements.
+
+The section is kept because the reasoning still applies to the gate's *remaining*
+criteria, and because a reader who finds a superseded fallback has to be able to tell
+it from a live one. It stood as follows:
+
 **If the gate is not met at the end of the timebox:**
 
 1. Stop. Do not continue into Phase 3 on an unproven renderer.
@@ -402,6 +471,12 @@ bounds-exceeding elements, and inside nested containers.
 
 **This is a planned outcome, not a failure.** The measurements are worth more than
 the aesthetic.
+
+### What is still open, and is not a fallback trigger
+
+Criterion 5 fails, criteria 2 to 4 are unverified, and none of that is the condition
+above. Phase 3 proceeds; the open items are named in ADR-0017's confirmation list and
+in the ADR index's open questions.
 
 ## Why not React Flow
 

@@ -9,7 +9,7 @@ demonstrated — not when its code is written.
 | --- | --- | --- |
 | 0 | [Fork, rebrand, documentation](plans/phase-0-foundation.md) | The fork builds and tests; rebrand complete; Virgil gone; `docs/` navigable |
 | 1 | [Document model](plans/phase-1-document-model.md) | `@firo/schema` and `@firo/doc` round-trip a board; migration harness passes against every fixture |
-| 2 | [Renderer rewrite](plans/phase-2-renderer.md) | **The gate.** 10,000 elements at 60 fps; output visually equivalent to Excalidraw |
+| 2 | [Renderer rewrite](plans/phase-2-renderer.md) | **The gate.** 10,000 elements at 60 fps; output visually equivalent to Excalidraw. Criterion 1 met by the inherited renderer; rewrite cancelled — [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md) |
 | 3 | [Interaction](plans/phase-3-interaction.md) | Full tool set, selection, transforms, arrow binding, undo/redo, full keyboard |
 | 4 | [Miro objects and nesting](plans/phase-4-miro-objects.md) | Sticky notes, cards, frames, sections, connectors, arbitrary nesting |
 | 5 | [Facilitation](plans/phase-5-facilitation.md) | Voting, timer, private mode, reactions, presentation mode |
@@ -58,6 +58,12 @@ depends on it. Two consequences:
    never considered. See
    [the Phase 2 plan](plans/phase-2-renderer.md#the-fallback).
 
+**The gate did its job, and it said no.** The cost model the rewrite was justified by
+turned out to be measured on a software rasteriser; on a GPU the inherited renderer
+already holds 10,000 elements at 60 fps. The fallback did not fire, the rewrite is
+cancelled, and criterion 5's low-zoom failure is now a bounded investigation rather
+than an architectural question. See [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md).
+
 Phases 4 and 6 are the two largest by feature volume. Phase 6 is the larger
 architectural risk; Phase 4 is the larger amount of work.
 
@@ -75,7 +81,7 @@ architectural risk; Phase 4 is the larger amount of work.
 
 | Risk | Phase | Mitigation |
 | --- | --- | --- |
-| The renderer rewrite does not achieve the budget | 2 | Numeric gate with a scheduled fallback |
+| The renderer rewrite does not achieve the budget | 2 | **Closed.** The gate measured it and the inherited renderer passes; no rewrite. [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md) |
 | Yjs is the bottleneck at scale | 9 | Measure in Phase 6; Loro's API is compatible for a bounded swap ([`ADR-0002`](adr/0002-yjs-as-concurrency-engine.md)) |
 | Records and projections ship half-built | 6 | Two proven projections beat four broken ones. Scope is set in [`prd/02-scope.md`](prd/02-scope.md) |
 | ProseMirror overlay alignment is subtly wrong at some zooms | 3, 4 | Explicit multi-zoom test matrix ([`trd/05-rich-text.md`](trd/05-rich-text.md)) |
