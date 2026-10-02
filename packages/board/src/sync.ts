@@ -49,6 +49,24 @@ import {
  * matters too. A note's `text` lives on the editor's *label*, not on the note,
  * so a note-to-note comparison would find `text` missing on one side and call
  * every echo an edit.
+ *
+ * ## The comparison has to be by value, not by reference
+ *
+ * This used to compare each field with `===`, which is right for the scalars that
+ * made up the original field list and wrong for everything added since. A fold
+ * builds fresh arrays and objects on every pass -- `points: [...stroke.points]`,
+ * `strokeOptions: {...}` -- so `===` is never true for them, and:
+ *
+ * - if the field is *absent* from the list, the change is invisible and the push
+ *   is misread as an echo. That is what left a stroke's `points` frozen one point
+ *   behind the canvas: the geometry fields matched, the differing `points` was not
+ *   in the list, so every push after the first was discarded as an echo.
+ * - if the field *is* in the list, `===` is never true and no push is ever an
+ *   echo, so the guard does nothing and the loop this exists to stop can run.
+ *
+ * Both failures are silent, and they are opposite. `sameValue` recurses, so the
+ * comparison means what it says for a scalar, an array of pairs, or a nested
+ * object.
  */
 const isEcho = (
   candidate: FiroElement,
@@ -58,10 +76,11 @@ const isEcho = (
     return false;
   }
   return (
-    EDITOR_OWNED_FIELDS.every(
-      (field) =>
-        (candidate as unknown as Record<string, unknown>)[field] ===
+    EDITOR_OWNED_FIELDS.every((field) =>
+      sameValue(
+        (candidate as unknown as Record<string, unknown>)[field],
         (pushed as unknown as Record<string, unknown>)[field],
+      ),
     ) && candidate.isDeleted === pushed.isDeleted
   );
 };

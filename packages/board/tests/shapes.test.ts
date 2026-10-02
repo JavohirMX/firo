@@ -188,13 +188,17 @@ describe("shape fold", () => {
 
   it("still skips a type the document has no schema for", () => {
     /*
-     * The gap is narrowing: `freedraw`, `image` and `frame` are not types yet.
-     * Skipping beats throwing -- throwing would freeze the board over something
-     * the user can see -- but it is a hole, not a virtue, and freehand is the
-     * next one because it is what people reach for when they are not thinking
-     * about structure.
+     * The gap is narrowing: `image` and `frame` are not types yet. Skipping beats
+     * throwing -- throwing would freeze the board over something the user can see
+     * -- but it is a hole, not a virtue.
+     *
+     * This named `freedraw` for a long time, which was right when written and
+     * quietly wrong once `freedraw` gained a schema. It kept passing: the element
+     * was a rectangle relabelled, so the shape branch skipped it for lack of
+     * points, and the assertion held for a reason that had nothing to do with the
+     * schema. `freedraw.test.ts` covers the type this used to stand in for.
      */
-    const freedraw = { ...editorShape("rectangle"), type: "freedraw" };
-    expect(fromEditorElements([freedraw] as never)).toHaveLength(0);
+    const image = { ...editorShape("rectangle"), type: "image" };
+    expect(fromEditorElements([image] as never)).toHaveLength(0);
   });
 });

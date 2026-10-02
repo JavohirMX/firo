@@ -229,13 +229,39 @@ describe("fromEditorElements", () => {
 
   it("skips a type the document has no schema for, rather than failing the whole sync", () => {
     /*
-     * The gap is real and growing: `arrow`, `line` and `freedraw` are not types
-     * yet, so a connector a user draws is not in their document. Skipping beats
+     * The gap is real and shrinking: `image` and `frame` are not types yet, so a
+     * picture or a frame a user drops is not in their document. Skipping beats
      * throwing -- throwing would freeze the board over something the user can
      * see -- but it is a hole, not a virtue.
+     *
+     * This used to name `freedraw`, which was correct when written and stopped
+     * being correct the moment `freedraw` gained a schema. It then asserted that a
+     * type the document fully supports is skipped, and it passed for the wrong
+     * reason: the branch it hit was a shape's, which skipped it because the shape
+     * branch had no points. A test that keeps passing after the thing it describes
+     * stops being true is worse than one that fails, because it looks like
+     * coverage.
      */
-    const foreign = { type: "freedraw", id: "r1" } as never;
+    const foreign = { type: "image", id: "r1" } as never;
     expect(fromEditorElements([foreign])).toHaveLength(0);
+  });
+
+  it("folds a stroke the document does support, with defaults for missing fields", () => {
+    // The other half of the test above, and the reason the unsupported-type list
+    // needs to be honest. A stroke with no pressures is corrupt, but the fold runs
+    // over the whole scene on every change, so throwing here would take the whole
+    // board's sync with it. It folds with defaults and the validator repairs it on
+    // load, which is recoverable in a way that a frozen board is not.
+    const bare = { type: "freedraw", id: "r1" } as never;
+    const [folded] = fromEditorElements([bare]);
+
+    expect(folded?.type).toBe("freedraw");
+    expect((folded as unknown as { pressures: number[] }).pressures).toEqual(
+      [],
+    );
+    expect(
+      (folded as unknown as { simulatePressure: boolean }).simulatePressure,
+    ).toBe(true);
   });
 
   it("preserves containerId through customData", () => {

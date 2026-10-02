@@ -40,6 +40,7 @@ import type {
   Binding,
   ElementId,
   FiroElement,
+  FreedrawElement,
   LinearElement,
   ShapeElement,
   StickyNoteElement,
@@ -102,15 +103,43 @@ export const seedForId = (id: string): number => {
 };
 
 /**
- * Fields the editor owns outright, and which may therefore be written back.
+ * Fields the editor owns outright.
  *
- * This is the whole list. Anything absent is either shared with the document —
- * and then a value read from the editor is as good as one in the document — or
- * document-only, and writing the editor's value would destroy information.
+ * ## This list decides echo detection, and nothing else
+ *
+ * It is read in exactly one place: `isEcho` in `sync.ts`. It does **not** decide
+ * what gets written back — that is `changedFields`, which diffs the folded element
+ * against the document field by field and is not restricted to this list. The
+ * distinction matters: a field missing from here is not prevented from being
+ * written, it is prevented from being *noticed*, which is worse.
+ *
+ * A field that belongs here but is absent is invisible to the echo check, so a
+ * change to *only* that field is discarded as an echo. The element still exists in
+ * the document, so nothing looks missing: it is frozen at whatever it was first
+ * written with while the canvas shows the new value. No error, no warning, and
+ * nothing in the file to say which of the two is right.
  *
  * `customData` is deliberately excluded. The editor round-trips it untouched, so
  * it belongs to nobody in particular, and excluding it keeps a future editor that
  * normalises `customData` from silently rewriting a host application's data.
+ *
+ * ## Adding an element type means adding its fields here
+ *
+ * This list was wrong for a long time, and always in the same silent way. `points`
+ * was missing from the beginning, so every bent connector was affected;
+ * `pressures`, `simulatePressure` and `strokeOptions` were missing when `freedraw`
+ * was added; and `groupIds`, `locked`, `link`, `frameId`, `polygon`, `elbowed` and
+ * the two arrowheads were missing the whole time, which is to say grouping,
+ * locking, hyperlinks and arrowhead changes have never reached the document.
+ *
+ * Measured for the stroke case: the document held 16 points where the editor held
+ * 15, and stayed there indefinitely, because the correcting push was thrown away
+ * each time.
+ *
+ * So the rule is not "add the scalars". It is **every field the editor owns and
+ * the document must track**, and `pointsSync.test.ts` fails by name if one is left
+ * out — it derives the list from what each element type actually carries, minus a
+ * set of exclusions that each carry a stated reason.
  */
 export const EDITOR_OWNED_FIELDS = [
   "x",
@@ -131,6 +160,57 @@ export const EDITOR_OWNED_FIELDS = [
   "fontFamily",
   "textAlign",
   "verticalAlign",
+  /*
+   * The path, for connectors and strokes alike.
+   *
+   * A field missing from this list is invisible to the echo check, and the effect
+   * is silent: the change is discarded as an echo and the document keeps a stale
+   * value while the canvas shows the new one. `points` was missing from the start,
+   * which is why extending a stroke or a bent connector left the document one
+   * vertex behind with no error anywhere.
+   *
+   * So the list is not "the fields that happen to be scalars". It is every field
+   * the editor owns and the document must track, and adding a field to an element
+   * type means adding it here too.
+   */
+  "points",
+  /*
+   * The rest of a stroke's data. All four change how the stroke draws, and all
+   * four were missing together -- the same silent staleness, on a type added in
+   * one go.
+   */
+  "pressures",
+  "simulatePressure",
+  "strokeOptions",
+  /*
+   * Grouping, locking, links and frames. Also missing, also for the same reason,
+   * and each one a feature that would have appeared broken in a way that looks
+   * like a rendering bug: group two shapes and the document does not record it,
+   * lock an element and it is not locked in the document, add a link and it is
+   * not there. The canvas shows the change, so it reads as "the picture is right
+   * and the file is behind", which is the hardest kind of bug to report.
+   *
+   * Grouping is Phase 3 work, so this is what unblocks it rather than a surprise
+   * it would have sprung.
+   */
+  "groupIds",
+  "locked",
+  "link",
+  "frameId",
+  /*
+   * A connector's own fields. `startArrowhead` and `endArrowhead` decide what the
+   * ends look like, `polygon` whether the path closes, `elbowed` whether it is
+   * routed in segments -- all editor-owned, all missing, all silently dropped.
+   *
+   * Note that the *bindings* are not here. `startBinding` and `endBinding` are
+   * excluded rather than listed, because the fold reads them to build the
+   * document's ordered `bindings`, and comparing the inputs as well would mean two
+   * representations of one relation that could disagree.
+   */
+  "startArrowhead",
+  "endArrowhead",
+  "polygon",
+  "elbowed",
 ] as const;
 
 /**
@@ -346,6 +426,46 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
     ];
   }
 
+  if (element.type === "freedraw") {
+    /*
+     * A freehand stroke is one editor element and a straight copy, unlike a note.
+     *
+     * Every field the renderer needs is carried, and that is the whole reason this
+     * branch exists. A stroke with its `pressures`, `simulatePressure` and
+     * `strokeOptions` dropped still loads and still draws — it just draws as an
+     * even, unsmoothed ribbon, so a file missing them would look like a
+     * deliberately plain stroke rather than like damage.
+     *
+     * The three arrays and the options object are copied rather than shared.
+     *
+     * The editor builds a stroke's points by *replacing* the array
+     * (`points: [...points, newPoint]`), so sharing would happen to be safe today.
+     * It is copied anyway because that is a property of current editor code rather
+     * than an invariant anyone has written down: an element that is handed the
+     * document's own array and then pushed into would change the document with no
+     * commit, no diff and no undo entry, and the next fold would read the mutated
+     * values and commit them as if the user had made them. A stroke is a few
+     * hundred pairs and projections happen on document changes, not per frame, so
+     * the copy is not worth the question.
+     */
+    return [
+      {
+        ...sharedBaseFor(element),
+        type: "freedraw",
+        points: [...element.points],
+        pressures: [...element.pressures],
+        simulatePressure: element.simulatePressure,
+        strokeOptions: { ...element.strokeOptions },
+        /*
+         * `lastCommittedPoint` is left unset on purpose. It is live gesture state
+         * the editor rewrites as the pen moves; the document does not store it, so
+         * there is nothing here to restore. The renderer falls back to the last
+         * entry of `points` when it is absent.
+         */
+      } as unknown as ExcalidrawElement,
+    ];
+  }
+
   if (element.type !== "stickynote") {
     throw new Error(
       `@firo/board: cannot draw element type "${element.type}" (id ${element.id}). ` +
@@ -538,6 +658,58 @@ export const fromEditorElements = (
           ? { customData: shapeCustomData }
           : {}),
       } as ShapeElement);
+      continue;
+    }
+
+    if (element.type === "freedraw") {
+      /*
+       * A stroke, and a single editor element — so nothing to consume and nothing
+       * to fold, the same as a shape.
+       *
+       * Every pressure field is copied. This is where a stroke is most easily
+       * damaged: the fold runs on every editor change, so a stroke that lost
+       * `pressures` here would come back on the next sync as a flat line and look
+       * like a rendering bug rather than a lost field.
+       *
+       * The fields are read defensively, which they are not elsewhere in this
+       * fold, and the reason is the spreads. `[...stroke.pressures]` on an element
+       * with no `pressures` throws, and the fold runs over the whole scene on
+       * every editor change — so one malformed stroke would take the entire board's
+       * sync down with it. That is the failure the "skips a type the document has
+       * no schema for" test exists to prevent, reached from the other direction.
+       *
+       * An incomplete stroke is folded with defaults rather than dropped: the
+       * schema's validator repairs it on load, so a stroke that arrives missing
+       * its pressures becomes a valid even-width stroke instead of vanishing.
+       */
+      const stroke = element as unknown as {
+        points?: unknown;
+        pressures?: readonly number[];
+        simulatePressure?: boolean;
+        strokeOptions?: Partial<FreedrawElement["strokeOptions"]>;
+      };
+
+      const fields = sharedDocumentFields(element);
+      const { containerId, ...strokeCustomData } = (element.customData ??
+        {}) as { containerId?: unknown } & Record<string, unknown>;
+
+      folded.push({
+        ...fields,
+        type: "freedraw",
+        points: Array.isArray(stroke.points) ? [...stroke.points] : [],
+        pressures: Array.isArray(stroke.pressures) ? [...stroke.pressures] : [],
+        // `true` is the safe default: the renderer can draw from points alone,
+        // whereas `false` with no pressures hands it `undefined` per point.
+        simulatePressure: stroke.simulatePressure !== false,
+        strokeOptions: {
+          variability: stroke.strokeOptions?.variability ?? "variable",
+          streamline: stroke.strokeOptions?.streamline ?? 0.4,
+        },
+        ...(typeof containerId === "string" ? { containerId } : {}),
+        ...(Object.keys(strokeCustomData).length
+          ? { customData: strokeCustomData }
+          : {}),
+      } as unknown as FreedrawElement);
       continue;
     }
 

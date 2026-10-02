@@ -65,6 +65,26 @@ in a spike costs two days; finding it out in the renderer costs a month.
 Recorded before the spikes, because two spikes were run and both produced numbers
 that had to be thrown away.
 
+**0. This machine is shared and frequently oversubscribed, and it breaks the test
+suite before it breaks a benchmark.** `uptime` reached a load average of 46 on 10
+cores during ordinary work here, with `llama-server`, `WindowServer` and `cloudd`
+among the consumers. A full `yarn test:app --watch=false` run under that load
+reported **211 failures** — every one of them a timeout in a test that passes on
+an idle machine, including 10 that are the known pre-existing sidebar ones. None
+were assertion failures.
+
+The lesson is not "wait for an idle machine", which is not always available. It is
+that **a failure count from this machine means nothing on its own**: check
+`AssertionError` separately from timeouts, and record the load alongside the
+number. A timeout is a statement about contention; an assertion failure is a
+statement about the code, and only the second one is worth investigating.
+
+The same applies to the interactive browser checks used for Phase 3. Several hours
+were spent reading a "the document is one point behind" result that turned out to
+be a correct measurement on a correct build — but only after two runs were thrown
+away because a stale `dist/dev` bundle was being served, which is its own trap,
+recorded at the end of this section.
+
 **1. Headless Chromium here rasterises in software.** `WEBGL_debug_renderer_info`
 reports `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device …), SwiftShader driver)`.
 There is no GPU. Rasterisation cost measured here is software-raster cost and is
@@ -72,6 +92,14 @@ There is no GPU. Rasterisation cost measured here is software-raster cost and is
 configurations may survive; absolute milliseconds will not. Criterion 1's
 "five-year-old laptop" cannot be satisfied in this environment at all, so it needs
 either a GPU-backed browser or a real machine.
+
+**1b. The app consumes `@firo/*` as build output, not source.** `packages/board`'s
+`exports` resolve to `dist/dev/index.js`, so a change to a package's `src` is
+**not** visible to the running app until `yarn build:packages` has been run. Two
+browser measurements were thrown away because the app was serving a stale bundle and
+the change under test appeared to have no effect at all — a convincing, entirely
+false negative. When a source change "does nothing" in the browser, rebuild the
+packages before concluding anything.
 
 **2. The frame-time metric was vsync-quantised.** `measure` collects rAF timestamp
 deltas, and those land on the 16.7 ms grid. Under one budget that is invisible; far
