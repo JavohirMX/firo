@@ -93,7 +93,12 @@ import DebugCanvas, {
   loadSavedDebugState,
 } from "./components/DebugCanvas";
 
-import { attachBoard, boardElements, commitBoard } from "./board/board";
+import {
+  attachBoard,
+  boardElements,
+  boardRestored,
+  commitBoard,
+} from "./board/board";
 
 import "./index.scss";
 
@@ -176,6 +181,20 @@ const initializeScene = async (opts: {
   const externalUrlMatch = window.location.hash.match(/^#url=(.*)$/);
 
   const localDataState = importFromLocalStorage();
+
+  /*
+   * The board, before anything reads it.
+   *
+   * Storage is IndexedDB and therefore asynchronous, so the document cannot be
+   * populated by the time this function runs. Awaited here, where the initial scene
+   * is already a promise the editor waits on, so the canvas is created with the board
+   * in it rather than empty and then filling in.
+   *
+   * Doing it in the background instead would open every board on a flash of blank
+   * canvas, which on a large board lasts long enough to look like the work was lost.
+   * Nothing renders until this resolves.
+   */
+  await boardRestored();
 
   let scene: Omit<
     RestoredDataState,

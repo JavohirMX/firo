@@ -16,10 +16,16 @@
  * `appState` — zoom, theme, scroll — which the document model has no opinion
  * about and never will.
  *
- * It also still saves elements, as a redundant copy. That is deliberate for now:
- * the document model has no persistence until Phase 7, so `LocalData` is the only
- * thing that survives a reload, and removing the copy would mean a refresh loses
- * the board. When persistence lands the redundancy is deleted, not reconciled.
+ * It also still saves elements, as a redundant copy. That was deliberate while the
+ * document model had no persistence of its own — `LocalData` was the only thing that
+ * survived a reload, and removing the copy would have meant a refresh loses the
+ * board.
+ *
+ * That has now changed: `./storage.ts` autosaves the *document* on every change, so
+ * a reload restores from it. The `LocalData` element copy is therefore redundant and
+ * is the next thing to remove. It has not been removed here, because doing so is a
+ * visible change to reload behaviour and belongs in its own commit where it can be
+ * verified on its own — see the note on `boardElements`.
  */
 
 import { createFiroDoc } from "@firo/doc";
@@ -29,6 +35,10 @@ import { CaptureUpdateAction } from "@firo/editor";
 
 import type { ExcalidrawElement } from "@firo/element/types";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
+
+import { debounce, restoreBoard, saveBoard } from "./storage";
+
+import type { RestoreResult } from "./storage";
 
 /**
  * The document for this tab.
@@ -58,6 +68,100 @@ let activeAppState: (() => unknown) | null = null;
 
 /** The document, for the few places that read or write it directly. */
 export const boardDoc = () => doc;
+
+/*
+ * Restore, once, and report when it is done.
+ *
+ * Awaited rather than fired. `boardElements()` is read while the editor builds its
+ * initial scene, so a document populated in the background would leave the canvas
+ * empty and then fill in — a flash of a blank board which, on a large one, lasts
+ * long enough to look like the work was lost.
+ *
+ * Storage is IndexedDB and therefore asynchronous, which forces the question. The
+ * editor already waits on a promise for its initial scene, so the answer is to make
+ * that wait include the restore. Nothing renders until the board is known.
+ *
+ * The promise is created here, at module scope, and awaited wherever it is needed.
+ * A second call returns the same promise rather than restoring twice: two restores
+ * would load the board twice and race the autosave.
+ */
+let restoreOnce: Promise<RestoreResult> | null = null;
+
+export const boardRestored = (): Promise<RestoreResult> => {
+  if (restoreOnce === null) {
+    restoreOnce = restoreBoard(doc).then((result) => {
+      if (result.status === "failed") {
+        /*
+         * Loudly, and on purpose. A board that cannot be read back leaves an empty
+         * canvas that looks exactly like an empty board, and the person has no way to
+         * tell those apart. The stored copy is deliberately left untouched so it can
+         * still be recovered by hand — see `restoreBoard` for why a failed restore
+         * must not overwrite the thing it failed to read.
+         */
+        console.warn(
+          `[firo] the autosaved board could not be read (${result.detail}). The ` +
+            `canvas will open empty. The stored board has been left in place so it ` +
+            `can be recovered.`,
+        );
+      }
+      return result;
+    });
+  }
+  return restoreOnce;
+};
+
+/**
+ * Autosave, debounced.
+ *
+ * The document updates on every committed change, which during a drag is several
+ * times a second, and serialising a whole board — every point of every stroke — that
+ * often would put string-building on the hot path of drawing. 400ms is short enough
+ * that a closed tab has lost nothing a person would notice, and long enough that a
+ * drag produces one write rather than dozens.
+ *
+ * A trailing save is always scheduled, so the last change in a burst is never the
+ * one dropped. That is the failure which loses the thing someone just did.
+ */
+const AUTOSAVE_DELAY_MS = 400;
+
+const autosave = debounce(() => {
+  void saveBoard(doc).then((result) => {
+    if (!result.ok && result.detail) {
+      /*
+       * Only the case worth saying out loud: the board is not being saved, and
+       * someone who does not know that will lose work. A line on every keystroke
+       * would be noise that trains people to ignore the console.
+       */
+      console.warn(
+        `[firo] the board did not autosave (${result.reason}: ${result.detail}). ` +
+          `Work in this tab is not being saved.`,
+      );
+    }
+  });
+}, AUTOSAVE_DELAY_MS);
+
+doc.onUpdate(autosave);
+
+/**
+ * Write the board out now rather than in a moment.
+ *
+ * Called when the page is being hidden or closed, where a pending debounce would
+ * never fire. `pagehide` is the reliable event — `beforeunload` is not fired on
+ * mobile — and `visibilitychange` covers a tab that is switched away on a device
+ * which then freezes it, which is the ordinary way the last edit gets lost.
+ */
+const flushBoard = (): void => {
+  void saveBoard(doc);
+};
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushBoard);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushBoard();
+    }
+  });
+}
 
 /**
  * The elements the board should open with.

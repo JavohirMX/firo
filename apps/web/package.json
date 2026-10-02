@@ -48,7 +48,9 @@
     "serve": "npx http-server build -a localhost -p 5001 -o",
     "build:preview": "yarn build && vite preview --port 5000"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "fake-indexeddb": "3.1.7"
+  },
   "description": "Firo — the local-first, self-hostable whiteboard web app",
   "keywords": [
     "firo",

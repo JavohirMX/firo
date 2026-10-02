@@ -117,6 +117,76 @@ describe("toEditorElements", () => {
   });
 
   /*
+   * A label needs a real fractional index, and this is the test that says so.
+   *
+   * It was `null`, on the reasoning that a derived element has no place in the
+   * z-order. `index: null` is not a tolerated value — `validateFractionalIndices`
+   * throws `InvalidFractionalIndexError` on it in development, on every scene
+   * change — and nothing noticed for as long as it stood, because the editor builds
+   * its own notes and gives their labels proper indices. The projection only runs on
+   * restore, so the invalid label entered the scene the first time a board came back
+   * from storage: a board that saved perfectly and then could not be opened.
+   *
+   * The value is one step after the note's, which is where Excalidraw puts it.
+   * Measured by drawing a note in the app: note `"a0"`, label `"a1"`.
+   */
+  describe("a note's label index", () => {
+    it("is a real fractional index, not null", () => {
+      const scene = toEditorScene([note({ index: "a0" as never })]);
+      const label = scene[1] as unknown as { index: string | null };
+
+      expect(label.index).not.toBeNull();
+      expect(typeof label.index).toBe("string");
+    });
+
+    it("sorts immediately after its note", () => {
+      // After, not before: a label in front of its note would draw over anything
+      // placed after it, which is not what a note's own label should do.
+      const scene = toEditorScene([note({ index: "a0" as never })]);
+      const [, label] = scene as unknown as Array<{ index: string | null }>;
+
+      expect((label.index as unknown as string) > "a0").toBe(true);
+    });
+
+    it("is stable across projections, so a restore does not reshuffle z-order", () => {
+      const element = note({ index: "a0" as never });
+      const first = toEditorScene([element])[1] as unknown as { index: string };
+      const second = toEditorScene([element])[1] as unknown as {
+        index: string;
+      };
+
+      // Derived from the note's index, so it cannot drift between saves. A random
+      // or time-based value would reorder the board on every reload.
+      expect(first.index).toBe(second.index);
+    });
+
+    it("gives two notes on the same board different label indices", () => {
+      const scene = toEditorScene([
+        note({ id: "n1", index: "a0" as never }),
+        note({ id: "n2", index: "a1" as never }),
+      ]);
+      const labels = scene
+        .filter((element) => element.type === "text")
+        .map((element) => (element as unknown as { index: string }).index);
+
+      expect(new Set(labels).size).toBe(labels.length);
+    });
+
+    it("survives a round trip through the document without an invalid index", () => {
+      // The end-to-end shape of the bug: project, fold, project again. If the label
+      // index were derived from something that changed between the two, this is where
+      // it would show.
+      const scene = toEditorScene([note({ index: "a0" as never })]);
+      const folded = fromEditorElements(scene as never);
+
+      const reprojected = toEditorScene(folded);
+      const label = reprojected[1] as unknown as { index: string | null };
+
+      expect(label.index).not.toBeNull();
+    });
+  });
+
+  /*
    * The state a note is actually in while its text is being edited.
    *
    * Double-clicking a note to type in it does not edit the note's bound label. It

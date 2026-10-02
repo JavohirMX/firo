@@ -28,6 +28,8 @@
  * document.
  */
 
+import { generateKeyBetween } from "@firo/fractional-indexing";
+
 import type {
   BoundElement,
   ExcalidrawElement,
@@ -500,7 +502,31 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
      */
     version: 1,
     versionNonce: 0,
-    index: null,
+    /*
+     * The label gets a real fractional index, one step after the note's — which is
+     * where Excalidraw puts it when a person draws the note. Measured, drawing a
+     * note in the app: note `"a0"`, label `"a1"`.
+     *
+     * It was `null` here, on the reasoning that a derived element has no place in
+     * the z-order. That is wrong, and it only showed up once persistence existed.
+     *
+     * `index: null` is not a tolerated value: `validateFractionalIndices` runs on
+     * every scene change in development and throws `InvalidFractionalIndexError` on
+     * it. Nothing noticed while the editor built its own notes, because Excalidraw
+     * gives the label a proper index when *it* creates one. The projection only runs
+     * on restore, so the invalid label entered the scene the first time a board came
+     * back from storage — that is, the first time a saved board was reopened. A board
+     * that saved perfectly then failed to open, which is the worst possible moment to
+     * discover it.
+     *
+     * Derived from the note's index rather than invented, so it is stable: the same
+     * note projects to the same label index on every restore, and two notes can never
+     * collide on one.
+     */
+    index: generateKeyBetween(
+      element.index,
+      null,
+    ) as ExcalidrawTextElement["index"],
     containerId: element.id,
     originalText: element.text,
     text: element.text,
