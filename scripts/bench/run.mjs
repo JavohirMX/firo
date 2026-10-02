@@ -171,10 +171,62 @@ const main = async () => {
   }
 };
 
+/**
+ * Trace mode: `node scripts/bench/run.mjs --trace`
+ *
+ * A third path, for the same reason the profiler is a second one: the benchmark asks
+ * "how fast", the profiler asks "why, in JavaScript", and this asks "where did the
+ * time go that JavaScript does not own".
+ *
+ * That third question is the one the 10% zoom stall needs. The CPU profiler has said
+ * twice that the cost is outside the renderer's code -- 81-93% of the frame as
+ * `(idle)` and `(program)` -- and `(program)` is the profiler's label for browser work
+ * with no JS frame attached. Only a Chrome trace names that work.
+ */
+const trace = async () => {
+  const { outfile } = await bundle(join(ROOT, "scripts", "bench", "trace.ts"));
+  try {
+    const { traceScenes, formatTrace } = await import(pathToFileURL(outfile).href);
+    const zooms = arg("zooms", "0.1,0.5")
+      .split(",")
+      .map((value) => Number.parseFloat(value.trim()))
+      .filter((value) => Number.isFinite(value));
+
+    const report = await traceScenes({
+      baseUrl: arg("url", "http://localhost:3000"),
+      count: Number.parseInt(arg("count", "10000"), 10),
+      durationMs: Number.parseInt(arg("ms", "4000"), 10),
+      gpu: !flag("headless"),
+      zooms,
+      ...(arg("world", "")
+        ? { worldSize: Number.parseInt(arg("world", ""), 10) }
+        : {}),
+    });
+
+    console.log("");
+    console.log(`  ${new Date().toISOString()}`);
+    console.log(formatTrace(report));
+
+    if (flag("json")) {
+      console.log("");
+      console.log(JSON.stringify(report, null, 2));
+    }
+  } finally {
+    // Left in place; see the note in `bundle`.
+  }
+};
+
 if (flag("profile")) {
   profile().catch((error) => {
     console.error("");
     console.error(`  profile failed: ${error?.message ?? error}`);
+    console.error("");
+    process.exit(1);
+  });
+} else if (flag("trace")) {
+  trace().catch((error) => {
+    console.error("");
+    console.error(`  trace failed: ${error?.message ?? error}`);
     console.error("");
     process.exit(1);
   });

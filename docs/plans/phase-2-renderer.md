@@ -325,6 +325,74 @@ can account for `(program)` -- a Chrome tracing run rather than a JS CPU profile
 because the JS profiler has now said twice that the answer is not in this code.
 Guessing a third time from the same data would be the third wrong answer.
 
+#### 2.1f — The trace exists now, and it did not settle it
+
+`scripts/bench/trace.ts`, run with `--trace`. CDP `Tracing` over the
+`devtools.timeline` categories, so it reports named browser events — `RunTask`,
+`GPUTask`, `Commit`, `PrePaint`, `RasterTask`, `UpdateLayer`, `Layerize`,
+`FireAnimationFrame`, `FunctionCall` — which is the whole class of thing `(program)`
+is made of and none of which a JS CPU profile can name. The aggregation is unit-tested
+(`trace.test.ts`) because the failure mode here is not a crash, it is a plausible
+number about the wrong thing.
+
+**It produced one candidate and then failed to reproduce it.**
+
+First run, windowed on the M5, 5 s traced at each zoom:
+
+| event | zoom 0.1 | zoom 0.5 |
+| --- | --- | --- |
+| `RunTask` max | 254.5 ms | 526.6 ms |
+| `FunctionCall` max | 243.1 ms | 526.2 ms |
+| `MajorGC` max | **242.4 ms** | 132.8 ms |
+| `V8.GC_MARK_COMPACTOR` max | 242.4 ms | 195.7 ms |
+| `GPUTask` per task | 7.2 ms | 6.0 ms |
+
+A single 242 ms mark-compact GC, sitting inside a single 243 ms `FunctionCall`, at
+10% zoom only. That reads like the answer: the frame *is* a garbage collection.
+
+**It did not survive a second run.** Same command, 10% zoom, 4 s:
+
+| event | run 1 | run 2 |
+| --- | --- | --- |
+| `RunTask` max | 254.5 ms | 32.7 ms |
+| `FunctionCall` max | 243.1 ms | 18.8 ms |
+| `MajorGC` in the top eight | yes | **absent** |
+
+So the honest reading is narrower than "the stall is GC". Three things are true at
+once: a GC that large *can* occur inside a 10% frame; it did not occur in the next
+run; and 50% zoom had a 132 ms `MajorGC` too, so GC is not specific to the slow zoom.
+A variable-length GC pause landing in one sample out of two is a sample of one.
+
+**The runs are also not comparable to each other**, which is the deeper problem. Total
+events were 658,570 and 49,960 for runs that differed only in duration; `GPUTask` count
+was 311 in one and 1 in the other. That is the trace buffer shedding events under
+contention -- the second run recorded at a load average of **42 on 10 cores**, against
+3.3 for the first. This machine's own §2.1a rule applies to a trace exactly as it does
+to a benchmark: check the load, and treat a number from an oversubscribed machine as a
+statement about contention rather than about the renderer.
+
+**What is genuinely settled by this, narrowly:** GPU rasterisation is not the
+differential cost. Per-`GPUTask` is 7.2 ms at 10% against 6.0 ms at 50% — within noise
+of each other, while the frame rate differs by 30×. Whatever the stall is, it is not
+the GPU doing more work per task.
+
+**What is needed next, and it is a list rather than a guess:**
+
+1. **A quiet machine, and `uptime` recorded with the number.** Not optional. Every run
+   so far has been on a shared box and two of them were unusable.
+2. **Enough samples to talk about a distribution.** One 5 s window per zoom cannot
+   distinguish "one GC" from "GC every frame". The frame counts at 10% are already
+   known to vary between 0 and 4 per 6 s, so the window has to be long enough to hold
+   a dozen frames.
+3. **Heap numbers alongside the trace.** `--js-flags=--expose-gc` and a
+   `performance.measureUserAgentSpecificMemory()` reading either side of the pan would
+   say whether the 10% case is genuinely allocating more, or merely allocating at a
+   moment when a collection was already due. That is the question the mark-compact
+   result raises and cannot answer.
+
+Until then criterion 5 stays open, and the mechanism stays unknown. This section
+records a lead, not a conclusion.
+
 
 ### 2.2 — Culling — **cancelled**
 

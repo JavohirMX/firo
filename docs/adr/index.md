@@ -67,5 +67,5 @@ Deliberately deferred. Each is answered before the phase that depends on it.
 | Is Yjs still the right engine at 10,000 elements with 20 concurrent editors? | Phase 9 |
 | **Verified licence for every bundled font** — the audit found *no* licence file for any of them, including the new default. See [`../../FONT-LICENSES.md`](../../FONT-LICENSES.md) and ADR-0014. | **Before any public release** |
 | Which OFL hand-drawn face can survive 12 px diagram labels, measured on rendered output rather than assumed? | Phase 2 — **now unblocked.** ADR-0017 keeps the inherited renderer, so there is rendered output to measure, which is what ADR-0014 required and did not have |
-| Why is 10% zoom ~30× slower than 50%, with the cost outside the renderer's JavaScript? | Before criterion 5 can be demonstrated. Needs a Chrome trace, not a JS CPU profile — see [ADR-0017](0017-do-not-rewrite-the-renderer.md) |
+| Why is 10% zoom ~30× slower than 50%, with the cost outside the renderer's JavaScript? | Before criterion 5 can be demonstrated. The Chrome trace exists and rules GPU rasterisation out; it has not reproduced a mechanism. See [ADR-0017](0017-do-not-rewrite-the-renderer.md) and [§2.1f](plans/phase-2-renderer.md#21f--the-trace-exists-now-and-it-did-not-settle-it) |
 | Product name and trademark clearance | Before any public release |

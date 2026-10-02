@@ -101,9 +101,10 @@ unknown.
 
 3. **Criterion 5 is a defect to diagnose, not a reason to rewrite.** The next
    investigation is a Chrome trace that can account for `(program)`, because the JS
-   CPU profiler has now said twice that the cost is not in this code. Guessing a
-   third time from the same data would be the third wrong answer. It is bounded
-   work with a known next step, and it does not block Phase 3.
+   CPU profiler has now said twice that the cost is not in this code. That trace tool
+   now exists (`scripts/bench/trace.ts`) and confirms the cost is browser-internal, and
+   it has not yet produced a reproducible mechanism — see the confirmation list. It is
+   bounded work with a known next step, and it does not block Phase 3.
 
 4. **The renderer's real inefficiencies are maintenance, not a phase.** Two are
    genuine and neither is about frame rate:
@@ -171,8 +172,15 @@ the renderer hard to read".
 - [x] The software-rasterisation artefact identified and quantified: 4.76 µs/element
       against 0.55 µs/element, 8.6×.
 - [x] Criterion 5 measured and failing: 3.3 fps at 10% zoom against 101 fps at 50%.
-- [ ] Criterion 5's mechanism identified. **Open.** Needs a Chrome trace that can
-      attribute `(program)`.
+- [x] Criterion 5's cost is outside the renderer's JavaScript, confirmed by a Chrome
+      trace (`scripts/bench/trace.ts`), not only by a JS profile: the browser-internal
+      events account for the frame and no JS function reaches 3%.
+- [x] GPU rasterisation is not the differential cost at 10%: per-`GPUTask` is 7.2 ms
+      at 10% against 6.0 ms at 50%, while the frame rate differs by 30×.
+- [ ] Criterion 5's mechanism identified. **Open.** The trace produced one candidate —
+      a 242 ms mark-compact GC inside a single `FunctionCall` — and it did not
+      reproduce on the next run. A sample of one is not a mechanism.
+      [`phase-2-renderer.md` §2.1f](../plans/phase-2-renderer.md#21f--the-trace-exists-now-and-it-did-not-settle-it)
 - [ ] Criterion 2, visual equivalence by reference-image comparison. **Open.**
 - [ ] Criteria 3 and 4, create/save/load budget and hit-testing at every zoom.
       **Open.**
