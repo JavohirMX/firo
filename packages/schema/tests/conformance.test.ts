@@ -58,8 +58,11 @@ import type {
   AnyArrowhead as RendererAnyArrowhead,
   BindMode as RendererBindMode,
   ExcalidrawElement,
+  ExcalidrawFreeDrawElement,
+  ExcalidrawGenericElement,
   FillStyle as RendererFillStyle,
   StrokeStyle as RendererStrokeStyle,
+  StrokeVariability as RendererStrokeVariability,
 } from "@firo/element/types";
 
 import type { LocalPoint } from "@firo/math";
@@ -72,16 +75,32 @@ import { SHAPE_TYPES } from "../src/types/shape.js";
 /* Runtime equality, where both sides have a constant                          */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * Importing the entry point is what registers the element types, and this file is
+ * the one place that has to see the *whole* set. The individual `types/*.js`
+ * imports below are deliberate -- they are what the per-module assertions read --
+ * but on their own they leave the registry holding only those two modules, and the
+ * registry check would then pass or fail for reasons that have nothing to do with
+ * the schema.
+ *
+ * This mirrors what a real consumer does: `import { loadBoard } from "@firo/schema"`.
+ */
+import "../src/index.js";
+
 import { migrateElement } from "../src/migrate.js";
+import { registeredElementTypes } from "../src/registry.js";
 import { RepairLog } from "../src/validate.js";
 
 import type {
   Arrowhead as SchemaArrowhead,
   BindMode as SchemaBindMode,
+  ElementBase,
   ElementType,
   FillStyle as SchemaFillStyle,
   FiroElement,
+  FreedrawElement,
   StrokeStyle as SchemaStrokeStyle,
+  StrokeVariability as SchemaStrokeVariability,
 } from "../src/types.js";
 
 type AssertSame<A, B> = [A] extends [B]
@@ -149,13 +168,92 @@ export const schemaArrowheadsAreDrawable: AssertSubset<
 /*
  * Every element type the document can hold must be something the renderer can
  * draw. The reverse does not hold and is not expected to: the renderer draws
- * freehand, images and frames, which the document has no types for yet. That
- * asymmetry is the roadmap, and this assertion is what will fail loudly when a
- * type is added on one side and forgotten on the other.
+ * images and frames, which the document has no types for yet. That asymmetry is
+ * the roadmap, and this assertion is what will fail loudly when a type is added on
+ * one side and forgotten on the other.
  */
 export const everyDocumentTypeIsDrawable: AssertSubset<
   ElementType,
   ExcalidrawElement["type"]
+> = true;
+
+/*
+ * A freehand stroke's fields, held against the renderer's.
+ *
+ * The general assertion above only checks the *discriminant* — that `"freedraw"`
+ * is a type the renderer draws. It says nothing about whether the document stores
+ * what the stroke needs to look the same after a reload, and that is the failure
+ * this one exists for.
+ *
+ * A stroke is drawn from five things: its points, its per-point pressures, whether
+ * to use them at all, and the two stroke options. Drop any one and the stroke
+ * still loads, still draws, and looks *different* — an even ribbon where there was
+ * a taper, or unsmoothed jitter where there was a clean line. No error, no
+ * warning, and nothing in the file to say a field was dropped.
+ *
+ * So the field sets must be *identical*, in both directions, and each field's type
+ * must match. The reverse direction matters as much as the forward one: a field the
+ * schema invents and the renderer never reads is a field no test would ever
+ * exercise, which is how the earlier drifts started.
+ *
+ * The point field is compared by shape rather than by type, because `LocalPoint`
+ * is branded — see `pointsArePairs` below, and the note on `PointShapeOf`.
+ */
+type RendererFreedrawFields = Omit<
+  ExcalidrawFreeDrawElement,
+  keyof ExcalidrawGenericElement | "type"
+>;
+
+type SchemaFreedrawFields = Omit<FreedrawElement, keyof ElementBase | "type">;
+
+/**
+ * A side's point type, reduced to its shape.
+ *
+ * The renderer's point is `LocalPoint` — a tuple intersected with a brand — and the
+ * schema's is a plain `readonly [number, number]`. Comparing those directly fails
+ * for a reason that has nothing to do with arity, which is the trap `pointsArePairs`
+ * was already written to avoid. A branded point is reduced to its shape; a plain
+ * one is left alone. Both sides then meet as `readonly [number, number]`.
+ */
+type PointShapeOf<T> = T extends { points: readonly (infer P)[] }
+  ? P extends LocalPoint
+    ? LocalPointShape
+    : P
+  : never;
+
+export const freedrawFieldsAreTheSame: AssertSame<
+  Extract<keyof RendererFreedrawFields, string>,
+  Extract<keyof SchemaFreedrawFields, string>
+> = true;
+
+export const freedrawPointsAreTheSame: AssertSame<
+  PointShapeOf<RendererFreedrawFields>,
+  PointShapeOf<SchemaFreedrawFields>
+> = true;
+
+export const freedrawPressuresAreTheSame: AssertSame<
+  RendererFreedrawFields["pressures"],
+  SchemaFreedrawFields["pressures"]
+> = true;
+
+export const freedrawSimulatePressureIsTheSame: AssertSame<
+  RendererFreedrawFields["simulatePressure"],
+  SchemaFreedrawFields["simulatePressure"]
+> = true;
+
+export const freedrawStrokeOptionsAreTheSame: AssertSame<
+  RendererFreedrawFields["strokeOptions"],
+  SchemaFreedrawFields["strokeOptions"]
+> = true;
+
+/*
+ * Width variation, held against the renderer's. Like `BindMode` and `FillStyle`
+ * before it: a two-value union the renderer branches on in three places, and a
+ * missing value coerces a tapered stroke into an even one.
+ */
+export const strokeVariabilityIsTheSame: AssertSame<
+  SchemaStrokeVariability,
+  RendererStrokeVariability
 > = true;
 
 /*
@@ -274,7 +372,24 @@ describe("schema and renderer agree at runtime", () => {
   it("registers a spec for every element type it claims", () => {
     // A type in `ELEMENT_TYPES` with no registered spec fails every load of every
     // file containing it, with an error that names the type and not the mistake.
-    expect(SHAPE_TYPES.length + LINEAR_TYPES.length + 1).toBe(
+    //
+    // Counted from the registry rather than as `SHAPE_TYPES.length +
+    // LINEAR_TYPES.length + 1`, which is what this used to be. That form needed
+    // editing every time a type was added, and the edit is easy to forget — which
+    // is how `freedraw` landed in `ELEMENT_TYPES` and failed this test. Reading
+    // the registry cannot drift from it.
+    expect([...registeredElementTypes()].sort()).toEqual(
+      [...ELEMENT_TYPES].sort(),
+    );
+  });
+
+  it("registers a spec from every module that declares types", () => {
+    // The registry check above passes if a module is imported and registers, *or*
+    // if a module declares types and is never imported at all — as long as someone
+    // else registered the same names. This names the modules explicitly, so a
+    // forgotten `import "./x.js"` in `types/index.ts` is caught here rather than
+    // surfacing later as an unknown type in a user's file.
+    expect(SHAPE_TYPES.length + LINEAR_TYPES.length + 2).toBe(
       ELEMENT_TYPES.length,
     );
   });

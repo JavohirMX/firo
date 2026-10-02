@@ -116,6 +116,7 @@ export const ELEMENT_TYPES = [
   "ellipse",
   "arrow",
   "line",
+  "freedraw",
 ] as const;
 
 export type ElementType = typeof ELEMENT_TYPES[number];
@@ -357,6 +358,10 @@ export type LinearElement = ElementBase &
      *
      * `x`, `y`, `width` and `height` are the bounding box of the path, not where
      * it is.
+     *
+     * One entry per vertex, with no upper limit. A two-item cap here once
+     * straightened every bend in every polyline on load -- see
+     * `tests/points.test.ts`.
      */
     points: readonly (readonly [number, number])[];
     startArrowhead: Arrowhead | null;
@@ -364,10 +369,81 @@ export type LinearElement = ElementBase &
     elbowed: boolean;
   }>;
 
+/**
+ * A freehand stroke: the pen tool's output.
+ *
+ * A path like a connector's, but not a connector. It has no arrowheads, no
+ * bindings, and neither end means anything, which is why it is a separate type
+ * rather than a `LinearElement` with most fields optional. A type where most
+ * fields are `null` is a type nothing can check.
+ *
+ * ## Pressure is three fields and all three change the drawing
+ *
+ * A connector's point is a two-tuple because a connector has no pressure. A
+ * freehand stroke is drawn from four things, and storing only the first produces
+ * an even ribbon that ignores the person's hand with nothing in the file to show
+ * anything was lost:
+ *
+ * - `points` -- where the pen went.
+ * - `pressures` -- how hard, per point.
+ * - `simulatePressure` -- whether to use `pressures` at all, or to vary width by
+ *   pen speed. A mouse has no pressure, so this is `true` for most strokes and
+ *   `pressures` is then not what drew the line.
+ * - `strokeOptions.variability` and `.streamline` -- whether width varies along
+ *   the stroke, and how much the path is smoothed.
+ *
+ * The conformance test in `tests/conformance.test.ts` holds this set against the
+ * renderer's, because the failure mode is a stroke that draws differently after a
+ * reload rather than an error.
+ */
+export type FreedrawElement = ElementBase &
+  Readonly<{
+    type: "freedraw";
+    /**
+     * The path, as `[x, y]` pairs relative to the element's origin -- the same
+     * shape as a connector's, and with the same absence of a vertex limit.
+     */
+    points: readonly (readonly [number, number])[];
+    /**
+     * Pen pressure per point, parallel to `points`.
+     *
+     * A parallel array rather than a third component on each point. The renderer
+     * indexes it positionally -- `pressures[i]` belongs to `points[i]` -- so the
+     * two are read together and a length mismatch is a corrupt element rather than
+     * a short array.
+     */
+    pressures: readonly number[];
+    /**
+     * Whether to draw from `pressures` or to vary width by pen speed.
+     *
+     * Stored rather than inferred from the device: a stroke drawn with a real pen
+     * and one drawn with a mouse differ in exactly this field, and a file that
+     * dropped it could not tell them apart.
+     */
+    simulatePressure: boolean;
+    strokeOptions: Readonly<{
+      variability: StrokeVariability;
+      streamline: number;
+    }>;
+  }>;
+
+/**
+ * Whether a stroke's width varies along its length.
+ *
+ * `"variable"` tapers with pressure or speed; `"constant"` is an even ribbon.
+ * Inherited, because the renderer branches on it and guessing wrong changes the
+ * shape of every stroke drawn.
+ */
+export type StrokeVariability = "variable" | "constant";
+
 /** Which of the two. */
 export type LinearType = LinearElement["type"];
 
-export type FiroElement = StickyNoteElement | ShapeElement | LinearElement;
+export type FiroElement =
+  | StickyNoteElement
+  | ShapeElement
+  | LinearElement
+  | FreedrawElement;
 
 /** Narrowing helper, so callers do not repeat the discriminant check. */
 export const isElementType = <T extends ElementType>(
