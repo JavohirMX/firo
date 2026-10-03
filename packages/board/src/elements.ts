@@ -142,10 +142,15 @@ const HIDE_IN_PRESENTATION_KEY = "firo.hideInPresentation";
  * that would keep passing, while the field every consumer reads by name stayed
  * absent.
  *
- * Only a `boolean` is lifted. Anything else in those keys is somebody else's data
- * or a corrupt file, and it stays in `customData` rather than being coerced into a
- * flag -- this function runs on every editor change over the whole scene, so a
- * throw here would take the board's sync down rather than lose one value.
+ * Only a `boolean` is lifted, and anything else under those keys is **dropped**
+ * rather than coerced -- the same treatment `containerId` has always had. The key
+ * is in our namespace, so we own what is under it, and a string where a flag
+ * belongs is a value no version of Firo ever wrote. The repair belongs to the
+ * schema, which coerces it and records it; by the time an element reaches the
+ * editor it has been through `loadBoard`.
+ *
+ * Nothing here throws either: this runs over the whole scene on every editor
+ * change, so a throw would take the board's sync down rather than lose one value.
  */
 const splitCustomData = (element: {
   customData?: Record<string, unknown>;
