@@ -717,6 +717,200 @@ describe("BoardSync", () => {
     });
   });
 
+  describe("records reach the editor", () => {
+    /*
+     * A record is not an element. It has no position and nothing to draw, so it
+     * cannot be projected into the editor's scene -- and if it were, `diff` would
+     * read every record as an element the editor had lost and delete it.
+     *
+     * Before `onRecordsChanged` existed, a record committed straight into the
+     * document produced zero editor writes and no error: `read()` returned only
+     * `elements`, so the change compared equal and the sync stood down. Every data
+     * layer test passed, because the data layer was never what was broken.
+     */
+
+    const collection = (over: Record<string, unknown> = {}) => ({
+      id: "votes",
+      boardId: "b",
+      name: "Votes",
+      version: 1,
+      order: "a0",
+      columns: [
+        { id: "c-target", key: "target", name: "Target", type: "text" },
+        { id: "c-voter", key: "voter", name: "Voter", type: "text" },
+      ],
+      ...over,
+    });
+
+    const withRecords = () => {
+      const doc = newDoc();
+      const seen: unknown[][] = [];
+      const editor = fakeEditor();
+      const sync = new BoardSync(doc, {
+        ...editor.bridge,
+        onRecordsChanged: (collections) => seen.push([...collections]),
+      });
+      sync.start();
+      // `start` publishes once with whatever is there, which on an empty board is
+      // an empty list. That first publish is asserted in its own test below; the
+      // rest of this block measures changes *after* it, so it is dropped here to
+      // keep the counts about one thing.
+      seen.length = 0;
+      return { doc, editor, sync, seen };
+    };
+
+    it("publishes collections that already exist when the sync starts", () => {
+      // A client attaching to a board that already has collections would
+      // otherwise wait for the next change to hear about them -- and a board
+      // nobody edits again would never send one.
+      const doc = newDoc();
+      doc.commit([
+        { kind: "createCollection", collection: collection() as never },
+      ]);
+
+      const seen: unknown[][] = [];
+      const editor = fakeEditor();
+      new BoardSync(doc, {
+        ...editor.bridge,
+        onRecordsChanged: (collections) => seen.push([...collections]),
+      }).start();
+
+      expect(seen).toHaveLength(1);
+      expect((seen[0][0] as { id: string }).id).toBe("votes");
+    });
+
+    it("publishes a collection committed after start", () => {
+      const { doc, seen } = withRecords();
+      expect(seen).toHaveLength(0);
+
+      doc.commit([
+        { kind: "createCollection", collection: collection() as never },
+      ]);
+      expect(seen).toHaveLength(1);
+      expect((seen[0][0] as { name: string }).name).toBe("Votes");
+    });
+
+    it("does not republish when nothing about the collections changed", () => {
+      // The loop guard's other half. An element-only change must not wake a
+      // record subscriber, or every keystroke on a board with a vote table would
+      // repaint it.
+      const { doc, editor, sync, seen } = withRecords();
+      doc.commit([
+        { kind: "createCollection", collection: collection() as never },
+      ]);
+      expect(seen).toHaveLength(1);
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.type === "stickynote" ? { ...element, x: 7 } : element,
+        ),
+      );
+      sync.push();
+
+      expect(seen).toHaveLength(1);
+    });
+
+    it("does not republish when only a record's contents change", () => {
+      // A vote is a record; the collection it lives in is unchanged.
+      const { doc, seen } = withRecords();
+      doc.commit([
+        { kind: "createCollection", collection: collection() as never },
+      ]);
+      expect(seen).toHaveLength(1);
+
+      doc.commit([
+        {
+          kind: "createRecord",
+          record: {
+            id: "r1",
+            collectionId: "votes",
+            values: { target: { type: "text", value: "note-a" } },
+            created: 0,
+            updated: 0,
+            order: "a0",
+            archived: false,
+          } as never,
+        },
+      ]);
+
+      expect(seen).toHaveLength(1);
+    });
+
+    it("republishes when a collection's columns change", () => {
+      // The comparison has to reach inside: `columns` is an array, so a
+      // by-identity check would call this unchanged and the new column would
+      // never arrive.
+      const { doc, seen } = withRecords();
+      doc.commit([
+        { kind: "createCollection", collection: collection() as never },
+      ]);
+      expect(seen).toHaveLength(1);
+
+      doc.commit([
+        {
+          kind: "updateCollection",
+          id: "votes",
+          changes: {
+            columns: [
+              { id: "c-target", key: "target", name: "Target", type: "text" },
+              { id: "c-voter", key: "voter", name: "Voter", type: "text" },
+              {
+                id: "c-placed",
+                key: "placedAt",
+                name: "Placed",
+                type: "number",
+              },
+            ],
+          } as never,
+        },
+      ]);
+
+      expect(seen).toHaveLength(2);
+      expect((seen[1][0] as { columns: unknown[] }).columns).toHaveLength(3);
+    });
+
+    it("does not project a record into the editor's scene", () => {
+      // The bug the separation exists to prevent: a record in the element array
+      // would be diffed as a missing element and deleted.
+      const { doc, editor } = withRecords();
+      doc.commit([
+        { kind: "createCollection", collection: collection() as never },
+        {
+          kind: "createRecord",
+          record: {
+            id: "r1",
+            collectionId: "votes",
+            values: {},
+            created: 0,
+            updated: 0,
+            order: "a0",
+            archived: false,
+          } as never,
+        },
+      ]);
+
+      expect(editor.elements).toEqual([]);
+      expect(doc.read().records).toHaveLength(1);
+    });
+
+    it("works on an editor that has no record channel at all", () => {
+      // The channel is optional. An editor with no record UI must keep working,
+      // and must not throw on a board that happens to have collections.
+      const doc = newDoc();
+      const editor = fakeEditor();
+      const sync = new BoardSync(doc, editor.bridge);
+      sync.start();
+
+      expect(() =>
+        doc.commit([
+          { kind: "createCollection", collection: collection() as never },
+        ]),
+      ).not.toThrow();
+      expect(editor.elements).toEqual([]);
+      void sync;
+    });
+  });
+
   describe("document changes from elsewhere", () => {
     it("pushes a note committed directly into the document", () => {
       // The path a future collaborator or a sync server would take.

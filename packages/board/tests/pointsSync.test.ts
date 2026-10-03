@@ -452,6 +452,31 @@ describe("EDITOR_OWNED_FIELDS covers what the editor owns", () => {
 
     expect(orphans).toEqual([]);
   });
+
+  /*
+   * A schema field added for Phase 5 that is deliberately *not* on the list above,
+   * pinned here because the derived tests cannot see it.
+   *
+   * `hiddenUntilRevealed` and `hideInPresentation` cross the boundary in
+   * `customData` under `firo.` keys. Both are set by a document mutation and
+   * neither has an editor gesture that writes them, so the echo check can only ever
+   * answer "this is the editor handing back what I sent" -- a comparison that
+   * cannot differ, which is dead weight that reads as coverage.
+   *
+   * The derived suites derive from *editor* element fixtures, and no editor element
+   * carries these names at top level, so adding them to `EDITOR_OWNED_FIELDS` would
+   * fail `does not list a field no element has` and nothing else. That is a test
+   * failing by accident rather than by design, so the decision is asserted here
+   * instead, with the reason attached.
+   */
+  it("does not list the facilitator-owned durable flags", () => {
+    for (const flag of ["hiddenUntilRevealed", "hideInPresentation"]) {
+      // No message argument: vitest's `toBe` takes only the expected value.
+      // Which flag failed is still readable from the loop variable in the
+      // assertion's own diff, and the reason is in the test name.
+      expect(declared.has(flag)).toBe(false);
+    }
+  });
 });
 
 /*

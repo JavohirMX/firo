@@ -68,7 +68,45 @@ import type {
 const CONTAINER_ID_KEY = "firo.containerId";
 
 /**
- * Split an editor element's `customData` into Firo's `containerId` and everything else.
+ * Where the durable facilitation flags are kept, and why they need a hiding place
+ * at all.
+ *
+ * Excalidraw's element has no `hiddenUntilRevealed` and no `hideInPresentation`,
+ * so there is nowhere to put them. `customData` is the documented escape hatch for
+ * exactly this, and it is the same situation as `containerId` above -- with one
+ * difference that matters. `containerId` is null for every note on a board today,
+ * so losing it is invisible until the first section exists. A flag is `false` or
+ * absent for every note until somebody hides one, and losing it means a note a
+ * facilitator deliberately hid for a private brainstorm is suddenly in front of
+ * the room, with nothing in the file to say that was ever arranged.
+ *
+ * So the same rule applies with more force: namespaced, so they cannot collide
+ * with a host application's own keys, and lifted back out in `splitCustomData`
+ * rather than left to be read out of `customData` by whoever wants the value.
+ *
+ * Only `true` crosses. Absent and `false` are one answer -- see
+ * `@firo/schema`'s `facilitation.ts` -- so writing `false` would put two keys on
+ * every element of every board that predates the fields, and the editor would hand
+ * them back on every fold.
+ *
+ * ## They are not editor-owned, and `EDITOR_OWNED_FIELDS` does not list them
+ *
+ * They are facilitator-owned: set by a document mutation, never by an editor
+ * gesture, because the editor has no control that writes them. The echo check
+ * compares the fields the editor owns precisely to decide "did the user change
+ * this, or is the editor handing back what I sent it" -- and for these two the
+ * answer is always the latter, because the projection wrote them and the editor
+ * round-tripped `customData` untouched. Listing them would therefore be dead
+ * weight: a comparison that can never differ, which reads as coverage and does
+ * nothing. `pointsSync.test.ts` pins the decision rather than leaving it to be
+ * re-litigated.
+ */
+const HIDDEN_UNTIL_REVEALED_KEY = "firo.hiddenUntilRevealed";
+const HIDE_IN_PRESENTATION_KEY = "firo.hideInPresentation";
+
+/**
+ * Split an editor element's `customData` into Firo's own fields and everything
+ * else.
  *
  * ## Why this is one function and not seven destructurings
  *
@@ -98,21 +136,44 @@ const CONTAINER_ID_KEY = "firo.containerId";
  * A note's own text is not affected: Excalidraw's `containerId` on a text element
  * means "this is a bound label", which the fold handles by consuming the element
  * before it ever reaches here. This key is Firo's own and means nesting.
+ *
+ * The two facilitation flags are lifted out the same way and for the same reason:
+ * left inside `customData` they would still be *preserved*, so a test asserting
+ * that would keep passing, while the field every consumer reads by name stayed
+ * absent.
+ *
+ * Only a `boolean` is lifted. Anything else in those keys is somebody else's data
+ * or a corrupt file, and it stays in `customData` rather than being coerced into a
+ * flag -- this function runs on every editor change over the whole scene, so a
+ * throw here would take the board's sync down rather than lose one value.
  */
 const splitCustomData = (element: {
   customData?: Record<string, unknown>;
 }): {
   containerId?: ElementId;
   customData?: Record<string, unknown>;
+  /** Ready to spread onto a folded element. */
+  hiddenUntilRevealed?: boolean;
+  hideInPresentation?: boolean;
 } => {
-  const { [CONTAINER_ID_KEY]: rawContainerId, ...rest } =
-    element.customData ?? {};
+  const {
+    [CONTAINER_ID_KEY]: rawContainerId,
+    [HIDDEN_UNTIL_REVEALED_KEY]: rawHidden,
+    [HIDE_IN_PRESENTATION_KEY]: rawHiddenInPresentation,
+    ...rest
+  } = element.customData ?? {};
 
   return {
     ...(typeof rawContainerId === "string"
       ? { containerId: rawContainerId as ElementId }
       : {}),
     ...(Object.keys(rest).length ? { customData: rest } : {}),
+    ...(typeof rawHidden === "boolean"
+      ? { hiddenUntilRevealed: rawHidden }
+      : {}),
+    ...(typeof rawHiddenInPresentation === "boolean"
+      ? { hideInPresentation: rawHiddenInPresentation }
+      : {}),
   };
 };
 
@@ -177,6 +238,24 @@ export const seedForId = (id: string): number => {
  * `customData` is deliberately excluded. The editor round-trips it untouched, so
  * it belongs to nobody in particular, and excluding it keeps a future editor that
  * normalises `customData` from silently rewriting a host application's data.
+ *
+ * ## The durable facilitation flags are excluded too, and that is a decision
+ *
+ * `hiddenUntilRevealed` and `hideInPresentation` travel through this boundary in
+ * `customData` -- see the namespaced keys beside `CONTAINER_ID_KEY` -- and are
+ * deliberately absent from this list, because **the editor does not own them.**
+ * They are set by a document mutation and no editor gesture writes them, so the
+ * echo check's question ("did the user change this, or is the editor handing back
+ * what I sent it?") has only one answer for them, and it is always the second.
+ *
+ * Listing them would therefore be a comparison that can never differ: dead weight
+ * that reads as coverage. The staleness bug this list exists to prevent cannot
+ * happen here, because the value arrives *from* this projection on the way in.
+ *
+ * Worth knowing before reading the derived tests as coverage of this: they derive
+ * from *editor* element fixtures, and no editor element carries these names at top
+ * level, so neither direction of that suite can see them either way.
+ * `pointsSync.test.ts` pins the decision explicitly for that reason.
  *
  * ## Adding an element type means adding its fields here
  *
@@ -471,11 +550,26 @@ const toBoundElements = (
  * Spreads the existing object first so a host application's keys survive, which
  * is the same rule the migration chain follows: never drop a field you do not
  * recognise.
+ *
+ * The three namespaced keys are written here and lifted back out in
+ * `splitCustomData`. `firo.*` rather than bare names, so they cannot collide with
+ * a host application's own `customData` — a collision here would mean the fold
+ * reading somebody else's `containerId` as a container.
+ *
+ * The flags are written only when `true`, for the same reason the note's
+ * `containerId` is: absent and `false` are one answer, so writing `false` would
+ * put two keys on every element of a board nobody hid anything on.
  */
 const customDataFor = (element: FiroElement): Record<string, unknown> => {
   const merged: Record<string, unknown> = { ...(element.customData ?? {}) };
   if (element.containerId) {
     merged[CONTAINER_ID_KEY] = element.containerId;
+  }
+  if (element.hiddenUntilRevealed) {
+    merged[HIDDEN_UNTIL_REVEALED_KEY] = true;
+  }
+  if (element.hideInPresentation) {
+    merged[HIDE_IN_PRESENTATION_KEY] = true;
   }
   // Returned under the `customData` key, not spread at the top level. Spreading
   // the *contents* put `firo.containerId` on the editor element as a property of
@@ -906,8 +1000,11 @@ export const fromEditorElements = (
       };
 
       const textFields = sharedDocumentFields(element);
-      const { containerId, customData: textCustomData } =
-        splitCustomData(element);
+      const {
+        containerId,
+        customData: textCustomData,
+        ...facilitationFlags
+      } = splitCustomData(element);
 
       folded.push({
         ...textFields,
@@ -928,6 +1025,7 @@ export const fromEditorElements = (
         lineHeight: annotation.lineHeight,
         ...(containerId ? { containerId } : {}),
         ...(textCustomData ? { customData: textCustomData } : {}),
+        ...facilitationFlags,
       } as unknown as TextElement);
       continue;
     }
@@ -949,14 +1047,26 @@ export const fromEditorElements = (
        * genuinely does not know, and that case is below.
        */
       const fields = sharedDocumentFields(element);
-      const { containerId, customData: shapeCustomData } =
-        splitCustomData(element);
+      /*
+       * `...facilitationFlags` is spread from the rest of `splitCustomData`'s
+       * result, so every branch gets the same two flags from one implementation and
+       * a branch cannot forget them. The other six branches are identical here --
+       * deliberately: a per-branch hand-written `hiddenUntilRevealed: element
+       * .customData?.[...]` is seven copies, and the copy somebody misses loses a
+       * facilitator's decision rather than raising an error.
+       */
+      const {
+        containerId,
+        customData: shapeCustomData,
+        ...facilitationFlags
+      } = splitCustomData(element);
 
       folded.push({
         ...fields,
         type: element.type,
         ...(containerId ? { containerId } : {}),
         ...(shapeCustomData ? { customData: shapeCustomData } : {}),
+        ...facilitationFlags,
       } as ShapeElement);
       continue;
     }
@@ -990,8 +1100,11 @@ export const fromEditorElements = (
       };
 
       const fields = sharedDocumentFields(element);
-      const { containerId, customData: strokeCustomData } =
-        splitCustomData(element);
+      const {
+        containerId,
+        customData: strokeCustomData,
+        ...facilitationFlags
+      } = splitCustomData(element);
 
       folded.push({
         ...fields,
@@ -1007,6 +1120,7 @@ export const fromEditorElements = (
         },
         ...(containerId ? { containerId } : {}),
         ...(strokeCustomData ? { customData: strokeCustomData } : {}),
+        ...facilitationFlags,
       } as unknown as FreedrawElement);
       continue;
     }
@@ -1028,8 +1142,11 @@ export const fromEditorElements = (
       const frame = element as unknown as { name?: string | null };
 
       const fields = sharedDocumentFields(element);
-      const { containerId, customData: frameCustomData } =
-        splitCustomData(element);
+      const {
+        containerId,
+        customData: frameCustomData,
+        ...facilitationFlags
+      } = splitCustomData(element);
 
       folded.push({
         ...fields,
@@ -1037,6 +1154,7 @@ export const fromEditorElements = (
         name: typeof frame.name === "string" ? frame.name : null,
         ...(containerId ? { containerId } : {}),
         ...(frameCustomData ? { customData: frameCustomData } : {}),
+        ...facilitationFlags,
       } as FrameElement);
       continue;
     }
@@ -1066,8 +1184,11 @@ export const fromEditorElements = (
       };
 
       const fields = sharedDocumentFields(element);
-      const { containerId, customData: imageCustomData } =
-        splitCustomData(element);
+      const {
+        containerId,
+        customData: imageCustomData,
+        ...facilitationFlags
+      } = splitCustomData(element);
 
       folded.push({
         ...fields,
@@ -1090,6 +1211,7 @@ export const fromEditorElements = (
         crop: plainCrop(image.crop) ? { ...image.crop } : null,
         ...(containerId ? { containerId } : {}),
         ...(imageCustomData ? { customData: imageCustomData } : {}),
+        ...facilitationFlags,
       } as unknown as ImageElement);
       continue;
     }
@@ -1122,8 +1244,11 @@ export const fromEditorElements = (
        * live next to each other rather than in separate files.
        */
       const fields = sharedDocumentFields(element);
-      const { containerId, customData: linearCustomData } =
-        splitCustomData(element);
+      const {
+        containerId,
+        customData: linearCustomData,
+        ...facilitationFlags
+      } = splitCustomData(element);
 
       folded.push({
         ...fields,
@@ -1150,6 +1275,7 @@ export const fromEditorElements = (
         ].slice(0, 2) as unknown as FiroElement["bindings"],
         ...(containerId ? { containerId } : {}),
         ...(linearCustomData ? { customData: linearCustomData } : {}),
+        ...facilitationFlags,
       } as unknown as LinearElement);
       continue;
     }
@@ -1170,8 +1296,11 @@ export const fromEditorElements = (
     }
 
     const label = labelByContainer.get(element.id);
-    const { containerId, customData: noteCustomData } =
-      splitCustomData(element);
+    const {
+      containerId,
+      customData: noteCustomData,
+      ...facilitationFlags
+    } = splitCustomData(element);
 
     folded.push({
       id: element.id as ElementId,
@@ -1235,6 +1364,7 @@ export const fromEditorElements = (
       updated: element.updated,
       ...(containerId ? { containerId } : {}),
       ...(noteCustomData ? { customData: noteCustomData } : {}),
+      ...facilitationFlags,
     } as unknown as StickyNoteElement);
   }
 

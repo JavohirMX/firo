@@ -96,6 +96,28 @@ export type EditorBridge = {
    * or the loop is structural rather than a matter of timing.
    */
   write: (elements: readonly Record<string, unknown>[]) => void;
+  /**
+   * Called when the document's *records* change, and never otherwise.
+   *
+   * ## Why this is separate from `write`
+   *
+   * A record is not an element. It has no position, no size, and nothing to draw,
+   * so it cannot be projected into the editor's scene -- and it must not be, or
+   * `diff` would read every record as an element the editor has lost and delete
+   * it. That is the same class of bug as the note whose text vanished because a
+   * lone label was folded without its note.
+   *
+   * The two are therefore different channels with different vocabularies, and the
+   * seam has to say so. Before this existed, a vote committed straight into the
+   * document produced **zero** editor writes and no error: `read()` returned only
+   * `elements`, so `sameElements` reported "nothing changed" and the sync stood
+   * down. A record store that silently never reaches the client is worse than no
+   * record store, because the data layer tests all pass.
+   *
+   * Optional so an editor with no record UI keeps working unchanged. When absent,
+   * record changes are still read correctly and simply not surfaced.
+   */
+  onRecordsChanged?: (collections: readonly unknown[]) => void;
 };
 
 /**
@@ -127,10 +149,13 @@ export class BoardSync {
 
   constructor(
     private readonly doc: {
-      read: () => { elements: FiroElement[] };
+      read: () => { elements: FiroElement[]; collections?: readonly unknown[] };
       commit: (mutations: readonly Mutation[]) => { changed: boolean };
       subscribe: (
-        listener: (snapshot: { elements: FiroElement[] }) => void,
+        listener: (snapshot: {
+          elements: FiroElement[];
+          collections?: readonly unknown[];
+        }) => void,
       ) => () => void;
     },
     private readonly editor: EditorBridge,
@@ -143,6 +168,10 @@ export class BoardSync {
    */
   start = (): void => {
     this.pull();
+    // Published on start as well as on change. A client that attaches after the
+    // board already holds collections would otherwise wait for the next change
+    // to learn they exist -- and a board nobody edits again would never send one.
+    this.publishRecords(this.doc.read().collections);
     this.unsubscribe = this.doc.subscribe(this.onDocumentChanged);
   };
 
@@ -309,10 +338,44 @@ export class BoardSync {
    * performed, and re-projecting that would replace the editor's elements with
    * fresh copies mid-gesture.
    */
-  private onDocumentChanged = (): void => {
+  private onDocumentChanged = (snapshot?: {
+    elements: FiroElement[];
+    collections?: readonly unknown[];
+  }): void => {
     if (this.suspended || this.committing) {
       return;
     }
+
+    /*
+     * Records are published before anything else, and before the element guards.
+     *
+     * The `committing` flag cannot cover this channel the way it covers the
+     * element one. `BoardSync` only ever commits *element* mutations, so a record
+     * change is by definition not its own write and must be surfaced even when
+     * `committing` is set. Suppressing it here would mean a facilitator's own
+     * action silently failing to update the vote count -- and the symptom would
+     * be "the number did not go up", with nothing in the log.
+     *
+     * Republishing costs one comparison against the last published value, which
+     * is a no-op for a board with no record UI.
+     *
+     * Read from the snapshot `notify()` already built. `subscribe()` hands its
+     * listener one; this listener used to take no argument and read the document
+     * again, which is one of the two provable wastes named in `docs/adr/0019`.
+     *
+     * That ADR declined to fix the waste on the *element* path, because there the
+     * snapshot's freshness decides what the echo guard compares against. For this
+     * call the question does not arise: a collection list is compared only against
+     * the last value published, so no baseline's timing matters. The first version
+     * of this method called `read()` unconditionally, which would have made the
+     * ADR's numbers worse while shipping as a small feature.
+     *
+     * Optional parameter, because a test may call this with no argument; `read()`
+     * is then the honest answer rather than a stale one.
+     */
+    this.publishRecords(
+      snapshot ? snapshot.collections : this.doc.read().collections,
+    );
 
     /*
      * Ignore a change this class made.
@@ -331,13 +394,51 @@ export class BoardSync {
      * whether the document notifies synchronously -- and a flag that is only right
      * for one of those orders is worse than no flag.
      */
-    const current = this.doc.read().elements;
-    if (sameElements(current, this.lastDocElements)) {
+    /*
+     * This is the *second* `read()` in one notification: `notify()` already built
+     * a snapshot and handed it over, and the element guard below reads again.
+     * That is one of the two provable wastes in `docs/adr/0019`, and the ADR
+     * declined to fix it here because on this path the snapshot's freshness is
+     * what the echo guard compares against.
+     */
+    const current = this.doc.read();
+
+    if (sameElements(current.elements, this.lastDocElements)) {
       return;
     }
 
     this.pull();
   };
+
+  /**
+   * Hand the editor the document's collections, if they have changed.
+   *
+   * Compared by identity against the last published value, because a Yjs read
+   * allocates fresh arrays every time and reference equality would report a
+   * change on every transaction. A structural comparison would be correct and
+   * expensive; collections change on a human timescale, so remembering the last
+   * array and comparing lengths is not enough on its own -- hence the cheap
+   * `sameCollections` walk, which is only reached when the length moved.
+   */
+  private publishRecords = (
+    collections: readonly unknown[] | undefined,
+  ): void => {
+    const sink = this.editor.onRecordsChanged;
+    if (!sink) {
+      return;
+    }
+    if (
+      this.lastPublishedCollections &&
+      sameCollections(this.lastPublishedCollections, collections ?? [])
+    ) {
+      return;
+    }
+    this.lastPublishedCollections = collections ? [...collections] : [];
+    sink(this.lastPublishedCollections);
+  };
+
+  /** What `onRecordsChanged` was last handed, so equal values are not re-sent. */
+  private lastPublishedCollections: readonly unknown[] | null = null;
 
   /** Replace the editor's contents with the document's, remembering the echo. */
   pull = (): void => {
@@ -385,6 +486,20 @@ const sameOrder = (
   b: readonly FiroElement[],
 ): boolean =>
   a.length === b.length && a.every((element, i) => element.id === b[i]?.id);
+
+/**
+ * Whether two collection lists are the same set, in the same order.
+ *
+ * Same problem as `sameElements` and for the same reason: a Yjs read allocates
+ * fresh objects, so reference equality never holds. `sameValue` rather than
+ * `===`, because a collection carries `columns` and a column carries `options`,
+ * and both are arrays -- comparing those by identity would report a change on
+ * every transaction and republish forever.
+ */
+const sameCollections = (
+  a: readonly unknown[],
+  b: readonly unknown[],
+): boolean => a.length === b.length && a.every((c, i) => sameValue(c, b[i]));
 
 const changedFields = (
   before: FiroElement,
