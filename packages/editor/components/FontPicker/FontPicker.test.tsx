@@ -1,6 +1,9 @@
 import { FONT_FAMILY, KEYS } from "@firo/common";
 
-import { Excalidraw } from "../..";
+// `../../index` and NOT `"../.."`, which resolves to the package directory and
+// therefore to the built bundle via package.json `main`/`exports` rather than to
+// the source under test.
+import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
 import { Keyboard } from "../../tests/helpers/ui";
 import { act, fireEvent, render, waitFor } from "../../tests/test-utils";

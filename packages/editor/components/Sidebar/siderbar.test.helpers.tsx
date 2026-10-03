@@ -1,6 +1,11 @@
 import React from "react";
 
-import { Excalidraw } from "../..";
+// `../../index` and NOT `"../.."`. The latter is the *package directory*, so
+// resolution consults packages/editor/package.json and binds to the built
+// bundle (`main`/`exports` -> dist/prod/index.js) instead of the source. The
+// bundle carries its own `TunnelsContext`, so a source component passed as a
+// host child reads a context nothing provides and `useTunnels()` returns null.
+import { Excalidraw } from "../../index";
 import {
   GlobalTestState,
   queryByTestId,

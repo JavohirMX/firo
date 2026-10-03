@@ -18,7 +18,10 @@ import type {
   NonDeletedExcalidrawElement,
 } from "@firo/element/types";
 
-import { Excalidraw, getCommonBounds } from "../..";
+// `../../index` and NOT `"../.."`, which resolves to the package directory and
+// therefore to the built bundle via package.json `main`/`exports` rather than to
+// the source under test.
+import { Excalidraw, getCommonBounds } from "../../index";
 import { actionGroup } from "../../actions";
 import { t } from "../../i18n";
 import * as StaticScene from "../../renderer/staticScene";
