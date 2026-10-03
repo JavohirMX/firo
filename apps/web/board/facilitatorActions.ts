@@ -74,7 +74,11 @@ import type { ExcalidrawElement } from "@firo/element/types";
 import type { ShortcutName } from "@firo/editor/actions/shortcuts";
 import type { Action, ActionResult } from "@firo/editor/actions/types";
 import type { CommandPaletteItem } from "@firo/editor/components/CommandPalette/types";
-import type { AppState, ExcalidrawImperativeAPI } from "@firo/editor/types";
+import type {
+  AppState,
+  ExcalidrawImperativeAPI,
+  ExcalidrawProps,
+} from "@firo/editor/types";
 import type { Vote } from "@firo/facilitation";
 import type { FiroRecord } from "@firo/schema";
 
@@ -150,6 +154,55 @@ const altChord =
     event.shiftKey === shift &&
     noCommandModifier(event) &&
     event.code === code;
+
+/**
+ * The names a host may switch off.
+ *
+ * Spelled out rather than derived with a nested `NonNullable`, because
+ * `canvasActions` is itself optional and `keyof` over that is `never` -- a type
+ * error that reads as though the names had not been added at all.
+ */
+type FacilitatorToggleName =
+  | "toggleFacilitatorTimer"
+  | "resetFacilitatorTimer"
+  | "addMinuteToTimer"
+  | "toggleBoardReveal"
+  | "addVoteToSelection"
+  | "removeVoteFromSelection"
+  | "readVoteTally";
+
+/*
+ * Whether the host has switched this command off.
+ *
+ * ## Why a `predicate` and not `handleKeyDown`'s `name in canvasActions` check
+ *
+ * `handleKeyDown` does gate on that list, so listing the names in `CanvasActions`
+ * would have been enough for the *chord*. But `isActionEnabled` — which decides
+ * whether the menu renders the item at all — asks `action.predicate` instead, and
+ * that is the API a host-facing toggle is meant to go through. `actionToggleTheme`
+ * has always done it this way.
+ *
+ * Going through `predicate` therefore gets all three surfaces at once: the chord, the
+ * menu item, and anything else that asks whether the action is available. Relying on
+ * the chord alone would have left the menu entry live for a command the keyboard
+ * could not reach, which is a worse inconsistency than either behaviour alone.
+ *
+ * ## Omission means enabled
+ *
+ * `!== false` rather than a truthiness test, so a host that lists none of these is
+ * unaffected. That is what makes adding the names to `CanvasActions`
+ * backwards-compatible. The cost is the obvious one, named here because it is a
+ * trap rather than a subtlety: a typo in a host's configuration disables nothing and
+ * reports no error.
+ */
+const enabledUnless =
+  <T>(name: FacilitatorToggleName) =>
+  (
+    _elements: readonly T[],
+    _appState: unknown,
+    props: ExcalidrawProps,
+  ): boolean =>
+    props.UIOptions?.canvasActions?.[name] !== false;
 
 /* -------------------------------------------------------------------------- */
 /* Vocabulary                                                                  */
@@ -407,6 +460,7 @@ export const facilitatorActions = (
        * start the clock without leaving presentation to do it.
        */
       viewMode: true,
+      predicate: enabledUnless("toggleFacilitatorTimer"),
       keyTest: altChord(ALT_CODES.timer, false),
 
       perform: (): ActionResult =>
@@ -443,6 +497,7 @@ export const facilitatorActions = (
        * they would be one action reachable two ways, which is what `Alt+Z` already
        * is upstream and nobody chose.
        */
+      predicate: enabledUnless("resetFacilitatorTimer"),
       keyTest: altChord(ALT_CODES.timer, true),
 
       perform: (): ActionResult =>
@@ -462,6 +517,7 @@ export const facilitatorActions = (
       keywords: ["timer", "clock", "minute", "longer", "extend", "more time"],
       trackEvent: { category: "facilitation", action: "addMinute" },
       viewMode: true,
+      predicate: enabledUnless("addMinuteToTimer"),
       keyTest: altChord(ALT_CODES.minute, false),
 
       perform: (): ActionResult =>
@@ -490,6 +546,7 @@ export const facilitatorActions = (
        * private is the mnemonic, so it takes the shifted chord and leaves `Alt+P`
        * for the reset above.
        */
+      predicate: enabledUnless("toggleBoardReveal"),
       keyTest: altChord(ALT_CODES.privateMode, true),
 
       perform: (): ActionResult =>
@@ -524,7 +581,8 @@ export const facilitatorActions = (
        * that also blocked the keyboard would make the shortcut silently do nothing,
        * which is the failure AC-8 exists to prevent.
        */
-      predicate: (elements, appState) =>
+      predicate: (elements, appState, props) =>
+        enabledUnless("addVoteToSelection")(elements, appState, props) &&
         selectedIds(elements, appState).length > 0,
 
       perform: (elements, appState): ActionResult =>
@@ -598,7 +656,8 @@ export const facilitatorActions = (
        * `toggleTheme` already has it; `Alt+D` is add.
        */
       keyTest: altChord(ALT_CODES.withdraw, false),
-      predicate: (elements, appState) =>
+      predicate: (elements, appState, props) =>
+        enabledUnless("removeVoteFromSelection")(elements, appState, props) &&
         selectedIds(elements, appState).length > 0,
 
       perform: (elements, appState): ActionResult =>
@@ -652,6 +711,7 @@ export const facilitatorActions = (
       keywords: ["tally", "votes", "results", "leaders", "winner", "count"],
       trackEvent: { category: "facilitation", action: "readTally" },
       viewMode: true,
+      predicate: enabledUnless("readVoteTally"),
       keyTest: altChord(ALT_CODES.leaders, false),
 
       perform: (): ActionResult =>

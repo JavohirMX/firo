@@ -463,6 +463,27 @@ export const DEFAULT_UI_OPTIONS: AppProps["UIOptions"] = {
     saveToActiveFile: true,
     toggleTheme: null,
     saveAsImage: true,
+    /*
+     * Firo's facilitator commands, defaulting to enabled.
+     *
+     * Listed explicitly rather than left out because `UIOptions` resolves through
+     * a `Merge` that makes every key required, so omitting them would be a build
+     * error -- and because `handleKeyDown` reads `name in canvasActions`, a name
+     * that is absent is *always* enabled rather than defaulted. Spelling them out
+     * is what makes "a host sets one to `false`" mean something: the merge in
+     * `Excalidraw`'s entry point puts the host's value over this one.
+     *
+     * Phase 3 §3.6 requires single-key shortcuts to be individually disableable,
+     * for voice-control and screen-reader users who need the key for something
+     * else.
+     */
+    toggleFacilitatorTimer: true,
+    resetFacilitatorTimer: true,
+    addMinuteToTimer: true,
+    toggleBoardReveal: true,
+    addVoteToSelection: true,
+    removeVoteFromSelection: true,
+    readVoteTally: true,
   },
   tools: {
     image: true,

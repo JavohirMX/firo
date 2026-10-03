@@ -1134,6 +1134,45 @@ export type CanvasActions = Partial<{
    * */
   toggleTheme: boolean | null;
   saveAsImage: boolean;
+
+  /*
+   * Firo's facilitator commands, so a host can disable them individually.
+   *
+   * ## Why these are listed here at all
+   *
+   * `handleKeyDown` gates an action on `action.name in canvasActions ? value :
+   * true`, so a name that is *absent* is always enabled — and this type used to be
+   * the only list of names that could be present. That made a host-registered
+   * action impossible to switch off, which Phase 3 §3.6 forbids: single-key
+   * shortcuts must be individually disableable, because a voice-control user may
+   * need that key for something else.
+   *
+   * The workaround was to make every facilitator chord `Alt`-prefixed, so none of
+   * them stole a bare letter. That reduces the harm; it does not provide the
+   * capability, and it is not a substitute for it.
+   *
+   * ## What setting one to `false` actually does
+   *
+   * - The keyboard chord stops firing — `handleKeyDown` filters the action out.
+   * - The menu item stops rendering — `renderAction` and the menu read the same
+   *   list.
+   * - **The command palette entry keeps working**, and this is the point rather
+   *   than an oversight. `executeAction` does not consult this list, so a
+   *   keyboard-free user is not left without the command: the chord is freed for
+   *   voice control and the palette remains the path to the feature. That is the
+   *   accessibility story the requirement is actually asking for — the chord is
+   *   the problem, the palette is the remedy.
+   *
+   * Omitting a name leaves it enabled, so adding entries here cannot change the
+   * behaviour of an existing host.
+   */
+  toggleFacilitatorTimer: boolean;
+  resetFacilitatorTimer: boolean;
+  addMinuteToTimer: boolean;
+  toggleBoardReveal: boolean;
+  addVoteToSelection: boolean;
+  removeVoteFromSelection: boolean;
+  readVoteTally: boolean;
 }>;
 
 export type UIOptions = Partial<{

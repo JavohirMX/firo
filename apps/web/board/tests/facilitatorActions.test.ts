@@ -823,6 +823,32 @@ describe("the command palette", () => {
     return facilitatorCommandPaletteItems(api, () => document, vi.fn());
   };
 
+  /**
+   * Ask a palette item whether it is available, the way `CommandPalette` does.
+   *
+   * All four arguments, because the palette passes all four and a predicate that
+   * reads `props` receives `undefined` if a caller invents its own arity. `canvasActions`
+   * is spread into a bare props object rather than the editor's real `AppProps`,
+   * which would drag in a dozen unrelated fields.
+   */
+  const available = (
+    item: CommandPaletteItem,
+    elements: unknown[],
+    state: AppStateLike,
+    canvasActions: Record<string, boolean> = {},
+  ): boolean => {
+    const predicate = item.predicate;
+    if (typeof predicate !== "function") {
+      return predicate ?? true;
+    }
+    return predicate(
+      elements as never,
+      state as never,
+      { UIOptions: { canvasActions } } as never,
+      null as never,
+    );
+  };
+
   it("offers every facilitator command", () => {
     expect(items(new FiroDoc(new Y.Doc())).map((item) => item.label)).toEqual([
       "Start or pause the timer",
@@ -861,17 +887,41 @@ describe("the command palette", () => {
     const addVote = all.find(
       (item) => item.label === "Give the selection a dot",
     )!;
-    const predicate = addVote.predicate as unknown as (
-      elements: unknown[],
-      appState: unknown,
-    ) => boolean;
 
-    expect(predicate([], appState())).toBe(false);
+    expect(available(addVote, [], appState())).toBe(false);
     expect(
-      predicate([{ id: "note-1" } as never], {
+      available(addVote, [{ id: "note-1" } as never], {
+        ...appState(),
         selectedElementIds: { "note-1": true },
       }),
     ).toBe(true);
+  });
+
+  it("greys out a command the host has switched off", () => {
+    /*
+     * The host's disable flag has to reach the palette, not just the keyboard.
+     *
+     * This assertion exists because it was violated when the flag was first
+     * implemented: the palette item forwards `action.predicate` by reference, and
+     * that predicate had begun reading the third argument, `props` -- which this test
+     * was not passing. `props` arrived `undefined` and the palette predicate threw
+     * on `props.UIOptions`. In the app the palette calls `isCommandAvailable` during
+     * render for every command, so a throw there takes out the whole palette, not one
+     * entry.
+     *
+     * `available` therefore calls it with the four arguments `CommandPalette` really
+     * passes (`CommandPalette.tsx`, `isCommandAvailable`), rather than the two that
+     * happened to work while every predicate ignored the rest.
+     */
+    const all = items(new FiroDoc(new Y.Doc()));
+    const timer = all.find(
+      (item) => item.label === "Start or pause the timer",
+    )!;
+
+    expect(available(timer, [], appState(), {})).toBe(true);
+    expect(
+      available(timer, [], appState(), { toggleFacilitatorTimer: false }),
+    ).toBe(false);
   });
 
   it("carries the keyboard shortcut it duplicates", () => {
