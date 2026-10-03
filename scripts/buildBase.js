@@ -19,6 +19,7 @@ const getConfig = (outdir) => ({
     "@firo/math",
     "@firo/schema",
     "@firo/doc",
+    "@firo/facilitation",
     "@firo/fractional-indexing",
   ],
 });

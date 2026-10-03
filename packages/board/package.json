@@ -57,6 +57,7 @@
     "@firo/common": "0.1.0",
     "@firo/doc": "0.1.0",
     "@firo/element": "0.1.0",
+    "@firo/facilitation": "0.1.0",
     "@firo/fractional-indexing": "0.1.0",
     "@firo/schema": "0.1.0"
   },

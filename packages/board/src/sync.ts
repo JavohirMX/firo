@@ -26,10 +26,41 @@
  * editor does not own — `focus` and `gap` on a binding, say — the document's
  * value wins, because the editor never had it. That is the whole reason the
  * projection is lossy and the document is authoritative.
+ *
+ * ## What `pull()` withholds, and why `diff()` has to protect it
+ *
+ * Private mode keeps some elements out of the editor entirely, and that breaks
+ * an assumption baked into `diff()`: *an id the editor no longer has was deleted
+ * there*. `gone` is computed from the document's ids minus the scene's, and it
+ * is the only thing standing between a real deletion and a permanent tombstone.
+ *
+ * So the moment `pull()` filters, every hidden note reads as "the editor lost
+ * this" and gets deleted on the next push. Not on the next reload, not on the
+ * next session — the next *keystroke*, because that is when a push happens. And
+ * it is silent and permanent: a tombstone in a CRDT is not a deleted row, it is
+ * a deleted row that can no longer be resurrected by a stale write. The feature
+ * whose entire purpose is protecting those notes would destroy them, and the
+ * facilitator would find out when they revealed the board.
+ *
+ * So the two halves have to agree, and they agree by construction rather than by
+ * discipline: `pull()` records the ids it withheld, and `diff()` refuses to read
+ * those ids as deletions. It is a tracked set rather than a re-derived one, and
+ * that matters — re-deriving it in `diff` would silently diverge the moment the
+ * mode and the scene disagreed, which is the ordinary state between a toggle and
+ * the pull that follows it. See `withheldIds`.
+ *
+ * Z-order has the same shape of problem one level down, and `orderFor` exists for
+ * it: a scene that is missing elements cannot express the board's z-order, so a
+ * reorder that names only what the editor holds would quietly relocate every
+ * withheld element to the back of the document's order — corrupt the stacking of
+ * precisely the notes being protected, and never settle.
  */
+
+import { DEFAULT_REVEAL_STATE, visibleElements } from "@firo/facilitation";
 
 import type { FiroElement, StickyNoteElement } from "@firo/schema";
 import type { Mutation } from "@firo/doc";
+import type { RevealState } from "@firo/facilitation";
 
 import {
   EDITOR_OWNED_FIELDS,
@@ -137,6 +168,26 @@ export class BoardSync {
   private suspended = false;
 
   /**
+   * The ids `pull()` deliberately left out of the editor's scene.
+   *
+   * Set by `pull()`, read by `diff()`. Nothing else writes it and nothing else
+   * reads it, which is deliberate: it is the record of *what was actually
+   * withheld from this editor*, not a second opinion about what should be.
+   *
+   * Derived inside `pull()` by set difference against the exact array handed to
+   * the editor, so it cannot disagree with the scene even if someone later adds
+   * another reason to withhold something. A second filter — one in `pull()` and
+   * one in `diff()` — is how the two would come to disagree, and the symptom of
+   * that disagreement is a facilitator's hidden notes deleted from the file with
+   * nothing in the log.
+   *
+   * Empty whenever nothing is hidden, which is every board nobody has used
+   * private mode on. Every use below is behind that, so the ordinary path is
+   * the old code path.
+   */
+  private withheldIds: ReadonlySet<string> = new Set<string>();
+
+  /**
    * True while this class is inside its own `commit`.
    *
    * Needed because the content check below compares against `lastDocElements`,
@@ -157,9 +208,48 @@ export class BoardSync {
           collections?: readonly unknown[];
         }) => void,
       ) => () => void;
+
+      /**
+       * This client's ephemeral state, which is where the private/revealed
+       * toggle lives — see `EphemeralReveal` in `@firo/doc`.
+       *
+       * ## Why this is read from the document and not injected separately
+       *
+       * The toggle is ephemeral (rule 1 in `AGENTS.md`): it is awareness, not a
+       * document field, and it is discarded when the peer disconnects. That is
+       * the *right* place for it and it is not negotiable — but it means the
+       * board-level mode already has exactly one home, and a second one handed
+       * to this constructor would be a second source of truth that disagrees
+       * with the document the moment a facilitator's toggle arrives from
+       * anywhere else. So the document is asked, every time, and the answer is
+       * not cached: a cached mode would hide notes after a reveal, or draw them
+       * after a hide, for as long as the board stayed open.
+       *
+       * ## Why it is optional rather than required
+       *
+       * The port is structural and pre-dates private mode. Making this member
+       * required would break every existing caller — `apps/web/board/board.ts`
+       * casts a real `FiroDoc` in, which has the method, but tests and any other
+       * host build their own port — for a feature they did not ask for. An
+       * optional member with a `revealed` fallback means "a port that does not
+       * know about private mode hides nothing", which is both the safe answer
+       * and the honest one: a board is never private by accident.
+       */
+      getEphemeral?: () => { readonly reveal: RevealState };
     },
     private readonly editor: EditorBridge,
   ) {}
+
+  /**
+   * The reveal toggle, as the document holds it right now.
+   *
+   * Read on every `pull()` rather than remembered. The toggle never reaches the
+   * document's *history* — that is the point of it being ephemeral — so there is
+   * no notification for a mode change to arrive on, and a cached copy would only
+   * ever be stale. The cost is one property read per pull.
+   */
+  private revealState = (): RevealState =>
+    this.doc.getEphemeral?.().reveal ?? DEFAULT_REVEAL_STATE;
 
   /**
    * Push the document into the editor. Call once after both exist.
@@ -209,7 +299,22 @@ export class BoardSync {
       return previous && isEcho(element, previous) ? previous : element;
     });
 
-    const mutations = this.diff(this.lastDocElements, normalised);
+    /*
+     * The withheld set is passed, not re-derived.
+     *
+     * `diff` has no business forming its own opinion about what should be
+     * hidden: the only authority on that is the array `pull()` actually handed
+     * the editor, and anything else is a second filter that can disagree with
+     * the first. The disagreement is silent and it is fatal — the document has
+     * an element, the scene does not, `gone` says the editor deleted it, and
+     * `deleteElements` tombstones a facilitator's hidden note because of a
+     * predicate that happened to read the mode a moment later.
+     */
+    const mutations = this.diff(
+      this.lastDocElements,
+      normalised,
+      this.withheldIds,
+    );
     if (!mutations.length) {
       return [];
     }
@@ -235,10 +340,30 @@ export class BoardSync {
    * Field-level for updates, never whole-element replacement: the editor cannot
    * represent everything the document holds, so replacing an element wholesale
    * would quietly reset it. See `./elements.ts` for which fields those are.
+   *
+   * ## `withheld` is the third argument because two of the three answers below
+   * are wrong without it
+   *
+   * `gone`, the z-order comparison, and the z-order mutation all read "the ids
+   * the document has that the editor does not". While private mode is on, that
+   * set contains every hidden note — for reasons that have nothing to do with the
+   * user deleting anything. Each of the three is therefore wrong in a different,
+   * silent way:
+   *
+   * - `gone` would tombstone them. Permanent, and caused by the feature meant to
+   *   protect them.
+   * - the comparison would report the order changed on every push, because the
+   *   scene is shorter than the board by construction, so every keystroke would
+   *   write to the document.
+   * - the mutation would name only the ids the editor holds, and
+   *   `reorderElements` appends everything it was not given to the *end* — so
+   *   every hidden note would slide to the back of the board's z-order, once, on
+   *   the first genuine reorder, and stay there after the reveal.
    */
   private diff(
     before: readonly FiroElement[],
     after: readonly FiroElement[],
+    withheld: ReadonlySet<string>,
   ): Mutation[] {
     const mutations: Mutation[] = [];
     const beforeById = new Map(before.map((element) => [element.id, element]));
@@ -274,7 +399,27 @@ export class BoardSync {
     // Anything left in the document that the editor no longer has was deleted
     // there. The document keeps a tombstone rather than dropping the key, so
     // undo can bring it back and a concurrent edit cannot resurrect it silently.
-    const gone = [...beforeById.keys()];
+    //
+    // `-- except the ids `pull()` withheld`.
+    //
+    // This is the line the whole private-mode feature lives or dies on. Without
+    // the filter, an element the editor never had *because it is hidden* reads
+    // as an element the user deleted, and the very next push — a keystroke on any
+    // other note — writes a tombstone over a facilitator's private brainstorm.
+    // Nothing throws, nothing is logged, and the note is not merely hidden: a
+    // tombstone in a CRDT is not a row to come back from, which is what
+    // `compactBoard` and the CRDT's own id-reuse rules are built around.
+    //
+    // Tracked rather than re-derived, because re-deriving means asking the reveal
+    // mode again and the scene is what is authoritative about what the editor
+    // lacks. They disagree in the ordinary case: a toggle that has not been
+    // followed by a `pull()` is a mode change the scene has not caught up with
+    // yet, and a `diff` that read the mode would protect ids that are sitting
+    // right there on the canvas — which means a real deletion would be swallowed.
+    //
+    // The set is empty on every board nobody has made private, so this costs a
+    // `Set.has` per candidate and changes nothing for them.
+    const gone = [...beforeById.keys()].filter((id) => !withheld.has(id));
     if (gone.length) {
       mutations.push({ kind: "deleteElements", ids: gone });
     }
@@ -300,7 +445,7 @@ export class BoardSync {
     // An earlier version compared the full order but emitted only the live ids.
     // The two sets then disagree permanently: `reorderElements` appends any id it
     // was not given to the *end* of the order, so a tombstone that sat in the
-    // middle moved to the end, `sameOrder` was false on the very next push, and
+    // middle moved to the end, `sameIds` was false on the very next push, and
     // every idle push after a delete-plus-reorder wrote to the document forever.
     // Measured on a two-note board with one deleted: five idle pushes, five
     // durable writes, `durableUpdates` climbing.
@@ -316,15 +461,21 @@ export class BoardSync {
     // same set, which is the only way the two can agree. `reorderElements`
     // already drops ids it does not recognise, so a stale id costs nothing.
     //
+    // Which brings us to the withheld ids, which are a *third* reason an element
+    // may be absent from the scene and which must be named here for the same
+    // reason tombstones are: not naming them is not a no-op, it is a silent
+    // relocation to the back of the board. `orderFor` puts each one back where
+    // the document has it, and the comparison is made against that same
+    // completed list -- so a scene that is merely *missing* elements does not
+    // read as a scene that *moved* them.
+    //
     // Only emitted when the *set* is unchanged, i.e. when the deletions above
     // did not fire. Reordering and deleting in the same commit is expressed by
     // the deletions; the surviving elements keep the relative order the
     // document already has, and the next push settles it.
-    if (!gone.length && !sameOrder(before, after)) {
-      mutations.push({
-        kind: "reorderElements",
-        ids: after.map((element) => element.id),
-      });
+    const order = orderFor(before, after, withheld);
+    if (!gone.length && !sameIds(before, order)) {
+      mutations.push({ kind: "reorderElements", ids: order });
     }
 
     return mutations;
@@ -440,18 +591,69 @@ export class BoardSync {
   /** What `onRecordsChanged` was last handed, so equal values are not re-sent. */
   private lastPublishedCollections: readonly unknown[] | null = null;
 
-  /** Replace the editor's contents with the document's, remembering the echo. */
+  /**
+   * Replace the editor's contents with the document's, remembering the echo.
+   *
+   * ## Private mode happens here, and nowhere else
+   *
+   * `visibleElements` — the same function the exporter uses — decides what the
+   * editor is told about, and that is the whole of the leak fix. The exporter
+   * walks the scene (`LayerUI` is handed `scene.getNonDeletedElements()`, and
+   * `prepareElementsForRender` only narrows by frame and by tombstone), so an
+   * element that never reaches the scene cannot reach a PNG or an SVG. Filtering
+   * at the render layer instead would leave every export path — there are five,
+   * and each walks the scene on its own — as a separate chance to forget.
+   *
+   * It also means a hidden element cannot be *edited*, because editing needs it
+   * in the scene: there is no gesture that reaches an element the canvas does
+   * not have. Which is the correct answer, and the reason `withheldIds` exists
+   * rather than a per-push repair of some kind.
+   *
+   * ## What is withheld is recorded, not re-derived
+   *
+   * `withheldIds` is the set difference against the array just handed over,
+   * never a second pass with the same predicate. Two filters that agree today
+   * are one filter that will disagree after the next change, and the
+   * disagreement is silent and irreversible — `diff` reads a missing element as
+   * a deletion.
+   *
+   * Note that `lastDocElements` stays the *whole* document, withheld included.
+   * That is deliberate and it is what makes the exclusion in `diff` necessary
+   * rather than belt-and-braces: the sync has to keep remembering what the board
+   * holds, or a later push would have no way to tell "withheld" from "deleted".
+   *
+   * ## A mode change does not arrive here by itself
+   *
+   * The reveal toggle is ephemeral, so flipping it does not commit and does not
+   * notify `subscribe` — deliberately, per rule 1. Nothing in this class can
+   * observe a flip. A caller that changes the mode must call `pull()`; that is
+   * the refresh point, and it is public for exactly that reason. Until it is
+   * called the scene still shows what it showed, which is also why `diff` trusts
+   * the recorded set rather than the live mode.
+   */
   pull = (): void => {
     this.suspended = true;
     try {
       const docElements = this.doc.read().elements;
+      const shown = visibleElements(docElements, this.revealState());
+
+      const shownIds = new Set(shown.map((element) => element.id));
+      this.withheldIds = new Set(
+        docElements
+          .filter((element) => !shownIds.has(element.id))
+          .map((element) => element.id),
+      );
+
       const elements = toEditorScene(
-        docElements as FiroElement[],
+        shown as FiroElement[],
       ) as unknown as Record<string, unknown>[];
 
       this.lastDocElements = docElements;
       // The echo baseline is the *folded* form of what we are about to send, not
       // the editor elements themselves, so that comparisons are like-for-like.
+      // It covers the visible scene only, which is right: an element the editor
+      // was never given cannot come back as an echo, and there is nothing for it
+      // to be compared against.
       this.pushedElements = fromEditorElements(elements as never[]);
       this.editor.write(elements);
     } finally {
@@ -464,15 +666,70 @@ export class BoardSync {
 }
 
 /**
- * Which fields an edit actually changed.
+ * The z-order to ask the document for, with the withheld ids put back.
  *
- * Compares by value and returns only the differences, so an update carries the
- * fields the user touched and nothing else. That matters for merge: a
- * concurrent edit to a different field of the same element survives, because
- * this key was never written.
+ * ## Why this exists
+ *
+ * A scene that is missing elements cannot speak about the whole board's z-order,
+ * and `reorderElements` resolves the silence by appending every id it was not
+ * given to the end. So the obvious implementation — hand it `after.map(id)` —
+ * is not "leave the hidden ones alone", it is "move every hidden note to the
+ * back of the board", executed silently on the first genuine reorder while the
+ * session is private and still true when it is revealed. Corrupting the stacking
+ * of the content the feature exists to protect, from a change that has nothing
+ * to do with it.
+ *
+ * ## What it does
+ *
+ * **A withheld element keeps its slot; only the elements the editor can see
+ * move.** That is the rule, and it is stated as a rule because the alternative is
+ * a choice nobody has made deliberately: there is no information about where a
+ * hidden note *should* go, so the only answer that cannot be wrong is the one it
+ * already has.
+ *
+ * Concretely: walk the document's order, and at each element take the editor's
+ * *next* id if the scene can speak for that slot, or the withheld id if it cannot.
+ * The visible ids end up in the editor's order, interleaved with the withheld
+ * ones in the document's, each in the position the document had it.
+ *
+ * A withheld note can therefore still change who it sits above — when the notes
+ * around it are moved, something has to give, and the notes a person actually
+ * moved are the ones that yield. But it is never moved *to* a position the
+ * document did not already have it in, and in particular it never travels to the
+ * end.
+ *
+ * With nothing withheld this returns `after`'s ids unchanged, which is what
+ * keeps the ordinary path byte-identical to what it was before private mode.
+ *
+ * Ids the document has never seen — drawn in the editor, not yet committed — are
+ * left in for the trailing slice. They cannot be positioned against a document
+ * that does not know them, and `reorderElements` drops ids it does not
+ * recognise, so nothing here depends on getting that case exactly right.
  */
+const orderFor = (
+  before: readonly FiroElement[],
+  after: readonly FiroElement[],
+  withheld: ReadonlySet<string>,
+): string[] => {
+  const editorOrder = after.map((element) => element.id);
+  if (withheld.size === 0) {
+    return editorOrder;
+  }
+
+  const ids: string[] = [];
+  let next = 0;
+  for (const element of before) {
+    if (withheld.has(element.id)) {
+      ids.push(element.id);
+    } else if (next < editorOrder.length) {
+      ids.push(editorOrder[next++]);
+    }
+  }
+  return next < editorOrder.length ? [...ids, ...editorOrder.slice(next)] : ids;
+};
+
 /**
- * Whether two element lists carry the same ids in the same order.
+ * Whether the document's elements are already in a given id order.
  *
  * Z-order is a property of the scene rather than of any element, so it cannot
  * be compared with `changedFields` -- which is per element and would compare
@@ -480,12 +737,16 @@ export class BoardSync {
  *
  * Compares ids only. Value equality is `changedFields`' job, and a reorder that
  * also changed a field should produce both mutations, not one confused one.
+ *
+ * Takes plain ids rather than elements because the comparison is against the
+ * *completed* order from `orderFor` -- the editor's order with the withheld ids
+ * back in their document slots. Comparing against the raw scene instead would
+ * report a change on every single push while private mode is on, because the
+ * scene is shorter than the board by exactly the number of hidden notes, and
+ * each of those pushes would write to the document.
  */
-const sameOrder = (
-  a: readonly FiroElement[],
-  b: readonly FiroElement[],
-): boolean =>
-  a.length === b.length && a.every((element, i) => element.id === b[i]?.id);
+const sameIds = (a: readonly FiroElement[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((element, i) => element.id === b[i]);
 
 /**
  * Whether two collection lists are the same set, in the same order.
@@ -501,6 +762,14 @@ const sameCollections = (
   b: readonly unknown[],
 ): boolean => a.length === b.length && a.every((c, i) => sameValue(c, b[i]));
 
+/**
+ * Which fields an edit actually changed.
+ *
+ * Compares by value and returns only the differences, so an update carries the
+ * fields the user touched and nothing else. That matters for merge: a
+ * concurrent edit to a different field of the same element survives, because
+ * this key was never written.
+ */
 const changedFields = (
   before: FiroElement,
   after: FiroElement,
