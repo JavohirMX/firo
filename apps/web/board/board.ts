@@ -32,9 +32,11 @@ import { createFiroDoc } from "@firo/doc";
 import { BoardSync, toEditorScene, type EditorBridge } from "@firo/board";
 
 import { CaptureUpdateAction } from "@firo/editor";
+import { visibleElements } from "@firo/facilitation";
 
 import type { ExcalidrawElement } from "@firo/element/types";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
+import type { FiroElement } from "@firo/schema";
 
 import { debounce, restoreBoard, saveBoard } from "./storage";
 
@@ -202,7 +204,21 @@ if (typeof window !== "undefined") {
  * yet, which is the correct first run.
  */
 export const boardElements = (): ExcalidrawElement[] =>
-  toEditorScene(doc.read().elements) as unknown as ExcalidrawElement[];
+  toEditorScene(
+    /*
+     * Filtered, and this is the *second* projection path that has to know about
+     * private mode — `BoardSync.pull()` is the first.
+     *
+     * Harmless today and still worth doing: ephemeral state defaults to
+     * `revealed`, so a board opens with everything shown. But the moment a board
+     * is opened while a session is private, this is what builds the initial
+     * scene, and an unfiltered projection here would put every hidden note on
+     * the canvas before `attachBoard` had a chance to withhold anything.
+     */
+    visibleElements(doc.read().elements, doc.getEphemeral().reveal) as
+      | FiroElement[]
+      | never[],
+  ) as unknown as ExcalidrawElement[];
 
 /** An adapter onto the editor, for `BoardSync`. */
 const bridgeFor = (excalidrawAPI: ExcalidrawImperativeAPI): EditorBridge => ({
@@ -228,6 +244,20 @@ const bridgeFor = (excalidrawAPI: ExcalidrawImperativeAPI): EditorBridge => ({
  * Call once the editor exists. Returns a teardown, because a leaked sync keeps a
  * document subscription alive and pushes into an editor that has gone away.
  */
+/**
+ * Repaint the canvas from the document.
+ *
+ * Public because the reveal toggle needs it: that mode is ephemeral, so flipping
+ * it commits nothing and `BoardSync` never hears about it. Without this the
+ * canvas would keep showing notes the facilitator just hid.
+ *
+ * A no-op when nothing is attached, because a facilitator control can be mounted
+ * before the editor exists.
+ */
+export const refreshBoard = (): void => {
+  sync?.pull();
+};
+
 export const attachBoard = (
   excalidrawAPI: ExcalidrawImperativeAPI,
 ): (() => void) => {

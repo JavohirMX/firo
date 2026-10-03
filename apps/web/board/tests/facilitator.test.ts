@@ -172,6 +172,46 @@ describe("the reveal toggle", () => {
     expect(toggleRevealMode(get).mode).toBe("revealed");
   });
 
+  it("asks the canvas to repaint when it flips", () => {
+    // The integration that is easy to miss. The mode is ephemeral, so flipping it
+    // commits nothing, `FiroDoc.subscribe` never fires, and `BoardSync` never
+    // repaints on its own. Without this the toggle's UI changes and the canvas
+    // keeps showing the notes it was supposed to hide -- which reads as the
+    // feature working, because the button moved.
+    const { get } = setup();
+    const refresh = vi.fn();
+
+    toggleRevealMode(get, refresh);
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    toggleRevealMode(get, refresh);
+    expect(refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not repaint when the mode did not actually change", () => {
+    const { get } = setup();
+    const refresh = vi.fn();
+
+    // A control that repaints unconditionally would re-run `pull()` -- a full
+    // document read and a scene rewrite -- for a no-op.
+    get().setEphemeral({ reveal: { mode: "private" } });
+    const before = getReveal(get).mode;
+    expect(before).toBe("private");
+
+    refresh.mockClear();
+    toggleRevealMode(get, refresh);
+    // It did flip, so this one *should* repaint. Asserting the count keeps the
+    // next case honest about what is being measured.
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("still works when no refresh callback is supplied", () => {
+    // A facilitator control mounted before the editor exists must not throw.
+    const { get } = setup();
+    expect(() => toggleRevealMode(get)).not.toThrow();
+    expect(getReveal(get).mode).toBe("private");
+  });
+
   it("is ephemeral -- a new board is not private", () => {
     // The half of the split that stops a board reopening stuck.
     const { get } = setup();

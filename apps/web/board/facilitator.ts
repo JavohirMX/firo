@@ -228,7 +228,30 @@ export const timerControls = (getDocument: () => FiroDoc) => {
 };
 
 /** Flip between private and revealed. */
-export const toggleRevealMode = (getDocument: () => FiroDoc): RevealState => {
+/**
+ * Flip between private and revealed, and repaint the canvas.
+ *
+ * ## Why this has to call `pull()` itself
+ *
+ * The reveal mode is ephemeral, so flipping it commits nothing and notifies
+ * nobody. `FiroDoc.subscribe` fires on durable changes only, so `BoardSync` never
+ * hears about it and never repaints. Without the call below, pressing "reveal"
+ * would update the toggle's own UI and nothing else — the canvas would keep
+ * showing the notes it was supposed to be hiding, which is the worst possible
+ * failure for the feature: it looks like it worked.
+ *
+ * `pull` is the refresh point precisely because it is public and idempotent.
+ * Reading the mode fresh on every call is what makes this correct rather than
+ * racy — see `BoardSync.pull` and `withheldIds`.
+ *
+ * Repainting is deliberately *not* a document change, so it stays out of the
+ * undo stack: nobody pressed undo, and an undo entry labelled "reveal" on a board
+ * whose file never changed would be a lie.
+ */
+export const toggleRevealMode = (
+  getDocument: () => FiroDoc,
+  refresh?: () => void,
+): RevealState => {
   const before = getDocument().getEphemeral().reveal;
   const next = toggleReveal(before);
   getDocument().setEphemeral({ reveal: next });
@@ -240,6 +263,7 @@ export const toggleRevealMode = (getDocument: () => FiroDoc): RevealState => {
    */
   lastReveal = next;
   if (next !== before) {
+    refresh?.();
     notify();
   }
   return next;
