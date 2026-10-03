@@ -1,8 +1,39 @@
 import path from "path";
 
-import { defineConfig } from "vitest/config";
+import { defineConfig, type Plugin } from "vitest/config";
+
+/**
+ * Refuse to load anything out of a workspace package's `dist/`.
+ *
+ * A relative import that lands on a package root — `"../.."` from a
+ * nested directory — resolves through that package's `package.json`
+ * `main`, which points at `dist/`. The test then binds to the built
+ * bundle instead of the source: silently, only when a build happens
+ * to exist, and against a second, independently instantiated copy of
+ * the package (its own module singletons, its own context defaults).
+ * That is the root cause of the ten sidebar-docking failures that
+ * survived from before the fork; see docs/plans/phase-0-foundation.md,
+ * "Two findings, both attributed". The `import/no-relative-packages`
+ * lint rule does not catch it — a workspace package reached by a
+ * relative path looks like an ordinary deep relative import to it.
+ */
+const noDistImports: Plugin = {
+  name: "firo:no-dist-imports",
+  load(id) {
+    if (/(^|\/)(packages|apps)\/[^/]+\/dist\//.test(id)) {
+      throw new Error(
+        `${id} resolves into a workspace package's dist/ build output. ` +
+          `A test bound to dist tests the build, not the source — and it ` +
+          `passes or fails on whether yarn build:packages has been run. ` +
+          `Import the source instead (for example "../../index" rather ` +
+          `than "../..").`,
+      );
+    }
+  },
+};
 
 export default defineConfig({
+  plugins: [noDistImports],
   resolve: {
     alias: [
       {
