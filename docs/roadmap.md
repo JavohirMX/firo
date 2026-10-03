@@ -2,8 +2,7 @@
 
 ## Phases
 
-Each phase has an **exit criterion**. A phase is done when its criterion is met and
-demonstrated — not when its code is written.
+Each phase has an **exit criterion**. A phase is done when its criterion is met and demonstrated — not when its code is written.
 
 | # | Phase | Exit criterion |
 | --- | --- | --- |
@@ -21,18 +20,13 @@ demonstrated — not when its code is written.
 
 ## Version boundaries
 
-**Version 1 = Phases 0–7.** A team can run a full workshop on one machine, offline,
-with no account, and walk away with a file they own.
+**Version 1 = Phases 0–7.** A team can run a full workshop on one machine, offline, with no account, and walk away with a file they own.
 
-**Version 2 = Phases 8–9.** Self-hosted collaboration, the project layer, the timeline
-projection, and import from Miro.
+**Version 2 = Phases 8–9.** Self-hosted collaboration, the project layer, the timeline projection, and import from Miro.
 
 **Version 3 = Phase 10.** AI, agent tooling, a published VPAT, and desktop.
 
-Multiplayer is deliberately absent from v1
-([`prd/02-scope.md`](prd/02-scope.md)). The data model is designed for it from day one
-([`ADR-0002`](adr/0002-yjs-as-concurrency-engine.md)), so v2 is a deployment change
-rather than a rewrite.
+Multiplayer is deliberately absent from v1 ([`prd/02-scope.md`](prd/02-scope.md)). The data model is designed for it from day one ([`ADR-0002`](adr/0002-yjs-as-concurrency-engine.md)), so v2 is a deployment change rather than a rewrite.
 
 ## The critical path
 
@@ -46,36 +40,21 @@ rather than a rewrite.
                                         10      = v3
 ```
 
-**Phase 2 is the project.** Everything before it is setup and everything after it
-depends on it. Two consequences:
+**Phase 2 is the project.** Everything before it is setup and everything after it depends on it. Two consequences:
 
-1. **It gets the most scrutiny and the most time.** The gate
-   ([`prd/04-acceptance-criteria.md`](prd/04-acceptance-criteria.md) AC-11) is
-   numeric, not a judgement call.
-2. **It has a scheduled fallback.** If the gate is not met at the end of the timebox,
-   we revert to a thinner fork of Excalidraw's renderer and ship a smaller product.
-   This is a planned decision point, stated now so nobody in Phase 3 discovers it was
-   never considered. See
-   [the Phase 2 plan](plans/phase-2-renderer.md#the-fallback).
+1. **It gets the most scrutiny and the most time.** The gate ([`prd/04-acceptance-criteria.md`](prd/04-acceptance-criteria.md) AC-11) is numeric, not a judgement call.
+2. **It has a scheduled fallback.** If the gate is not met at the end of the timebox, we revert to a thinner fork of Excalidraw's renderer and ship a smaller product. This is a planned decision point, stated now so nobody in Phase 3 discovers it was never considered. See [the Phase 2 plan](plans/phase-2-renderer.md#the-fallback).
 
-**The gate did its job, and it said no.** The cost model the rewrite was justified by
-turned out to be measured on a software rasteriser; on a GPU the inherited renderer
-already holds 10,000 elements at 60 fps. The fallback did not fire, the rewrite is
-cancelled, and criterion 5's low-zoom failure is now a bounded investigation rather
-than an architectural question. See [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md).
+**The gate did its job, and it said no.** The cost model the rewrite was justified by turned out to be measured on a software rasteriser; on a GPU the inherited renderer already holds 10,000 elements at 60 fps. The fallback did not fire, the rewrite is cancelled, and criterion 5's low-zoom failure is now a bounded investigation rather than an architectural question. See [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md).
 
-Phases 4 and 6 are the two largest by feature volume. Phase 6 is the larger
-architectural risk; Phase 4 is the larger amount of work.
+Phases 4 and 6 are the two largest by feature volume. Phase 6 is the larger architectural risk; Phase 4 is the larger amount of work.
 
 ## What is deliberately unsequenced
 
-- **Timeline projection** waits for v2. Four projections before two are proven is how
-  projects ship four half-built widgets.
+- **Timeline projection** waits for v2. Four projections before two are proven is how projects ship four half-built widgets.
 - **Doc blocks** wait for v3. A structured document editor is a whole product.
-- **Tablet optimisation** waits for v3. Tablets are supported from v1; optimised in
-  v3.
-- **Templates** are a handful shipped in-app, not a gallery. A marketplace is a
-  community problem we do not have yet.
+- **Tablet optimisation** waits for v3. Tablets are supported from v1; optimised in v3.
+- **Templates** are a handful shipped in-app, not a gallery. A marketplace is a community problem we do not have yet.
 
 ## Risks, in order of severity
 
@@ -86,6 +65,7 @@ architectural risk; Phase 4 is the larger amount of work.
 | Records and projections ship half-built | 6 | Two proven projections beat four broken ones. Scope is set in [`prd/02-scope.md`](prd/02-scope.md) |
 | A `.firo` cannot carry its images, or cannot be read as text | 7 | Decided: a directory with `board.json` beside content-addressed `assets/`, which is the same reason the single file was refused. The cost is that it is no longer one download, and folder import is not available in Safari. [`ADR-0018`](adr/0018-a-firo-is-a-directory.md) |
 | ProseMirror overlay alignment is subtly wrong at some zooms | 3, 4 | Explicit multi-zoom test matrix ([`trd/05-rich-text.md`](trd/05-rich-text.md)) |
+| **`FiroDoc.read()` is a full O(elements) walk on the keystroke path** | 3 | **Open, measured, not yet fixed.** `notify()` calls `read()` on every durable transaction and `apps/web` subscribes the autosave to it, so a 10,000-element board spends ~17.5 ms and ~17 MB per read, twice per editor change — roughly two frame budgets _before_ the renderer draws. Measured with esbuild against real Yjs; the figures are Node-side, so treat the ratios as the finding and not the absolutes. It predates the current work and is **not** the renderer gate failing: ADR-0017's 73 fps was measured with the renderer alone, and `BoardSync` was never in that path. The two costs are additive, so criterion 1 needs re-measuring with the bridge in place before it is claimed again. Fixing it means not materialising fresh plain objects for a consumer that only needs the delta, which is an interface decision and wants an ADR |
 | The ephemeral/durable split is violated by a well-meaning feature | any | Two enforcing tests ([`trd/03-crdt-and-sync.md`](trd/03-crdt-and-sync.md)) |
 | No legible licensed hand-drawn font exists at 12 px | 0 | Fall back to the clean stack; the aesthetic is recoverable, a licence violation is not |
 | Solo maintenance does not sustain the project | all | Accepted knowingly. See [`ADR-0009`](adr/0009-mit-licence-and-donation-funding.md) |
