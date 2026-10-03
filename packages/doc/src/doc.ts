@@ -256,8 +256,7 @@ export class FiroDoc {
      * looked up on it at call time so the walk stays observable (and overridable)
      * rather than being captured by value here.
      */
-    const readAssets = (): Record<string, AssetReference> =>
-      this.readAssets();
+    const readAssets = (): Record<string, AssetReference> => this.readAssets();
 
     return {
       elements: readAllElements(nodes),

@@ -21,7 +21,10 @@ describe("the workshop timer", () => {
     it("derives the same remaining time for two clients with different clocks", () => {
       // The property that matters. If this fails, five people watching one clock
       // watch five different clocks.
-      const started = startTimer(setDuration(IDLE_TIMER, TIMER_PRESETS["5m"]), T0);
+      const started = startTimer(
+        setDuration(IDLE_TIMER, TIMER_PRESETS["5m"]),
+        T0,
+      );
 
       const early = remainingMs(started, T0 + 60_000);
       const late = remainingMs(started, T0 + 61_500);
@@ -56,7 +59,9 @@ describe("the workshop timer", () => {
       const timer = startTimer(IDLE_TIMER, T0);
       expect(isRunning(timer)).toBe(true);
       expect(remainingMs(timer, T0)).toBe(IDLE_TIMER.durationMs);
-      expect(remainingMs(timer, T0 + 1_000)).toBe(IDLE_TIMER.durationMs - 1_000);
+      expect(remainingMs(timer, T0 + 1_000)).toBe(
+        IDLE_TIMER.durationMs - 1_000,
+      );
     });
 
     it("freezes where it was paused", () => {
@@ -66,7 +71,9 @@ describe("the workshop timer", () => {
       const paused = pauseTimer(running, T0 + 30_000);
 
       expect(isRunning(paused)).toBe(false);
-      expect(remainingMs(paused, T0 + 30_000)).toBe(IDLE_TIMER.durationMs - 30_000);
+      expect(remainingMs(paused, T0 + 30_000)).toBe(
+        IDLE_TIMER.durationMs - 30_000,
+      );
       // Time passing while paused must not consume the clock.
       expect(remainingMs(paused, T0 + 999_999)).toBe(
         IDLE_TIMER.durationMs - 30_000,
@@ -188,6 +195,58 @@ describe("the workshop timer", () => {
 
     it("never renders a negative clock", () => {
       expect(formatRemaining(-5_000)).toBe("0:00");
+    });
+
+    it("never renders NaN, however it arrives", () => {
+      // `Math.max(0, NaN)` is `NaN`, so a clamp does not make a non-finite input
+      // safe. This is a rendering function a facilitator reads at the back of a
+      // room, and `"NaN:NaN"` reads as a bug in the tool rather than as a
+      // disagreement about the time -- so the guarantee belongs here.
+      expect(formatRemaining(NaN)).toBe("0:00");
+      expect(formatRemaining(Infinity)).toBe("0:00");
+      expect(formatRemaining(-Infinity)).toBe("0:00");
+    });
+  });
+
+  describe("state arriving from the wire", () => {
+    /*
+     * `TimerState` travels in the document's ephemeral state, which is awareness,
+     * and awareness is whatever a peer sent. `remainingMs` is therefore the
+     * boundary where untrusted numbers enter, and these are the values a peer
+     * running an older build -- or a hand-crafted frame -- can send.
+     */
+
+    it("reports zero rather than NaN for a non-finite anchor", () => {
+      const fromPeer = {
+        startedAt: Number.NaN,
+        durationMs: 300_000,
+        remainingMs: 300_000,
+      };
+      expect(remainingMs(fromPeer, T0)).toBe(0);
+      expect(formatRemaining(remainingMs(fromPeer, T0))).toBe("0:00");
+    });
+
+    it("reports zero rather than Infinity for a non-finite duration", () => {
+      const fromPeer = {
+        startedAt: T0,
+        durationMs: Number.POSITIVE_INFINITY,
+        remainingMs: 300_000,
+      };
+      expect(remainingMs(fromPeer, T0)).toBe(0);
+    });
+
+    it("reports zero rather than NaN when `now` is not a number", () => {
+      const running = startTimer(IDLE_TIMER, T0);
+      expect(remainingMs(running, Number.NaN)).toBe(0);
+      expect(remainingMs(running, Number.POSITIVE_INFINITY)).toBe(0);
+    });
+
+    it("does not go negative for a peer whose clock is behind", () => {
+      // The benign case, and the reason zero is the right answer for a time we
+      // cannot compute: a peer whose clock lags reports a longer timer, never a
+      // negative one.
+      const running = startTimer(IDLE_TIMER, T0);
+      expect(remainingMs(running, T0 - 10_000)).toBeGreaterThan(0);
     });
   });
 

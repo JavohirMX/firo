@@ -143,7 +143,7 @@ describe("a board's assets are readable", () => {
     // that dropped unreferenced assets would hand an exporter a manifest missing
     // bytes the board actually needs.
     doc.commit([setAsset("orphan")]);
-    expect(doc.readAssets()["orphan"].hash).toBe("hash-orphan");
+    expect(doc.readAssets().orphan.hash).toBe("hash-orphan");
   });
 
   test("reading is not writing", () => {
@@ -233,10 +233,7 @@ describe("the snapshot exposes the assets", () => {
     // The same object, unchanged, even though the document has moved on.
     expect(Object.is(before.assets, assets)).toBe(true);
     // ...and a *new* snapshot sees the new state, which is the point of reading.
-    expect(Object.keys(doc.read().assets).sort()).toEqual([
-      "file-1",
-      "file-2",
-    ]);
+    expect(Object.keys(doc.read().assets).sort()).toEqual(["file-1", "file-2"]);
   });
 
   test("assets read after a later commit reflect that later commit", () => {
@@ -383,7 +380,9 @@ describe("readAllAssets works on a bare structure", () => {
     // the guard or be refused by it, and neither is what should happen.
     doc.commit([setAsset("file-1")]);
 
-    expect(() => doc.ydoc.getMap("assets").forEach(() => undefined)).not.toThrow();
+    expect(() =>
+      doc.ydoc.getMap("assets").forEach(() => undefined),
+    ).not.toThrow();
     expect(doc.readAssets()["file-1"].hash).toBe("hash-file-1");
   });
 });

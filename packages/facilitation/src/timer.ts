@@ -86,10 +86,43 @@ export const IDLE_TIMER: TimerState = Object.freeze({
  * counting up, because a workshop that overran has not gained time.
  */
 export const remainingMs = (timer: TimerState, now: number): number => {
+  /*
+   * Every branch sanitises, and `Math.max` alone is not enough.
+   *
+   * `Math.max(0, NaN)` is `NaN`, so a clamp does not make a non-finite input
+   * safe -- it propagates it, and the caller renders `"NaN:NaN"`.
+   *
+   * The input is not purely local. `TimerState` travels in the document's
+   * ephemeral state, which is awareness, and awareness is whatever a peer sent.
+   * So `startedAt` arrives from the wire with no validation on the read path,
+   * and this function is the boundary. A peer running an older build, or a
+   * hand-crafted awareness frame, is enough to put a garbage clock on
+   * everyone's screen -- and unlike a wrong number, `"NaN:NaN"` reads as a bug
+   * in the tool rather than as a disagreement.
+   *
+   * Zero is the honest answer for a time we cannot compute. It reads as
+   * "finished", which is the safe direction for a workshop clock: the facilitator
+   * moves on rather than staring at nonsense.
+   */
+  const duration = Number.isFinite(timer.durationMs) ? timer.durationMs : 0;
+  const stored = Number.isFinite(timer.remainingMs) ? timer.remainingMs : 0;
   if (timer.startedAt === null) {
-    return Math.max(0, timer.remainingMs);
+    return Math.max(0, stored);
   }
-  return Math.max(0, timer.durationMs - (now - timer.startedAt));
+  /*
+   * A running timer we cannot compute reports **zero**, not `stored`.
+   *
+   * Falling back to the stored remainder sounds kinder and is worse: `stored` is
+   * the full duration for a timer that has never been paused, so a peer's
+   * unreadable state would show "5:00 remaining" on every screen -- asserting
+   * time that may not exist, in front of the people waiting on it. Zero reads as
+   * finished, which sends the facilitator onward instead of stalling them on a
+   * number nobody can vouch for.
+   */
+  if (!Number.isFinite(timer.startedAt) || !Number.isFinite(now)) {
+    return 0;
+  }
+  return Math.max(0, duration - (now - timer.startedAt));
 };
 
 /** Whether the timer has run out. A paused timer never has. */
@@ -97,7 +130,8 @@ export const isFinished = (timer: TimerState, now: number): boolean =>
   remainingMs(timer, now) === 0;
 
 /** Whether the clock is moving. */
-export const isRunning = (timer: TimerState): boolean => timer.startedAt !== null;
+export const isRunning = (timer: TimerState): boolean =>
+  timer.startedAt !== null;
 
 /** Start, or restart, from the full duration. */
 export const startTimer = (timer: TimerState, now: number): TimerState => ({
@@ -133,10 +167,7 @@ export const resetTimer = (timer: TimerState): TimerState => ({
  * `startedAt + durationMs` — so adding to `durationMs` while running is
  * correct, and recomputing from `remainingMs` would silently restart the clock.
  */
-export const adjustTimer = (
-  timer: TimerState,
-  deltaMs: number,
-): TimerState =>
+export const adjustTimer = (timer: TimerState, deltaMs: number): TimerState =>
   timer.startedAt === null
     ? {
         startedAt: null,
@@ -150,11 +181,18 @@ export const adjustTimer = (
       };
 
 /** Replace the duration outright, as picking a preset does. */
-export const setDuration = (timer: TimerState, durationMs: number): TimerState => {
+export const setDuration = (
+  timer: TimerState,
+  durationMs: number,
+): TimerState => {
   const safe = Math.max(0, durationMs);
   return timer.startedAt === null
     ? { startedAt: null, durationMs: safe, remainingMs: safe }
-    : { startedAt: timer.startedAt, durationMs: safe, remainingMs: timer.remainingMs };
+    : {
+        startedAt: timer.startedAt,
+        durationMs: safe,
+        remainingMs: timer.remainingMs,
+      };
 };
 
 /**
@@ -165,6 +203,13 @@ export const setDuration = (timer: TimerState, durationMs: number): TimerState =
  * room.
  */
 export const formatRemaining = (ms: number): string => {
+  // Total, for the same reason `remainingMs` sanitises: this is the function a
+  // facilitator reads at the back of a room, and it must never render `NaN:NaN`.
+  // A rendering function that can emit a non-number is not total, so the
+  // guarantee belongs here rather than only at the caller.
+  if (!Number.isFinite(ms)) {
+    return "0:00";
+  }
   const total = Math.max(0, Math.ceil(ms / SECOND));
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;

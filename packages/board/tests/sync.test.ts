@@ -437,7 +437,7 @@ describe("BoardSync", () => {
     });
 
     it("does not report a reorder when a field changed but the order did not", () => {
-      const { doc, editor, sync } = seedThree();
+      const { editor, sync } = seedThree();
 
       editor.set(
         editor.elements.map((element) =>
@@ -457,7 +457,7 @@ describe("BoardSync", () => {
       // behind. Emitting `reorderElements` as well would restate an order that
       // includes ids the document is about to tombstone, and `reorderElements`
       // ignores ids it does not recognise -- so it would be noise at best.
-      const { doc, editor, sync } = seedThree();
+      const { editor, sync } = seedThree();
 
       const withoutB = editor.elements.filter(
         (element) => element.type !== "stickynote" || element.id !== "b",
@@ -468,6 +468,106 @@ describe("BoardSync", () => {
       const kinds = mutations.map((m) => m.kind);
       expect(kinds).toContain("deleteElements");
       expect(kinds).not.toContain("reorderElements");
+    });
+
+    it("settles after one commit when the board holds a tombstone", () => {
+      // The regression this whole block exists for.
+      //
+      // An earlier version compared the *full* order but emitted only the *live*
+      // ids. `reorderElements` appends any id it was not given to the end, so a
+      // tombstone moved from the middle to the end, `sameOrder` was false on the
+      // next push, and every idle push wrote to the document forever. Measured on
+      // a two-note board with one deleted: five idle pushes, five durable writes.
+      //
+      // Worse, the reorder was *lost*. Asking for a deleted note to come to the
+      // front left the document's order untouched, because the tombstone kept its
+      // old position and the live id was already in place. So the file disagreed
+      // with the canvas permanently and silently -- the failure mode this class
+      // exists to prevent, reintroduced by the attempt to fix it.
+      const { doc, editor, sync } = seedThree();
+
+      // Delete "b" the way the editor does: the note stays in the scene, marked.
+      const deleted = editor.elements.map((element) =>
+        element.id === "b" || element.containerId === "b"
+          ? { ...element, isDeleted: true }
+          : element,
+      );
+      editor.set(deleted);
+      sync.push();
+
+      // Now reorder, with the tombstone sitting *between* two live elements.
+      //
+      // The middle position is the whole point, and getting it wrong is how this
+      // test passed against the bug it exists to catch. With the tombstone last,
+      // dropping it from the emitted ids coincidentally produces the right order:
+      // `reorderElements` appends the omitted id, which is exactly where it
+      // already was. Only a tombstone in the middle has somewhere else to be put.
+      editor.set(reorderNotes(editor.elements, ["c", "b", "a"]));
+      expect(sync.push().map((m) => m.kind)).toEqual(["reorderElements"]);
+      expect(notes(doc.read().elements)).toEqual(["c", "b", "a"]);
+      expect(doc.read().elementOrder).toEqual(["c", "b", "a"]);
+
+      // The part that matters: it settles. The first push after a reorder is
+      // allowed to write -- it is how the document absorbs the editor's
+      // fractional indices back -- but the second must not, and neither must
+      // any after it. Asserting the first push is silent is a different
+      // requirement, and one this file already covers for a tombstone-free
+      // board ("commits nothing when nothing moved").
+      editor.set([...editor.elements]);
+      sync.push();
+      const afterSettle = doc.durableUpdates;
+
+      for (let i = 0; i < 10; i++) {
+        editor.set([...editor.elements]);
+        expect(sync.push()).toEqual([]);
+      }
+
+      // The measure that cannot be argued with: ten idle pushes wrote nothing.
+      expect(doc.durableUpdates).toBe(afterSettle);
+    });
+
+    it("settles when every element on the board is deleted", () => {
+      // The degenerate case of the same set mismatch, and the one a test written
+      // against live elements would never reach.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) => ({ ...element, isDeleted: true })),
+      );
+      sync.push();
+
+      // Two pushes to let the first pull land, then the count is stable.
+      editor.set([...editor.elements]);
+      sync.push();
+      const settled = doc.durableUpdates;
+
+      for (let i = 0; i < 10; i++) {
+        editor.set([...editor.elements]);
+        expect(sync.push()).toEqual([]);
+      }
+      expect(doc.durableUpdates).toBe(settled);
+    });
+
+    it("applies a reorder that moves a tombstone, not just live elements", () => {
+      // The half of the previous test that is about *correctness* rather than
+      // convergence: the tombstone's position is part of the z-order and the
+      // document has to end up agreeing with the canvas.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.id === "b" || element.containerId === "b"
+            ? { ...element, isDeleted: true }
+            : element,
+        ),
+      );
+      sync.push();
+
+      editor.set(reorderNotes(editor.elements, ["b", "a", "c"]));
+      sync.push();
+
+      // Front to back, exactly as the editor now holds them.
+      expect(doc.read().elementOrder).toEqual(["b", "a", "c"]);
     });
 
     it("survives a reorder with no field change at all", () => {

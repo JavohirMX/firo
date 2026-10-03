@@ -42,7 +42,7 @@
  */
 
 import type { Mutation } from "@firo/doc";
-import type { Collection, FiroRecord } from "@firo/schema";
+import type { Collection, FieldValue, FiroRecord } from "@firo/schema";
 
 /**
  * One dot, as read back out of the record store.
@@ -84,10 +84,7 @@ export const VOTE_COLLECTION_ID = "firo-votes";
  * serves every board, and a board that exported its votes must not collide with
  * another board's on import.
  */
-export const voteCollection = (
-  boardId: string,
-  order: string,
-): Collection =>
+export const voteCollection = (boardId: string, order: string): Collection =>
   ({
     id: VOTE_COLLECTION_ID,
     boardId,
@@ -114,7 +111,7 @@ export const voteCollection = (
         type: "number",
       },
     ],
-  }) as unknown as Collection;
+  } as unknown as Collection);
 
 /**
  * Read a stored record back into a vote, or null if it is not one.
@@ -132,17 +129,32 @@ export const voteFromRecord = (record: FiroRecord): Vote | null => {
   if (!values) {
     return null;
   }
-  const target = values[VOTE_TARGET_KEY];
+  /*
+   * Own properties only, and each of the three reads needs it.
+   *
+   * A bare `values[key]` walks the prototype chain, so a record with no `target`
+   * column of its own can still answer one -- from a `__proto__` entry, or from
+   * whatever else the object's prototype carries. The result is a vote attributed
+   * to an element its author never voted on, forged entirely from a file. Once
+   * records load from disk (ADR-0018) that file is untrusted input.
+   *
+   * `hasOwn` is the check, and it is applied to all three keys rather than just
+   * the first: `voterId` and `placedAt` are read the same way and are forgeable
+   * the same way.
+   */
+  const own = (key: string): FieldValue | undefined =>
+    Object.prototype.hasOwnProperty.call(values, key) ? values[key] : undefined;
+
+  const target = own(VOTE_TARGET_KEY);
   if (!target || target.type !== "text" || !target.value) {
     return null;
   }
-  const voter = values[VOTER_KEY];
-  const placedAt = values[PLACED_AT_KEY];
+  const voter = own(VOTER_KEY);
+  const placedAt = own(PLACED_AT_KEY);
   return {
     recordId: record.id,
     elementId: target.value,
-    voterId:
-      voter && voter.type === "text" && voter.value ? voter.value : "",
+    voterId: voter && voter.type === "text" && voter.value ? voter.value : "",
     placedAt: placedAt && placedAt.type === "number" ? placedAt.value : 0,
   };
 };
@@ -153,9 +165,7 @@ export const voteFromRecord = (record: FiroRecord): Vote | null => {
  * Archived rather than deleted, so an un-archive brings a vote back; counting
  * them here would make withdrawal silently fail.
  */
-export const votesFromRecords = (
-  records: readonly FiroRecord[],
-): Vote[] =>
+export const votesFromRecords = (records: readonly FiroRecord[]): Vote[] =>
   records
     .filter((record) => !record.archived)
     .map(voteFromRecord)
@@ -177,7 +187,7 @@ export const voteToRecord = (
     },
     order,
     archived: false,
-  }) as unknown as FiroRecord;
+  } as unknown as FiroRecord);
 
 /**
  * Find a voter's existing dot on an element.
@@ -226,10 +236,24 @@ export const placeVote = (
   // The voter's dot *anywhere* is moved, so voting twice on two different
   // elements leaves one dot rather than two. Found by voter rather than by
   // (element, voter) because "one vote per person" is the rule the plan states.
-  const previous = votes.filter(
-    (candidate) =>
-      candidate.voterId === vote.voterId && candidate.recordId !== ids.record,
-  );
+  //
+  // Anonymous votes are excluded, and that exclusion is the whole subtlety. An
+  // empty `voterId` matches every other empty `voterId`, so without this a third
+  // anonymous participant voting would archive the first two participants' dots --
+  // destroying two people's votes to record one. They are indistinguishable by
+  // construction; treating them as one identity is what makes "remove my vote"
+  // impossible for exactly the people who need it.
+  //
+  // So an anonymous dot accumulates on its element and is withdrawn by
+  // `removeVote`, and only a *named* voter gets one dot moved for them.
+  const previous =
+    vote.voterId === ""
+      ? []
+      : votes.filter(
+          (candidate) =>
+            candidate.voterId === vote.voterId &&
+            candidate.recordId !== ids.record,
+        );
   if (previous.length) {
     mutations.push({
       kind: "archiveRecords",
@@ -274,6 +298,21 @@ export const tally = (votes: readonly Vote[]): Map<string, number> => {
 };
 
 /**
+ * Compare two ids by code unit.
+ *
+ * Not `localeCompare`, which takes the runtime's default locale: two clients in
+ * the same room with different browser locales order tied elements differently,
+ * so "the top three" flickers between two options that are level -- on a
+ * projector, in front of the people who voted. It is also ICU collation rather
+ * than code-unit order, so it is not the stable ordering it looks like.
+ *
+ * Code units are the one comparison that is identical on every machine, which is
+ * the property being bought.
+ */
+const compareIds = (a: string, b: string): number =>
+  a < b ? -1 : a > b ? 1 : 0;
+
+/**
  * The ids with the most votes, best first.
  *
  * Ties break on id so the ordering is total and stable. An unstable sort here
@@ -282,6 +321,6 @@ export const tally = (votes: readonly Vote[]): Map<string, number> => {
  */
 export const leaders = (votes: readonly Vote[], limit: number): string[] =>
   [...tally(votes).entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .sort((a, b) => b[1] - a[1] || compareIds(a[0], b[0]))
     .slice(0, limit)
     .map(([id]) => id);

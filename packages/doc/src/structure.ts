@@ -144,7 +144,23 @@ export const isPlainObject = (
  * `@firo/schema`'s validators are where that judgement lives.
  */
 export const fromYMap = (map: Y.Map<unknown>): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
+  // No prototype, deliberately.
+  //
+  // Keys here come from the document, and a `Y.Map` can hold any string --
+  // including `__proto__`, which a remote update can carry and which arrives
+  // intact. On an object literal, `out["__proto__"] = value` does not create an
+  // own property: it walks to the prototype and *replaces* it. The entry then
+  // vanishes from `Object.keys` and from a serialisation, which is silent loss
+  // of a field, and every lookup of a missing key on the result returns whatever
+  // the injected object holds.
+  //
+  // That is not hypothetical. It is reachable the moment a document is built
+  // from a file rather than from this app's own writes, which is what ADR-0018
+  // does. `Object.create(null)` makes `__proto__` an ordinary own key.
+  const out: Record<string, unknown> = Object.create(null) as Record<
+    string,
+    unknown
+  >;
   if (typeof map?.forEach !== "function") {
     // Not a Y.Map at all. Return it unchanged rather than throwing, so a
     // malformed document degrades into an empty result instead of an exception.
@@ -252,7 +268,12 @@ export const readAllCollections = (structure: DocStructure): Collection[] => {
 export const readAllAssets = (
   structure: DocStructure,
 ): Record<string, AssetReference> => {
-  const out: Record<string, AssetReference> = {};
+  // No prototype, for the reason `fromYMap` gives: an id of `__proto__` is a
+  // string a document can legally hold, and on an object literal assigning it
+  // replaces the prototype instead of adding a key. The asset then disappears
+  // from the enumeration -- which for an exporter means a manifest that does not
+  // name bytes the board needs, the silent loss AC-10 exists to prevent.
+  const out = Object.create(null) as Record<string, AssetReference>;
   structure.assets.forEach((node, id) => {
     out[id] = fromYMap(node) as unknown as AssetReference;
   });

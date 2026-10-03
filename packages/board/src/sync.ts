@@ -266,6 +266,27 @@ export class BoardSync {
     // index in a loop, and a reorder of one element would become a burst of
     // writes rather than one undo step.
     //
+    // Every id, tombstones included -- and this is the whole subtlety.
+    //
+    // An earlier version compared the full order but emitted only the live ids.
+    // The two sets then disagree permanently: `reorderElements` appends any id it
+    // was not given to the *end* of the order, so a tombstone that sat in the
+    // middle moved to the end, `sameOrder` was false on the very next push, and
+    // every idle push after a delete-plus-reorder wrote to the document forever.
+    // Measured on a two-note board with one deleted: five idle pushes, five
+    // durable writes, `durableUpdates` climbing.
+    //
+    // It was worse than a loop. The reorder was *lost*: asking for the deleted
+    // note to come to the front left the document's order untouched, because
+    // the only id emitted was the live one and the tombstone's old position was
+    // preserved. So the file disagreed with the canvas permanently, with no
+    // error -- the exact failure mode this class exists to prevent, reintroduced
+    // by the fix for it.
+    //
+    // Emitting every id makes the comparison and the mutation speak about the
+    // same set, which is the only way the two can agree. `reorderElements`
+    // already drops ids it does not recognise, so a stale id costs nothing.
+    //
     // Only emitted when the *set* is unchanged, i.e. when the deletions above
     // did not fire. Reordering and deleting in the same commit is expressed by
     // the deletions; the surviving elements keep the relative order the
@@ -273,9 +294,7 @@ export class BoardSync {
     if (!gone.length && !sameOrder(before, after)) {
       mutations.push({
         kind: "reorderElements",
-        ids: after
-          .filter((element) => !element.isDeleted)
-          .map((element) => element.id),
+        ids: after.map((element) => element.id),
       });
     }
 

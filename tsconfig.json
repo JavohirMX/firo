@@ -31,6 +31,8 @@
       "@firo/board/*": ["./packages/board/src/*"],
       "@firo/doc": ["./packages/doc/src/index.ts"],
       "@firo/doc/*": ["./packages/doc/src/*"],
+      "@firo/facilitation": ["./packages/facilitation/src/index.ts"],
+      "@firo/facilitation/*": ["./packages/facilitation/src/*"],
       "@firo/fractional-indexing": ["./packages/fractional-indexing/src/index.ts"],
       "@firo/fractional-indexing/*": ["./packages/fractional-indexing/src/*"],
       "@firo/laser-pointer": ["./packages/laser-pointer/src/index.ts"],

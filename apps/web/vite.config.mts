@@ -57,7 +57,10 @@ export default defineConfig(({ mode }) => {
         },
         {
           find: /^@firo\/math$/,
-          replacement: path.resolve(__dirname, "../../packages/math/src/index.ts"),
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/math/src/index.ts",
+          ),
         },
         {
           find: /^@firo\/math\/(.*?)/,
@@ -86,6 +89,20 @@ export default defineConfig(({ mode }) => {
           replacement: path.resolve(
             __dirname,
             "../../packages/laser-pointer/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/facilitation$/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/facilitation/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/facilitation\/(.*?)/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/facilitation/src/$1",
           ),
         },
       ],

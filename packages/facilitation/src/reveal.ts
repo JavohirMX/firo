@@ -71,7 +71,9 @@ export const isVisible = (
  * each caller filtering for itself — is how "private mode leaked through the
  * PNG" happens: the canvas filters, and something added later does not.
  */
-export const visibleElements = <T extends { hiddenUntilRevealed?: boolean | null }>(
+export const visibleElements = <
+  T extends { hiddenUntilRevealed?: boolean | null },
+>(
   elements: readonly T[],
   reveal: RevealState,
 ): T[] => elements.filter((element) => isVisible(element, reveal));

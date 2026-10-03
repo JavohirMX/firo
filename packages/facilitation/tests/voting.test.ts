@@ -1,7 +1,9 @@
 import * as Y from "yjs";
 import { FiroDoc } from "@firo/doc";
-import type { FiroRecord } from "@firo/schema";
+
 import { describe, expect, it } from "vitest";
+
+import type { FiroRecord } from "@firo/schema";
 
 import {
   findVote,
@@ -26,19 +28,22 @@ const vote = (over: Partial<Vote> = {}): Vote => ({
 });
 
 const stored = (votes: readonly Vote[]): FiroRecord[] =>
-  votes.map((v) => ({
-      id: v.recordId,
-      collectionId: VOTE_COLLECTION_ID,
-      values: {
-        target: { type: "text", value: v.elementId },
-        voter: { type: "text", value: v.voterId },
-        placedAt: { type: "number", value: v.placedAt },
-      },
-      order: "a0",
-      archived: false,
-      created: 0,
-      updated: 0,
-    }) as unknown as FiroRecord);
+  votes.map(
+    (v) =>
+      ({
+        id: v.recordId,
+        collectionId: VOTE_COLLECTION_ID,
+        values: {
+          target: { type: "text", value: v.elementId },
+          voter: { type: "text", value: v.voterId },
+          placedAt: { type: "number", value: v.placedAt },
+        },
+        order: "a0",
+        archived: false,
+        created: 0,
+        updated: 0,
+      } as unknown as FiroRecord),
+  );
 
 describe("dot voting", () => {
   describe("stored as records, not element fields", () => {
@@ -49,7 +54,10 @@ describe("dot voting", () => {
       const doc = new FiroDoc(new Y.Doc());
 
       doc.commit([
-        { kind: "createCollection", collection: voteCollection("board-1", "a0") },
+        {
+          kind: "createCollection",
+          collection: voteCollection("board-1", "a0"),
+        },
         {
           kind: "createRecord",
           record: voteToRecord(
@@ -105,13 +113,44 @@ describe("dot voting", () => {
         updated: 0,
       } as unknown as FiroRecord;
 
-      const votes = votesFromRecords([
-        ...stored([vote()]),
-        foreign,
-        valueless,
-      ]);
+      const votes = votesFromRecords([...stored([vote()]), foreign, valueless]);
       expect(votes).toHaveLength(1);
       expect(votes[0].elementId).toBe("note-a");
+    });
+
+    it("refuses a vote forged through the prototype chain", () => {
+      // A record with no `target` column of its own, whose prototype supplies
+      // one. A bare `values["target"]` walks the chain and finds it, so the vote
+      // is read as genuine -- attributed to an element the author never voted on.
+      //
+      // Reachable as soon as records load from a file (ADR-0018), which makes
+      // that file untrusted input. The function's own comment claims to be
+      // hardened for a hand-edited file; it guarded the *shape* and not the
+      // *provenance of the lookup*, which is the half that matters here.
+      const forged = {
+        id: "forged",
+        collectionId: VOTE_COLLECTION_ID,
+        values: Object.create({
+          target: { type: "text", value: "note-never-voted-for" },
+          voter: { type: "text", value: "admin" },
+          placedAt: { type: "number", value: 1 },
+        }) as FiroRecord["values"],
+        order: "a0",
+        archived: false,
+        created: 0,
+        updated: 0,
+      } as unknown as FiroRecord;
+
+      expect(voteFromRecord(forged)).toBeNull();
+      expect(votesFromRecords([forged])).toEqual([]);
+    });
+
+    it("still reads a genuine vote whose keys are all own properties", () => {
+      // The other half: the own-property check must not reject a real record.
+      const [read] = votesFromRecords(stored([vote({ recordId: "rec-1" })]));
+      expect(read.recordId).toBe("rec-1");
+      expect(read.elementId).toBe("note-a");
+      expect(read.voterId).toBe("ada");
     });
 
     it("skips an archived vote, so withdrawal actually withdraws", () => {
@@ -139,7 +178,9 @@ describe("dot voting", () => {
     });
 
     it("moves a voter's dot rather than adding a second", () => {
-      const votes = [vote({ recordId: "r1", elementId: "note-a", voterId: "ada" })];
+      const votes = [
+        vote({ recordId: "r1", elementId: "note-a", voterId: "ada" }),
+      ];
       const mutations = placeVote(
         votes,
         { elementId: "note-b", voterId: "ada", placedAt: 2000 },
@@ -149,6 +190,55 @@ describe("dot voting", () => {
 
       const archived = mutations.filter((m) => m.kind === "archiveRecords");
       expect(archived).toEqual([{ kind: "archiveRecords", ids: ["r1"] }]);
+    });
+
+    it("does not let one anonymous participant archive another's dot", () => {
+      // The bug this pins. Every anonymous vote has `voterId: ""`, so a filter
+      // by voter matched *all* of them: a third participant voting destroyed the
+      // first two people's dots. Measured before the fix --
+      //
+      //   archiveRecords { ids: ["r-alice", "r-bob"] }
+      //
+      // Two people's votes gone to record one, with no error anywhere. The
+      // neighbouring test above covers `findVote`/`removeVote` and passed happily
+      // throughout, which is why this went unnoticed: the broken function was
+      // the one the test did not call.
+      const anonymous = [
+        vote({ recordId: "r-alice", elementId: "note-a", voterId: "" }),
+        vote({ recordId: "r-bob", elementId: "note-b", voterId: "" }),
+      ];
+
+      const mutations = placeVote(
+        anonymous,
+        { elementId: "note-c", voterId: "", placedAt: 5000 },
+        { record: "r-cy", order: "a2", board: "board-1" },
+        true,
+      );
+
+      // Only the new record is written; nobody is archived.
+      expect(mutations.some((m) => m.kind === "archiveRecords")).toBe(false);
+      expect(mutations.filter((m) => m.kind === "createRecord")).toHaveLength(
+        1,
+      );
+    });
+
+    it("still moves a named voter's dot when anonymous votes exist", () => {
+      // The other direction: excluding anonymous votes from the move must not
+      // disable the move for everyone else.
+      const votes = [
+        vote({ recordId: "r-anon", elementId: "note-x", voterId: "" }),
+        vote({ recordId: "r-ada", elementId: "note-a", voterId: "ada" }),
+      ];
+
+      const mutations = placeVote(
+        votes,
+        { elementId: "note-b", voterId: "ada", placedAt: 6000 },
+        { record: "r-ada-2", order: "a3", board: "board-1" },
+        true,
+      );
+
+      const archived = mutations.find((m) => m.kind === "archiveRecords");
+      expect(archived).toEqual({ kind: "archiveRecords", ids: ["r-ada"] });
     });
 
     it("does not archive the record it is about to write", () => {
@@ -224,6 +314,38 @@ describe("dot voting", () => {
       expect(leaders(votes, 2)).toEqual(["note-a", "note-b"]);
     });
 
+    it("breaks ties the same way regardless of the machine's locale", () => {
+      // `localeCompare` takes the runtime's default locale, so two clients in the
+      // same room with different browser locales ordered tied elements
+      // differently -- "the top three" flickering between two options that are
+      // level, on a projector, in front of the people who voted. Verified: `sv`
+      // sorts ["a","z","ä"] and `en` sorts ["a","ä","z"].
+      //
+      // Code units are the one comparison that is identical everywhere, so this
+      // pins the property rather than one machine's answer.
+      const tied = ["z", "ä", "a", "Z", "_", "1"].map((id, i) =>
+        vote({ recordId: `r${i}`, elementId: id, voterId: String(i) }),
+      );
+
+      const expected = ["1", "Z", "_", "a", "z", "ä"];
+      expect(leaders(tied, 6)).toEqual(expected);
+
+      // And under a different default locale, if the runtime supports switching.
+      const original = process.env.LC_ALL ?? process.env.LANG;
+      try {
+        process.env.LC_ALL = "sv_SE.UTF-8";
+        expect(leaders(tied, 6)).toEqual(expected);
+        process.env.LC_ALL = "en_US.UTF-8";
+        expect(leaders(tied, 6)).toEqual(expected);
+      } finally {
+        if (original === undefined) {
+          delete process.env.LC_ALL;
+        } else {
+          process.env.LC_ALL = original;
+        }
+      }
+    });
+
     it("breaks ties deterministically", () => {
       // An unstable tie would make "the top three" flicker between two level
       // elements, which on a projector looks like a bug in the tool.
@@ -241,4 +363,3 @@ describe("dot voting", () => {
     });
   });
 });
-

@@ -114,8 +114,9 @@ describe("private mode and reveal", () => {
 
       // Ephemeral state resets; the flags do not.
       expect(isVisible(board[0], DEFAULT_REVEAL_STATE)).toBe(true);
-      expect(isVisible(board[0], setRevealMode(DEFAULT_REVEAL_STATE, "private")))
-        .toBe(false);
+      expect(
+        isVisible(board[0], setRevealMode(DEFAULT_REVEAL_STATE, "private")),
+      ).toBe(false);
       // The element's own flag is untouched by the toggle.
       expect(board[0].hiddenUntilRevealed).toBe(true);
     });
