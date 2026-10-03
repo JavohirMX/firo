@@ -31,6 +31,7 @@ import {
 import {
   fromYMap,
   isPlainObject,
+  readAllAssets,
   readAllCollections,
   readAllElements,
   readAllRecords,
@@ -53,6 +54,18 @@ export type BoardSnapshot = {
   collections: Collection[];
   records: FiroRecord[];
   meta: Record<string, unknown>;
+  /**
+   * Every asset reference, keyed by the id an element faces it as (`fileId`).
+   *
+   * Read on first access rather than with the rest of the snapshot, and read only
+   * once per snapshot. See `read()` for why; the short version is that a board
+   * with 50 images pays nothing for them on the 5,000 transactions that did not
+   * touch one.
+   *
+   * The bytes are not here. This is the reference half of a store that lives in a
+   * separate IndexedDB database.
+   */
+  assets: Record<string, AssetReference>;
 };
 
 export type CommitResult = {
@@ -189,15 +202,89 @@ export class FiroDoc {
    * Read-only by construction: the objects are fresh plain objects built by
    * `fromYMap`, so a caller cannot reach through them to a live Yjs value and
    * mutate it. That is the same reason `structure.ts` converts on the way out.
+   *
+   * ## Why `assets` is a getter and not a fifth walk
+   *
+   * `read()` is on the hot path, and the argument for that is not a hunch.
+   * `notify()` calls it on *every* durable transaction, and
+   * `apps/web/board/board.ts` attaches a debounced autosave to `doc.onUpdate`, so
+   * a keystroke in a text note reaches this function once per subscriber.
+   *
+   * An O(assets) walk in here would therefore be charged to a board with 50
+   * images for 50 references that almost no transaction touches. The cost is not
+   * dramatic -- an asset node is three to five primitives -- which is exactly why
+   * it is worth being deliberate: a cost that small is the kind that lands as an
+   * unexplained 3% on a profile rather than as a bug somebody can point at, and
+   * it would grow with the one collection on a board that never shrinks. The
+   * assets map is also the only part of the document that a *renderer* never
+   * looks at, so it is the worst possible thing to make unconditional in the one
+   * call every renderer makes.
+   *
+   * So the trade is: give up "this field was read at the instant `read()`
+   * returned" for `assets` alone, and get a constant-cost `read()` for every
+   * consumer that does not export.
+   *
+   * What that costs, stated plainly rather than waved at:
+   *
+   * - The window is one synchronous access. Every real consumer -- an exporter
+   *   building a manifest, a test asserting on a board -- reads `assets` before
+   *   yielding, and in a single-threaded runtime nothing can commit in between,
+   *   so the value is the document as of the `read()`. A consumer that holds a
+   *   snapshot across an `await` and *then* reads `assets` can see an asset added
+   *   in the gap. The failure is a manifest naming an asset whose element is not
+   *   in `board.json`; it is untidy, not lossy, and content addressing means the
+   *   bytes it names are bytes the store already holds.
+   * - Memoised, so a second read is the same object rather than a second walk, and
+   *   so the window cannot be re-entered by a consumer that probes twice.
+   * - `assets` is a plain enumerable getter, which means `JSON.stringify` and
+   *   `toEqual` on a snapshot *will* walk it. That is intentional -- a snapshot
+   *   that hid a field from a deep comparison would be a worse trap than the cost
+   *   -- and `serializeBoard` builds a fresh five-field object, so the autosave
+   *   and `board.json` never touch it (ADR-0018 outcome 2 depends on that, and
+   *   `assets.test.ts` asserts it).
    */
   read(): BoardSnapshot {
+    const nodes = this.nodes;
+    // Assigned on first access, then never again: see the note above on why the
+    // lazy window is only acceptable if it is also a single one.
+    let assets: Record<string, AssetReference> | undefined;
+    /*
+     * Bound here rather than as `this.readAssets()` in the getter, because `this`
+     * inside an object-literal getter is the *snapshot*, not the document -- so
+     * the obvious spelling is a `TypeError: this.readAssets is not a function` the
+     * first time anything reads the field. Resolved through the document, and
+     * looked up on it at call time so the walk stays observable (and overridable)
+     * rather than being captured by value here.
+     */
+    const readAssets = (): Record<string, AssetReference> =>
+      this.readAssets();
+
     return {
-      elements: readAllElements(this.nodes),
-      elementOrder: this.nodes.elementOrder.toArray(),
-      collections: readAllCollections(this.nodes),
-      records: readAllRecords(this.nodes),
-      meta: fromYMap(this.nodes.meta),
+      elements: readAllElements(nodes),
+      elementOrder: nodes.elementOrder.toArray(),
+      collections: readAllCollections(nodes),
+      records: readAllRecords(nodes),
+      meta: fromYMap(nodes.meta),
+      get assets(): Record<string, AssetReference> {
+        assets ??= readAssets();
+        return assets;
+      },
     };
+  }
+
+  /**
+   * Every asset reference this board holds, keyed by `fileId`.
+   *
+   * The explicit reader, and what an exporter should call: it says plainly that
+   * walking the assets is a thing the caller decided to do, rather than something
+   * that happened as a side effect of asking for a snapshot.
+   *
+   * Distinct from `read()` on purpose -- see the note there -- and also distinct
+   * from the asset *store*, which holds the bytes and is reachable only through
+   * `getAssetBytes` / `hasAsset` in `library.ts`.
+   */
+  readAssets(): Record<string, AssetReference> {
+    return readAllAssets(this.nodes);
   }
 
   /** The z-order, as element ids. */

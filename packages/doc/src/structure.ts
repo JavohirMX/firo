@@ -25,6 +25,8 @@ import * as Y from "yjs";
 
 import type { Collection, FiroElement, FiroRecord } from "@firo/schema";
 
+import type { AssetReference } from "./mutations.js";
+
 /** Root name -> what it holds. */
 export const ROOTS = {
   elements: "elements",
@@ -206,6 +208,53 @@ export const readAllCollections = (structure: DocStructure): Collection[] => {
   const out: Collection[] = [];
   structure.collections.forEach((node) => {
     out.push(fromYMap(node) as unknown as Collection);
+  });
+  return out;
+};
+
+/**
+ * Read every asset reference, keyed by the id the *element* uses.
+ *
+ * ## Why this exists and why it took a while
+ *
+ * The document has always held an assets map -- `setAsset` writes
+ * `{hash, mimeType, bytes, width?, height?}` into it -- and until this reader
+ * existed nothing in the package could get that map back out. ADR-0018 names the
+ * consequence as a hard blocker on the `.firo` directory format: an exporter
+ * cannot enumerate which image bytes a board needs without it, so "write
+ * `assets/<sha256>.<ext>` next to `board.json`" had no first step.
+ *
+ * The key is the element-facing id -- an `ImageElement`'s `fileId` -- and *not* the
+ * hash. That is deliberate and it is what makes deduplication the exporter's job
+ * rather than the store's: two `fileId`s may carry the same hash, both are
+ * reported, and whoever writes the directory resolves them to one path. Keying by
+ * hash here would have collapsed them and thrown away the very fact the manifest
+ * records.
+ *
+ * ## What it deliberately does not do
+ *
+ * It returns *references*. The bytes are in the asset store
+ * (`packages/doc/src/library.ts`), in a different IndexedDB database, because a
+ * 2 MB image inside a CRDT update is broadcast on every sync. This reader is the
+ * enumeration half of that split and nothing more: it says which bytes a board
+ * claims, never produces them.
+ *
+ * ## Two things a caller must cope with
+ *
+ * A node that is not a `Y.Map` reads as `{}` rather than throwing, which is the
+ * same policy as `fromYMap`: a read has to work in order for the reader to *see*
+ * that something is wrong, and an exporter can detect an entry with no `hash`.
+ * Second, `setAsset` writes into an existing node, so an update that omits
+ * `width` keeps the previous one. That is pre-existing write behaviour and it is
+ * reported here rather than papered over; a caller that needs the truth of a
+ * dimension should treat it as advisory, which it is.
+ */
+export const readAllAssets = (
+  structure: DocStructure,
+): Record<string, AssetReference> => {
+  const out: Record<string, AssetReference> = {};
+  structure.assets.forEach((node, id) => {
+    out[id] = fromYMap(node) as unknown as AssetReference;
   });
   return out;
 };

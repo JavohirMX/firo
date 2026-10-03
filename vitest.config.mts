@@ -125,6 +125,20 @@ export default defineConfig({
         find: /^@firo\/doc\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/doc/src/$1"),
       },
+      {
+        find: /^@firo\/facilitation$/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/facilitation/src/index.ts",
+        ),
+      },
+      {
+        find: /^@firo\/facilitation\/(.*?)/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/facilitation/src/$1",
+        ),
+      },
     ],
   },
   //@ts-ignore

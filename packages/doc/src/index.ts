@@ -62,10 +62,23 @@ export type {
   EphemeralState,
 } from "./ephemeral.js";
 
+/*
+ * The readers, exported as a family.
+ *
+ * `readAllAssets` joined three siblings that were reachable only by deep import
+ * into the package. Exposing one of the four from the root and not the other
+ * three would be an arbitrary line: they are the same shape, they are the same
+ * `fromYMap` pattern, and a caller who wants one has the same reason to want the
+ * others.
+ */
 export {
   ROOTS,
   fromYMap,
   isPlainObject,
+  readAllAssets,
+  readAllCollections,
+  readAllElements,
+  readAllRecords,
   structure,
   toYMap,
 } from "./structure.js";

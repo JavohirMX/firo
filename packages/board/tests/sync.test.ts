@@ -3,7 +3,7 @@ import * as Y from "yjs";
 import { FiroDoc } from "@firo/doc";
 
 import { createStickyNote } from "../src/defaults.js";
-import { toEditorElements } from "../src/elements.js";
+import { toEditorElements, fromEditorElements } from "../src/elements.js";
 import { BoardSync, type EditorBridge } from "../src/sync.js";
 
 /*
@@ -55,6 +55,27 @@ const newDoc = () => new FiroDoc(new Y.Doc());
 
 const note = (id: string, over: Record<string, unknown> = {}) =>
   createStickyNote({ id, x: 0, y: 0, ...over });
+
+/**
+ * A started sync over three notes.
+ *
+ * Hoisted to file scope because more than one describe needs it: a helper scoped
+ * to the block that happened to need it first is how the next test ends up
+ * copying it, and two copies of a seed that decides what the document holds is
+ * two definitions of "deleted" in the same file.
+ */
+const seedThree = () => {
+  const doc = newDoc();
+  doc.commit([
+    { kind: "createElement", element: note("a") },
+    { kind: "createElement", element: note("b") },
+    { kind: "createElement", element: note("c") },
+  ]);
+  const editor = fakeEditor();
+  const sync = new BoardSync(doc, editor.bridge);
+  sync.start();
+  return { doc, editor, sync };
+};
 
 describe("BoardSync", () => {
   it("puts the document's notes into an empty editor on start", () => {
@@ -375,19 +396,6 @@ describe("BoardSync", () => {
       return order.flatMap((id) => pairs.get(id) ?? []);
     };
 
-    const seedThree = () => {
-      const doc = newDoc();
-      doc.commit([
-        { kind: "createElement", element: note("a") },
-        { kind: "createElement", element: note("b") },
-        { kind: "createElement", element: note("c") },
-      ]);
-      const editor = fakeEditor();
-      const sync = new BoardSync(doc, editor.bridge);
-      sync.start();
-      return { doc, editor, sync };
-    };
-
     it("reaches the document when the editor sends an element to the back", () => {
       // "Send to back" changes only `index`, so this was the case that failed:
       // the element matched the baseline on every editor-owned field, was called
@@ -476,6 +484,136 @@ describe("BoardSync", () => {
       expect(mutations.length).toBeGreaterThan(0);
       expect(doc.revision).toBeGreaterThan(before);
       expect(notes(doc.read().elements)).toEqual(["c", "b", "a"]);
+    });
+  });
+
+  describe("deletedAt and the sync", () => {
+    /*
+     * `deletedAt` is the document's own bookkeeping. The editor does not own it
+     * -- the fold in `elements.ts` never produces it and the projection never
+     * carries it -- so what follows pins that it stays that way.
+     */
+
+    it("does not put deletedAt in the changes an update carries", () => {
+      // `changedFields` iterates the keys of the *folded* element, so a field
+      // the fold cannot produce cannot appear. If this ever fails, the fold has
+      // started projecting `deletedAt`, and every delete would carry a second
+      // field update the editor has no opinion about -- which would then have to
+      // be classified as an echo on a field the editor cannot hold.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.type === "stickynote" ? { ...element, x: 42 } : element,
+        ),
+      );
+      const mutations = sync.push();
+
+      const update = mutations.find((m) => m.kind === "updateElements");
+      expect(update).toBeDefined();
+      // Narrowed with a guard rather than a cast: the assertion below is about
+      // the *contents* of `changes`, and a cast that silently produced
+      // `undefined` would make `Object.keys` throw rather than fail informatively.
+      expect(update?.kind).toBe("updateElements");
+      if (update?.kind !== "updateElements") {
+        throw new Error("expected an updateElements mutation");
+      }
+      const changes = update.updates[0].changes as Record<string, unknown>;
+      expect(Object.keys(changes)).not.toContain("deletedAt");
+      expect(doc.revision).toBeGreaterThan(0);
+    });
+
+    it("expressing a delete as isDeleted does not stamp deletedAt", () => {
+      // The gesture Excalidraw actually produces: the note stays in the editor
+      // scene carrying `isDeleted: true` rather than vanishing from it. That
+      // arrives as `updateElements`, which goes through `writeElementFields` --
+      // a path that stamps nothing, because nothing told it a delete happened.
+      //
+      // Asserted because it is surprising, not because it is endorsed. The two
+      // ways of deleting leave a tombstone in different states: `deleteElements`
+      // stamps it, this does not. Anything that later reads `deletedAt` to order
+      // restores has to cope with an element deleted through the editor having
+      // no stamp at all. Nothing currently reads it.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.id === "a" || element.id === "a~label"
+            ? { ...element, isDeleted: true }
+            : element,
+        ),
+      );
+      const mutations = sync.push();
+
+      expect(mutations.map((m) => m.kind)).toEqual(["updateElements"]);
+      expect(doc.element("a")?.isDeleted).toBe(true);
+      expect(doc.element("a")).not.toHaveProperty("deletedAt");
+    });
+
+    it("a stamped tombstone does not make the next push look like a new edit", () => {
+      // `isEcho` reads `isDeleted` explicitly rather than trusting the
+      // editor-owned list, and `deletedAt` is deliberately not on that list. So
+      // the document growing a field the editor has never heard of must not
+      // classify a push as an edit.
+      const { doc, editor, sync } = seedThree();
+
+      doc.commit([{ kind: "deleteElements", ids: ["a"] }]);
+      expect(doc.element("a")).toHaveProperty("deletedAt");
+      sync.push(); // absorb the pull
+
+      editor.set([...editor.elements]);
+      expect(sync.push()).toEqual([]);
+    });
+
+    it("does not carry deletedAt across the board/editor boundary either way", () => {
+      // The stronger form of the first test, and the one that catches a plain
+      // copy. `changedFields` compares by value, so a fold that copied a
+      // non-existent `deletedAt` off an editor element would emit `undefined`,
+      // compare equal to the document's absent key, and change nothing --
+      // harmless, and still a projection that has started inventing a field.
+      //
+      // So this asserts on the shapes themselves: neither direction may mention
+      // the key at all. `toEditorElements` and `fromEditorElements` are the only
+      // two places the vocabularies meet, which makes them the only two places
+      // this can go wrong.
+      //
+      // Both a note and a shape, and the reason is not thoroughness. A note's
+      // fold builds its object literally, while a shape's goes through
+      // `sharedDocumentFields`; testing only a note leaves the shared helper
+      // -- the place a field would actually be added once and picked up
+      // everywhere -- completely unexercised. A mutation of `sharedDocumentFields`
+      // passes this test if only the note is in it.
+      const documentNote = {
+        ...(note("a") as unknown as Record<string, unknown>),
+        isDeleted: true,
+        deletedAt: 1_700_000_000_000,
+      };
+      // A shape, built from a note by changing only the discriminant. The
+      // leftover note fields are ignored by the shape branches, which read
+      // `sharedBaseFor`; what matters is that it routes through
+      // `sharedDocumentFields` on the way back.
+      const documentShape = {
+        ...(note("s") as unknown as Record<string, unknown>),
+        type: "rectangle",
+        isDeleted: true,
+        deletedAt: 1_700_000_000_000,
+      } as unknown as Parameters<typeof toEditorElements>[0];
+
+      for (const element of [documentNote, documentShape] as Parameters<
+        typeof toEditorElements
+      >[0][]) {
+        expect(element.deletedAt).toBe(1_700_000_000_000);
+
+        const projected = toEditorElements(element);
+        expect(projected).not.toHaveLength(0);
+        for (const one of projected) {
+          expect(one).not.toHaveProperty("deletedAt");
+        }
+
+        for (const folded of fromEditorElements(projected)) {
+          expect(folded).not.toHaveProperty("deletedAt");
+        }
+      }
     });
   });
 
