@@ -15,19 +15,21 @@ wrong, say so in the issue — we would rather have the argument than the code.
 
 ## Status
 
-Pre-alpha. There is no runnable application yet. See
-[`docs/roadmap.md`](docs/roadmap.md).
+Pre-alpha, and running. The Excalidraw fork builds, tests and starts; the Yjs
+document model and the board bridge are wired into the app. See
+[`docs/roadmap.md`](docs/roadmap.md) for what each phase actually means and
+[`docs/plans/`](docs/plans) for per-phase status.
 
 | Phase | State |
 | --- | --- |
-| 0 — Fork, rebrand, documentation | In progress |
-| 1 — Document model | Not started |
-| 2 — Renderer rewrite | Not started |
-| 3 — Interaction | Not started |
-| 4 — Miro objects and nesting | Not started |
+| 0 — Fork, rebrand, documentation | Done |
+| 1 — Document model | Done |
+| 2 — Renderer | Done — the rewrite was cancelled, the inherited renderer kept ([`ADR-0017`](docs/adr/0017-do-not-rewrite-the-renderer.md)) |
+| 3 — Interaction | Largely inherited from the fork; the seam and accessibility remain |
+| 4 — Miro objects and nesting | Sticky notes, frames, connectors and nesting exist; cards and sections do not |
 | 5 — Facilitation | Not started |
-| 6 — Records and projections | Not started |
-| 7 — Persistence and formats | Not started |
+| 6 — Records and projections | Record store built; projections not started |
+| 7 — Persistence and formats | Autosave and single-file `.firo` export done; the directory container is not |
 | 8 — Project layer | Not started |
 | 9 — Sync server | Not started |
 | 10 — AI, MCP, accessibility, desktop | Not started |

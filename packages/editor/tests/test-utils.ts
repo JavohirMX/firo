@@ -43,6 +43,15 @@ type TestRenderFn = (
   >,
 ) => Promise<RenderResult<typeof customQueries>>;
 
+/**
+ * How long to wait for the app to finish mounting.
+ *
+ * Not an assertion budget — see the comment at the `waitFor` below. Exported
+ * so a test that mounts the app by another route can use the same one, rather
+ * than rediscovering the default and reintroducing the flake.
+ */
+export const APP_READY_TIMEOUT_MS = 30_000;
+
 const renderApp: TestRenderFn = async (ui, options) => {
   // when tests reuse Pointer instances let's reset the last
   // pointer poisitions so there's no leak between tests
@@ -78,24 +87,43 @@ const renderApp: TestRenderFn = async (ui, options) => {
     },
   });
 
-  await waitFor(() => {
-    const canvas = renderResult.container.querySelector("canvas.static");
-    if (!canvas) {
-      throw new Error("not initialized yet");
-    }
+  await waitFor(
+    () => {
+      const canvas = renderResult.container.querySelector("canvas.static");
+      if (!canvas) {
+        throw new Error("not initialized yet");
+      }
 
-    const interactiveCanvas =
-      renderResult.container.querySelector("canvas.interactive");
-    if (!interactiveCanvas) {
-      throw new Error("not initialized yet");
-    }
+      const interactiveCanvas =
+        renderResult.container.querySelector("canvas.interactive");
+      if (!interactiveCanvas) {
+        throw new Error("not initialized yet");
+      }
 
-    // hack-awaiting app.initialScene() which solves some test race conditions
-    // (later we may switch this with proper event listener)
-    if (window.h.state.isLoading) {
-      throw new Error("still loading");
-    }
-  });
+      // hack-awaiting app.initialScene() which solves some test race conditions
+      // (later we may switch this with proper event listener)
+      if (window.h.state.isLoading) {
+        throw new Error("still loading");
+      }
+    },
+    // This is an *environment* wait, not an assertion, and it must not
+    // inherit @testing-library's default 1000ms `asyncUtilTimeout`.
+    //
+    // That default is sized for "did this assertion become true", and it is
+    // far too small for mounting `App` — a 12,946-line component — inside
+    // jsdom while every other test file in the run is doing the same on its
+    // own thread. Measured warm and alone, the suites that use this helper
+    // spend 300–1168ms per render; the whole-suite run puts eight or more of
+    // them on the machine at once and the 1s budget is crossed, which threw
+    // `still loading` from nine tests across eight files while every one of
+    // those files passed in isolation. The suite was non-deterministic, so no
+    // test result from it could be trusted — including a real regression.
+    //
+    // The budget is generous on purpose. Nothing here asserts timing; the
+    // only cost of a large one is that a genuinely broken mount takes longer
+    // to report, and `testTimeout` in vitest.config.mts is what bounds that.
+    { timeout: APP_READY_TIMEOUT_MS },
+  );
 
   return renderResult;
 };

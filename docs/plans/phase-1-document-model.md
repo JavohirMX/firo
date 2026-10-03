@@ -164,25 +164,19 @@ Every command below was run, and this is its output.
 
 ### The 10 failures are pre-existing and not mine
 
-They are the sidebar-docking tests documented in the Phase 0 report. Proven
-rather than assumed, by stashing all of Phase 1 and running the full suite
-again:
+**Superseded.** All ten now pass. They were the sidebar-docking failures
+documented in the Phase 0 report, and the attribution below was correct — but
+the cause turned out to be a *test* defect rather than an upstream one, and it
+was fixed rather than patched around.
 
-| | Test files | Tests |
-| --- | --- | --- |
-| Baseline, all Phase 1 code removed | 2 failed / 139 passed (141) | **10 failed** / 2384 passed / 47 skipped / 1 todo (2442) |
-| With Phase 1 | 2 failed / 146 passed (148) | **10 failed** / 2526 passed / 47 skipped / 1 todo (2584) |
-
-Same 10 tests, same 2 files, same error — `TypeError: Cannot destructure
-property 'tunnelsJotai' of useTunnels(...) as it is null` at
-`withInternalFallback.tsx:18:21`, byte-identical to the signature recorded in
-Phase 0. They also fail in isolation at baseline (10 failed / 9 passed). The
-baseline's 2384 matches the count recorded at the end of Phase 0, so the two
-measurements are the same yardstick. The delta is **+7 test files and +142
-passing tests**.
-
-Not patched. It is upstream's bug, the attribution is already documented, and
-patching it would change a file unrelated to the data layer.
+The suites imported `"../.."`, which resolves through a workspace package's
+`package.json` `main` to `dist/prod/index.js`. That loaded a second,
+independently instantiated copy of the package, so a source component read a
+React context that nothing in that copy provided. Fixing the import to point at
+source (`536898c`, `e9b23d9`, `ec07017`) cleared all ten. The
+`withInternalFallback.tsx` throw was left in place and is now *asserted* by a
+test: silently rendering when the tunnels provider is missing is worse than
+failing loudly.
 
 ### Rebrand grep, against build output
 

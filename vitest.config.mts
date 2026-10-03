@@ -139,6 +139,28 @@ export default defineConfig({
     environment: "jsdom",
     // don't list skipped tests in the failure tree — keeps output readable
     hideSkippedTests: true,
+    /**
+     * Generous, and deliberately so.
+     *
+     * Vitest's defaults (5s test, 10s hook) were tuned for tests that do
+     * arithmetic. Ours mount the entire editor — a 12,946-line `App` — inside
+     * jsdom, and the run executes 175 files with eight or more of those
+     * mounts competing for the same cores at once.
+     *
+     * The symptom was not a slow suite but an unreliable one: nine tests
+     * across eight files failed with `Error: still loading` on one run and
+     * all 175 files passed on the next, with no code change in between. Two
+     * separate budgets were too tight — this one, and the `waitFor` inside
+     * `renderApp` (see `APP_READY_TIMEOUT_MS`). Both were environment waits
+     * being held to assertion-sized limits.
+     *
+     * `testTimeout` must stay >= `APP_READY_TIMEOUT_MS`, or a slow-but-healthy
+     * mount would be killed by the test timeout before its own wait could
+     * resolve, and the failure would move rather than disappear.
+     */
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    teardownTimeout: 30_000,
     coverage: {
       reporter: ["text", "json-summary", "json", "html", "lcovonly"],
       // Since v2, it ignores empty lines by default and we need to disable it as it affects the coverage

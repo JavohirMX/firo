@@ -76,8 +76,12 @@ For any change that touches a hot path, ask:
 
 ## Merging
 
-- The CI check is `yarn test:typecheck && yarn test && yarn fix --check`. It must be
-  green.
+- The CI check is `yarn test:all`. It must be green. It expands to
+  `test:typecheck && test:code && test:other && test:app --watch=false`.
+
+  Do **not** substitute `yarn test` here. `test` is an alias for `test:app`,
+  which is a bare `vitest` and therefore starts in watch mode — in CI it
+  hangs instead of failing. Only `test:all` carries the `--watch=false`.
 - **Run `yarn test:update` before committing.** Snapshot tests fail intentionally
   when rendering changes. Read the diff before accepting a new snapshot; a
   large unexplained snapshot change is a regression, not a test update.
