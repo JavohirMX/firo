@@ -68,3 +68,29 @@ export {
   type RevealState,
   type RevealMode,
 } from "./reveal.js";
+
+/*
+ * Presentation mode.
+ *
+ * Deliberately *not* a full-screen overlay with its own focus trap and its own
+ * key handling. It composes two things that already work: the withheld-set filter
+ * that private mode established (`BoardSync`), and the viewport, which the editor
+ * already knows how to move to a frame. A third mechanism for hiding things would
+ * mean a third copy of the delete protection, and the third copy would be the one
+ * nobody mutation-tests.
+ */
+export {
+  DEFAULT_PRESENTATION,
+  slidesFor,
+  isShownInPresentation,
+  elementsForPresentation,
+  stepSlide,
+  goToSlide,
+  startPresentation,
+  endPresentation,
+  currentSlideId,
+  hasSlides,
+  slideContents,
+  type PresentationState,
+  type PresentableElement,
+} from "./presentation.js";
