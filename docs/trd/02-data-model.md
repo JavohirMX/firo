@@ -107,6 +107,16 @@ z-order. Weje arrived at the same primitive independently
 `sect` (section) with a note's styling. Promoting a shape is a type change, and
 therefore a schema migration.
 
+**The field is not yet written by the editor.** `containerId` is in the schema,
+both directions of the fold carry it (`0c85ad3`), and it survives a reload and
+an export round trip — verified in the app by `scripts/verify/framesImages.mjs`.
+But nothing a person can do in the app produces it: `addElementsToFrame`
+(`packages/element/src/frame.ts`) sets `frameId` and nothing else, so dropping a
+shape into a frame yields `frameId`, never `containerId`. Today the field is
+reachable only by import or by sync. The interaction that writes it — the drop
+that means *nesting*, not *grouping* — is interaction work and belongs to
+Phase 3, not to the data model.
+
 ## Records
 
 ```ts
