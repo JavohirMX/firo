@@ -57,6 +57,21 @@ const note = (id: string, over: Partial<FiroElement> = {}): FiroElement =>
 
 let doc: FiroDoc;
 
+/**
+ * A five-minute timer, running.
+ *
+ * An *anchor*, not a countdown -- which is the property the whole facilitation
+ * split rests on. The started time is a fixed epoch value rather than
+ * `Date.now()` for two reasons: this package must not read a clock to be
+ * testable, and a fixed value means the assertions below cannot accidentally
+ * depend on how long the test took to run.
+ */
+const RUNNING_TIMER = {
+  startedAt: 1_700_000_000_000,
+  durationMs: 5 * 60 * 1000,
+  remainingMs: 5 * 60 * 1000,
+} as const;
+
 beforeEach(() => {
   doc = openBoardMemory();
 });
@@ -155,15 +170,49 @@ describe("a five-second drag produces zero document updates", () => {
   });
 
   test("ephemeral state never appears in the document, in any form", () => {
+    // Every root, not just `elements`. Serialising one map and asserting on it
+    // is how this test would have passed while a timer sat in `meta`: the write
+    // is real, the document really is bigger, and the assertion is looking at
+    // the one place it was not.
+    const wholeDocument = (): string =>
+      JSON.stringify(
+        Object.fromEntries(
+          [...doc.ydoc.share.entries()].map(([name, type]) => [
+            name,
+            (type as { toJSON: () => unknown }).toJSON(),
+          ]),
+        ),
+      );
+
+    // An element and a meta entry are committed first, so the assertions below
+    // have something to be *not* contained in. Without them the serialised
+    // document is nearly empty and every `not.toContain` passes vacuously --
+    // which is the shape of an assertion that survives the exact change it was
+    // written to catch.
+    doc.commit([
+      { kind: "createElement", element: note("el-1") },
+      { kind: "setMeta", entries: { title: "board" } },
+    ]);
     doc.setEphemeral({ cursor: { x: 11, y: 22 }, laser: { x: 5, y: 5 } });
     doc.setEphemeral({
       dragPreview: { elementId: "x", x: 1, y: 2, width: 3, height: 4 },
     });
+    doc.setEphemeral({ timer: RUNNING_TIMER });
+    doc.setEphemeral({ reveal: { mode: "private" } });
 
-    const raw = doc.ydoc.getMap("elements").toJSON();
-    expect(JSON.stringify(raw)).not.toContain("cursor");
-    expect(JSON.stringify(raw)).not.toContain("laser");
-    expect(JSON.stringify(raw)).not.toContain("dragPreview");
+    const raw = wholeDocument();
+    // The control: the committed content *is* here, so the negatives below are
+    // real and not the vacuous pass of an empty document.
+    expect(raw).toContain("el-1");
+    expect(raw).toContain("board");
+    expect(raw).not.toContain("cursor");
+    expect(raw).not.toContain("laser");
+    expect(raw).not.toContain("dragPreview");
+    // The facilitator half, same rule. A timer in the document is the 300-update
+    // bug; a reveal toggle in it is a board that saves "still private" forever.
+    expect(raw).not.toContain("timer");
+    expect(raw).not.toContain("startedAt");
+    expect(raw).not.toContain("reveal");
     // And no root exists for them, so there is nowhere for them to have leaked.
     expect([...doc.ydoc.share.keys()].sort()).toEqual([
       "assets",
@@ -179,6 +228,11 @@ describe("a five-second drag produces zero document updates", () => {
   test("the full ephemeral table from the TRD is expressible without a document write", () => {
     // Every row of the table in docs/trd/03-crdt-and-sync.md, so a future
     // addition to the left-hand column is a type error rather than a leak.
+    //
+    // The `toEqual` is exhaustive on purpose and is the reason the new fields
+    // are required-but-nullable: add one to `EphemeralState` and this assertion
+    // fails until it is given a row here, instead of quietly becoming
+    // `{ timer: undefined }` that no consumer has to defend against.
     const before = doc.durableUpdates;
     doc.setEphemeral({ cursor: { x: 1, y: 1 } });
     doc.setEphemeral({
@@ -189,6 +243,8 @@ describe("a five-second drag produces zero document updates", () => {
     doc.setEphemeral({ laser: { x: 9, y: 9 } });
     doc.setEphemeral({ idleSince: 1234 });
     doc.setEphemeral({ viewport: { scrollX: 0, scrollY: 0, zoom: 1 } });
+    doc.setEphemeral({ timer: RUNNING_TIMER });
+    doc.setEphemeral({ reveal: { mode: "private" } });
     expect(doc.durableUpdates).toBe(before);
 
     expect(doc.getEphemeral()).toEqual({
@@ -199,7 +255,163 @@ describe("a five-second drag produces zero document updates", () => {
       laser: { x: 9, y: 9 },
       idleSince: 1234,
       viewport: { scrollX: 0, scrollY: 0, zoom: 1 },
+      timer: RUNNING_TIMER,
+      reveal: { mode: "private" },
     });
+  });
+
+  test("a fresh client starts revealed, with no timer", () => {
+    // The other direction, and the one a required-but-nullable pair can get
+    // wrong: `undefined` would render as a board with no clock at all, and would
+    // hide a board nobody hid if `mode` were read defensively.
+    expect(EMPTY_EPHEMERAL_STATE.timer).toBeNull();
+    expect(EMPTY_EPHEMERAL_STATE.reveal).toEqual({ mode: "revealed" });
+    expect(doc.getEphemeral()).toEqual(EMPTY_EPHEMERAL_STATE);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Facilitation state rides awareness, not the document                       */
+/* -------------------------------------------------------------------------- */
+
+describe("the facilitator's timer and reveal toggle are ephemeral", () => {
+  test("a five-minute timer at 1Hz produces zero document updates", () => {
+    /*
+     * The property that matters, and the second half of this file's argument
+     * after the drag.
+     *
+     * The shape of the failure: a timer stored as a per-second countdown. That
+     * is not a subtle regression -- it is the obvious first implementation, and
+     * it is *correct* in the sense that every tick updates the clock on every
+     * screen. It just does it with 300 durable writes: 300 persisted values, 300
+     * undo steps (so Ctrl-Z walks back through the last five minutes), and 300
+     * broadcasts per participant. A five-minute exercise, five people.
+     *
+     * The fix is the anchor, and this is the test that holds it in place: 301
+     * identical `setEphemeral` calls, each one what a repaint would trigger,
+     * producing no document traffic whatsoever.
+     */
+    const TICKS = 5 * 60;
+
+    // A Yjs update listener, so a write through *any* route is caught -- not
+    // just one through `commit()`, which is the only legal route anyway.
+    const rawUpdates: Uint8Array[] = [];
+    doc.ydoc.on("update", (update: Uint8Array) => rawUpdates.push(update));
+
+    const before = doc.durableUpdates;
+
+    for (let tick = 0; tick <= TICKS; tick += 1) {
+      // Deliberately a fresh object literal each tick, exactly as a re-render
+      // would build it. `remainingMs` does not change, which is the point: the
+      // anchor is the only number a running timer holds, so 301 writes of this
+      // are 301 writes of the same fact.
+      doc.setEphemeral({
+        timer: {
+          startedAt: RUNNING_TIMER.startedAt,
+          durationMs: RUNNING_TIMER.durationMs,
+          remainingMs: RUNNING_TIMER.remainingMs,
+        },
+      });
+    }
+
+    // The stronger form: Yjs itself emitted no update at all. Nothing wrote to
+    // the document by any route, including a route this test has not thought of.
+    expect(rawUpdates).toHaveLength(0);
+    expect(doc.durableUpdates - before).toBe(0);
+
+    // And the anchor survived all of it -- a timer that reads back wrong after
+    // a no-op loop is not a timer that was never written, it is one that was
+    // written and mangled.
+    expect(doc.getEphemeral().timer).toEqual(RUNNING_TIMER);
+  });
+
+  test("setting the timer leaves selection, cursor and laser alone", () => {
+    // The patch is partial, and this is the field most likely to be set from the
+    // same handler that clears the selection. A merge that rebuilt the state
+    // from the timer alone would silently deselect everything on the first tick.
+    doc.setEphemeral({
+      selection: ["a", "b"],
+      cursor: { x: 1, y: 2 },
+      laser: { x: 3, y: 4 },
+    });
+
+    doc.setEphemeral({ timer: RUNNING_TIMER });
+
+    const after = doc.getEphemeral();
+    expect(after.timer).toEqual(RUNNING_TIMER);
+    expect(after.selection).toEqual(["a", "b"]);
+    expect(after.cursor).toEqual({ x: 1, y: 2 });
+    expect(after.laser).toEqual({ x: 3, y: 4 });
+  });
+
+  test("`timer: null` clears the timer rather than being ignored", () => {
+    /*
+     * The near-miss, and the reason the merge uses a spread rather than a
+     * per-field truthy guard. `null` is falsy, so
+     * `patch.timer ? { timer: patch.timer } : {}` compiles, typechecks, reads as
+     * defensive -- and keeps the old timer. The facilitator hits stop and the
+     * clock keeps running on every screen, for the rest of the session, from a
+     * patch that looked obviously correct.
+     */
+    doc.setEphemeral({ timer: RUNNING_TIMER });
+    expect(doc.getEphemeral().timer).not.toBeNull();
+
+    doc.setEphemeral({ timer: null });
+
+    // `toBeNull` rather than `toBeFalsy`, so a regression to `undefined` fails
+    // here instead of reaching a renderer that would print a blank clock.
+    expect(doc.getEphemeral().timer).toBeNull();
+  });
+
+  test("setting reveal leaves the timer alone", () => {
+    // Going private mid-exercise is the common case, not the exotic one: hide
+    // the board, un-hide it, and the clock must not have reset. These two are
+    // independent facets of one session and are written by different controls.
+    doc.setEphemeral({ timer: RUNNING_TIMER });
+    doc.setEphemeral({ reveal: { mode: "private" } });
+    doc.setEphemeral({ reveal: { mode: "revealed" } });
+
+    const after = doc.getEphemeral();
+    expect(after.reveal).toEqual({ mode: "revealed" });
+    expect(after.timer).toEqual(RUNNING_TIMER);
+  });
+
+  test("the result is frozen, so a tick cannot mutate the shared state", () => {
+    // The same guarantee the merge already gives every other field, asserted on
+    // the new ones: a timer arrives from awareness as whatever a peer sent, and
+    // a state object that a renderer can scribble on is a state object two
+    // collaborators will disagree about.
+    const withTimer = applyEphemeralPatch(EMPTY_EPHEMERAL_STATE, {
+      timer: RUNNING_TIMER,
+    });
+    const withReveal = applyEphemeralPatch(withTimer, {
+      reveal: { mode: "private" },
+    });
+
+    expect(Object.isFrozen(withTimer)).toBe(true);
+    expect(Object.isFrozen(withReveal)).toBe(true);
+  });
+
+  test("the shared default reveal mode cannot be written through", () => {
+    // `EMPTY_EPHEMERAL_STATE.reveal` is reachable from every state derived from
+    // it -- a patch that does not mention `reveal` replaces nothing -- so a
+    // mutable default would be shared by all of them. `Readonly<>` refuses this
+    // at compile time; the freeze is what makes it true at runtime too, and this
+    // is the only assertion that can tell the difference.
+    const shared = EMPTY_EPHEMERAL_STATE.reveal;
+    expect(Object.isFrozen(shared)).toBe(true);
+  });
+
+  test("a peer's timer is readable through awareness", () => {
+    // The half that makes the field worth having: it is not local state that
+    // merely *looks* shared. Five people watching one clock means the timer has
+    // to travel, and awareness is the only channel it is allowed to use.
+    doc.setEphemeral({ timer: RUNNING_TIMER });
+    const peers = doc.peersEphemeral();
+
+    expect(peers.size).toBe(1);
+    expect([...peers.values()][0].timer).toEqual(RUNNING_TIMER);
+    expect([...peers.values()][0].reveal).toEqual({ mode: "revealed" });
   });
 });
 

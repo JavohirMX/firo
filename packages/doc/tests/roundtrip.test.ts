@@ -224,6 +224,119 @@ describe("a board round-trips through the document and the schema", () => {
     expect(other.elementOrder()).toEqual(doc.elementOrder());
     other.destroy();
   });
+
+  /*
+   * The durable facilitation flags (element schema v2).
+   *
+   * Phase 5's exit criterion is "all facilitation state survives a save/load
+   * cycle", and this is the half of it that is document state rather than session
+   * state. The other half -- the private/reveal *toggle* -- is ephemeral on
+   * purpose, and putting it here instead would be how a board ends up stuck
+   * private after the facilitator closes the tab.
+   *
+   * A failure here is the quiet kind. The note is still on the board, so nothing
+   * looks missing; it has simply stopped being hidden, and nothing in the file says
+   * a facilitator ever asked.
+   */
+  test("both flags survive the document and the file", () => {
+    doc.commit([
+      {
+        kind: "createElement",
+        element: note("el-hidden", {
+          hiddenUntilRevealed: true,
+          hideInPresentation: true,
+        }),
+      },
+    ]);
+
+    // Into the CRDT and back, with nothing serialised in between.
+    expect(doc.element("el-hidden")).toMatchObject({
+      hiddenUntilRevealed: true,
+      hideInPresentation: true,
+    });
+
+    // And through a `.firo` file, which is the path that carries a board to the
+    // next facilitator -- the one that has to work.
+    const other = openBoardMemory();
+    const loaded = loadBoard(serializeBoard(doc.read()));
+    expect(loaded.log.hasRepairs, loaded.log.summary()).toBe(false);
+    other.load(loaded as never);
+
+    expect(other.element("el-hidden")).toMatchObject({
+      hiddenUntilRevealed: true,
+      hideInPresentation: true,
+    });
+    other.destroy();
+  });
+
+  test("a flag survives a field-level update to another field", () => {
+    // `updateElement` writes only the keys in `changes`, so this is where a field
+    // could be dropped by an implementation that rebuilt the element instead. The
+    // symptom would be a note that stops being hidden the first time somebody
+    // nudges it.
+    doc.commit([
+      {
+        kind: "createElement",
+        element: note("el-hidden", { hiddenUntilRevealed: true }),
+      },
+    ]);
+    doc.commit([
+      {
+        kind: "updateElements",
+        updates: [{ id: "el-hidden", changes: { x: 77 } }],
+      },
+    ]);
+
+    expect(doc.element("el-hidden")).toMatchObject({
+      x: 77,
+      hiddenUntilRevealed: true,
+    });
+  });
+
+  test("a note with neither flag carries neither key, before or after", () => {
+    // The other half of the contract, and the one that keeps a version bump from
+    // becoming a whole-file diff on a board nobody touched.
+    seed(doc);
+    expect(doc.element("el-1")).not.toHaveProperty("hiddenUntilRevealed");
+    expect(doc.element("el-1")).not.toHaveProperty("hideInPresentation");
+
+    const other = openBoardMemory();
+    other.load(loadBoard(serializeBoard(doc.read())) as never);
+    expect(other.element("el-1")).not.toHaveProperty("hiddenUntilRevealed");
+    expect(other.element("el-1")).not.toHaveProperty("hideInPresentation");
+    other.destroy();
+  });
+
+  test("an explicit `undefined` removes a flag, which is how a note is un-hidden", () => {
+    // The operation the facilitator actually performs: reveal is a toggle on the
+    // board, but per-element it is a removal. `null` would also work and would mean
+    // something else -- see the "removes an optional key rather than nulling it"
+    // test above for why the two are different operations here.
+    doc.commit([
+      {
+        kind: "createElement",
+        element: note("el-hidden", { hiddenUntilRevealed: true }),
+      },
+    ]);
+    doc.commit([
+      {
+        kind: "updateElements",
+        updates: [
+          { id: "el-hidden", changes: { hiddenUntilRevealed: undefined } },
+        ],
+      },
+    ]);
+
+    expect(doc.element("el-hidden")).not.toHaveProperty("hiddenUntilRevealed");
+
+    // And it survives a file round trip as absent, rather than reappearing.
+    const other = openBoardMemory();
+    other.load(loadBoard(serializeBoard(doc.read())) as never);
+    expect(other.element("el-hidden")).not.toHaveProperty(
+      "hiddenUntilRevealed",
+    );
+    other.destroy();
+  });
 });
 
 /* -------------------------------------------------------------------------- */

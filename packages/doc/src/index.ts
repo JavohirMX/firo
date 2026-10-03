@@ -59,7 +59,9 @@ export {
 export type {
   DragPreview,
   EphemeralPatch,
+  EphemeralReveal,
   EphemeralState,
+  EphemeralTimer,
 } from "./ephemeral.js";
 
 /*
