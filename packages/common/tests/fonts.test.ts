@@ -63,6 +63,21 @@ const listFontDirs = (): string[] => {
     .map((e) => e.name);
 };
 
+/**
+ * Directories that ship font binaries to a browser.
+ *
+ * A font binary without a licence text beside it is non-compliant even when the
+ * grant is valid — OFL §3 requires the licence to accompany the font, and MIT
+ * requires the notice to be included in all copies. So the check is per
+ * directory, and it only applies where binaries actually ship: the font lab
+ * under `scripts/` holds measurement inputs, and `Helvetica` and `Emoji` hold
+ * none.
+ */
+const SHIPPING_FONT_DIRS = path.join(repoRoot, "packages", "editor", "fonts");
+
+/** Filenames that count as a licence text, in any of the spellings in the wild. */
+const LICENCE_FILES = /^(OFL|LICENSE|LICENCE|COPYING)(\.[A-Za-z0-9]+)?$/i;
+
 describe("font licensing", () => {
   const fontFiles = collectFontFiles(repoRoot);
 
@@ -115,6 +130,45 @@ describe("font licensing", () => {
     expect(
       undocumented,
       "every font directory needs a FONT-LICENSES.md entry — see ADR-0014",
+    ).toEqual([]);
+  });
+
+  it("ships a licence text beside every font binary", () => {
+    /*
+     * The second half of the AGENTS.md rule, and the half that was unenforced.
+     *
+     * A recorded licence in `FONT-LICENSES.md` says what the grant is. This says
+     * the grant *travels with the font*, which is a separate obligation: OFL §3
+     * requires the licence to be bundled with the font software, and MIT requires
+     * the notice to appear in all copies. Both are satisfied by a text file in the
+     * font's own directory, and neither is satisfied by a row in a table at the
+     * repository root, which is where this was left for Phase 0.
+     *
+     * `Helvetica` and `Emoji` are excluded because neither has a binary: they
+     * resolve through `local: true` and `LOCAL_FONT_PROTOCOL` to the operating
+     * system's copy. Asserting on them would be asserting about directories that
+     * ship nothing.
+     */
+    const offenders = fs
+      .readdirSync(SHIPPING_FONT_DIRS, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .filter((entry) => {
+        const dir = path.join(SHIPPING_FONT_DIRS, entry.name);
+        const files = fs.readdirSync(dir);
+        const shipsBinary = files.some((file) =>
+          /\.(woff2?|ttf|otf|eot)$/i.test(file),
+        );
+        if (!shipsBinary) {
+          return false;
+        }
+        return !files.some((file) => LICENCE_FILES.test(file));
+      })
+      .map((entry) => entry.name);
+
+    expect(
+      offenders,
+      "every shipped font directory needs its licence text beside the binary — " +
+        "OFL §3 and MIT both require it. See ADR-0014 and FONT-LICENSES.md",
     ).toEqual([]);
   });
 

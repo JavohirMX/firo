@@ -1,10 +1,10 @@
 # Bundled font licences
 
-**Status: unresolved. This file records a problem, not a clearance.**
+**Status: one blocker left. Six of seven distributed fonts are cleared, and the licence text now ships with each of them.**
 
-Firo redistributes font binaries. Every one of them needs a licence that permits redistribution, and — for the SIL Open Font Licence family — a copy of the licence text and the copyright notice shipped alongside the font.
+This file is the audit trail for the `AGENTS.md` rule that no font file may be shipped whose licence we cannot state. Every "verified" below was read from a primary source — the font's own upstream repository — on **2026-10-02**, not recalled. Full working, including what each licence actually says and what could not be verified, is in [`docs/research/font-licence-verification.md`](docs/research/font-licence-verification.md).
 
-Phase 0 removed the two fonts that provably cannot ship (below). It could not clear the rest, because **the repository contains no licence information for any font at all**. There is no `OFL.txt`, no `LICENSE` file, and no copyright notice in any `packages/editor/fonts/*/index.ts`. Upstream Excalidraw did not ship them either, which is why this had to be checked by hand.
+Firo redistributes font binaries. Every one needs a licence permitting redistribution, **and** — for OFL and MIT alike — a copy of that licence shipped alongside the binary. Those are two obligations. The second was entirely unenforced until this audit and is now enforced by `packages/common/tests/fonts.test.ts`.
 
 ## Removed in Phase 0
 
@@ -15,38 +15,62 @@ Phase 0 removed the two fonts that provably cannot ship (below). It could not cl
 
 Both are handled in [`docs/adr/0013-replace-the-virgil-font.md`](docs/adr/0013-replace-the-virgil-font.md). Their `FONT_FAMILY` enum ids are retained so existing files still load; the text falls back to the default family.
 
-## Still bundled, and why each needs work
+## Distributed fonts
 
-| Font | `FONT_FAMILY` id | Used for | Assessment |
-| --- | --- | --- | --- |
-| Nunito | 6 | **default body text** | Believed SIL OFL 1.1. Needs the OFL text and copyright added. **This is the licence the product depends on most — confirm it first.** |
-| Lilita One | 7 | top-picks strip, charts | Believed SIL OFL 1.1. Needs the OFL text and copyright added. |
-| Cascadia Code | 3 | top-picks strip, code blocks | Believed SIL OFL 1.1 (Microsoft). Needs the OFL text and copyright added. |
-| Liberation Sans | 9 | node-side PNG/PDF export | Believed SIL OFL 1.1 (Red Hat). Marked `private`, so it is not user-selectable. Needs the OFL text and copyright added. |
-| **Assistant** | 10 | **UI font only** | **Unverified.** Appears to be a commercial family. Marked `private`, so it is not user-selectable — which limits the blast radius but does not make it shippable. |
-| **Comic Shanns** | 8 | user-selectable in the font picker | **Unverified.** Provenance could not be established. As a named, selectable face this is the most exposed of the uncertain fonts. |
-| **Xiaolai** (小赖) | fallback | CJK fallback, 209 subset files | **Unverified.** Believed freely redistributable, but not confirmed. |
-| Helvetica | 2 | fallback | **Not distributed.** `local: true` — no binary is shipped, it resolves to the operating system's copy. No action needed. |
-| Emoji | — | fallback | **Not distributed.** Registered via `LOCAL_FONT_PROTOCOL` (`local://`), so it resolves to the operating system's emoji font. No binary, no action needed. |
+| Font | `FONT_FAMILY` id | Licence | Verified | Source fetched | Ship |
+| --- | --- | --- | --- | --- | --- |
+| **Nunito** | 6 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/nunito/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/nunito/OFL.txt) | **yes** — `Nunito/OFL.txt` committed. Default body text; the most load-bearing licence here. |
+| Lilita One | 7 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/lilitaone/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/lilitaone/OFL.txt) | **yes** — `Lilita/OFL.txt` committed. RFN `Lilita One`; we ship unmodified. |
+| Assistant | 10 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/assistant/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/assistant/OFL.txt) + [`hafontia-zz/Assistant`](https://raw.githubusercontent.com/hafontia/Assistant/master/OFL.txt) | **yes** — `Assistant/OFL.txt` committed. **The previous entry in this table was wrong**; see below. |
+| Xiaolai (小赖) | fallback | SIL OFL 1.1 | **yes** | [`lxgw/kose-font/OFL.txt`](https://raw.githubusercontent.com/lxgw/kose-font/master/OFL.txt) | **yes** — `Xiaolai/OFL.txt` committed. Upstream requires the full OFL text on redistribution; it is there. |
+| Cascadia Code | 3 | SIL OFL 1.1 | **yes** | [`microsoft/cascadia-code/LICENSE`](https://raw.githubusercontent.com/microsoft/cascadia-code/main/LICENSE) | **yes** — `Cascadia/LICENSE.txt` committed. RFN `Cascadia Code`; unmodified. |
+| Comic Shanns | 8 | MIT | **yes** | [`shannpersand/comic-shanns/LICENSE`](https://raw.githubusercontent.com/shannpersand/comic-shanns/master/LICENSE) + the binary's own `name` table | **yes** — `ComicShanns/LICENSE.txt` committed. Provenance oddity, not a licence problem; see the research doc. |
+| **Liberation Sans** | 9 | **GPLv2 + font exception** | **yes — and it is not OFL** | [`License.txt`](https://web.archive.org/web/2019/https://pagure.io/liberation-fonts/raw/cf3040c146097d6b7361e2823d5c6b5c309a456a/f/master/License.txt) via Wayback; the live pagure URL 404s | **NO — release blocker.** See below. |
+| Helvetica | 2 | — | n/a | `local: true` | Not distributed — resolves to the OS copy. No binary, nothing to clear. |
+| Emoji | — | — | n/a | `local://` via `LOCAL_FONT_PROTOCOL` | Not distributed — resolves to the OS emoji font. No binary, nothing to clear. |
 
-"Believed" means _believed_. These are recollections, not verified against the upstream licence texts, and Phase 0 had no network access to fetch them. Treat every "believed" as unproven.
+## The remaining blocker: Liberation Sans is GPL, not OFL
+
+This is not "needs the OFL text added". The binary we ship is the **wrong version**.
+
+Its `name` table reads `Version 1.05`, `Digitized data © 2007 Ascender Corporation`, `designer: Steve Matteson`, and `licenseDescription: "Use of this Liberation font software is subject to the license agreement under which you accepted the Liberation font software."` That is the **2007 Ascender release**. Liberation **1.x** is GPLv2 with a font exception — the upstream `License.txt` says Red Hat grants it "pursuant to the GNU General Public License v.2 with the exceptions set forth below".
+
+Liberation **2.x** is the OFL release. That is what the current upstream `LICENSE` is. So the earlier belief in this file — "Believed SIL OFL 1.1 (Red Hat)" — was wrong about the artefact we actually hold. We are shipping a GPL binary inside an MIT project.
+
+`Liberation/LICENSE.txt` (the GPLv2 + exception agreement) and `Liberation/GPL-2.0.txt` are now committed beside it, so the terms are at least stated. **That is necessary and not sufficient.** GPLv2 §3 requires conveying the licence _and_ the corresponding source, and we ship neither the `.sfd` sources nor any written offer of them.
+
+Three ways out, in order of effort:
+
+1. **Replace the binary with Liberation 2.x**, which is OFL 1.1 and removes both the copyleft problem and the source obligation. Smallest change; needs a subsetting rebuild and snapshot updates.
+2. **Commit the Liberation 1.x sources** and reference them from the distribution to satisfy §3. Legal, and heavier than it sounds — it drags the whole font toolchain's provenance into the audit.
+3. **Drop the font.** It is `private` and used only for node-side PNG/PDF export, so the user-visible cost is small, but export output would change.
+
+**On the Arial question specifically.** Liberation Sans is metric-compatible with Arial, and that is a different problem from the licence. The licence does not prohibit metric compatibility with anything, and metric compatibility is not copyright infringement — Arial's glyph _drawings_ are not copied, only its advance widths. What the licence does restrict, in clause 2, is trademark: it reserves `LIBERATION` to Red Hat, forbids distributing a modified version under Red Hat's trademarks, and requires renaming files to strip Red Hat trademark references when redistributing a modified version. We are not modifying it.
+
+I have **not** obtained legal advice on this, and this file is not legal advice. I also could not verify from a primary source _why_ Red Hat held the permissions it did; secondary sources describe an arrangement with Ascender and a period of distribution under Ascender's licence. That provenance history is **unverified** — only the licence text itself is verified.
+
+## Corrections to the previous audit
+
+- **Assistant was recorded as commercial. It is not.** It is OFL 1.1, per google/fonts _and_ the foundry's own repository, and the shipped binary's own `name` table carries the same `licenseDescription`. One caveat to carry forward: Assistant derives from Source Sans Pro and inherits the Reserved Font Name `'Source'`, so a future _modification_ would have to avoid that name.
+- **Liberation Sans was recorded as OFL 1.1.** The binary is GPLv2 + exception.
+- Four faces were "believed" with no source. All four are now fetched, and all four turned out to be shippable — the beliefs happened to be right about the grants and wrong about one artefact's licence family.
 
 ## What has to happen before a release
 
-1. **Fetch the actual licence for each of the seven distributed fonts** from its upstream, and record the URL and the version fetched here.
-2. **Ship the licence text with the font** for the four OFL fonts. OFL §3 requires it; distributing the binary without it is non-compliant even when the grant is valid.
-3. **Delete Assistant and Comic Shanns** if their terms cannot be established. Assistant is the cheaper deletion (UI-only, `private`). Comic Shanns costs the font picker a named entry.
-4. **Confirm Xiaolai**, or replace the CJK fallback with a verified OFL CJK face.
-5. Re-run the audit and replace the table above with resolved facts.
+1. **Resolve Liberation Sans** — one of the three routes above. Nothing else on this list blocks a release.
+2. **Re-run the audit** when any bundled font changes, and keep the URLs in the table current. A licence can be relicensed upstream; Liberation did exactly that between 1.x and 2.x.
+3. **Re-run the measurement** if the font choice changes — [`scripts/font-lab/`](scripts/font-lab/) exists for ADR-0013 requirement 3 and is the reason the pick has to wait for evidence rather than taste.
 
 ## Why this is a release blocker and not a nit
 
-Firo's entire premise is that it is free and MIT ([`docs/adr/0009-mit-licence-and-donation-funding.md`](docs/adr/0009-mit-licence-and-donation-funding.md)). Shipping a commercial font inside an MIT project, with no licence file, is the kind of thing that ends a project rather than merely embarrassing it. The rebrand made the default font Nunito, which makes that font the single most load-bearing licence in the repository.
+Firo's premise is that it is free and MIT ([`docs/adr/0009-mit-licence-and-donation-funding.md`](docs/adr/0009-mit-licence-and-donation-funding.md)). Shipping a GPL font inside an MIT project with no sources is the kind of thing that ends a project rather than merely embarrassing it. The rebrand made Nunito the default, which is why that licence is the single most load-bearing one in the repository — and it is verified.
 
 ## Keeping this file honest
 
 When you add a font:
 
-- Record it here with the licence you actually read, and where you read it.
-- Add the licence text to the font's directory in the same commit.
-- `AGENTS.md` forbids shipping an unlicensed font file. This table is the audit trail for that rule; a new row with "unverified" is a blocker, not a to-do.
+- Record it here with the licence you actually read, and the URL you read it at.
+- Add the licence text to the font's directory **in the same commit**.
+- `AGENTS.md` forbids shipping an unlicensed font file, and `packages/common/tests/fonts.test.ts` fails if either half is missing.
+
+A row saying "unverified" is a blocker, not a to-do. A row saying "believed" is worse — it is an unverified claim wearing a conclusion's clothes, which is how the Liberation Sans entry went wrong in the first place.
