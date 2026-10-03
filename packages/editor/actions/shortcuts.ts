@@ -48,6 +48,29 @@ export type ShortcutName =
       | "saveToActiveFile"
       | "toggleShortcuts"
       | "wrapSelectionInFrame"
+      /*
+       * Firo's facilitator commands (`apps/web/board/facilitatorActions.ts`).
+       *
+       * Listed here purely so the command palette can *print* them. A shortcut that
+       * exists but is named nowhere is a shortcut nobody discovers, and the palette
+       * is the discoverability backstop; the `keyTest` in the app is what actually
+       * binds them.
+       *
+       * Every one is `Alt`-prefixed. That is a considered choice rather than a
+       * default: the Phase 3 plan requires single-key shortcuts to be individually
+       * disableable for voice-control users, and `ActionManager` has no such switch
+       * for a host-registered action — `UIOptions.canvasActions` is a fixed list of
+       * seven inherited names, and a name not in it is always enabled. So a bare
+       * letter here would be a bare letter nobody could turn off. See the module
+       * header of `facilitatorActions.ts` for the collision check that picked them.
+       */
+      | "toggleFacilitatorTimer"
+      | "resetFacilitatorTimer"
+      | "addMinuteToTimer"
+      | "toggleBoardReveal"
+      | "addVoteToSelection"
+      | "removeVoteFromSelection"
+      | "readVoteTally"
     >
   | "saveScene"
   | "imageExport"
@@ -113,6 +136,25 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   searchMenu: [getShortcutKey("CtrlOrCmd+F")],
   wrapSelectionInFrame: [],
   toolLock: [getShortcutKey("Q")],
+  /*
+   * The facilitator's `Alt` chords. Checked against every inherited binding before
+   * being written down, and the checks are worth keeping in mind when adding more:
+   *
+   * `Alt+H` distribute-horizontal, `Alt+V` distribute-vertical, `Alt+S` objects-snap,
+   * `Alt+Z` zen, `Alt+R` view mode, `Alt+/` stats, `Alt+Shift+D` theme, `Alt+Shift+C`
+   * copy-as-SVG. Most of those `keyTest`s do not test `shiftKey`, so
+   * `Alt+Shift+<any of those letters>` is taken too — which is what rules out the
+   * obvious `Alt+Shift+D` for "remove a dot" and the obvious `Alt+V` for "vote".
+   *
+   * `T`, `M`, `P`, `D`, `W` and `L` are free in that whole region.
+   */
+  toggleFacilitatorTimer: [getShortcutKey("Alt+T")],
+  resetFacilitatorTimer: [getShortcutKey("Alt+Shift+T")],
+  addMinuteToTimer: [getShortcutKey("Alt+M")],
+  toggleBoardReveal: [getShortcutKey("Alt+Shift+P")],
+  addVoteToSelection: [getShortcutKey("Alt+D")],
+  removeVoteFromSelection: [getShortcutKey("Alt+W")],
+  readVoteTally: [getShortcutKey("Alt+L")],
 };
 
 export const getShortcutFromShortcutName = (name: ShortcutName, idx = 0) => {

@@ -65,11 +65,19 @@ const pickFile = (accept: string): Promise<string | null> =>
 /**
  * Report a problem to the person, not just the console.
  *
- * A failed export or a refused import that only writes to the console is the same
- * silent failure this whole area is prone to: the click appears to have done nothing.
- * `setToast` is on the imperative API for exactly this.
+ * A failed export, a refused import or a keyboard shortcut with nothing to act on
+ * that only writes to the console is the same silent failure this whole area is
+ * prone to: the action appears to have done nothing. `setToast` is on the imperative
+ * API for exactly this.
+ *
+ * Exported because [`facilitatorActions.ts`](./facilitatorActions.ts) needs the same
+ * refusal, and two toasts written two ways means a facilitator sees one of them
+ * render differently for no reason they can perceive.
  */
-const complain = (api: ExcalidrawImperativeAPI, message: string): void => {
+export const complain = (
+  api: ExcalidrawImperativeAPI,
+  message: string,
+): void => {
   api.setToast?.({ message, closable: true, duration: 6000 });
   console.warn(`[firo] ${message}`);
 };

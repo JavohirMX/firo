@@ -153,6 +153,23 @@ export type ActionName =
    */
   | "exportFiroFile"
   | "importFiroFile"
+  /*
+   * The facilitator's commands, from `apps/web/board/facilitatorActions.ts`.
+   *
+   * Two of the seven are a toggle rather than one action per state:
+   * `toggleFacilitatorTimer` covers idle, running and paused, and `toggleBoardReveal`
+   * covers private and revealed. A facilitator thinks "run the clock", not
+   * "transition the state machine", and cannot see which state the board is in from
+   * the board — so three actions for two states would be three things to remember
+   * and one of them would be wrong.
+   */
+  | "toggleFacilitatorTimer"
+  | "resetFacilitatorTimer"
+  | "addMinuteToTimer"
+  | "toggleBoardReveal"
+  | "addVoteToSelection"
+  | "removeVoteFromSelection"
+  | "readVoteTally"
   | "linkToElement"
   | "cropEditor"
   | "wrapSelectionInFrame"
@@ -228,7 +245,15 @@ export interface Action<TData = any> {
            * because the two file actions are genuinely export and import and belong
            * beside the existing export actions.
            */
-          | "file";
+          | "file"
+          /*
+           * Facilitation is its own bucket rather than `collab`, and the reason is
+           * that "facilitator" is a *role* here, not a mode: the same person is
+           * placing dots they are also collecting. Folding them into `collab` would
+           * make the eventual v2 — presence, follow-me, votes attributed to a real
+           * participant — indistinguishable from a session with one person in it.
+           */
+          | "facilitation";
         action?: string;
         predicate?: (
           appState: Readonly<AppState>,

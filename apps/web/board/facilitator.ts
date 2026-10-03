@@ -44,8 +44,6 @@ import type { EphemeralReveal, EphemeralTimer } from "@firo/doc";
 import type { RevealState, Vote } from "@firo/facilitation";
 import type { FiroRecord } from "@firo/schema";
 
-import { boardDoc } from "./board";
-
 /** The duration a timer starts at when the facilitator has not chosen one. */
 const DEFAULT_TIMER_MS = 5 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -283,4 +281,14 @@ export const resetFacilitationCache = (): void => {
   listeners.clear();
 };
 
-export { boardDoc };
+/*
+ * No re-export of `boardDoc`, deliberately.
+ *
+ * Every function here takes the document as a parameter, so nothing in this module
+ * needs it — and re-exporting it made `facilitatorActions.ts` -> `facilitator.ts`
+ * -> `board.ts` -> `facilitatorActions.ts`, a cycle. It measured as benign under
+ * vitest's ESM, and "benign" is not "sound": `packages/doc/src/ephemeral.ts`
+ * refuses to import across a cycle for exactly this reason, and
+ * `workspace-wiring.test.ts` exists because a half-wired package is invisible until
+ * it is not.
+ */

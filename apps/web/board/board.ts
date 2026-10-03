@@ -41,6 +41,7 @@ import type { FiroElement } from "@firo/schema";
 import { debounce, restoreBoard, saveBoard } from "./storage";
 
 import { registerFileActions } from "./fileActions";
+import { registerFacilitatorActions } from "./facilitatorActions";
 
 import type { RestoreResult } from "./storage";
 
@@ -100,6 +101,27 @@ const registerFileActionsOnce = (api: ExcalidrawImperativeAPI): void => {
   }
   fileActionsRegistered.add(api);
   registerFileActions(api, () => doc);
+};
+
+/**
+ * Editors the facilitator commands have been registered with.
+ *
+ * A **separate** `WeakSet` from the file actions', and the separation is the
+ * point: one shared set would make "file actions registered" imply "facilitator
+ * actions registered", so adding a third group would silently depend on the
+ * second having run. Each group is registered independently or not at all.
+ */
+const facilitatorActionsRegistered = new WeakSet<ExcalidrawImperativeAPI>();
+
+const registerFacilitatorActionsOnce = (api: ExcalidrawImperativeAPI): void => {
+  if (facilitatorActionsRegistered.has(api)) {
+    return;
+  }
+  facilitatorActionsRegistered.add(api);
+  // `refreshBoard` is not optional here. Reveal is ephemeral, so flipping it
+  // commits nothing, `BoardSync` never hears about it, and without the refresh
+  // the canvas keeps showing the notes the facilitator just hid.
+  registerFacilitatorActions(api, () => doc, refreshBoard);
 };
 
 /*
@@ -274,6 +296,7 @@ export const attachBoard = (
    * development React mounts twice, and this is the seam where that would show.
    */
   registerFileActionsOnce(excalidrawAPI);
+  registerFacilitatorActionsOnce(excalidrawAPI);
 
   sync?.stop();
   const bridge = bridgeFor(excalidrawAPI);

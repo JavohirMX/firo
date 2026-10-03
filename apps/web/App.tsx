@@ -96,10 +96,14 @@ import DebugCanvas, {
 
 import {
   attachBoard,
+  boardDoc,
   boardElements,
   boardRestored,
   commitBoard,
+  refreshBoard,
 } from "./board/board";
+
+import { facilitatorCommandPaletteItems } from "./board/facilitatorActions";
 
 import "./index.scss";
 
@@ -845,6 +849,26 @@ const ExcalidrawWrapper = () => {
                 }
               },
             },
+            /*
+             * The facilitator's commands, and they have to be listed here.
+             *
+             * A registered action does **not** reach the palette by itself:
+             * `CommandPalette`'s `commandsFromActions` is a hand-written list of
+             * `actionManager.actions.<name>`, so anything missing from it is
+             * reachable only by its keyboard chord. That is an AC-8 failure for a
+             * screen-reader user, and it is not hypothetical -- `exportFiroFile`
+             * has been in the menu and absent from the palette for its whole life.
+             *
+             * These entries are derived from the same `Action` objects the chords
+             * come from, so the palette entry and the keystroke cannot drift.
+             */
+            ...(excalidrawAPI
+              ? facilitatorCommandPaletteItems(
+                  excalidrawAPI,
+                  boardDoc,
+                  refreshBoard,
+                )
+              : []),
           ]}
         />
         {isVisualDebuggerEnabled() && excalidrawAPI && (
