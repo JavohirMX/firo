@@ -2,18 +2,18 @@
   "name": "@firo/board",
   "version": "0.1.0",
   "type": "module",
-  "types": "./dist/types/doc/src/index.d.ts",
+  "types": "./dist/types/board/src/index.d.ts",
   "main": "./dist/prod/index.js",
   "module": "./dist/prod/index.js",
   "exports": {
     ".": {
-      "types": "./dist/types/doc/src/index.d.ts",
+      "types": "./dist/types/board/src/index.d.ts",
       "development": "./dist/dev/index.js",
       "production": "./dist/prod/index.js",
       "default": "./dist/prod/index.js"
     },
     "./*": {
-      "types": "./dist/types/doc/src/*.d.ts",
+      "types": "./dist/types/board/src/*.d.ts",
       "development": "./dist/dev/index.js",
       "production": "./dist/prod/index.js",
       "default": "./dist/prod/index.js"
@@ -55,6 +55,8 @@
   },
   "dependencies": {
     "@firo/common": "0.1.0",
+    "@firo/doc": "0.1.0",
+    "@firo/element": "0.1.0",
     "@firo/fractional-indexing": "0.1.0",
     "@firo/schema": "0.1.0"
   },

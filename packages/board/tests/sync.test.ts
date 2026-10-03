@@ -337,6 +337,148 @@ describe("BoardSync", () => {
     });
   });
 
+  describe("z-order", () => {
+    // A sticky note is two editor elements -- the note and its derived label --
+    // so a reorder test has to reason about the pair, or it will pass for the
+    // wrong reason. These helpers pick the note elements out of the noise.
+
+    const notes = (elements: readonly Record<string, unknown>[]) =>
+      elements
+        .filter((e) => e.type === "stickynote")
+        .map((e) => e.id as string);
+
+    /**
+     * Reorder the editor's scene by note id, carrying each note's label with it.
+     *
+     * A note is two editor elements -- the note and its derived label -- and the
+     * editor keeps a label immediately after its note. Moving a note without its
+     * label produces a scene no editor would ever build, and the fold then finds
+     * the note with no text. So the unit of reordering is the pair, and this is
+     * the only honest way to simulate a person dragging something.
+     */
+    const reorderNotes = (
+      elements: readonly Record<string, unknown>[],
+      order: readonly string[],
+    ) => {
+      const pairs = new Map<string, Record<string, unknown>[]>();
+      for (const element of elements) {
+        if (element.type === "stickynote") {
+          pairs.set(element.id as string, [element]);
+        } else {
+          const owner = element.containerId as string | undefined;
+          const pair = owner ? pairs.get(owner) : undefined;
+          if (pair) {
+            pair.push(element);
+          }
+        }
+      }
+      return order.flatMap((id) => pairs.get(id) ?? []);
+    };
+
+    const seedThree = () => {
+      const doc = newDoc();
+      doc.commit([
+        { kind: "createElement", element: note("a") },
+        { kind: "createElement", element: note("b") },
+        { kind: "createElement", element: note("c") },
+      ]);
+      const editor = fakeEditor();
+      const sync = new BoardSync(doc, editor.bridge);
+      sync.start();
+      return { doc, editor, sync };
+    };
+
+    it("reaches the document when the editor sends an element to the back", () => {
+      // "Send to back" changes only `index`, so this was the case that failed:
+      // the element matched the baseline on every editor-owned field, was called
+      // an echo, and was discarded. The document kept the original order and the
+      // file disagreed with the canvas with nothing to show for it.
+      const { doc, editor, sync } = seedThree();
+      expect(notes(doc.read().elements)).toEqual(["a", "b", "c"]);
+
+      editor.set(reorderNotes(editor.elements, ["b", "c", "a"]));
+      const mutations = sync.push();
+
+      expect(mutations.map((m) => m.kind)).toContain("reorderElements");
+      expect(notes(doc.read().elements)).toEqual(["b", "c", "a"]);
+    });
+
+    it("reaches the document for a partial reorder, not only a full reversal", () => {
+      // A reversal moves every element; swapping two neighbours moves half the
+      // scene. The comparison is over the whole array, so a partial move is the
+      // case most likely to be missed by an implementation that only notices a
+      // complete reversal.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(reorderNotes(editor.elements, ["b", "a", "c"]));
+      sync.push();
+
+      expect(notes(doc.read().elements)).toEqual(["b", "a", "c"]);
+    });
+
+    it("commits nothing when nothing moved", () => {
+      // The other half of the guard. An index comparison that is too eager
+      // reports every push as a reorder, which floods the document with writes
+      // on every keystroke -- the exact failure the echo guard exists to stop.
+      const { doc, editor, sync } = seedThree();
+      const before = doc.revision;
+
+      editor.set([...editor.elements]);
+      expect(sync.push()).toEqual([]);
+      expect(doc.revision).toBe(before);
+    });
+
+    it("does not report a reorder when a field changed but the order did not", () => {
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.type === "stickynote"
+            ? { ...element, x: 42, version: 9 }
+            : element,
+        ),
+      );
+      const mutations = sync.push();
+
+      expect(mutations.map((m) => m.kind)).toContain("updateElements");
+      expect(mutations.map((m) => m.kind)).not.toContain("reorderElements");
+    });
+
+    it("does not emit both a reorder and a deletion for one gesture", () => {
+      // Deleting is expressed by `deleteElements`, which leaves tombstones
+      // behind. Emitting `reorderElements` as well would restate an order that
+      // includes ids the document is about to tombstone, and `reorderElements`
+      // ignores ids it does not recognise -- so it would be noise at best.
+      const { doc, editor, sync } = seedThree();
+
+      const withoutB = editor.elements.filter(
+        (element) => element.type !== "stickynote" || element.id !== "b",
+      );
+      editor.set(reorderNotes(withoutB, ["c", "a"]));
+      const mutations = sync.push();
+
+      const kinds = mutations.map((m) => m.kind);
+      expect(kinds).toContain("deleteElements");
+      expect(kinds).not.toContain("reorderElements");
+    });
+
+    it("survives a reorder with no field change at all", () => {
+      // Regression guard for the specific comparison added to `isEcho`: without
+      // `index` being compared there, this push is classified an echo and the
+      // whole feature is inert. `elements.ts` deliberately keeps `index` out of
+      // `EDITOR_OWNED_FIELDS`, so the check has to live in the sync.
+      const { doc, editor, sync } = seedThree();
+      const before = doc.revision;
+
+      editor.set(reorderNotes(editor.elements, ["c", "b", "a"]));
+      const mutations = sync.push();
+
+      expect(mutations.length).toBeGreaterThan(0);
+      expect(doc.revision).toBeGreaterThan(before);
+      expect(notes(doc.read().elements)).toEqual(["c", "b", "a"]);
+    });
+  });
+
   describe("document changes from elsewhere", () => {
     it("pushes a note committed directly into the document", () => {
       // The path a future collaborator or a sync server would take.

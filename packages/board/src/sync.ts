@@ -250,6 +250,35 @@ export class BoardSync {
       mutations.push({ kind: "deleteElements", ids: gone });
     }
 
+    // Z-order is the scene's, not an element's, so it is compared across the
+    // whole array rather than per element. `after` arrives in the editor's
+    // z-order, front to back -- the same order `toEditorScene` projects in, and
+    // the same order `elementOrder` stores.
+    //
+    // This is what "send to back" and "bring to front" were missing. Both
+    // reorder the scene without changing any element's fields, so the loop
+    // guard classified the push as an echo and `diff` was handed an array in
+    // the document's own order: nothing to see, nothing to do. `reorderElements`
+    // was already implemented and tested in `@firo/doc` and had no caller.
+    //
+    // A separate mutation from the field updates above on purpose. Writing
+    // `index` per element through `updateElements` would restate a fractional
+    // index in a loop, and a reorder of one element would become a burst of
+    // writes rather than one undo step.
+    //
+    // Only emitted when the *set* is unchanged, i.e. when the deletions above
+    // did not fire. Reordering and deleting in the same commit is expressed by
+    // the deletions; the surviving elements keep the relative order the
+    // document already has, and the next push settles it.
+    if (!gone.length && !sameOrder(before, after)) {
+      mutations.push({
+        kind: "reorderElements",
+        ids: after
+          .filter((element) => !element.isDeleted)
+          .map((element) => element.id),
+      });
+    }
+
     return mutations;
   }
 
@@ -322,6 +351,22 @@ export class BoardSync {
  * concurrent edit to a different field of the same element survives, because
  * this key was never written.
  */
+/**
+ * Whether two element lists carry the same ids in the same order.
+ *
+ * Z-order is a property of the scene rather than of any element, so it cannot
+ * be compared with `changedFields` -- which is per element and would compare
+ * `index` without knowing that a swap moved two elements at once.
+ *
+ * Compares ids only. Value equality is `changedFields`' job, and a reorder that
+ * also changed a field should produce both mutations, not one confused one.
+ */
+const sameOrder = (
+  a: readonly FiroElement[],
+  b: readonly FiroElement[],
+): boolean =>
+  a.length === b.length && a.every((element, i) => element.id === b[i]?.id);
+
 const changedFields = (
   before: FiroElement,
   after: FiroElement,
