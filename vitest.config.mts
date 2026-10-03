@@ -110,6 +110,14 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "./packages/schema/src/$1"),
       },
       {
+        find: /^@firo\/board$/,
+        replacement: path.resolve(__dirname, "./packages/board/src/index.ts"),
+      },
+      {
+        find: /^@firo\/board\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/board/src/$1"),
+      },
+      {
         find: /^@firo\/doc$/,
         replacement: path.resolve(__dirname, "./packages/doc/src/index.ts"),
       },
