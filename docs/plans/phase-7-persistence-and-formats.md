@@ -12,11 +12,18 @@ are files he can read, diff, and put in git.
 - **AC-7 passes**: block all network at the OS level and every feature still works;
   DevTools shows zero requests; a 10,000-element board uses under 50 MB after
   compaction
-- **AC-6 passes**: export a `.firo` archive, read it as text, `git diff` it, delete
-  the app's storage, re-import, and every element, record, tag, and vote is present
+- **AC-6 passes**: export a `.firo`, read it as text, `git diff` it, delete the app's
+  storage, re-import, and every element, record, tag, and vote is present — on a board
+  with 50 images in it, which is the board AC-6 actually names
 - A `.firo` export round-trips **byte-identically**
 - Every released format version loads in every later version, verified by fixture
 - Loading a file from a newer version fails loudly and writes nothing
+
+**AC-6 does not pass yet.** A `.firo` is currently a single JSON file and the export
+refuses a board with an image in it, so the criterion fails on the 50 images it
+specifies. [ADR-0018](../adr/0018-a-firo-is-a-directory.md) decides the container
+that fixes this — a directory — and §7.3 describes it. Two clauses in that ADR are
+with the maintainer, and one of them is whether AC-6's own wording is amended.
 
 ## Tasks
 
@@ -83,6 +90,15 @@ this section asked for.
   its own. Its `appState` half — zoom, theme, scroll — stays; the document model has
   no opinion about it and never will.
 - Import refuses a board that already has content. See below.
+- **The `.firo` container is still a single JSON file**, because
+  [ADR-0018](../adr/0018-a-firo-is-a-directory.md) has been written but not
+  implemented. The format it specifies is a directory; the export here still writes
+  one file and still refuses a board with an image. AC-6 names 50 images, so this
+  is the gap between the criterion and the code.
+- **`FiroDoc.read()` does not expose the document's `assets` map.** `setAsset`
+  writes one and `BoardSnapshot` has no field for it, so nothing can currently ask a
+  board which bytes it needs. ADR-0018 needs this closed before the export can
+  assemble a manifest.
 - §7.2 compaction is answered for the *file* (see above) but not for the document
   itself. The autosave grows with tombstones indefinitely, which is correct for a CRDT
   and wrong for a long-lived board: a year of edits accumulates dead elements that are
@@ -107,22 +123,42 @@ element survives, its content does not. A tombstoned image does not count — it
 in the file either, and counting it would make a board unexportable for ever after
 somebody deleted a picture from it.
 
-**This is a position, not the fix.** §7.3 specifies the fix — a manifest, a
-`board.json`, and a content-addressed `assets/` directory — and that is a *different
-file layout* from the single canonical JSON that round-trips byte-identically and
-diffs legibly. Both properties are wanted and they are in tension: a `.firo` that is
-one file cannot carry its assets, and a `.firo` that is a directory is no longer one
-download. Choosing between them is real design and belongs in an ADR, so the refusal
-stands in the meantime and makes the gap visible rather than silent.
+**This is a position, not the fix, and the fix has now been chosen.**
+[ADR-0018](../adr/0018-a-firo-is-a-directory.md) decides the question this section
+deferred: **a `.firo` is a directory** — `manifest.json`, `board.json`, and a
+content-addressed `assets/` — which is §7.3's layout, adopted.
+
+Two things about that decision are worth stating here rather than leaving in the ADR:
+
+- **`board.json` does not change.** It is the same `serializeBoardFile` output, byte
+  for byte, in a different container. The document format, the migration chain and
+  every committed fixture are untouched, which is what makes the cost small.
+- **The refusal is narrowed, not deleted.** The directory can carry assets, so
+  "this board has an image" stops being a reason to refuse. What remains a reason is
+  a hash the asset store does not hold, and an image with no `fileId` at all. Both
+  still fail loudly. Deleting `uncarriedAssetTypes` wholesale when the container
+  lands would restore exactly the silent loss it was written to prevent.
+
+The ADR also names two things that must happen before any of it works and that this
+plan does not yet show: `FiroDoc.read()` returns a `BoardSnapshot` with no `assets`,
+so an exporter cannot enumerate what a board needs, and `SerializedBoard` has no
+assets key, so the per-`fileId` metadata has to travel through `manifest.json`
+instead. Both are in packages outside this section.
 
 Covered by `apps/web/board/tests/files.test.ts`, including the tombstone case and a
-board of frames, which carries no assets and must keep exporting normally.
+board of frames, which carries no assets and must keep exporting normally. That test
+block is the single-file format's and will be rewritten when the container lands.
 
 ### 7.1a — `.firo` export and import
 
-Done, and AC-6 passes. Both live in the app's own menu
-(`apps/web/components/AppMainMenu.tsx`), beside "Export image...", because that is the
-same intent and someone looking for one will look near the other.
+Done, and AC-6 passes **for a board with no images**. It does not pass for the board
+AC-6 actually names — one with 50 images in it — because the container is still a
+single file and the export still refuses. [ADR-0018](../adr/0018-a-firo-is-a-directory.md)
+chooses the container that closes that; see the refusal subsection above and §7.3.
+
+Both live in the app's own menu (`apps/web/components/AppMainMenu.tsx`), beside
+"Export image...", because that is the same intent and someone looking for one will
+look near the other.
 
 #### The file format round-trips byte-identically
 
@@ -236,21 +272,46 @@ referenced by no element is provably unused.
 
 ### 7.3 — The `.firo` format
 
+**Decided by [ADR-0018](../adr/0018-a-firo-is-a-directory.md), which picked this
+layout over a single file.** A `.firo` is a directory:
+
 ```
-board.firo
-├── manifest.json        version, id, created, generator, checksums
+board.firo/
+├── manifest.json        format version, board id, created, generator, checksums
 ├── board.json           elements, containers, collections, columns, records
 └── assets/
     └── <sha256>.<ext>   content-addressed, deduplicated
 ```
 
 **Assets are files beside the document, never base64 inlined.** A 2 MB base64 string
-inside the JSON makes it unreadable and undiffable, and content addressing
-deduplicates the same image used on 50 cards.
+inside the JSON makes it unreadable and undiffable — one 2.7-million-character line
+per image, which `git diff` prints in full for a one-byte change — and content
+addressing deduplicates the same image used on 50 cards.
 
 **The diff is the point.** A committed `.firo` must produce a readable diff. That is
 what makes it a durable artefact rather than an opaque blob, and it is a large part
-of why Dan will still be here in three years.
+of why Dan will still be here in three years. It is also why the container is not a
+zip: an archive's diff does not show what changed, and `deflate` output is not
+specified by the format, so byte-identity across builds is not free either. The ADR
+has the full argument, including the honest version of what the directory *costs*:
+it is no longer one file to download, and folder import is not available in Safari.
+
+**`board.json` is byte-for-byte the file §7.1a writes today**, from the same
+`serializeBoardFile`. Only the container around it changes. That is what keeps the
+document format, the migration chain and every committed fixture out of this change.
+
+**Format version 2.** Format version 1 is the single JSON file and loads for ever;
+the loader dispatches on shape, not extension. `CURRENT_ELEMENT_VERSION` and
+`CURRENT_RECORD_VERSION` do not move — this is a container change, not a schema
+change.
+
+**A zip may be offered beside the directory** as a transport, for browsers with no
+directory writer and for email. It is never the thing under test and never the thing
+committed to git.
+
+Two clauses are with the maintainer, and the ADR says so in its own body rather than
+here: whether losing the one-file download is worth the readable diff, and whether
+AC-6's `cat` and FR-33's "a single file" are amended or the deviation recorded.
 
 ### 7.4 — Export
 
@@ -292,19 +353,32 @@ With every element type, every column type, tags, votes, containers at multiple
 depths, and a 10,000-element board. Any difference must be explainable and separately
 tested.
 
+**This is stated over `board.json`, not over the directory**
+([ADR-0018](../adr/0018-a-firo-is-a-directory.md)): the byte-identity claim is about
+the document, and the container is asserted separately — the directory contains
+exactly what `board.json` and `manifest.json` say it does, and a zip is never the
+thing round-tripped.
+
 ## Verification
 
 - **AC-6** and **AC-7** in full
 - `localStorage` contains no board data
 - Network tab is empty, with the app fully functional
-- Every committed format fixture loads without loss
+- Every committed format fixture loads without loss, at both the format and the
+  schema version
 - A forward-version fixture throws a clear error and writes nothing
 - A deliberately corrupt import leaves the existing board byte-identical
 - An import interrupted mid-write leaves the previous good state
-- Export → import → export is byte-identical
+- Export → import → export is byte-identical, with 50 images on the board and the
+  identical image deduplicated to one file under `assets/`
+- An asset whose hash the store does not hold fails the export with a reason, rather
+  than producing an archive that references bytes it does not contain
+- Import writes asset bytes before the document references them, and a failure
+  writes nothing
 - Round trip survives: nested containers, all column types, votes, tags, a detached
   card whose record still exists
-- `.firo` in git produces a readable diff
+- `.firo` in git produces a readable diff — `git diff` on `board.json` shows the two
+  changed lines, and an unchanged asset does not appear in `git status` at all
 
 ## Risks
 
@@ -315,3 +389,6 @@ tested.
 | Round-trip has "harmless" differences that accumulate | The byte-identical test, with every difference explicitly justified |
 | Save is silently dropped under storage pressure | Visible save state; explicit errors; never silent |
 | Base64 creeps back in for convenience | A test asserting no base64 data URLs in `board.json` |
+| The directory is quietly reverted to a single file "for convenience" | [ADR-0018](../adr/0018-a-firo-is-a-directory.md) is the record; the base64 test and the AC-6 image case both fail first |
+| A `.firo` directory is half-copied, or copied without its `assets/` | The manifest's checksums, and a refusal rather than an import that resolves some assets and not others |
+| Folder import is unavailable in Safari | The zip transport, offered beside the directory. Named in the ADR as a cost of the decision rather than discovered later |

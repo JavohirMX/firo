@@ -54,6 +54,7 @@ deciders: <names or roles>
 | [0015](0015-delete-inherited-dev-docs.md) | Delete inherited `dev-docs/` | Accepted (supersedes part of 0011) | 2026-09-30 |
 | [0016](0016-enforce-the-write-path-with-a-proxy.md) | Enforce the write path with a Proxy, not a `beforeTransaction` listener | Accepted | 2026-09-30 |
 | [0017](0017-do-not-rewrite-the-renderer.md) | Keep the inherited renderer; the rewrite was justified by a measurement artefact | Accepted | 2026-10-02 |
+| [0018](0018-a-firo-is-a-directory.md) | A `.firo` is a directory: `board.json`, a manifest, and content-addressed assets beside it | Proposed — two clauses awaiting sign-off | 2026-10-02 |
 
 ## Open questions
 
@@ -68,4 +69,5 @@ Deliberately deferred. Each is answered before the phase that depends on it.
 | **Verified licence for every bundled font** — the audit found *no* licence file for any of them, including the new default. See [`../../FONT-LICENSES.md`](../../FONT-LICENSES.md) and ADR-0014. | **Before any public release** |
 | Which OFL hand-drawn face can survive 12 px diagram labels, measured on rendered output rather than assumed? | Phase 2 — **now unblocked.** ADR-0017 keeps the inherited renderer, so there is rendered output to measure, which is what ADR-0014 required and did not have |
 | Why is 10% zoom ~30× slower than 50%, with the cost outside the renderer's JavaScript? | Before criterion 5 can be demonstrated. The Chrome trace exists and rules GPU rasterisation out; it has not reproduced a mechanism. See [ADR-0017](0017-do-not-rewrite-the-renderer.md) and [§2.1f](plans/phase-2-renderer.md#21f--the-trace-exists-now-and-it-did-not-settle-it) |
+| Is losing the one-file download worth the readable diff, and is AC-6's `cat` amended or the deviation accepted? **Raised by [ADR-0018](0018-a-firo-is-a-directory.md), which chose the directory and left both to the maintainer.** | Before the Phase 7 exit criterion |
 | Product name and trademark clearance | Before any public release |

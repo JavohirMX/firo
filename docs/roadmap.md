@@ -14,7 +14,7 @@ demonstrated — not when its code is written.
 | 4 | [Miro objects and nesting](plans/phase-4-miro-objects.md) | Sticky notes, cards, frames, sections, connectors, arbitrary nesting |
 | 5 | [Facilitation](plans/phase-5-facilitation.md) | Voting, timer, private mode, reactions, presentation mode |
 | 6 | [Records and projections](plans/phase-6-records-and-projections.md) | One record store; table and board projections; **AC-3 passes** |
-| 7 | [Persistence and formats](plans/phase-7-persistence-and-formats.md) | **AC-6 and AC-7 pass.** `.firo` round-trips losslessly; offline works fully |
+| 7 | [Persistence and formats](plans/phase-7-persistence-and-formats.md) | **AC-6 and AC-7 pass.** `.firo` round-trips losslessly; offline works fully. Open: the container is still a single file, so AC-6 fails on the 50 images it names — [`ADR-0018`](adr/0018-a-firo-is-a-directory.md) decides the directory that fixes it |
 | 8 | [Project layer](plans/phase-8-pm-layer.md) | Board index, folders, tags, search, activity |
 | 9 | [Sync server](plans/phase-9-sync-server.md) | **AC-12 passes.** One container, local accounts, roles, presence |
 | 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | Local-model AI, MCP server, VPAT published, Tauri shell |
@@ -84,6 +84,7 @@ architectural risk; Phase 4 is the larger amount of work.
 | The renderer rewrite does not achieve the budget | 2 | **Closed.** The gate measured it and the inherited renderer passes; no rewrite. [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md) |
 | Yjs is the bottleneck at scale | 9 | Measure in Phase 6; Loro's API is compatible for a bounded swap ([`ADR-0002`](adr/0002-yjs-as-concurrency-engine.md)) |
 | Records and projections ship half-built | 6 | Two proven projections beat four broken ones. Scope is set in [`prd/02-scope.md`](prd/02-scope.md) |
+| A `.firo` cannot carry its images, or cannot be read as text | 7 | Decided: a directory with `board.json` beside content-addressed `assets/`, which is the same reason the single file was refused. The cost is that it is no longer one download, and folder import is not available in Safari. [`ADR-0018`](adr/0018-a-firo-is-a-directory.md) |
 | ProseMirror overlay alignment is subtly wrong at some zooms | 3, 4 | Explicit multi-zoom test matrix ([`trd/05-rich-text.md`](trd/05-rich-text.md)) |
 | The ephemeral/durable split is violated by a well-meaning feature | any | Two enforcing tests ([`trd/03-crdt-and-sync.md`](trd/03-crdt-and-sync.md)) |
 | No legible licensed hand-drawn font exists at 12 px | 0 | Fall back to the clean stack; the aesthetic is recoverable, a licence violation is not |
