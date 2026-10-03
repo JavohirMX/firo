@@ -1080,3 +1080,94 @@ body.excalidraw-cursor-resize * {
     font-family: "Assistant";
   }
 }
+
+/*
+ * The facilitator bar.
+ *
+ * App-level chrome rather than editor chrome, but it is styled here because this
+ * is where `.excalidraw-ui-top-right` — the container `renderTopRightUI` renders
+ * into — is laid out, and a rule in a different file would have to re-derive the
+ * flex context to sit correctly in it.
+ *
+ * Sized for being read from the back of a room: large, high contrast, and it does
+ * not move when the readout changes width, so a facilitator can look at it rather
+ * than at the board.
+ */
+.firo-facilitator-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--button-radius, 4px);
+  background-color: var(--color-bg);
+  border: 1px solid var(--default-border-color);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  /* A minute digit column that does not jitter as the number changes. */
+  font-feature-settings: "tnum";
+
+  &__timer {
+    font-size: 1.25rem;
+    font-weight: 600;
+    /* Two digits plus a colon, so the chip does not resize every second. */
+    min-width: 4ch;
+    text-align: center;
+  }
+
+  /*
+   * Time is up, and it must not be the only thing that says so.
+   *
+   * Colour alone would fail WCAG 2.2 SC 1.4.1 and, more practically, would not
+   * reach the person who cannot see the screen at all. `data-finished` is also
+   * what the test asserts on, so the state is machine-readable rather than
+   * inferred from a colour.
+   */
+  &__timer[data-finished="true"] {
+    color: var(--color-danger-dark, #e03131);
+    animation: firo-facilitator-pulse 1s ease-in-out infinite;
+  }
+
+  &__private {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    background-color: var(--color-primary);
+    color: var(--color-text-primary-contrast, #fff);
+  }
+
+  &__reveal {
+    font-size: 0.8125rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--default-border-color);
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--button-hover-bg, rgba(0, 0, 0, 0.05));
+    }
+
+    /* Visible focus. The whole bar is one button, and an invisible focus ring
+       makes it unusable by keyboard — which AC-8 makes a gate. */
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+  }
+}
+
+/* Respect a stated preference rather than only the media query. */
+@media (prefers-reduced-motion: reduce) {
+  .firo-facilitator-bar__timer[data-finished="true"] {
+    animation: none;
+  }
+}
+
+@keyframes firo-facilitator-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
