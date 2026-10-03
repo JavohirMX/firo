@@ -1,13 +1,8 @@
 # Architecture decision records
 
-An ADR captures a single architectural decision, the context behind it, the options
-considered, and the consequences. The collection of ADRs is the project's decision
-log.
+An ADR captures a single architectural decision, the context behind it, the options considered, and the consequences. The collection of ADRs is the project's decision log.
 
-**Accepted ADRs are immutable.** When a decision changes, write a new ADR that
-supersedes the old one. The old file stays, because the chain is the value: six
-months later, reading ADR-0002 tells you what was true when it was written, and that
-is the point.
+**Accepted ADRs are immutable.** When a decision changes, write a new ADR that supersedes the old one. The old file stays, because the chain is the value: six months later, reading ADR-0002 tells you what was true when it was written, and that is the point.
 
 ## Format
 
@@ -23,12 +18,19 @@ deciders: <names or roles>
 # <Title in the form "Use X for Y">
 
 ## Context and Problem Statement
+
 ## Decision Drivers
+
 ## Considered Options
+
 ## Decision Outcome
+
 ## Consequences
+
 ## Confirmation
+
 ## Pros and Cons of the Options
+
 ## More Information
 ```
 
@@ -55,6 +57,7 @@ deciders: <names or roles>
 | [0016](0016-enforce-the-write-path-with-a-proxy.md) | Enforce the write path with a Proxy, not a `beforeTransaction` listener | Accepted | 2026-09-30 |
 | [0017](0017-do-not-rewrite-the-renderer.md) | Keep the inherited renderer; the rewrite was justified by a measurement artefact | Accepted | 2026-10-02 |
 | [0018](0018-a-firo-is-a-directory.md) | A `.firo` is a directory: `board.json`, a manifest, and content-addressed assets beside it | Proposed — two clauses awaiting sign-off | 2026-10-02 |
+| [0019](0019-keep-read-a-full-snapshot.md) | Keep `FiroDoc.read()` a full snapshot for now; the fix is an interface decision, not an optimisation | Proposed — needs the maintainer to choose between six options | 2026-10-03 |
 
 ## Open questions
 
@@ -66,7 +69,7 @@ Deliberately deferred. Each is answered before the phase that depends on it.
 | Do projections need multi-level sort and filter composition? | Phase 6 |
 | Can a record live in more than one collection, and what merges? | Phase 6 |
 | Is Yjs still the right engine at 10,000 elements with 20 concurrent editors? | Phase 9 |
-| **Verified licence for every bundled font** — the audit found *no* licence file for any of them, including the new default. See [`../../FONT-LICENSES.md`](../../FONT-LICENSES.md) and ADR-0014. | **Before any public release** |
+| **Verified licence for every bundled font** — the audit found _no_ licence file for any of them, including the new default. See [`../../FONT-LICENSES.md`](../../FONT-LICENSES.md) and ADR-0014. | **Before any public release** |
 | Which OFL hand-drawn face can survive 12 px diagram labels, measured on rendered output rather than assumed? | Phase 2 — **now unblocked.** ADR-0017 keeps the inherited renderer, so there is rendered output to measure, which is what ADR-0014 required and did not have |
 | Why is 10% zoom ~30× slower than 50%, with the cost outside the renderer's JavaScript? | Before criterion 5 can be demonstrated. The Chrome trace exists and rules GPU rasterisation out; it has not reproduced a mechanism. See [ADR-0017](0017-do-not-rewrite-the-renderer.md) and [§2.1f](plans/phase-2-renderer.md#21f--the-trace-exists-now-and-it-did-not-settle-it) |
 | Is losing the one-file download worth the readable diff, and is AC-6's `cat` amended or the deviation accepted? **Raised by [ADR-0018](0018-a-firo-is-a-directory.md), which chose the directory and left both to the maintainer.** | Before the Phase 7 exit criterion |
