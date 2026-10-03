@@ -25,6 +25,7 @@
  */
 import { CURRENT_ELEMENT_VERSION, CURRENT_RECORD_VERSION } from "./version.js";
 import { loadBoard, serializeBoard } from "./migrate.js";
+import { plainObject } from "./validate.js";
 
 import type { LoadedBoard, SerializedBoard } from "./migrate.js";
 
@@ -225,6 +226,139 @@ const FIXTURES: readonly Fixture[] = [
       ],
     },
   },
+  {
+    version: 2,
+    chain: "element",
+    description:
+      "The v2 baseline: three sticky notes carrying the durable facilitation " +
+      "flags added in v2. The first has both set, the second has neither -- which " +
+      "is also exactly what a v1 element looks like inside a v2 board, so the " +
+      "chain has to leave it untouched. The third carries an explicit `false` and " +
+      "a field this build does not know, pinning both that `false` is not the same " +
+      "event as absence and that a v2 file round-trips a v3 field intact.",
+    board: {
+      elementSchemaVersion: 2,
+      recordSchemaVersion: 1,
+      elementOrder: ["el-note-hidden", "el-note-plain", "el-note-future"],
+      meta: {
+        id: "board-fixture-v2",
+        name: "Workshop board",
+      },
+      collections: [],
+      elements: [
+        {
+          id: "el-note-hidden",
+          type: "stickynote",
+          text: "Write one idea",
+          fontSize: 20,
+          fontFamily: 6,
+          textAlign: "left",
+          verticalAlign: "top",
+          isContainer: false,
+          x: 40,
+          y: 60,
+          width: 200,
+          height: 200,
+          angle: 0,
+          strokeColor: "#1e1e1e",
+          backgroundColor: "#fff9b1",
+          fillStyle: "solid",
+          strokeWidth: 2,
+          strokeStyle: "solid",
+          roundness: null,
+          roughness: 1,
+          opacity: 100,
+          version: 2,
+          versionNonce: 112233,
+          index: "a0",
+          created: 1750000000000,
+          updated: 1750000005000,
+          groupIds: [],
+          frameId: null,
+          containerId: null,
+          bindings: [],
+          hiddenUntilRevealed: true,
+          hideInPresentation: true,
+          link: null,
+          locked: false,
+          isDeleted: false,
+        },
+        {
+          id: "el-note-plain",
+          type: "stickynote",
+          text: "Frame the problem",
+          fontSize: 20,
+          fontFamily: 6,
+          textAlign: "left",
+          verticalAlign: "top",
+          isContainer: false,
+          x: 320,
+          y: 60,
+          width: 200,
+          height: 200,
+          angle: 0,
+          strokeColor: "#1e1e1e",
+          backgroundColor: "#c0f2c2",
+          fillStyle: "solid",
+          strokeWidth: 2,
+          strokeStyle: "solid",
+          roundness: null,
+          roughness: 1,
+          opacity: 100,
+          version: 1,
+          versionNonce: 445566,
+          index: "a1",
+          created: 1750000001000,
+          updated: 1750000001000,
+          groupIds: [],
+          frameId: null,
+          containerId: null,
+          bindings: [],
+          link: null,
+          locked: false,
+          isDeleted: false,
+        },
+        {
+          id: "el-note-future",
+          type: "stickynote",
+          text: "Carried from a newer Firo",
+          fontSize: 20,
+          fontFamily: 6,
+          textAlign: "left",
+          verticalAlign: "top",
+          isContainer: false,
+          x: 600,
+          y: 60,
+          width: 200,
+          height: 200,
+          angle: 0,
+          strokeColor: "#1e1e1e",
+          backgroundColor: "#fff9b1",
+          fillStyle: "solid",
+          strokeWidth: 2,
+          strokeStyle: "solid",
+          roundness: null,
+          roughness: 1,
+          opacity: 100,
+          version: 1,
+          versionNonce: 778899,
+          index: "a2",
+          created: 1750000002000,
+          updated: 1750000002000,
+          groupIds: [],
+          frameId: null,
+          containerId: null,
+          bindings: [],
+          hiddenUntilRevealed: false,
+          link: null,
+          locked: false,
+          isDeleted: false,
+          someFutureField: { keptBy: "migration rule 1" },
+        },
+      ],
+      records: [],
+    },
+  },
 ];
 
 export const fixtures = (): readonly Fixture[] => FIXTURES;
@@ -330,9 +464,45 @@ export const serializeBoardFile = (board: SerializedBoard): string =>
   `${prettyJson(board, "")}\n`;
 
 /**
+ * A board's two version headers, stamped at the current version.
+ *
+ * ## Why the comparison normalises these and everything else does not
+ *
+ * `roundTripFixture` compares a fixture with its own re-serialisation, and the
+ * header is part of that. For a fixture already at the current version the two
+ * agree and the comparison is a byte-for-byte promise. For an *older* one they
+ * cannot: `serializeBoard` stamps the current version on the way out, because
+ * stamping the stored one is how a board gets silently downgraded on its second
+ * save. Re-saving a v1 board as `elementSchemaVersion: 1` is the bug; the
+ * upgrade to v2 is the whole point of the version bump.
+ *
+ * So the promise for an older fixture is the one that is actually worth making:
+ * **a load followed by a save changes the version header and nothing else.** Not
+ * one element's field, not one record's value, not one byte of anything else --
+ * and that is a much stronger statement than "the two are equal", because it would
+ * also catch a migration that quietly rewrote a field it had no business touching.
+ *
+ * This is the first version bump, so this is the first time the distinction
+ * mattered. `migrations.test.ts` pins both halves: this for every fixture, and
+ * byte-identical headers included for the one already at the current version.
+ */
+const atCurrentVersion = (
+  board: SerializedBoard | Record<string, unknown>,
+): SerializedBoard | Record<string, unknown> =>
+  plainObject(board)
+    ? {
+        ...board,
+        elementSchemaVersion: CURRENT_ELEMENT_VERSION,
+        recordSchemaVersion: CURRENT_RECORD_VERSION,
+      }
+    : board;
+
+/**
  * Load a fixture and serialise it again.
  *
- * `stable` is a *structural* comparison. See `canonicalJson` for why.
+ * `stable` is a *structural* comparison, with the version headers normalised --
+ * see `canonicalJson` for why the structure, and `atCurrentVersion` for why those
+ * two fields.
  */
 export const roundTripFixture = (
   fixture: Fixture,
@@ -346,7 +516,9 @@ export const roundTripFixture = (
   return {
     loaded,
     reserialised,
-    stable: canonicalJson(reserialised) === canonicalJson(fixture.board),
+    stable:
+      canonicalJson(reserialised) ===
+      canonicalJson(atCurrentVersion(fixture.board)),
   };
 };
 

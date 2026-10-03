@@ -22,6 +22,11 @@ import { ROUNDNESS } from "@firo/common";
 import { allKnownFields, registerElementType } from "../registry.js";
 
 import {
+  facilitationFlags,
+  V1_TO_V2_FACILITATION_FLAGS,
+} from "../facilitation.js";
+
+import {
   array,
   clamp,
   number,
@@ -194,6 +199,7 @@ const makeValidator =
       link: (raw.link as string | null) ?? null,
       locked: raw.locked === true,
       ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
+      ...facilitationFlags(raw, log),
     } as ShapeElement;
   };
 
@@ -204,7 +210,7 @@ export const SHAPE_SPECS: readonly ElementSpec<ShapeElement>[] =
       type,
       knownFields: KNOWN_FIELDS,
       introducedAt: 1,
-      migrations: [],
+      migrations: [V1_TO_V2_FACILITATION_FLAGS],
       validate: makeValidator(type),
     };
     registerElementType(spec);

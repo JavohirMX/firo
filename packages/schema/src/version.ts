@@ -25,8 +25,17 @@
  *    and must not be unified.
  */
 
-/** Current element schema version. Bump with a migration + fixture. */
-export const CURRENT_ELEMENT_VERSION = 1;
+/**
+ * Current element schema version. Bump with a migration + fixture.
+ *
+ * **v2 adds `hiddenUntilRevealed` and `hideInPresentation`** -- the durable half
+ * of Phase 5 facilitation -- on `ElementBase`. Both are optional and both treat
+ * absence as the default, so a v1 board needs no data moved and no file changes;
+ * the `1 -> 2` step in [`./facilitation.ts`](./facilitation.ts) is deliberately
+ * inert, and [`tests/fixtures/v2/board.json`](../../tests/fixtures/v2/board.json)
+ * is the committed promise that v2 files load.
+ */
+export const CURRENT_ELEMENT_VERSION = 2;
 
 /** Current record/collection schema version. Bump with a migration + fixture. */
 export const CURRENT_RECORD_VERSION = 1;

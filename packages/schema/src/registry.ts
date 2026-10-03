@@ -170,6 +170,21 @@ const BASE_FIELDS = [
   "bindings",
   "text",
   "recordId",
+  /*
+   * The durable facilitation flags, element schema v2.
+   *
+   * Listed here rather than in each type's own `knownFields` because they are on
+   * the base -- ten modules would each carry the same two names, and the note
+   * above on `knownFields` is a warning about exactly that: a name missing means a
+   * known field is treated as unknown and carried, a name extra means a field is
+   * recognised and never re-derived. `tests/facilitation.test.ts` asserts both
+   * names are known for every registered type, and that neither is *also* claimed
+   * by a type-specific list.
+   *
+   * Read and written in one place, `./facilitation.ts`.
+   */
+  "hiddenUntilRevealed",
+  "hideInPresentation",
   "link",
   "locked",
   "customData",

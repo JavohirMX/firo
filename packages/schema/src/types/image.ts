@@ -16,6 +16,11 @@
 import { allKnownFields, registerElementType } from "../registry.js";
 
 import {
+  facilitationFlags,
+  V1_TO_V2_FACILITATION_FLAGS,
+} from "../facilitation.js";
+
+import {
   array,
   clamp,
   number,
@@ -201,6 +206,7 @@ const validateImage = (
     link: (raw.link as string | null) ?? null,
     locked: raw.locked === true,
     ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
+    ...facilitationFlags(raw, log),
 
     /*
      * `null` is preserved rather than defaulted to a hash. An image element with no
@@ -220,7 +226,7 @@ export const IMAGE_SPEC: ElementSpec<ImageElement> = {
   type: "image",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [],
+  migrations: [V1_TO_V2_FACILITATION_FLAGS],
   validate: validateImage,
 };
 

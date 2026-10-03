@@ -17,6 +17,7 @@ export * from "./version.js";
 export * from "./types.js";
 export * from "./validate.js";
 export * from "./prosemirror.js";
+export * from "./facilitation.js";
 export * from "./registry.js";
 export * from "./migrate.js";
 export * from "./fixtures.js";

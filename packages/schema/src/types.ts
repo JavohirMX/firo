@@ -298,6 +298,47 @@ export type ElementBase = Readonly<
       /** NEW: this element projects this record. Makes it a projection, not data. */
       recordId?: string;
 
+      // --- Phase 5 facilitation. Durable; both read in `./facilitation.ts` ---
+      /*
+       * `hiddenUntilRevealed?: boolean`
+       *
+       * A note the facilitator hid for a private brainstorm, until they reveal it.
+       *
+       * Durable, because "hidden" is a decision about the board and "revealed" is
+       * a moment in a session: a note marked during a brainstorm must still be
+       * marked tomorrow, and it has to survive the export that carries the board
+       * to the next facilitator. The *toggle* is the ephemeral half -- see
+       * `EphemeralReveal` in [`../../doc/src/ephemeral.ts`](../../doc/src/ephemeral.ts).
+       *
+       * Which is also why private-mode content has to be excluded from an export
+       * rather than merely hidden by a viewport: a PNG that carries the hidden
+       * notes carries them.
+       *
+       * Optional, and optional is the whole contract: **absent and `false` are one
+       * answer.** A board written before this field existed therefore reads as
+       * fully visible with no migration and no repair, which is what lets private
+       * mode work on a v1 board at all.
+       */
+      hiddenUntilRevealed?: boolean;
+      /*
+       * `hideInPresentation?: boolean`
+       *
+       * Scaffolding to exclude while presenting.
+       *
+       * Durable for the same reason as the flag above: an agenda, a prompt nobody
+       * needs any more, a "we are here" marker -- it is scaffolding on the day it
+       * is hidden and on every day after.
+       *
+       * Optional for the same reason, so a board that never used presentation mode
+       * carries neither key and re-saving it changes nothing.
+       *
+       * Two flags rather than one "visible" flag, and the difference is the point:
+       * a note marked for a private session and an object marked as scaffolding are
+       * different decisions with different lifetimes, and collapsing them would mean
+       * revealing a room also un-hides the agenda for the next rehearsal.
+       */
+      hideInPresentation?: boolean;
+
       link: string | null;
       locked: boolean;
       /**

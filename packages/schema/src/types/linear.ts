@@ -35,6 +35,11 @@
 import { allKnownFields, registerElementType } from "../registry.js";
 
 import {
+  facilitationFlags,
+  V1_TO_V2_FACILITATION_FLAGS,
+} from "../facilitation.js";
+
+import {
   array,
   number,
   oneOf,
@@ -251,6 +256,7 @@ const makeValidator =
       link: (raw.link as string | null) ?? null,
       locked: raw.locked === true,
       ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
+      ...facilitationFlags(raw, log),
       /*
        * `lastCommittedPoint` is deliberately absent.
        *
@@ -269,7 +275,7 @@ export const LINEAR_SPECS: readonly ElementSpec<LinearElement>[] =
       type,
       knownFields: KNOWN_FIELDS,
       introducedAt: 1,
-      migrations: [],
+      migrations: [V1_TO_V2_FACILITATION_FLAGS],
       validate: makeValidator(type),
     };
     registerElementType(spec);

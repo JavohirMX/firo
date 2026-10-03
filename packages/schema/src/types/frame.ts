@@ -15,6 +15,11 @@
 import { allKnownFields, registerElementType } from "../registry.js";
 
 import {
+  facilitationFlags,
+  V1_TO_V2_FACILITATION_FLAGS,
+} from "../facilitation.js";
+
+import {
   array,
   clamp,
   number,
@@ -131,6 +136,7 @@ const validateFrame = (
     link: (raw.link as string | null) ?? null,
     locked: raw.locked === true,
     ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
+    ...facilitationFlags(raw, log),
 
     /*
      * `null` preserved rather than defaulted to `""`. An unnamed frame and a frame
@@ -166,7 +172,7 @@ export const FRAME_SPEC: ElementSpec<FrameElement> = {
   type: "frame",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [],
+  migrations: [V1_TO_V2_FACILITATION_FLAGS],
   validate: validateFrame,
 };
 

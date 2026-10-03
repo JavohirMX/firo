@@ -24,6 +24,11 @@
 import { allKnownFields, registerElementType } from "../registry.js";
 
 import {
+  facilitationFlags,
+  V1_TO_V2_FACILITATION_FLAGS,
+} from "../facilitation.js";
+
+import {
   array,
   clamp,
   number,
@@ -192,7 +197,7 @@ export const FREEDRAW_SPEC: ElementSpec<FreedrawElement> = {
   type: "freedraw",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [],
+  migrations: [V1_TO_V2_FACILITATION_FLAGS],
   validate: (raw: Record<string, unknown>, log: RepairLog): FreedrawElement => {
     /*
      * Migration rule 1: carry anything unrecognised through untouched, then
@@ -301,6 +306,7 @@ export const FREEDRAW_SPEC: ElementSpec<FreedrawElement> = {
       link: (raw.link as string | null) ?? null,
       locked: raw.locked === true,
       ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
+      ...facilitationFlags(raw, log),
     } as FreedrawElement;
   },
 };

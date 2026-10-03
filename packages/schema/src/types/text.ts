@@ -37,6 +37,11 @@
 import { allKnownFields, registerElementType } from "../registry.js";
 
 import {
+  facilitationFlags,
+  V1_TO_V2_FACILITATION_FLAGS,
+} from "../facilitation.js";
+
+import {
   array,
   boolean,
   clamp,
@@ -193,6 +198,7 @@ const validate = (
     ...(typeof raw.customData === "object" && raw.customData !== null
       ? { customData: raw.customData as Record<string, unknown> }
       : {}),
+    ...facilitationFlags(raw, log),
 
     /*
      * What the person typed, not the laid-out form.
@@ -239,7 +245,7 @@ export const TEXT_SPEC: ElementSpec<TextElement> = {
   type: "text",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [],
+  migrations: [V1_TO_V2_FACILITATION_FLAGS],
   validate,
 };
 
