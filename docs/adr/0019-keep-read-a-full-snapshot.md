@@ -1,10 +1,14 @@
 ---
-status: proposed
+status: rejected
 date: 2026-10-03
 deciders: maintainer
 ---
 
-# Keep `FiroDoc.read()` a full snapshot for now; the fix is an interface decision, not an optimisation
+# Keep `FiroDoc.read()` a full snapshot for now — REJECTED
+
+> **Rejected by the maintainer, 2026-10-04.** The reasoning below stands and the measurement reproduces exactly (see _Re-measured_). What was rejected is the conclusion: "keep it as a full snapshot and re-measure before v1". The decision is to fix the hot path, which means changing the read interface, which this ADR declined to do on its own authority.
+>
+> The successor is [ADR-0020](0020-stop-walking-the-whole-document-to-read-it.md), which sets out the options and asks for a signature on one of them rather than choosing for the maintainer. It carries the re-measurement and one finding this ADR did not have: **`assets` is lazy and every other field is not**, so a caller that wants only the collections pays for every element on the board.
 
 ## Context and Problem Statement
 
@@ -45,7 +49,7 @@ The absolutes are machine-specific and Node is not a browser. **The ratios are t
 
 **1. It is not a regression from the recent work, and it is not the renderer gate failing.** The eager half of `read()` is byte-identical before and after the lazy `assets` getter was added: `git show 34f9d45:packages/doc/src/doc.ts` returns the same four walks and `fromYMap(meta)`, and `dd6182f` added the getter and nothing else to the body. A reader comparing profiles across those commits is comparing like with like.
 
-And ADR-0017's 73 fps was measured **on the renderer alone**, with `BoardSync` out of the path entirely ([`scripts/bench/`](../../scripts/bench/), windowed Chromium). It was never a claim about this cost. The two costs are additive, so criterion 1 must be re-measured with the bridge attached before it is quoted again — and this ADR does not reopen ADR-0017, which stands.
+And ADR-0017's 73 fps was measured **on the renderer alone**, with `BoardSync` out of the path entirely ([`scripts/bench/`](../../scripts/bench/read-snapshot.mjs), windowed Chromium). It was never a claim about this cost. The two costs are additive, so criterion 1 must be re-measured with the bridge attached before it is quoted again — and this ADR does not reopen ADR-0017, which stands.
 
 **2. It is not merely an inefficiency. It misses a budget already written down.** AC-5's row "Move one element in a 10,000-element board — under 16 ms" ([`prd/04-acceptance-criteria.md`](../prd/04-acceptance-criteria.md)) is a v1 gate. Two `read()`s is ~35 ms before the renderer draws. On the numbers measured today, that criterion is not met. Stating that is the reason this ADR is `proposed` rather than settled.
 

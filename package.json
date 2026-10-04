@@ -93,7 +93,8 @@
     "release:latest": "node scripts/release.js --tag=latest",
     "rm:build": "rimraf --glob apps/web/build apps/web/dist apps/web/dev-dist packages/*/dist packages/*/build examples/*/build examples/*/dist",
     "rm:node_modules": "rimraf --glob node_modules apps/web/node_modules packages/*/node_modules",
-    "clean-install": "yarn rm:node_modules && yarn install"
+    "clean-install": "yarn rm:node_modules && yarn install",
+    "bench:read": "yarn build:packages && node --expose-gc scripts/bench/read-snapshot.mjs"
   },
   "resolutions": {
     "strip-ansi": "6.0.1"
