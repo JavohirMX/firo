@@ -455,13 +455,31 @@ const prettyJson = (value: unknown, indent: string): string => {
 };
 
 /**
+ * Any value as the bytes of a canonical text file in a `.firo` directory.
+ *
+ * Exported so `manifest.json` is written by the *same* function as `board.json`.
+ * Two writers would mean two indentation conventions in one directory, and the whole
+ * point of the directory format is that a person can read it: a manifest that sorted
+ * and indented differently from the board beside it would be read as two tools
+ * having written it rather than as one.
+ *
+ * Sorted keys are what make a re-export of an unchanged board byte-identical, which
+ * is what AC-6's "`git diff` shows the change" is measured against.
+ */
+export const canonicalFile = (value: unknown): string =>
+  `${prettyJson(value, "")}\n`;
+
+/**
  * A board as the bytes of a `.firo` file.
  *
  * Two-space indent and a trailing newline, so the file behaves in a terminal and in
  * a diff the way a text file is expected to.
+ *
+ * Delegates to `canonicalFile` rather than repeating its body, for the reason that
+ * function is exported.
  */
 export const serializeBoardFile = (board: SerializedBoard): string =>
-  `${prettyJson(board, "")}\n`;
+  canonicalFile(board);
 
 /**
  * A board's two version headers, stamped at the current version.

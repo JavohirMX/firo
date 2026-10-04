@@ -225,9 +225,19 @@ Everything in IndexedDB via `idb-keyval`. Debounced autosave. A visible save sta
 See [`ADR-0005`](../adr/0005-indexeddb-via-idb-keyval.md).
 
 **FR-33 — The `.firo` archive** (Phase 7)
-A single file containing the board document, assets, and a manifest. **Text-based,
-readable, diffable, git-friendly.** Assets are content-addressed and stored
-alongside rather than inlined as base64.
+A **directory** containing the board document, assets, and a manifest.
+**Text-based, readable, diffable, git-friendly.** Assets are content-addressed and
+stored alongside rather than inlined as base64.
+
+> **Amended by [ADR-0018](../adr/0018-a-firo-is-a-directory.md).** This originally read
+> "A single file containing the board document, assets, and a manifest". A single file
+> cannot carry image bytes and stay diffable: base64 in JSON is unreadable, 33% larger,
+> and one edited character rewrites the whole value. The two are mutually exclusive, and
+> the readable diff is the promise rather than the convenience. `cat board.firo` is
+> therefore `cat board.firo/board.json`.
+>
+> A format-v1 single JSON file still loads, for ever. Import dispatches on shape rather
+> than on the extension, so both containers coexist.
 *Borrow:* Excalidraw's forward-compat pattern from `data/restore.ts` — spread the
 original object first to preserve unknown keys, then normalise.
 

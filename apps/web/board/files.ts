@@ -9,12 +9,28 @@
  * is still there. A board someone cannot get out of a browser is a board they have not
  * really made.
  *
- * ## One format, two directions, no second store
+ * ## One *document* format, two containers
  *
  * The autosave and the file use the same `serializeBoard` and the same `loadBoard` on
- * the same JSON, and the same canonical writer. So a `.firo` file is exactly what the
- * autosave holds, and the autosave continuously exercises the file path. Two formats
- * would drift, and the one nobody tests would be the one someone needs.
+ * the same JSON, and the same canonical writer. So the document half of a `.firo` is
+ * exactly what the autosave holds, byte for byte, and the autosave continuously
+ * exercises the document format.
+ *
+ * There are nonetheless **two containers**, and this file used to claim otherwise.
+ * [ADR-0018](../../docs/adr/0018-a-firo-is-a-directory.md) makes a `.firo` a
+ * *directory* so it can carry images; the autosave stays the single canonical JSON
+ * record it has always been, because a CRDT autosave plus a separate asset store is
+ * what IndexedDB already holds and a directory has no meaning for it. The claim that
+ * was false is now restated rather than removed, because the property underneath it —
+ * one document format, exercised continuously by the autosave — is the reason it was
+ * worth making in the first place.
+ *
+ * ## The single-file path stays, and it stays narrow
+ *
+ * A format-v1 `.firo` is one JSON document and loads for ever, so the read path keeps
+ * accepting it. The *write* path prefers the directory, and `exportBoard` below now
+ * refuses only what a single JSON file genuinely cannot carry — which is still every
+ * image, but as a statement about that format rather than about the product.
  *
  * ## Import refuses rather than merging
  *
@@ -48,6 +64,21 @@ import {
 } from "@firo/schema";
 
 import type { FiroDoc } from "@firo/doc";
+
+import {
+  buildFiroDirectory,
+  importFiroDirectory,
+  type AssetReader,
+  type AssetWriter,
+  type DirectoryExport,
+  type DirectoryImport,
+  type FiroFiles,
+} from "./firoDirectory";
+import {
+  readFiroDirectory,
+  type ReadableDirectory,
+  type WriteOutcome,
+} from "./firoDownload";
 
 /** What an export produced. */
 export type ExportResult =
@@ -187,8 +218,8 @@ export const exportBoard = (doc: FiroDoc, now?: Date): ExportResult => {
                 } no stored file ` +
                 `at all, so they would be missing even from the board's own copy.`
               : ""
-          } The autosave is unaffected — the images are in the board — and this ` +
-          `is fixed by the asset-carrying format in Phase 7 §7.3.`,
+          } The autosave is unaffected — the images are in the board. Use the ` +
+          `folder export, which carries them.`,
       };
     }
 
@@ -239,6 +270,68 @@ export const downloadBoard = (
    * download as it starts. There is no event to hang this off.
    */
   setTimeout(() => URL.revokeObjectURL(url), 0);
+};
+
+/* -------------------------------------------------------------------------- */
+/* The directory format                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Export a board as a `.firo` **directory**.
+ *
+ * The real export. Everything it does to the bytes lives in
+ * [`firoDirectory`](./firoDirectory.ts) and is tested there; this wires the two halves
+ * together and hands the result to the browser.
+ *
+ * Refuses on a board it cannot carry whole, and says why — see `buildFiroDirectory`
+ * for the three refusals and why deleting them wholesale would restore the
+ * silent-loss failure this feature exists to prevent.
+ */
+export const exportBoardDirectory = async (
+  doc: FiroDoc,
+  deps: {
+    now?: Date;
+    readAsset: AssetReader;
+    write: (files: FiroFiles) => Promise<WriteOutcome>;
+  },
+): Promise<DirectoryExport | WriteOutcome> => {
+  const built = await buildFiroDirectory(doc, {
+    now: deps.now,
+    readAsset: deps.readAsset,
+  });
+
+  if (!built.ok) {
+    return built;
+  }
+
+  return deps.write(built.files);
+};
+
+/**
+ * Import a `.firo` directory into an empty board.
+ *
+ * Reading, verifying and applying all happen in [`firoDirectory`](./firoDirectory.ts);
+ * this supplies the browser's directory handle and the asset store.
+ */
+export const importBoardDirectory = async (
+  doc: FiroDoc,
+  deps: {
+    pick: () => Promise<ReadableDirectory | null>;
+    putAsset: AssetWriter;
+  },
+): Promise<
+  DirectoryImport | { ok: false; reason: "cancelled"; detail: string }
+> => {
+  const root = await deps.pick();
+  if (!root) {
+    // Declined, or a browser with no directory picker. Not a failure to report — the
+    // single-file import is still there for both cases.
+    return { ok: false, reason: "cancelled", detail: "no directory chosen" };
+  }
+
+  return importFiroDirectory(doc, await readFiroDirectory(root), {
+    putAsset: deps.putAsset,
+  });
 };
 
 /**

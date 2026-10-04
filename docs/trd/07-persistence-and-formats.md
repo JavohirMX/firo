@@ -50,12 +50,19 @@ before.
 
 ## The `.firo` archive
 
-A single file containing everything. **Text-based, readable, diffable,
+A **directory** containing everything. **Text-based, readable, diffable,
 git-friendly.** This is a real differentiator: Miro cannot re-import its own board
 file, and Miro CSV export explicitly does not preserve structure or relationships.
 
+> **Amended by [ADR-0018](../adr/0018-a-firo-is-a-directory.md).** This section used to
+> say "A single file containing everything" and then draw the directory tree underneath
+> it, which is the contradiction the ADR resolves. A single file cannot carry image
+> bytes and stay diffable; the directory can do both. `cat board.firo` is therefore
+> `cat board.firo/board.json`. A format-v1 single JSON file still loads, for ever, and
+> import dispatches on shape rather than on the extension.
+
 ```
-board.firo
+board.firo/
 ├── manifest.json        version, board id, created, generator, checksums
 ├── board.json           elements, containers, collections, columns, records
 ├── assets/

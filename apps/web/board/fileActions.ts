@@ -23,11 +23,25 @@
  * explaining something the person did not do.
  */
 
+import { getAssetBytes, putAsset } from "@firo/doc";
+
 import type { FiroDoc } from "@firo/doc";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 import type { ActionResult } from "@firo/editor/actions/types";
 
-import { exportBoard, downloadBoard, importBoard } from "./files";
+import {
+  downloadBoard,
+  exportBoard,
+  exportBoardDirectory,
+  exportFilename,
+  importBoard,
+  importBoardDirectory,
+} from "./files";
+import {
+  canPickDirectory,
+  pickFiroDirectory,
+  writeFiroDirectory,
+} from "./firoDownload";
 
 /**
  * A file picker, resolved to text.
@@ -113,6 +127,53 @@ export const registerFileActions = (
      * something had been applied and deliberately not recorded.
      */
     perform: (): ActionResult => {
+      /*
+       * The directory export, where the browser can do it.
+       *
+       * `showDirectoryPicker()` is Chromium and Edge. Where it exists this is the real
+       * export -- it carries images, it is diffable, and it is what
+       * [ADR-0018](../../docs/adr/0018-a-firo-is-a-directory.md) decided. Where it
+       * does not, the single-file path below still runs and still refuses a board with
+       * images rather than writing a file that lies about them.
+       *
+       * The check is a named capability test rather than a `try`, because "this
+       * browser cannot" is a state the product has to explain and the explanation
+       * should not be "an error appeared".
+       */
+      if (canPickDirectory()) {
+        void exportBoardDirectory(getDocument(), {
+          readAsset: async (hash) => {
+            const bytes = await getAssetBytes(hash);
+            return bytes ? new Uint8Array(bytes) : null;
+          },
+          write: (files) =>
+            writeFiroDirectory(files, { suggestedName: exportFilename() }),
+        }).then(
+          (written) => {
+            if (written.ok || written.reason === "cancelled") {
+              // Cancelled is the user closing the picker. Reporting it as a failure is
+              // how a product ends up apologising for something they chose.
+              return;
+            }
+            complain(
+              api,
+              written.reason === "unsupported"
+                ? written.detail
+                : `The board could not be written to a folder: ${written.detail}`,
+            );
+          },
+          (error: unknown) => {
+            complain(
+              api,
+              `The export failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          },
+        );
+        return false;
+      }
+
       const result = exportBoard(getDocument());
 
       if (!result.ok) {
@@ -158,6 +219,38 @@ export const registerFileActions = (
     trackEvent: { category: "file", action: "importFiro" },
 
     perform: async (): Promise<ActionResult> => {
+      /*
+       * A folder first, where the browser can open one.
+       *
+       * An `<input type="file">` cannot pick a directory, and a `.firo` is now one --
+       * so a file input finds a format-v1 board and nothing else. Asking for a folder
+       * first is what makes AC-6's "re-import the file, and every element, record,
+       * tag, and vote is present" reachable in the product rather than only in the
+       * format's own tests.
+       *
+       * `showDirectoryPicker()` is Chromium and Edge. Everywhere else, and whenever the
+       * user dismisses it, this falls through to the file picker below rather than
+       * reporting an error: declining is a choice, not a failure, and the single-file
+       * path is still a real import.
+       */
+      if (canPickDirectory()) {
+        const directory = await importBoardDirectory(getDocument(), {
+          pick: pickFiroDirectory,
+          putAsset: async (hash, bytes, mimeType) => {
+            await putAsset(hash, bytes as never, undefined);
+            void mimeType;
+          },
+        });
+
+        if (directory.ok) {
+          return false;
+        }
+        if (directory.reason !== "cancelled") {
+          complain(api, `That folder was not imported. ${directory.detail}`);
+          return false;
+        }
+      }
+
       const text = await pickFile(".firo,application/json,.json");
       if (text === null) {
         // The picker was dismissed. Not a failure and not worth a message.

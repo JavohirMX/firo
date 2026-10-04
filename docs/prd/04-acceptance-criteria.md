@@ -91,10 +91,17 @@ audience. Budgets are specified in
 
 > A tester creates a board with every element type, 50 images, a record collection
 > with four columns and 20 records, tags, votes, and a timer state. They export a
-> `.firo` archive. They `cat` it and read the board document as text. They commit it
-> to git, change two things, and `git diff` shows the change. They delete the app's
-> storage entirely, re-import the file, and every element, record, tag, and vote is
-> present.
+> `.firo` archive. They `cat` its `board.json` and read the board document as text.
+> They commit it to git, change two things, and `git diff` shows the change. They
+> delete the app's storage entirely, re-import the archive, and every element,
+> record, tag, and vote is present.
+>
+> **Amended by [ADR-0018](../adr/0018-a-firo-is-a-directory.md).** "They `cat` it"
+> became "they `cat` its `board.json`", because a `.firo` is now a directory. Nothing
+> else in the criterion changes, and the criterion is deliberately *not* weakened: the
+> diff must still be readable and re-import must still be complete. A zip or tar
+> transport may sit beside the directory for email, and importing one is supported,
+> but the thing that goes in git is the directory.
 
 **Additional:** a `.firo` file written by the previous minor version loads with no
 data loss, verified by a fixture test per released version.

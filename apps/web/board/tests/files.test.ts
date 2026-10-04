@@ -73,9 +73,20 @@ describe("export", () => {
      *
      * So the export refuses. A visible "this board cannot be exported yet" is a
      * limitation somebody can report; a file that looks complete and is not is a trap
-     * laid for whoever opens it in six months. Phase 7 §7.3's manifest-and-assets
-     * directory is what fixes it properly, and choosing between that and this file's
-     * single canonical JSON is a decision for an ADR rather than for this file.
+     * laid for whoever opens it in six months.
+     *
+     * ## These tests are about the *single-file* format now, not about Firo
+     *
+     * The fix has arrived: [ADR-0018](../../docs/adr/0018-a-firo-is-a-directory.md)
+     * makes a `.firo` a directory carrying its assets, and `exportBoardDirectory` is
+     * it. This refusal therefore survives, narrowed to what one JSON document cannot
+     * hold -- and it has to survive for two further reasons even with the directory
+     * export in place: format v1 is a single JSON file and loads for ever, and
+     * `showDirectoryPicker()` does not exist in Safari, so on those browsers this is
+     * the only export there is.
+     *
+     * So the property under test is unchanged and still worth having: *the
+     * single-file export never produces a file that looks complete and is not.*
      */
 
     const image = (id: string, over: Record<string, unknown> = {}) => ({

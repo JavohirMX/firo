@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-02
 deciders: maintainer
 supersedes: the single-file `.firo` container stated in `docs/trd/07-persistence-and-formats.md` and `docs/prd/03-feature-specifications.md` FR-33
@@ -219,6 +219,51 @@ belongs to its own rationale — so the maintainer should either amend the two
 sentences or record the deviation as accepted, rather than have a tester discover
 it. This is a documentation decision, not a design one.
 
+## Implementation notes
+
+Recorded after the fact, because two of these are not what the decision above implies
+and a reader comparing the ADR to the code would otherwise have to work it out.
+
+**The format is a pure module and the IO is not.** `apps/web/board/firoDirectory.ts`
+turns a board into a path → bytes map and back, with no browser API in it;
+`firoDownload.ts` is the six functions that move those bytes through
+`showDirectoryPicker()`. Determinism, content addressing, deduplication, checksums and
+round-trip identity are properties of the *bytes*, so they are tested against bytes —
+30 tests, none of which need jsdom to implement a filesystem API. Testing the format
+through a directory handle would have made the format's correctness depend on the test
+environment, and the natural response to that is to test less.
+
+**The refusal narrowed rather than disappeared**, which outcome 5 called for and which
+the obvious implementation gets wrong. `buildFiroDirectory` still refuses on three
+conditions: an image with no `fileId`, an image with no entry in the asset map, and an
+image whose hash the store has no bytes for. The single-file `exportBoard` keeps its own
+refusal too, for two reasons the decision implies but does not state: format v1 is a
+single JSON file and must remain producible, and Safari has no directory picker.
+
+**`manifest.json` is written last.** It is the file that says what the other two are
+and what they should hash to, so writing it first would leave a directory that looks
+complete and fails its own verification. Last means an interrupted write fails as
+*not a directory*, which is a clear message, rather than as corrupt.
+
+**Import writes assets, then references, then the document** — outcome 8. The
+`setAsset` step is the one that is easy to omit and the round-trip test caught it
+omitting: `doc.load` restores elements and metadata but not the document's asset map,
+so a board imported from a directory came back with images that had bytes behind them
+and no record of it. Its next export then refused. That is the worst failure mode in
+this whole feature — an import that appears to work and leaves the board unable to leave
+again.
+
+**One determinism wrinkle, found by a test and left in place.** `manifest.board.created`
+falls back to `meta.created`, and a `FiroDoc` has no `meta.created` until it is saved or
+loaded. The first version of that fallback was the export time, which made every export
+of a never-saved board dirty the manifest — and AC-6 would still have passed, because
+it only asks that a change be *visible*. A criterion that cannot fail tests nothing.
+The fallback is now the oldest element's `created`, which is stable for the board's
+lifetime. The same asymmetry means a hand-built board and the same board after one round
+trip produce different `board.json` bytes, because the loader's validation adds fields
+(`deletedAt`) that a directly-committed element lacks. That is left alone deliberately:
+fixing it means changing the document serialisation, which outcome 2 forbids.
+
 ## Consequences
 
 - (+) **AC-6 becomes reachable.** 50 images travel with the board, and the same logo
@@ -257,10 +302,17 @@ it. This is a documentation decision, not a design one.
   rather than an incomplete file.
 - (-) **The manifest is a second file that can disagree with `board.json`.** When it
   does, the loader must say which one it believed.
-- (-) **Two real gaps stand between this ADR and working code**, and both are in
-  packages another change owns: `BoardSnapshot` exposes no `assets`, and
-  `SerializedBoard` has no assets key. Until both close, an exporter cannot
-  enumerate what a board needs.
+- (--) ~~**Two real gaps stand between this ADR and working code**~~ — **closed.** Both
+  are named below, because the second turned out not to be a gap at all and that is
+  worth recording:
+  - `BoardSnapshot` exposes no `assets`. Closed by making `read().assets` a lazy
+    memoised getter rather than a fourth walk on the hot path — see
+    [ADR-0019](0019-keep-read-a-full-snapshot.md) for why it is a getter and not a field.
+  - `SerializedBoard` has no assets key. **This is not a gap, and was never going to
+    be.** Outcome 2 decides that `board.json` is byte-for-byte the file that ships
+    today; an assets key on it would change those bytes, which is the one thing this
+    decision forbids. The asset map lives in `manifest.json`, keyed by `fileId`, which
+    is where the format's own diagram puts it.
 - (~) **FR-33, AC-6 and `trd/07` still say "a single file".** Corrected as part of the
   implementation change, not here.
 
