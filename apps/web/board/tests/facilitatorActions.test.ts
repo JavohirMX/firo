@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as Y from "yjs";
 
-import { createStickyNote } from "@firo/board";
+import { boardId, createStickyNote } from "@firo/board";
 import { randomId, reseed } from "@firo/common";
 import { FiroDoc } from "@firo/doc";
 import {
   formatRemaining,
   remainingMs,
   votesFromRecords,
+  voteCollection,
   VOTE_COLLECTION_ID,
 } from "@firo/facilitation";
 
@@ -324,6 +325,107 @@ describe("placing a dot", () => {
     expect(document.read().collections.map((c) => c.id)).toEqual([
       VOTE_COLLECTION_ID,
     ]);
+  });
+
+  it("is one commit on the first dot, identity and all", () => {
+    /*
+     * Locked in because it was nearly lost.
+     *
+     * Naming a board is a durable write, so the obvious implementation commits it and
+     * then commits the dot — two transactions, and undo stops at a real change, so a
+     * facilitator pressing undo once finds the dot gone (correct) and pressing again
+     * to tidy up unnames their board for no visible reason.
+     *
+     * So the identity is minted rather than committed and folded into the dot's own
+     * transaction. Asserted as an exact count because that is what makes it a
+     * constraint rather than an observation.
+     */
+    const { document, run } = setup();
+    note(document, "the quiet one");
+
+    const before = document.durableUpdates;
+    run("addVoteToSelection");
+
+    expect(document.durableUpdates).toBe(before + 1);
+    expect(document.read().meta.id).toBeTruthy();
+    expect(votesFromRecords(document.read().records)).toHaveLength(1);
+  });
+
+  it("names the board only once, however many dots follow", () => {
+    const { document, run } = setup();
+    note(document, "first");
+
+    run("addVoteToSelection");
+    const afterFirst = document.read().meta.id;
+
+    note(document, "second");
+    run("addVoteToSelection");
+    note(document, "third");
+    run("addVoteToSelection");
+
+    // A stamp per dot would be a durable write per vote and would put board identity
+    // into the undo stack, where it does not belong.
+    expect(document.read().meta.id).toBe(afterFirst);
+    expect(votesFromRecords(document.read().records)).toHaveLength(3);
+  });
+
+  it("records the board's own identity on the collection", () => {
+    /*
+     * The point of replacing the fixed `"firo-board"`.
+     *
+     * The obvious version of this test — "the collection has a boardId" — passes
+     * against the constant, because `"firo-board"` *is* an id and it *is* on the
+     * collection. It asserts that a field exists, not that it means anything. So this
+     * asserts the id is *this board's*, by checking it against a second board's.
+     */
+    const { document, run } = setup();
+    note(document, "the quiet one");
+
+    run("addVoteToSelection");
+
+    const collection = document
+      .read()
+      .collections.find((c) => c.id === VOTE_COLLECTION_ID)!;
+    const other = boardId(() => new FiroDoc(new Y.Doc()));
+
+    expect(collection.boardId).toBeTruthy();
+    expect(collection.boardId).not.toBe(other);
+    expect(collection.boardId).not.toBe("firo-board");
+  });
+
+  it("refuses to add to another board's votes, and says why", () => {
+    /*
+     * The silent merge this prevents.
+     *
+     * Bob's votes collection, in Alice's document: a merge, a hand-edited file, a
+     * future multi-board sidebar. The failure without the check is two sessions' dots
+     * in one tally, each participant's vote among strangers', with no error anywhere —
+     * a plausible number that does not get noticed.
+     */
+    const { document, run, toasts } = setup();
+    note(document, "the quiet one");
+
+    // Bob's collection, with Bob's identity, landed in this document.
+    const bob = boardId(() => new FiroDoc(new Y.Doc()));
+    document.commit([
+      {
+        kind: "createCollection",
+        collection: {
+          ...voteCollection(bob, "a0"),
+          version: 1,
+          created: 1000,
+          updated: 2000,
+        },
+      },
+    ] as never);
+
+    run("addVoteToSelection");
+
+    // Nothing was added: the board is exactly as it was.
+    expect(votesFromRecords(document.read().records)).toHaveLength(0);
+    // And it was explained rather than silently ignored, because a vote that does not
+    // appear and says nothing is the failure AC-1's "no prompt, no surprise" is about.
+    expect(toasts.at(-1)?.message).toContain(bob);
   });
 
   it("accumulates, one dot per press", () => {

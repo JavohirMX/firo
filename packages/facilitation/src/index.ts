@@ -44,6 +44,7 @@ export {
 export {
   VOTE_COLLECTION_ID,
   VOTE_TARGET_KEY,
+  boardIdConflict,
   VOTER_KEY,
   PLACED_AT_KEY,
   voteCollection,

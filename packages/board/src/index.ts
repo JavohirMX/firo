@@ -43,3 +43,5 @@ export {
 export { createStickyNote, STICKY_NOTE_DEFAULTS } from "./defaults.js";
 
 export { BoardSync, type EditorBridge } from "./sync.js";
+
+export { boardId, mintBoardId, peekBoardId } from "./identity.js";

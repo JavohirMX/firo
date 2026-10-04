@@ -61,6 +61,7 @@ import { getSelectedElements } from "@firo/editor/scene";
 import {
   isRunning,
   leaders,
+  boardIdConflict,
   placeVote,
   removeVote,
   votesFromRecords,
@@ -68,6 +69,8 @@ import {
 } from "@firo/facilitation";
 import { generateKeyBetween } from "@firo/fractional-indexing";
 import { isFractionalIndex } from "@firo/schema";
+
+import { mintBoardId, peekBoardId } from "@firo/board";
 
 import type { FiroDoc } from "@firo/doc";
 import type { ExcalidrawElement } from "@firo/element/types";
@@ -88,6 +91,7 @@ import {
   timerControls,
   toggleRevealMode,
 } from "./facilitator";
+
 import { complain } from "./fileActions";
 import {
   boardHasSlides,
@@ -253,18 +257,21 @@ const enabledUnless =
  */
 const ANONYMOUS_VOTER = "";
 
-/**
- * `Collection.boardId` for the votes collection.
+/*
+ * `Collection.boardId` comes from the board's own identity.
  *
- * `voteCollection` takes the board id as a parameter so that "a board which
- * exported its votes must not collide with another board's on import" is a
- * decision the caller cannot miss. v1 has no board identity — one board per tab,
- * with nothing in `meta` naming it — so this is a fixed string, and *fixed* is the
- * right failure: two boards' votes meeting in one document is then a `boardId`
- * conflict someone can see, rather than a silent merge. It becomes the real board
- * id when boards are addressable, which is Phase 7.
+ * It was the fixed string "firo-board", on the reasoning that a collision would then
+ * be *detectable*. It was not detectable: nothing compared the field, and the votes
+ * collection has a fixed id, so a second board's dots would have landed in the first
+ * board's collection while `boardId` sat there asserting nothing. The field claimed to
+ * identify a board and identified a constant.
+ *
+ * `boardId()` stamps a real one on first use and `boardIdConflict` refuses to add to
+ * another board's votes -- so the claim is now true rather than aspirational. See
+ * [`@firo/board/src/identity.ts`](../../packages/board/src/identity.ts) for why the id
+ * is stored rather than derived, and why the guard exists even though v1 cannot
+ * currently reach the case it catches.
  */
-const VOTE_BOARD_ID = "firo-board";
 
 /** How many of the leaders a tally report names. */
 const REPORT_LIMIT = 3;
@@ -739,8 +746,42 @@ export const facilitatorActions = (
            * on a five-note selection is casting five votes; collapsing them into one
            * would make the tally disagree with the thing they just did.
            */
-          document.commit(
-            targets.flatMap((elementId, index) =>
+          /*
+           * The conflict check runs *before* anything is committed, so a refusal
+           * leaves the board exactly as it was. Checking after would mean undoing a
+           * partial write, and "the vote did not save" is a worse thing to explain
+           * than "these votes are from another board".
+           */
+          /*
+           * The identity is *minted* rather than committed here, so that it can go
+           * into the same transaction as the dots. A separate commit would make the
+           * first vote of a board two undo steps, and undo stops at a real change --
+           * so one press would take the dot and leave the board named, and a second
+           * to tidy up would unname it for no visible reason.
+           */
+          const known = peekBoardId(getDocument);
+          const minted = known === null ? mintBoardId() : null;
+          const board = known ?? minted!.id;
+
+          /*
+           * And the conflict check runs *before* anything is committed, so a refusal
+           * leaves the board exactly as it was. Checking afterwards would mean undoing
+           * a partial write, and "the vote did not save" is a worse thing to explain
+           * than "these votes are from another board".
+           */
+          const conflict = boardIdConflict(
+            snapshot.collections,
+            VOTE_COLLECTION_ID,
+            board,
+          );
+          if (conflict) {
+            complain(api, conflict);
+            return;
+          }
+
+          document.commit([
+            ...(minted ? [minted.mutation] : []),
+            ...targets.flatMap((elementId, index) =>
               placeVote(
                 votesFromRecords(snapshot.records),
                 { elementId, voterId: ANONYMOUS_VOTER, placedAt: Date.now() },
@@ -753,12 +794,12 @@ export const facilitatorActions = (
                    */
                   record: randomId(),
                   order: orders[index],
-                  board: VOTE_BOARD_ID,
+                  board,
                 },
                 hasCollection,
               ),
             ),
-          );
+          ]);
 
           /*
            * No `refresh()` here. A vote is a record, nothing on the canvas renders

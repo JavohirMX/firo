@@ -206,6 +206,59 @@ export const findVote = (
   );
 
 /**
+ * Why a board's existing votes may not be added to.
+ *
+ * Returns a message when the votes collection in this document belongs to a
+ * *different* board, and null when it is fine.
+ *
+ * ## Why this is checked at all, given it cannot fire in v1
+ *
+ * Import refuses a non-empty board and the autosave is a single record, so one
+ * document holds one board at a time and two boards' votes cannot meet through the
+ * product today. So this guard has no failing case yet, and writing it now is a
+ * choice about which bug is cheaper.
+ *
+ * The alternative is to leave `boardId` as the constant it has been, on the reasoning
+ * that a collision would then be "detectable". It is not detectable: the votes
+ * collection has a fixed id, so a second board's dots land in the first board's
+ * collection and `boardId` sits there asserting nothing. The failure the constant was
+ * meant to prevent is a **silent merge** -- two sessions' dots in one tally, each
+ * participant's vote landing among strangers', with no error anywhere.
+ *
+ * A guard written after the first merge ships has been written by someone who has
+ * already seen the data it would have rejected, and the temptation at that point is
+ * to log-and-continue. So: written now, while the case is hypothetical, and returning
+ * a *message* rather than a boolean so the refusal can be shown to a person.
+ *
+ * ## Why an absent board id is not a conflict
+ *
+ * A board whose votes predate board identity has no `boardId` to disagree with.
+ * Refusing would strand those votes with no way forward except deleting them, which is
+ * a far worse outcome than accepting them. The mismatch that matters is one id against
+ * a *different* id.
+ */
+export const boardIdConflict = (
+  collections: readonly { id: string; boardId?: string }[],
+  collectionId: string,
+  board: string,
+): string | null => {
+  const existing = collections.find(
+    (collection) => collection.id === collectionId,
+  );
+
+  if (!existing || existing.boardId == null || existing.boardId === board) {
+    return null;
+  }
+
+  return (
+    `This board already holds votes from a different board ` +
+    `(recorded as "${existing.boardId}", this board is "${board}"). Adding to them ` +
+    `would merge two sessions' dots into one tally, so it has not been done. ` +
+    `Export this board, start a new one, and import the other if you need both.`
+  );
+};
+
+/**
  * Place a dot, or move it if this voter already had one elsewhere.
  *
  * Moving rather than accumulating is the behaviour the plan asks for: clicking
