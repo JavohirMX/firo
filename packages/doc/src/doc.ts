@@ -116,6 +116,53 @@ export type CommitResult = {
  */
 export const createFiroDoc = (): FiroDoc => new FiroDoc(new Y.Doc());
 
+/**
+ * Freeze an array and each object in it, one level deep.
+ *
+ * ## Why this is here at all
+ *
+ * Because `read()` is memoised, every caller now shares the same element objects
+ * rather than receiving fresh ones. That is the whole point -- it is where the 16 ms
+ * went -- and it introduces a class of bug that was previously impossible: a caller
+ * that mutates a snapshot would silently poison the cache for everybody, and the
+ * poison would persist until the next transaction.
+ *
+ * `fromYMap` returns `Object.create(null)` objects, so nothing *prevents* a write.
+ * Without this, "I mutated a snapshot" becomes silent corruption rather than a
+ * `TypeError` in strict mode -- which is a strictly worse trade than the one this
+ * function is optimising for.
+ *
+ * ## Shallow on purpose
+ *
+ * Deep-freezing 10,000 elements means walking into every nested plain object on every
+ * rebuild, which is the same order of work as the walk being optimised. Shallow is
+ * O(n) with no allocation and no recursion, and it closes the hole where it opens: the
+ * top-level element object and the arrays. Nested plain objects stay writable, which is
+ * a smaller hole than the whole object -- and it is one the existing callers do not go
+ * near, because the nested values are `boundElements`, `groupIds` and similar, all of
+ * which are read-only in practice.
+ *
+ * `Object.freeze` on a null-prototype object is safe: freezing does not add a
+ * prototype.
+ */
+const freezeEach = <T>(items: T[]): T[] => {
+  for (const item of items) {
+    Object.freeze(item);
+  }
+  // Frozen in place and handed back, rather than returned from `Object.freeze` --
+  // which types as `readonly T[]` and would mean changing `BoardSnapshot`'s arrays to
+  // readonly, rippling through every caller for no gain. The array is the same one;
+  // a caller who tries to push to it now gets a `TypeError`, which is the point.
+  Object.freeze(items);
+  return items;
+};
+
+/** Freeze a plain object in place and hand it back, same reasoning as `freezeEach`. */
+const frozen = <T extends object>(value: T): T => {
+  Object.freeze(value);
+  return value;
+};
+
 export class FiroDoc {
   /**
    * The guarded document.
@@ -180,8 +227,35 @@ export class FiroDoc {
    * The *count* is still local-only, so a test asserting "the drag produced no
    * updates" cannot be satisfied by somebody else's traffic.
    */
+  /**
+   * Bumped on **every** durable transaction — local, remote, or `load()`.
+   *
+   * Distinct from `localRevision`, which counts this client's own commits and is part
+   * of the public surface. This one exists only to invalidate a cached snapshot, so it
+   * has to move for writes this client did not make: a remote update that lands while
+   * nobody is typing would otherwise leave a stale snapshot in place, and the next
+   * `read()` would hand back a board that is missing somebody's note.
+   *
+   * Bumped at the top of the update handler rather than at the end, so that
+   * `notify()` — which runs inside the same handler — already sees the new value and
+   * rebuilds. Bumping it afterwards would mean every subscriber was handed a snapshot
+   * of the *previous* state, which is a bug that only appears under collaboration.
+   */
+  private documentRevision = 0;
+
+  /**
+   * The memoised snapshot, and the revision it describes.
+   *
+   * `-1` rather than `undefined` so the very first read cannot match a stale cache
+   * with no snapshot behind it.
+   */
+  private cachedRevision = -1;
+  private cachedSnapshot: BoardSnapshot | undefined;
+
   private observeDurableUpdates(): void {
     this.rawYdoc.on("update", (_update: Uint8Array, origin: unknown) => {
+      // First, so `notify()` below rebuilds rather than re-serving the previous state.
+      this.documentRevision += 1;
       if (origin === LOCAL_ORIGIN) {
         this.durableUpdateCount += 1;
       }
@@ -244,31 +318,106 @@ export class FiroDoc {
    *   `assets.test.ts` asserts it).
    */
   read(): BoardSnapshot {
+    /*
+     * Memoised against the document revision.
+     *
+     * ## The measurement this is for
+     *
+     * `yarn bench:read`, 10,000 elements: `read()` cost **16.0 ms** and retained
+     * **17.2 MB**, and there are two of them per keystroke — `notify()` builds one for
+     * its subscribers and `push()` builds another to see what the document committed.
+     * Two frame budgets before the renderer draws anything. Meanwhile
+     * `elementOrder()` answers the same question in **0.097 ms**, because it does not
+     * walk the elements. See [ADR-0020](../../../docs/adr/0020-stop-walking-the-whole-document-to-read-it.md).
+     *
+     * The single sharpest way to see it: the same transaction costs **0.48 ms with no
+     * subscriber and 16.1 ms with one**. `notify()` returns before it reads when nothing
+     * is listening, so that 15.6 ms delta is entirely this function.
+     *
+     * Four callers read per transaction — `notify()`, `push()`'s re-read,
+     * `onDocumentChanged()`'s echo guard, and the debounced autosave — and with the
+     * cache they share one walk. Nothing at any call site changes.
+     *
+     * ## Why the revision rather than a dirty flag
+     *
+     * A boolean would need every write path to set it, and the write paths are the
+     * thing rule 1 and [ADR-0016](0016-enforce-the-write-path-with-a-proxy.md) exist
+     * to protect. A counter in the one place every durable transaction already passes
+     * through cannot be forgotten, including by the remote-apply path nobody remembers
+     * to instrument.
+     *
+     * ## Why each field is a memoised getter
+     *
+     * `assets` already was one, and the reason generalises: most callers want one
+     * field. `this.publishRecords(this.doc.read().collections)` exists solely to hand
+     * a collections array to a function that ignores everything else on the snapshot,
+     * and it was paying for every element on the board. Measured before this change,
+     * `read().collections` on an empty board cost 19.7 ms.
+     *
+     * The consequence, stated plainly because it is a real semantic change: **a
+     * snapshot is no longer a point-in-time view.** Every field in one `read()` used
+     * to describe the same instant; now `read().elements` can describe a slightly
+     * later one than `read().meta` if a transaction lands in between. Each field is
+     * individually consistent and each is memoised, so no caller can see a torn value
+     * *within* a field — and a caller asking a question later arguably wants the
+     * later answer. `assets` has behaved this way since it was added.
+     */
+    if (this.cachedSnapshot && this.cachedRevision === this.documentRevision) {
+      return this.cachedSnapshot;
+    }
+
     const nodes = this.nodes;
-    // Assigned on first access, then never again: see the note above on why the
-    // lazy window is only acceptable if it is also a single one.
+
+    // One slot per field, assigned on first access. See the note above on why this is
+    // a single window rather than a re-read: a snapshot that changed under a caller
+    // holding it would be worse than one that was merely stale on arrival.
+    let elements: FiroElement[] | undefined;
+    let elementOrder: string[] | undefined;
+    let collections: Collection[] | undefined;
+    let records: FiroRecord[] | undefined;
+    let meta: Record<string, unknown> | undefined;
     let assets: Record<string, AssetReference> | undefined;
+
     /*
      * Bound here rather than as `this.readAssets()` in the getter, because `this`
-     * inside an object-literal getter is the *snapshot*, not the document -- so
-     * the obvious spelling is a `TypeError: this.readAssets is not a function` the
-     * first time anything reads the field. Resolved through the document, and
-     * looked up on it at call time so the walk stays observable (and overridable)
-     * rather than being captured by value here.
+     * inside an object-literal getter is the *snapshot*, not the document -- so the
+     * obvious spelling is a `TypeError: this.readAssets is not a function` the first
+     * time anything reads the field. That was noted on the original `assets` getter
+     * and reintroduced verbatim while making the other five fields lazy, which is
+     * what a comment that only explains the code rather than the trap invites.
      */
     const readAssets = (): Record<string, AssetReference> => this.readAssets();
 
-    return {
-      elements: readAllElements(nodes),
-      elementOrder: nodes.elementOrder.toArray(),
-      collections: readAllCollections(nodes),
-      records: readAllRecords(nodes),
-      meta: fromYMap(nodes.meta),
+    const snapshot: BoardSnapshot = {
+      get elements(): FiroElement[] {
+        elements ??= freezeEach(readAllElements(nodes));
+        return elements;
+      },
+      get elementOrder(): string[] {
+        elementOrder ??= frozen(nodes.elementOrder.toArray());
+        return elementOrder;
+      },
+      get collections(): Collection[] {
+        collections ??= freezeEach(readAllCollections(nodes));
+        return collections;
+      },
+      get records(): FiroRecord[] {
+        records ??= freezeEach(readAllRecords(nodes));
+        return records;
+      },
+      get meta(): Record<string, unknown> {
+        meta ??= frozen(fromYMap(nodes.meta));
+        return meta;
+      },
       get assets(): Record<string, AssetReference> {
-        assets ??= readAssets();
+        assets ??= frozen(readAssets());
         return assets;
       },
     };
+
+    this.cachedSnapshot = snapshot;
+    this.cachedRevision = this.documentRevision;
+    return snapshot;
   }
 
   /**

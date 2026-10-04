@@ -7,7 +7,7 @@
  *
  * ## Two harness traps, both of which cost real time
  *
- * **It must run against the built packages, not a source bundle.** the built `dist` output
+ * **It must run against the built packages, not a source bundle.** The built `dist`
  * inlines its own copy of Yjs, so a `Y.Doc` created by this script is a *foreign type*
  * and every write fails with `Unexpected content type`. That is also why this uses
  * `openBoardMemory()` rather than `new FiroDoc(new Y.Doc())`: it lets the package
@@ -17,11 +17,17 @@
  * **`--expose-gc` is needed for the memory figure**, or the retained-per-snapshot
  * number is whatever the collector felt like doing.
  *
- * ## The control row
+ * ## Why every measurement here commits something first
  *
- * A transaction with no `subscribe()` listener costs ~0.5 ms, because `notify()`
- * returns before it reads. Without that row the 14.6 ms looks like transaction cost
- * rather than read cost, and the whole finding is attributed to the wrong thing.
+ * `read()` is memoised against the document's revision, so a second read with no
+ * transaction between costs nothing — correctly, and uselessly as a measurement. The
+ * first version of this script read in a loop and reported `0.000 ms`, which looked
+ * like a triumph and was in fact a bench that had stopped measuring anything.
+ *
+ * So each row that means "what does reading cost" commits first, to force a cache
+ * miss, and the cached path is reported separately and labelled as such. Both numbers
+ * matter: one is what a cold read costs, the other is what the other three reads in a
+ * keystroke now cost.
  */
 
 import { openBoardMemory } from "@firo/doc";
@@ -85,6 +91,13 @@ doc.load(
   }),
 );
 
+let tick = 0;
+
+/** A durable no-op that invalidates the snapshot, exactly as a keystroke would. */
+const commit = () => {
+  doc.commit([{ kind: "setMeta", entries: { touched: tick++ } }]);
+};
+
 const time = (label, fn) => {
   fn(); // warm, so the first run's JIT is not in the average
   const t0 = process.hrtime.bigint();
@@ -92,21 +105,34 @@ const time = (label, fn) => {
     fn();
   }
   const ms = Number(process.hrtime.bigint() - t0) / 1e6 / RUNS;
-  console.log(`  ${label.padEnd(40)} ${ms.toFixed(3)} ms`);
+  console.log(`  ${label.padEnd(44)} ${ms.toFixed(3)} ms`);
   return ms;
 };
 
+/** Time `fn` with a transaction before each call, so every read is a cache miss. */
+const timeCold = (label, fn) =>
+  time(label, () => {
+    commit();
+    return fn();
+  });
+
 console.log(`elements: ${doc.read().elements.length}\n`);
 
-const full = time("read() full snapshot", () => doc.read());
+console.log("  cold read — one transaction, then one read:");
+const coldFull = timeCold("read() full snapshot", () => doc.read());
+timeCold("read().elements", () => doc.read().elements);
+timeCold("read().collections (wants none)", () => doc.read().collections);
+timeCold("read().meta (a handful of keys)", () => doc.read().meta);
+timeCold("read().elementOrder", () => doc.read().elementOrder);
+timeCold("elementOrder() — the same ids, no walk", () => doc.elementOrder());
 
-// These four are all within a millisecond of each other, and that is the finding:
-// only `assets` is lazy, so every one of them walks all 10,000 elements.
-time("read().elements", () => doc.read().elements);
-time("read().collections (wants none)", () => doc.read().collections);
-time("read().meta (a handful of keys)", () => doc.read().meta);
-time("read().elementOrder", () => doc.read().elementOrder);
-time("elementOrder() — the cheap path", () => doc.elementOrder());
+console.log("\n  warm read — no transaction, so the memoised snapshot:");
+const warm = time("read() again, cached", () => doc.read());
+console.log(
+  `  ${"cold ÷ warm".padEnd(44)} ${
+    warm < 0.0005 ? ">1000x" : `${(coldFull / warm).toFixed(0)}x`
+  }`,
+);
 
 if (global.gc) {
   global.gc();
@@ -114,7 +140,13 @@ if (global.gc) {
 const before = process.memoryUsage().heapUsed;
 const held = [];
 for (let i = 0; i < RUNS; i++) {
-  held.push(doc.read());
+  commit(); // a fresh snapshot each time, or this measures the same one
+  const snapshot = doc.read();
+  // Touch `elements`, or this measures a snapshot holding nothing but `meta`. The
+  // first version of this row reported 1.87 MB against a real 17.2 MB for exactly
+  // that reason, and a memory figure that understates by 9x is worse than none.
+  snapshot.elements.length;
+  held.push(snapshot);
 }
 const after = process.memoryUsage().heapUsed;
 console.log(
@@ -123,19 +155,35 @@ console.log(
 );
 held.length = 0;
 
-console.log("\n  one keystroke:");
-let n = 0;
-const idle = time("transaction, no subscriber", () => {
-  doc.commit([{ kind: "setMeta", entries: { touched: n++ } }]);
-});
+console.log("\n  one keystroke — a transaction plus whatever the subscriber does:");
+const quiet = time("no subscriber (notify returns before reading)", commit);
 
-// The control. `notify()` returns before it reads when nothing is subscribed, so this
-// is the transaction's own cost and the difference from `full` is all reader.
-doc.subscribe(() => {});
-const busy = time("transaction, one subscriber", () => {
-  doc.commit([{ kind: "setMeta", entries: { touched: n++ } }]);
+/*
+ * The control that carries the argument, and the one that has to be right.
+ *
+ * `notify()` returns before it reads when no listener is registered, so the difference
+ * between these two rows is the read and nothing else. The first version subscribed a
+ * no-op and reported a subscriber costing 0.004 ms -- which was true, and useless:
+ * laziness means a subscriber that reads nothing walks nothing, and the real
+ * subscriber is `BoardSync.onDocumentChanged`, whose echo guard reads `elements` on
+ * every notification.
+ *
+ * So this subscriber reads `elements`, as the real one does. Without that, the row
+ * reports a saving the product does not get.
+ */
+let walked = 0;
+doc.subscribe((snapshot) => {
+  walked += snapshot.elements.length;
 });
+const noisy = time("one subscriber that reads elements", commit);
+void walked;
 
-console.log(`\n  read cost per keystroke (2 reads)         ${(full * 2).toFixed(1)} ms = ${((full * 2) / 16.67).toFixed(1)} frame budgets`);
-console.log(`  measured, no subscriber                   ${idle.toFixed(3)} ms`);
-console.log(`  measured, one subscriber                  ${busy.toFixed(3)} ms`);
+console.log(
+  `\n  read cost per keystroke` +
+    `                        ${(noisy - quiet).toFixed(3)} ms = ${(
+      (noisy - quiet) /
+      16.67
+    ).toFixed(2)} frame budgets`,
+);
+console.log(`  of which the transaction itself` +
+  `                  ${quiet.toFixed(3)} ms`);

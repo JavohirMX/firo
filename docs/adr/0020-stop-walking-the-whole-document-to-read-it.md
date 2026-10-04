@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted (options A and B)
 date: 2026-10-04
 deciders: maintainer
 supersedes: [0019](0019-keep-read-a-full-snapshot.md)
@@ -98,6 +98,42 @@ B is then the change that matters, and its one real hazard — shared mutable el
 - Add a test that commits a transaction and asserts every consumer-visible field identity is _stable_ across two `read()` calls, so the caching is a stated property rather than an accident.
 
 C should not be attempted before Phase 6 lands. It is the right destination, and arriving there after the projections exist means the projection sync is written against deltas from the start rather than migrated onto them.
+
+## Outcome: A and B, implemented
+
+Signed and built. `read()` is now memoised against a document revision, every field is a memoised getter, and snapshots are shallow-frozen. `yarn bench:read`, 10,000 elements, before → after:
+
+|  | before | after |
+| --- | --- | --- |
+| `read().collections` — wants _none_ | 19.7 ms | **0.44 ms** |
+| `read().meta` — a handful of keys | 15.3 ms | **0.35 ms** |
+| `read().elementOrder` | 16.3 ms | **0.48 ms** |
+| `read().elements` | 15.0 ms | 17.9 ms |
+| retained per snapshot | 17.2 MB | 18.4 MB |
+| **per keystroke, one subscriber reading `elements`** | **16.1 ms** | **17.4 ms** |
+| two reads per keystroke | 32.0 ms | **17.4 ms** |
+
+Three rows are the waste A was aimed at, and they are gone: 51.3 ms of "read one small field" across three calls is now 1.3 ms.
+
+**Two rows got slightly worse, and both are honest costs.**
+
+`read().elements` went 15.0 → 17.9 ms and the snapshot 17.2 → 18.4 MB. That is the freeze: measured at **1.6 ms** on 10,000 elements by disabling it and re-running, over three runs each, because the first attempt at that measurement produced a 26 ms reading for identical code and could not be trusted. 1.6 ms to turn "a caller mutated a snapshot" from silent cache poisoning into a `TypeError` is a trade worth making, and the number is recorded so it can be re-litigated.
+
+### What this does _not_ achieve, stated plainly
+
+**AC-5's "move one element in a 10,000-element board, under 16 ms" is still not met.** A keystroke now costs 17.4 ms of read against a 16.7 ms budget, having cost 32 ms.
+
+The reason is Option C's whole argument, and it is worth being precise about why A and B cannot substitute for it. A and B make _repeated_ reads free. They do not make the _first_ read cheaper, and the first read after a transaction must walk every element, because every element is a `Y.Map` and turning 10,000 of them into plain objects is the cost. So one walk per keystroke survives, and 17.9 ms is what one walk costs.
+
+Options A and B bought back the _second_ read and the three small-field reads. Only C removes the remaining walk, by not needing the elements at all.
+
+That is not an argument for rushing C. It is an argument for recording the number honestly instead of letting "read() is now cached" stand in for "the keystroke fits in a frame", which it does not.
+
+### One semantic change, now a tested property
+
+A snapshot is no longer a point-in-time view: fields fill on first access, so one `read()` can straddle a transaction. Each field is internally consistent and memoised, so no caller sees a torn value _within_ a field — and a caller asking later arguably wants the later answer. `assets` had behaved this way since it was added.
+
+This was Option A's cost as written above, and it is now the subject of a test named `a field asked for after a transaction reflects the new state`, so that changing the trade means deleting a test rather than surprising somebody.
 
 ## What is being asked
 
