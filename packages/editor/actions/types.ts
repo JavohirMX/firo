@@ -157,11 +157,17 @@ export type ActionName =
    * The facilitator's commands, from `apps/web/board/facilitatorActions.ts`.
    *
    * Two of the seven are a toggle rather than one action per state:
-   * `toggleFacilitatorTimer` covers idle, running and paused, and `toggleBoardReveal`
-   * covers private and revealed. A facilitator thinks "run the clock", not
-   * "transition the state machine", and cannot see which state the board is in from
-   * the board — so three actions for two states would be three things to remember
-   * and one of them would be wrong.
+   * `toggleFacilitatorTimer` covers idle, running and paused, `toggleBoardReveal`
+   * covers private and revealed, and `togglePresentation` covers presenting and
+   * editing. A facilitator thinks "run the clock", not "transition the state
+   * machine", and cannot see which state the board is in from the board — so three
+   * actions for two states would be three things to remember and one of them would
+   * be wrong.
+   *
+   * Presentation is three and not one, because the other two are meaningless
+   * outside it: "next slide" has no referent on a board nobody is presenting. They
+   * still exist as separate commands rather than one action with a direction
+   * argument because the direction is chosen by the *key*, not by the person.
    */
   | "toggleFacilitatorTimer"
   | "resetFacilitatorTimer"
@@ -170,6 +176,9 @@ export type ActionName =
   | "addVoteToSelection"
   | "removeVoteFromSelection"
   | "readVoteTally"
+  | "togglePresentation"
+  | "nextSlide"
+  | "previousSlide"
   | "linkToElement"
   | "cropEditor"
   | "wrapSelectionInFrame"

@@ -142,6 +142,9 @@ describe("registration", () => {
       "resetFacilitatorTimer",
       "addMinuteToTimer",
       "toggleBoardReveal",
+      "togglePresentation",
+      "nextSlide",
+      "previousSlide",
       "addVoteToSelection",
       "removeVoteFromSelection",
       "readVoteTally",
@@ -818,6 +821,47 @@ describe("the module graph", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("the command palette", () => {
+  /**
+   * The action behind a palette label.
+   *
+   * The palette item's own `perform` goes through the action manager, and the
+   * manager holds the action object -- so the item and the action are already the
+   * same object by the time the palette has been built. Reading it back out of a
+   * fresh `facilitatorActions` call is the honest way to get at `keyTest`, which
+   * `CommandPaletteItem` does not carry.
+   */
+  const actionsNamed = (label: string) => {
+    const { api } = fakeApi();
+    return facilitatorActions(
+      api,
+      () => new FiroDoc(new Y.Doc()),
+      vi.fn(),
+    ).find((action) => action.label === label);
+  };
+
+  /**
+   * A printed shortcut's final segment, as a `KeyboardEvent.code`.
+   *
+   * Spelled out rather than driven from a key table, because the point is to check
+   * what the *map* prints against what `keyTest` matches -- a table here would be a
+   * third copy of the same fact, which is the drift this test exists to catch.
+   */
+  const codeFor = (key: string): string => {
+    // Both spellings, because `getShortcutKey` prints "Alt+Enter" for the chord this
+    // file writes as `Alt+Return`. Handling only one of them is how the mismatch test
+    // below reported a false failure on its first run.
+    if (key === "Return" || key === "Enter") {
+      return "Enter";
+    }
+    if (key === "Right") {
+      return "ArrowRight";
+    }
+    if (key === "Left") {
+      return "ArrowLeft";
+    }
+    return `Key${key.toUpperCase()}`;
+  };
+
   const items = (document: FiroDoc): CommandPaletteItem[] => {
     const { api } = fakeApi();
     return facilitatorCommandPaletteItems(api, () => document, vi.fn());
@@ -855,6 +899,9 @@ describe("the command palette", () => {
       "Reset the timer",
       "Add a minute to the timer",
       "Hide or reveal the board",
+      "Start or stop presenting",
+      "Next slide",
+      "Previous slide",
       "Give the selection a dot",
       "Take back a dot from the selection",
       "Read the vote tally",
@@ -929,11 +976,63 @@ describe("the command palette", () => {
     // entry were built from a second list of strings it would drift, and the drift
     // would only show as a shortcut that prints but does nothing.
     const all = items(new FiroDoc(new Y.Doc()));
-    const addVote = all.find(
-      (item) => item.label === "Give the selection a dot",
-    )!;
 
-    expect(addVote.shortcut).toBeTruthy();
-    expect(addVote.category).toBe("Facilitation");
+    expect(all.every((item) => item.category === "Facilitation")).toBe(true);
+
+    /*
+     * Every entry, not one.
+     *
+     * This asserted a single item -- the vote command -- and so passed for every
+     * other command that had been added to `shortcuts.ts` without a matching
+     * `keyTest`, or the other way round. The three presentation commands were added
+     * with exactly that gap: registered, wired, reachable by keyboard, and printing
+     * no shortcut in the palette, which is the "a shortcut nobody discovers" case
+     * the field's own comment describes. One item is not a check on a list.
+     */
+    const missing = all.filter((item) => !item.shortcut).map((i) => i.label);
+    expect(missing).toEqual([]);
+  });
+
+  it("prints the same chord the editor matches", () => {
+    /*
+     * The two halves, checked against each other rather than against a literal.
+     *
+     * `shortcutMap` is what the palette prints and `keyTest` is what the editor
+     * matches, so a literal here would just be a third copy to drift. Instead the
+     * printed chord is turned back into a key event and offered to the action's own
+     * `keyTest`: if the two disagree, the match fails here.
+     */
+    const all = items(new FiroDoc(new Y.Doc()));
+    const mismatched: string[] = [];
+
+    for (const item of all) {
+      const printed = item.shortcut;
+      if (!printed) {
+        continue;
+      }
+      // "Alt+Shift+T" -> modifiers plus a code.
+      const parts = printed.split("+");
+      const key = parts[parts.length - 1];
+      const event = {
+        altKey: printed.includes("Alt"),
+        shiftKey: printed.includes("Shift"),
+        ctrlKey: false,
+        metaKey: false,
+        code: codeFor(key),
+      };
+      const action = actionsNamed(item.label);
+      if (
+        !action?.keyTest?.(
+          event as never,
+          {} as never,
+          [] as never,
+          null as never,
+        )
+      ) {
+        mismatched.push(`${item.label} prints ${printed}`);
+      }
+    }
+
+    expect(mismatched).toEqual([]);
   });
 });

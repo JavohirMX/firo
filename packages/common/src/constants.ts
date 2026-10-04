@@ -484,6 +484,9 @@ export const DEFAULT_UI_OPTIONS: AppProps["UIOptions"] = {
     addVoteToSelection: true,
     removeVoteFromSelection: true,
     readVoteTally: true,
+    togglePresentation: true,
+    nextSlide: true,
+    previousSlide: true,
   },
   tools: {
     image: true,

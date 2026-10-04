@@ -56,11 +56,15 @@
  * precisely the notes being protected, and never settle.
  */
 
-import { DEFAULT_REVEAL_STATE, visibleElements } from "@firo/facilitation";
+import {
+  DEFAULT_PRESENTATION,
+  DEFAULT_REVEAL_STATE,
+  elementsForPresentation,
+} from "@firo/facilitation";
 
 import type { FiroElement, StickyNoteElement } from "@firo/schema";
-import type { Mutation } from "@firo/doc";
-import type { RevealState } from "@firo/facilitation";
+import type { EphemeralPresentation, Mutation } from "@firo/doc";
+import type { PresentationState, RevealState } from "@firo/facilitation";
 
 import {
   EDITOR_OWNED_FIELDS,
@@ -234,8 +238,18 @@ export class BoardSync {
        * optional member with a `revealed` fallback means "a port that does not
        * know about private mode hides nothing", which is both the safe answer
        * and the honest one: a board is never private by accident.
+       *
+       * `presentation` is optional for the same reason and with the same fallback:
+       * a port that has never heard of presentation mode is not presenting. Both
+       * are read through this one member because both are ephemeral state on the
+       * document, and a second injected source for either would be a second truth
+       * that disagrees with the document the moment a facilitator's toggle arrives
+       * from anywhere else.
        */
-      getEphemeral?: () => { readonly reveal: RevealState };
+      getEphemeral?: () => {
+        readonly reveal: RevealState;
+        readonly presentation?: EphemeralPresentation;
+      };
     },
     private readonly editor: EditorBridge,
   ) {}
@@ -250,6 +264,49 @@ export class BoardSync {
    */
   private revealState = (): RevealState =>
     this.doc.getEphemeral?.().reveal ?? DEFAULT_REVEAL_STATE;
+
+  /**
+   * The presentation state, as the document holds it right now.
+   *
+   * Read per `pull()` for the reason `revealState` is. Presentation is ephemeral
+   * (rule 1), so it produces no document update and therefore no notification to
+   * arrive on -- which is exactly why a caller that changes it must call `pull()`.
+   *
+   * ## Why `frameOf` is supplied here rather than travelled
+   *
+   * The ephemeral half carries `active`, `slideIds` and `index` and nothing else.
+   * `PresentationState` also has an optional `frameOf` **function**, for answering
+   * "is this element's frame an ancestor of the current one" once frames nest. A
+   * function cannot cross awareness, so the lookup is rebuilt from the element list
+   * on the way past -- which is the only place the element list is in hand anyway.
+   *
+   * The lookup is derived rather than cached, because a stale parent map would hide
+   * a nested slide's contents or show another slide's, and neither failure announces
+   * itself: the canvas simply draws the wrong notes. Building it is one pass over
+   * the frames, against a document read that is already O(elements).
+   *
+   * An element with no `frameId` has no parent, which is the honest answer and the
+   * one that degrades to single-level slides.
+   */
+  private presentationState = (
+    elements: readonly FiroElement[],
+  ): PresentationState => {
+    const stored = this.doc.getEphemeral?.().presentation;
+    const presentation: PresentationState = stored ?? DEFAULT_PRESENTATION;
+
+    if (!presentation.active || !presentation.slideIds.length) {
+      return presentation;
+    }
+
+    const parents = new Map<string, string | null>();
+    for (const element of elements) {
+      if (!parents.has(element.id)) {
+        parents.set(element.id, element.frameId ?? null);
+      }
+    }
+
+    return { ...presentation, frameOf: (id) => parents.get(id) ?? null };
+  };
 
   /**
    * Push the document into the editor. Call once after both exist.
@@ -594,10 +651,10 @@ export class BoardSync {
   /**
    * Replace the editor's contents with the document's, remembering the echo.
    *
-   * ## Private mode happens here, and nowhere else
+   * ## Withholding happens here, and nowhere else
    *
-   * `visibleElements` — the same function the exporter uses — decides what the
-   * editor is told about, and that is the whole of the leak fix. The exporter
+   * `elementsForPresentation` — the same function the exporter uses — decides what
+   * the editor is told about, and that is the whole of the leak fix. The exporter
    * walks the scene (`LayerUI` is handed `scene.getNonDeletedElements()`, and
    * `prepareElementsForRender` only narrows by frame and by tombstone), so an
    * element that never reaches the scene cannot reach a PNG or an SVG. Filtering
@@ -635,7 +692,11 @@ export class BoardSync {
     this.suspended = true;
     try {
       const docElements = this.doc.read().elements;
-      const shown = visibleElements(docElements, this.revealState());
+      const shown = elementsForPresentation(
+        docElements,
+        this.revealState(),
+        this.presentationState(docElements),
+      );
 
       const shownIds = new Set(shown.map((element) => element.id));
       this.withheldIds = new Set(

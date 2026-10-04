@@ -91,6 +91,21 @@ export type EphemeralState = Readonly<{
    * nobody hid.
    */
   reveal: EphemeralReveal;
+
+  /**
+   * Presentation mode: the frame being shown, and how far through the deck.
+   *
+   * Ephemeral for the same reason as the timer: where a facilitator has got to is
+   * a property of the *session*, not of the board. A `.firo` file must reopen
+   * showing the whole board, not frozen mid-deck on slide three of five, and
+   * tomorrow's facilitator starts at slide one rather than wherever today left off.
+   *
+   * Shared rather than per-client, which is the opposite of `viewport` and
+   * deliberate: the facilitator drives, the room follows. Two clients disagreeing
+   * about the current slide would mean the person presenting and the people
+   * watching see different boards.
+   */
+  presentation: EphemeralPresentation;
 }>;
 
 export type DragPreview = Readonly<{
@@ -170,6 +185,50 @@ export type EphemeralReveal = Readonly<{
  */
 const REVEALED: EphemeralReveal = Object.freeze({ mode: "revealed" });
 
+/**
+ * Presentation mode: where this client is in its slide deck, as it travels.
+ *
+ * Restated rather than imported, for the reason on [`EphemeralTimer`](#ephemeraltimer)
+ * -- the cycle. The serialisable half is structurally identical to
+ * `@firo/facilitation`'s `PresentationState`, so a real one is accepted by the
+ * compiler rather than trusted.
+ *
+ * ## Why this is not simply `PresentationState`
+ *
+ * `PresentationState` carries a `frameOf` **function**, for answering "is this
+ * element's frame an ancestor of the current one" when frames nest. A function
+ * cannot go through awareness, so carrying the whole type would either fail
+ * silently at the serialisation boundary or drag a document lookup into every
+ * client. The lookup is supplied by the board seam when it filters, which is where
+ * the element list already is.
+ *
+ * The split is worth stating plainly because it is the one place where two copies
+ * of this shape exist: `slideIds` and `index` are duplicated across the wire and
+ * the product type. If the product type grows a third *serialisable* field, this
+ * declaration stops being assignable from it and `tsc` says so at the seam.
+ */
+export type EphemeralPresentation = Readonly<{
+  /** Presenting at all. False is the ordinary editing state. */
+  active: boolean;
+  /** Ids of the frames, in the order they will be shown. */
+  slideIds: readonly string[];
+  /** Index into `slideIds`. */
+  index: number;
+}>;
+
+/**
+ * The state a freshly-joined client starts with: not presenting.
+ *
+ * Frozen for the reason `REVEALED` is, and it matters more here: `slideIds` is an
+ * array, and a shared mutable one would let one board's presenting session append
+ * its slides to every other board's on the client.
+ */
+const NOT_PRESENTING: EphemeralPresentation = Object.freeze({
+  active: false,
+  slideIds: Object.freeze([]) as readonly string[],
+  index: 0,
+});
+
 /** The state a freshly-joined client starts with: present, and empty. */
 export const EMPTY_EPHEMERAL_STATE: EphemeralState = Object.freeze({
   cursor: null,
@@ -185,6 +244,7 @@ export const EMPTY_EPHEMERAL_STATE: EphemeralState = Object.freeze({
   // mistake this line exists to make impossible.
   timer: null,
   reveal: REVEALED,
+  presentation: NOT_PRESENTING,
 });
 
 /** The `y-protocols` awareness key. Not exported as a mutable binding. */

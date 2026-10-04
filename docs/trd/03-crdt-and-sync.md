@@ -60,8 +60,9 @@ doc.getMap<Y.Map<unknown>>("assets"); // id -> blob reference
 | Open dialog, tool selection | A container collapse |
 | Workshop timer (an anchor, never a countdown) |  |
 | Private / revealed toggle (session state) | Marking an element `hiddenUntilRevealed` |
+| Current slide and deck order (session state) | Marking an element `hideInPresentation` |
 
-The last two rows are the facilitation split, and they are the clearest statement of why the split is drawn by _lifetime_ rather than by size. The timer is session state — a `.firo` file must not reopen with a clock frozen at 3:41 — and so is the reveal toggle. Which elements are hidden, though, is board state: a note marked "hide until reveal" must still be hidden when the board is reopened tomorrow and must survive the export that carries the board to the next facilitator. The timer's durable column is empty, and that is the correct answer rather than an omission.
+The last four rows are the facilitation split, and they are the clearest statement of why the split is drawn by _lifetime_ rather than by size. The timer is session state — a `.firo` file must not reopen with a clock frozen at 3:41 — and so is the reveal toggle. Which elements are hidden, though, is board state: a note marked "hide until reveal" must still be hidden when the board is reopened tomorrow and must survive the export that carries the board to the next facilitator. The same holds for presentation: a `.firo` file must reopen showing the whole board, not frozen on slide three of five, so where a facilitator has got to is ephemeral while *which notes are for the facilitator's eyes only* is not. The timers' durable column is empty, and that is the correct answer rather than an omission.
 
 Storing the timer as a per-second countdown rather than an anchor is the loudest possible violation of the rule on this page: a five-minute timer would produce 300 updates, 300 undo steps, and 300 broadcasts per participant. See [`../plans/phase-5-facilitation.md`](../plans/phase-5-facilitation.md).
 

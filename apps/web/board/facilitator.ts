@@ -39,8 +39,14 @@ import {
   toggleReveal,
 } from "@firo/facilitation";
 
+import { EMPTY_EPHEMERAL_STATE } from "@firo/doc";
+
 import type { FiroDoc } from "@firo/doc";
-import type { EphemeralReveal, EphemeralTimer } from "@firo/doc";
+import type {
+  EphemeralPresentation,
+  EphemeralReveal,
+  EphemeralTimer,
+} from "@firo/doc";
 import type { RevealState, Vote } from "@firo/facilitation";
 import type { FiroRecord } from "@firo/schema";
 
@@ -77,6 +83,28 @@ const sameTimer = (
   );
 };
 
+/**
+ * Whether two presentation states mean the same thing to a facilitator.
+ *
+ * By value, and only over the three fields that travel. `PresentationState` also
+ * carries an optional `frameOf` **function** that the board seam rebuilds per pull;
+ * comparing it would call a freshly-allocated closure a change on every repaint.
+ */
+const samePresentation = (
+  a: EphemeralPresentation,
+  b: EphemeralPresentation,
+): boolean => {
+  if (a === b) {
+    return true;
+  }
+  return (
+    a.active === b.active &&
+    a.index === b.index &&
+    a.slideIds.length === b.slideIds.length &&
+    a.slideIds.every((id, i) => id === b.slideIds[i])
+  );
+};
+
 /** Called whenever the facilitator's state changes. */
 export type FacilitatorListener = () => void;
 
@@ -92,7 +120,17 @@ const listeners = new Set<FacilitatorListener>();
  */
 let lastTimer: EphemeralTimer | null = null;
 let lastReveal: EphemeralReveal = { mode: "revealed" };
-/** Whether `lastTimer`/`lastReveal` have been primed from the document yet. */
+/**
+ * The cached presentation, primed from the document.
+ *
+ * Read off `EMPTY_EPHEMERAL_STATE` rather than spelled out again, because a second
+ * literal here is a second thing to keep in step with the document's own default —
+ * and a stale "not presenting" default in the cache would suppress the very first
+ * change after a board switch, which is the bug `resetFacilitationCache` exists for.
+ */
+let lastPresentation: EphemeralPresentation =
+  EMPTY_EPHEMERAL_STATE.presentation;
+/** Whether the cached halves have been primed from the document yet. */
 let primed = false;
 
 const notify = (): void => {
@@ -113,17 +151,57 @@ const sync = (getDocument: () => FiroDoc): boolean => {
     primed = true;
     lastTimer = ephemeral.timer;
     lastReveal = ephemeral.reveal;
+    lastPresentation = ephemeral.presentation;
     return false;
   }
 
+  /*
+   * The presentation half is compared by value rather than by identity, for the
+   * reason `sameTimer` exists: a facilitator stepping through a deck with a held
+   * arrow key reaches the last slide and stops, and `stepSlide` hands back an equal
+   * state. An identity check calls that a change and re-renders the slide readout on
+   * every keypress at the end of a deck.
+   */
   const changed =
-    lastTimer !== ephemeral.timer || lastReveal !== ephemeral.reveal;
+    lastTimer !== ephemeral.timer ||
+    lastReveal !== ephemeral.reveal ||
+    !samePresentation(lastPresentation, ephemeral.presentation);
 
   if (changed) {
     lastTimer = ephemeral.timer;
     lastReveal = ephemeral.reveal;
+    lastPresentation = ephemeral.presentation;
   }
   return changed;
+};
+
+/**
+ * Announce that facilitator state has changed.
+ *
+ * For a seam that writes ephemeral state directly rather than through a function in
+ * this module — currently `presentation.ts`, which also has to move the viewport and
+ * so cannot live here.
+ *
+ * ## Why this exists at all
+ *
+ * Ephemeral state is awareness, so it produces no document update and therefore no
+ * `onUpdate`: `FacilitatorBar` was listening to `boardDoc().onUpdate` and repainting
+ * on durable changes only, which meant a facilitator who started the timer with
+ * `Alt+T` got no clock until some *other* edit happened to reach the document. The
+ * reveal toggle escaped the bug only because its button re-read the state inline,
+ * which is the kind of accidental immunity that stops being accidental the moment
+ * somebody moves the control to the keyboard.
+ *
+ * Exported rather than folded into `sync`, because `sync` answers "has this changed?"
+ * and the caller here has already changed it — asking again would compare the cache
+ * against a state it was just updated from and report no change, so nothing would be
+ * announced. The cache is refreshed by the next `getTimer`/`getReveal`/`sync` call,
+ * which every subscriber makes as its first act.
+ *
+ * @internal Called from `presentation.ts`; not a public API.
+ */
+export const announceFacilitationChange = (): void => {
+  notify();
 };
 
 /**
@@ -278,6 +356,7 @@ export const resetFacilitationCache = (): void => {
   primed = false;
   lastTimer = null;
   lastReveal = { mode: "revealed" };
+  lastPresentation = EMPTY_EPHEMERAL_STATE.presentation;
   listeners.clear();
 };
 

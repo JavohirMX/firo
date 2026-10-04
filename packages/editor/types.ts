@@ -1173,6 +1173,9 @@ export type CanvasActions = Partial<{
   addVoteToSelection: boolean;
   removeVoteFromSelection: boolean;
   readVoteTally: boolean;
+  togglePresentation: boolean;
+  nextSlide: boolean;
+  previousSlide: boolean;
 }>;
 
 export type UIOptions = Partial<{

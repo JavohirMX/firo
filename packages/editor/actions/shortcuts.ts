@@ -71,6 +71,9 @@ export type ShortcutName =
       | "addVoteToSelection"
       | "removeVoteFromSelection"
       | "readVoteTally"
+      | "togglePresentation"
+      | "nextSlide"
+      | "previousSlide"
     >
   | "saveScene"
   | "imageExport"
@@ -155,6 +158,17 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   addVoteToSelection: [getShortcutKey("Alt+D")],
   removeVoteFromSelection: [getShortcutKey("Alt+W")],
   readVoteTally: [getShortcutKey("Alt+L")],
+  /*
+   * Spelled the way they are in `ALT_CODES`, which is the other end of the promise
+   * this map makes: the palette prints a shortcut from here, while the editor
+   * matches one from `keyTest`, and the two are two views of one entry. Presenting
+   * uses Return and the arrow keys rather than letters because that is what every
+   * other tool uses -- and because `Alt+S` is snap mode, which is not a fight worth
+   * having for the sake of a mnemonic.
+   */
+  togglePresentation: [getShortcutKey("Alt+Return")],
+  nextSlide: [getShortcutKey("Alt+Right")],
+  previousSlide: [getShortcutKey("Alt+Left")],
 };
 
 export const getShortcutFromShortcutName = (name: ShortcutName, idx = 0) => {

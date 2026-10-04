@@ -245,6 +245,13 @@ describe("a five-second drag produces zero document updates", () => {
     doc.setEphemeral({ viewport: { scrollX: 0, scrollY: 0, zoom: 1 } });
     doc.setEphemeral({ timer: RUNNING_TIMER });
     doc.setEphemeral({ reveal: { mode: "private" } });
+    doc.setEphemeral({
+      presentation: {
+        active: true,
+        slideIds: ["frame-1", "frame-2"],
+        index: 1,
+      },
+    });
     expect(doc.durableUpdates).toBe(before);
 
     expect(doc.getEphemeral()).toEqual({
@@ -257,6 +264,11 @@ describe("a five-second drag produces zero document updates", () => {
       viewport: { scrollX: 0, scrollY: 0, zoom: 1 },
       timer: RUNNING_TIMER,
       reveal: { mode: "private" },
+      presentation: {
+        active: true,
+        slideIds: ["frame-1", "frame-2"],
+        index: 1,
+      },
     });
   });
 
@@ -266,6 +278,11 @@ describe("a five-second drag produces zero document updates", () => {
     // hide a board nobody hid if `mode` were read defensively.
     expect(EMPTY_EPHEMERAL_STATE.timer).toBeNull();
     expect(EMPTY_EPHEMERAL_STATE.reveal).toEqual({ mode: "revealed" });
+    expect(EMPTY_EPHEMERAL_STATE.presentation).toEqual({
+      active: false,
+      slideIds: [],
+      index: 0,
+    });
     expect(doc.getEphemeral()).toEqual(EMPTY_EPHEMERAL_STATE);
   });
 });

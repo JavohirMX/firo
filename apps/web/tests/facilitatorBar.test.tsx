@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as Y from "yjs";
@@ -13,6 +13,26 @@ import { FiroDoc } from "@firo/doc";
  * document, and it must stay in step with the anchor when a facilitator acts.
  * The first is the reason the timer is an anchor at all; the second is why there
  * is a component here rather than a string in a menu.
+ *
+ * ## The third property, added after the first two shipped
+ *
+ * The bar subscribed to `boardDoc().onUpdate` -- the document's **durable** update
+ * signal. Every facilitator mode is *ephemeral*, which is awareness, which produces
+ * no document update by design (rule 1). So the bar repainted only when something
+ * durable happened to reach the document:
+ *
+ * > A facilitator presses `Alt+T`. No clock appears. They press it again -- still
+ * > nothing. They type in a note, and the clock appears showing the state from the
+ * > first press.
+ *
+ * The reveal toggle was accidentally immune because its button re-read the state
+ * inline after clicking. That immunity lasted exactly as long as the control stayed
+ * a button, and moving it to the keyboard -- which AC-8 requires -- removed it.
+ *
+ * So the assertions at the bottom are the negative ones: **no durable write happens,
+ * and the readout still changes.** A test that committed something to make the bar
+ * repaint would pass against the old code, and passing against the old code is the
+ * definition of not testing this.
  */
 
 /** Replace the app's document singleton for the duration of a test. */
@@ -44,6 +64,151 @@ const renderBar = async () => {
   const { FacilitatorBar: Bar } = await import("../components/FacilitatorBar");
   return render(<Bar />);
 };
+
+/** A frame the board's fold accepts, so a deck can exist. */
+const frame = (id: string) =>
+  ({
+    id,
+    type: "frame",
+    x: 0,
+    y: 0,
+    width: 400,
+    height: 300,
+    angle: 0,
+    name: id,
+    strokeColor: "#1e1e1e",
+    backgroundColor: "#ffffff",
+    fillStyle: "solid",
+    strokeWidth: 2,
+    strokeStyle: "solid",
+    roundness: null,
+    roughness: 1,
+    opacity: 100,
+    seed: 1,
+    version: 1,
+    versionNonce: 7,
+    index: "a0",
+    isDeleted: false,
+    groupIds: [],
+    frameId: null,
+    containerId: null,
+    bindings: [],
+    link: null,
+    locked: false,
+    created: 1000,
+    updated: 2000,
+  } as never);
+
+/** A board with `n` frames, which is the only thing a deck needs. */
+const withDeck = (n: number) => {
+  doc.commit(
+    Array.from({ length: n }, (_, i) => ({
+      kind: "createElement",
+      element: frame(`f${i}`),
+    })) as never,
+  );
+};
+
+const slide = () => screen.queryByTestId("facilitator-slide");
+
+describe("the slide readout", () => {
+  it("appears when a presentation starts and says where we are", async () => {
+    withDeck(3);
+    await renderBar();
+    expect(slide()).toBeNull();
+
+    const { startPresenting } = await import("../board/presentation");
+    const { refreshBoard } = await import("../board/board");
+    act(() => {
+      startPresenting(() => doc, undefined, refreshBoard);
+    });
+
+    await waitFor(() => expect(slide()).not.toBeNull());
+    expect(slide()?.textContent).toBe("1 / 3");
+  });
+
+  it("follows the slide as the deck advances", async () => {
+    withDeck(3);
+    await renderBar();
+
+    const { startPresenting, stepPresentation } = await import(
+      "../board/presentation"
+    );
+    const { refreshBoard } = await import("../board/board");
+    act(() => {
+      startPresenting(() => doc, undefined, refreshBoard);
+    });
+    await waitFor(() => expect(slide()).toHaveTextContent("1 / 3"));
+
+    act(() => {
+      stepPresentation(() => doc, 1, undefined, refreshBoard);
+    });
+    await waitFor(() => expect(slide()).toHaveTextContent("2 / 3"));
+  });
+
+  it("goes away when the presentation stops", async () => {
+    withDeck(2);
+    await renderBar();
+
+    const { startPresenting, stopPresenting } = await import(
+      "../board/presentation"
+    );
+    const { refreshBoard } = await import("../board/board");
+    act(() => {
+      startPresenting(() => doc, undefined, refreshBoard);
+    });
+    await waitFor(() => expect(slide()).not.toBeNull());
+
+    act(() => {
+      stopPresenting(() => doc, refreshBoard);
+    });
+
+    /*
+     * A bar still reading "1 / 2" after presenting has ended is a facilitator
+     * convinced they are still presenting, which is worse than no bar at all.
+     */
+    await waitFor(() => expect(slide()).toBeNull());
+  });
+
+  it("labels the position in words a screen reader can use", async () => {
+    // "2 / 3" read aloud is two unrelated numbers.
+    withDeck(3);
+    await renderBar();
+
+    const { startPresenting, stepPresentation } = await import(
+      "../board/presentation"
+    );
+    const { refreshBoard } = await import("../board/board");
+    act(() => {
+      startPresenting(() => doc, undefined, refreshBoard);
+      stepPresentation(() => doc, 1, undefined, refreshBoard);
+    });
+
+    await waitFor(() =>
+      expect(slide()?.getAttribute("aria-label")).toBe("Slide 2 of 3"),
+    );
+  });
+
+  it("writes nothing to get there", async () => {
+    withDeck(3);
+    await renderBar();
+
+    const updates: unknown[] = [];
+    doc.ydoc.on("update", (update: unknown) => updates.push(update));
+
+    const { startPresenting, stepPresentation } = await import(
+      "../board/presentation"
+    );
+    const { refreshBoard } = await import("../board/board");
+    act(() => {
+      startPresenting(() => doc, undefined, refreshBoard);
+      stepPresentation(() => doc, 1, undefined, refreshBoard);
+    });
+
+    await waitFor(() => expect(slide()).toHaveTextContent("2 / 3"));
+    expect(updates).toEqual([]);
+  });
+});
 
 describe("the facilitator bar", () => {
   it("shows nothing until a facilitator has done something", () => {
@@ -184,6 +349,41 @@ describe("the facilitator bar", () => {
     const toggle = screen.getByTestId("facilitator-reveal-toggle");
     expect(toggle.tagName).toBe("BUTTON");
     expect(toggle.getAttribute("type")).toBe("button");
+  });
+
+  it("repaints when the timer is started, with nothing written", async () => {
+    /*
+     * The bug above, asserted.
+     *
+     * The state is changed *after* the bar is mounted, through the announcement path
+     * the real seam uses. Nothing durable happens at any point, so this only passes
+     * if the bar is listening to the ephemeral signal rather than to the document.
+     */
+    await renderBar();
+    expect(screen.queryByTestId("facilitator-timer")).toBeNull();
+
+    const updates: unknown[] = [];
+    doc.ydoc.on("update", (update: unknown) => updates.push(update));
+    const before = doc.durableUpdates;
+
+    const { announceFacilitationChange } = await import("../board/facilitator");
+    act(() => {
+      doc.setEphemeral({
+        timer: {
+          startedAt: Date.now(),
+          durationMs: 300_000,
+          remainingMs: 300_000,
+        },
+      });
+      announceFacilitationChange();
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("facilitator-timer")).toBeDefined(),
+    );
+
+    expect(updates).toEqual([]);
+    expect(doc.durableUpdates).toBe(before);
   });
 
   it("stops its interval when the timer goes away", async () => {

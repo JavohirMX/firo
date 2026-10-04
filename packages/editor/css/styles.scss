@@ -1137,6 +1137,26 @@ body.excalidraw-cursor-resize * {
     color: var(--color-text-primary-contrast, #fff);
   }
 
+  /*
+   * The slide readout.
+   *
+   * Outlined rather than filled, where "Private" is filled: the two are different
+   * kinds of statement and giving them the same chip would suggest they clear
+   * together. It also sits at the same 0.75rem as the private chip, so the bar does
+   * not change height when a facilitator starts presenting mid-workshop.
+   */
+  &__slide {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    border: 1px solid var(--default-border-color);
+    color: inherit;
+    /* "2 / 5" must not shift width as the numbers change, which is the same
+       reason the bar sets tabular-nums above. */
+    min-width: 5ch;
+    text-align: center;
+  }
+
   &__reveal {
     font-size: 0.8125rem;
     padding: 0.25rem 0.5rem;

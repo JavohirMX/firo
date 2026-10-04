@@ -32,7 +32,10 @@ import { createFiroDoc } from "@firo/doc";
 import { BoardSync, toEditorScene, type EditorBridge } from "@firo/board";
 
 import { CaptureUpdateAction } from "@firo/editor";
-import { visibleElements } from "@firo/facilitation";
+import {
+  DEFAULT_PRESENTATION,
+  elementsForPresentation,
+} from "@firo/facilitation";
 
 import type { ExcalidrawElement } from "@firo/element/types";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
@@ -228,18 +231,28 @@ if (typeof window !== "undefined") {
 export const boardElements = (): ExcalidrawElement[] =>
   toEditorScene(
     /*
-     * Filtered, and this is the *second* projection path that has to know about
-     * private mode — `BoardSync.pull()` is the first.
+     * Filtered, and this is the *second* projection path that has to know what the
+     * facilitator is withholding — `BoardSync.pull()` is the first.
      *
      * Harmless today and still worth doing: ephemeral state defaults to
-     * `revealed`, so a board opens with everything shown. But the moment a board
-     * is opened while a session is private, this is what builds the initial
-     * scene, and an unfiltered projection here would put every hidden note on
-     * the canvas before `attachBoard` had a chance to withhold anything.
+     * `revealed` and not presenting, so a board opens with everything shown. But
+     * the moment a board is opened while a session is private, this is what builds
+     * the initial scene, and an unfiltered projection here would put every hidden
+     * note on the canvas before `attachBoard` had a chance to withhold anything.
+     * The same applies to a board opened mid-presentation.
+     *
+     * Deliberately the *same* function `pull()` calls, with the same arguments.
+     * Two filters that agree today are one filter that will disagree after the
+     * next change, and the disagreement is silent.
      */
-    visibleElements(doc.read().elements, doc.getEphemeral().reveal) as
-      | FiroElement[]
-      | never[],
+    elementsForPresentation(
+      doc.read().elements,
+      doc.getEphemeral().reveal,
+      // No `frameOf`: see above. A second, richer lookup here would make this path
+      // disagree with `pull()` about which slide an element is on, which is the
+      // failure this shared function exists to prevent.
+      doc.getEphemeral().presentation ?? DEFAULT_PRESENTATION,
+    ) as FiroElement[] | never[],
   ) as unknown as ExcalidrawElement[];
 
 /** An adapter onto the editor, for `BoardSync`. */

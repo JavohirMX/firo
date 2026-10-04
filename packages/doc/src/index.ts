@@ -59,6 +59,7 @@ export {
 export type {
   DragPreview,
   EphemeralPatch,
+  EphemeralPresentation,
   EphemeralReveal,
   EphemeralState,
   EphemeralTimer,

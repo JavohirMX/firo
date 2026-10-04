@@ -89,6 +89,13 @@ import {
   toggleRevealMode,
 } from "./facilitator";
 import { complain } from "./fileActions";
+import {
+  boardHasSlides,
+  getPresentation,
+  startPresenting,
+  stepPresentation,
+  stopPresenting,
+} from "./presentation";
 
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
@@ -112,6 +119,20 @@ const ALT_CODES = {
   dot: "KeyD",
   withdraw: "KeyW",
   leaders: "KeyL",
+  /*
+   * Not letters, and that is the point of naming them here rather than in a second
+   * table: a slide is advanced with the right arrow and started with Return, which
+   * is what every other tool in the world uses, and inventing `Alt+S` for "start
+   * presenting" would collide with snap mode for no gain.
+   *
+   * Both arrow chords are safe because `App.onKeyDown` returns as soon as
+   * `actionManager.handleKeyDown` reports a match -- see the call site above
+   * `viewModeEnabled`. So the editor's own arrow handling never also fires, and
+   * there is no cursor to move on the way to the next slide.
+   */
+  present: "Enter",
+  nextSlide: "ArrowRight",
+  previousSlide: "ArrowLeft",
 } as const;
 
 /**
@@ -169,7 +190,10 @@ type FacilitatorToggleName =
   | "toggleBoardReveal"
   | "addVoteToSelection"
   | "removeVoteFromSelection"
-  | "readVoteTally";
+  | "readVoteTally"
+  | "togglePresentation"
+  | "nextSlide"
+  | "previousSlide";
 
 /*
  * Whether the host has switched this command off.
@@ -559,6 +583,105 @@ export const facilitatorActions = (
            * feature working because the facilitator's own UI did change.
            */
           toggleRevealMode(getDocument, refresh);
+        }),
+    },
+
+    /*
+     * Presentation: three commands, because they answer three different questions
+     * and collapsing them into one "toggle" makes two of the answers unreachable.
+     */
+    {
+      name: "togglePresentation",
+      label: "Start or stop presenting",
+      keywords: ["present", "presentation", "slides", "deck", "slideshow"],
+      trackEvent: { category: "facilitation", action: "togglePresentation" },
+      /*
+       * `Alt+Return`, and `viewMode` is not set on purpose.
+       *
+       * Presenting *is* mostly a read-only mode -- the board is filtered down to one
+       * frame -- but marking it `viewMode` would hand it to the editor's own
+       * "you cannot edit this" machinery: the tool panel would grey out, and
+       * stopping would have to come back out of that mode as well as out of
+       * presentation. Two nested modes, two ways to be stuck in one. The filtering
+       * is already enforced where it matters, at `BoardSync.pull`, and an element
+       * that never reaches the scene cannot be edited whatever this says.
+       */
+      predicate: enabledUnless("togglePresentation"),
+      keyTest: altChord(ALT_CODES.present, false),
+
+      perform: (): ActionResult =>
+        run(() => {
+          const presentation = getPresentation(getDocument);
+
+          if (presentation.active) {
+            stopPresenting(getDocument, refresh);
+            return;
+          }
+
+          const next = startPresenting(getDocument, api, refresh);
+
+          /*
+           * Reported rather than swallowed, because the silent version of this is
+           * the feature looking broken: a board with no frames offers "start
+           * presenting", the key does nothing visible, and a facilitator concludes
+           * the shortcut is unbound. There is a real answer here -- draw a frame --
+           * and it takes one sentence to say.
+           */
+          if (!next.active) {
+            complain(
+              api,
+              boardHasSlides(getDocument)
+                ? "That did not start: the board has no frames to show."
+                : "Draw a frame first -- there is nothing to present without one.",
+            );
+          }
+        }),
+    },
+
+    {
+      name: "nextSlide",
+      label: "Next slide",
+      keywords: ["next", "slide", "forward", "advance", "present"],
+      trackEvent: { category: "facilitation", action: "nextSlide" },
+      predicate: (elements, appState, props) =>
+        enabledUnless("nextSlide")(elements, appState, props) &&
+        getPresentation(getDocument).active,
+      keyTest: altChord(ALT_CODES.nextSlide, false),
+
+      perform: (): ActionResult =>
+        run(() => {
+          /*
+           * Refuses, rather than starting a deck as a side effect of pressing the
+           * arrow key. Stepping while not presenting has no meaning, and the
+           * alternative -- quietly beginning to present -- turns one stray keypress
+           * into a full-screen change of mode, which is the failure AC-1's "no
+           * prompt, no surprise" shape is really about.
+           */
+          if (!getPresentation(getDocument).active) {
+            complain(api, "Start presenting first.");
+            return;
+          }
+          stepPresentation(getDocument, 1, api, refresh);
+        }),
+    },
+
+    {
+      name: "previousSlide",
+      label: "Previous slide",
+      keywords: ["previous", "back", "slide", "present"],
+      trackEvent: { category: "facilitation", action: "previousSlide" },
+      predicate: (elements, appState, props) =>
+        enabledUnless("previousSlide")(elements, appState, props) &&
+        getPresentation(getDocument).active,
+      keyTest: altChord(ALT_CODES.previousSlide, false),
+
+      perform: (): ActionResult =>
+        run(() => {
+          if (!getPresentation(getDocument).active) {
+            complain(api, "Start presenting first.");
+            return;
+          }
+          stepPresentation(getDocument, -1, api, refresh);
         }),
     },
 

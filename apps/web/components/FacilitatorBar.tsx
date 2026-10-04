@@ -2,9 +2,19 @@ import { useEffect, useState } from "react";
 
 import { formatRemaining, remainingMs } from "@firo/facilitation";
 
-import type { EphemeralReveal, EphemeralTimer } from "@firo/doc";
+import type {
+  EphemeralPresentation,
+  EphemeralReveal,
+  EphemeralTimer,
+} from "@firo/doc";
 
-import { getReveal, getTimer, toggleRevealMode } from "../board/facilitator";
+import {
+  getReveal,
+  getTimer,
+  subscribeToFacilitation,
+  toggleRevealMode,
+} from "../board/facilitator";
+import { getPresentation } from "../board/presentation";
 import { boardDoc, refreshBoard } from "../board/board";
 
 /**
@@ -77,27 +87,49 @@ export const FacilitatorBar = (): React.JSX.Element | null => {
     getReveal(boardDoc),
   );
 
+  const [presentation, setPresentation] = useState<EphemeralPresentation>(() =>
+    getPresentation(boardDoc),
+  );
+
   /*
-   * Republish on document change rather than on a timer.
+   * Republish on *facilitator* change, not on document change.
    *
-   * The anchor changes when a facilitator presses start, which is a document
-   * event; the seconds do not, which is why `useNow` below is separate. Polling
-   * the document for the anchor would be a read per second for a value that
-   * changes once per press.
+   * This used to be `boardDoc().onUpdate`, which is the document's durable-update
+   * signal — and ephemeral state is awareness, so it produces no document update.
+   * The bar therefore repainted only when something durable happened to reach the
+   * document: a facilitator who pressed `Alt+T` got no clock until they typed in a
+   * note. The reveal toggle was accidentally immune, because its button re-read the
+   * state inline; that immunity ended the moment the control moved to the keyboard,
+   * which it did.
+   *
+   * `subscribeToFacilitation` is the signal that exists for exactly this, and it had
+   * no caller at all until now.
+   *
+   * The seconds are still separate (`useNow` below): the anchor changes once per
+   * press, and polling the document for it would be a walk per second for a value
+   * that is not moving.
    */
   useEffect(() => {
     const refresh = () => {
       setTimer(getTimer(boardDoc));
       setReveal(getReveal(boardDoc));
+      setPresentation(getPresentation(boardDoc));
     };
     refresh();
-    return boardDoc().onUpdate(refresh);
+    return subscribeToFacilitation(boardDoc, refresh);
   }, []);
 
   const now = useNow(timer !== null);
 
-  // Nothing to say until a facilitator has started a clock or gone private.
-  if (timer === null && reveal.mode === "revealed") {
+  /*
+   * Nothing to say until a facilitator has started a clock, gone private, or begun
+   * presenting.
+   *
+   * Presenting is on the same footing as the other two: a facilitator needs to know
+   * which slide the room is looking at, and there is nowhere else on screen that
+   * would tell them.
+   */
+  if (timer === null && reveal.mode === "revealed" && !presentation.active) {
     return null;
   }
 
@@ -139,6 +171,24 @@ export const FacilitatorBar = (): React.JSX.Element | null => {
           data-testid="facilitator-private"
         >
           Private
+        </span>
+      )}
+
+      {presentation.active && presentation.slideIds.length > 0 && (
+        <span
+          className="firo-facilitator-bar__slide"
+          /*
+           * "Slide 2 of 5", and not "2/5". A screen reader reads "2 slash 5" as two
+           * unrelated numbers, and a facilitator who cannot see the screen is
+           * exactly the person who needs to know whether there is another slide
+           * coming.
+           */
+          aria-label={`Slide ${presentation.index + 1} of ${
+            presentation.slideIds.length
+          }`}
+          data-testid="facilitator-slide"
+        >
+          {presentation.index + 1} / {presentation.slideIds.length}
         </span>
       )}
 
