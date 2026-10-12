@@ -16,9 +16,11 @@ import {
   boardStore,
   clearSavedBoard,
   debounce,
+  getSaveStatus,
   hasSavedBoard,
   restoreBoard,
   saveBoard,
+  subscribeSaveStatus,
 } from "../storage";
 
 import type { SaveResult } from "../storage";
@@ -401,5 +403,23 @@ describe("debounce", () => {
     vi.advanceTimersByTime(400);
 
     expect(run).toHaveBeenCalledWith(2);
+  });
+});
+
+describe("save status indicator (AC-10)", () => {
+  it("transitions from saving to saved when a board saves successfully", async () => {
+    const statuses: string[] = [];
+    const unsubscribe = subscribeSaveStatus((status) => {
+      statuses.push(status);
+    });
+
+    const doc = board();
+    await saveBoard(doc);
+
+    expect(statuses).toContain("saving");
+    expect(statuses).toContain("saved");
+    expect(getSaveStatus()).toBe("saved");
+
+    unsubscribe();
   });
 });

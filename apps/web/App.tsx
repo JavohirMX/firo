@@ -68,6 +68,8 @@ import { STORAGE_KEYS, SYNC_BROWSER_TABS_TIMEOUT } from "./app_constants";
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
+import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
+import { ProjectionView } from "./components/ProjectionView";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
 
@@ -104,6 +106,7 @@ import {
 } from "./board/board";
 
 import { facilitatorCommandPaletteItems } from "./board/facilitatorActions";
+import { recordCommandPaletteItems } from "./board/recordActions";
 
 import "./index.scss";
 
@@ -784,7 +787,12 @@ const ExcalidrawWrapper = () => {
         autoFocus={true}
         theme={editorTheme}
         onThemeChange={setAppTheme}
-        renderTopRightUI={() => <FacilitatorBar />}
+        renderTopRightUI={() => (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <SaveStatusIndicator />
+            <FacilitatorBar />
+          </div>
+        )}
         onLinkOpen={(element, event) => {
           if (element.link && isElementLink(element.link)) {
             event.preventDefault();
@@ -796,6 +804,7 @@ const ExcalidrawWrapper = () => {
           }
         }}
       >
+        <ProjectionView excalidrawAPI={excalidrawAPI} />
         <AppMainMenu
           isCollaborating={isCollaborating}
           theme={appTheme}
@@ -868,6 +877,9 @@ const ExcalidrawWrapper = () => {
                   boardDoc,
                   refreshBoard,
                 )
+              : []),
+            ...(excalidrawAPI
+              ? recordCommandPaletteItems(excalidrawAPI, boardDoc, refreshBoard)
               : []),
           ]}
         />

@@ -200,11 +200,15 @@ export const tableProjection: Projection = {
           // reads it" bug that `customData` already caused once in this codebase.
           return null;
         }
+        const value =
+          column.type === "singleSelect"
+            ? { type: "singleSelect" as const, value: intent.value || null }
+            : { type: "text" as const, value: intent.value };
         return {
           kind: "setField",
           recordId: record.id,
           columnKey: column.key,
-          value: { type: "text", value: intent.value },
+          value,
         };
       }
 

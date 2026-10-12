@@ -89,6 +89,31 @@ export type SaveResult =
   | { ok: true; bytes: number }
   | { ok: false; reason: "unavailable" | "failed"; detail?: string };
 
+/** Current status of the autosave, for the save indicator in the UI (AC-10). */
+export type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+let currentSaveStatus: SaveStatus = "idle";
+const statusListeners = new Set<(status: SaveStatus) => void>();
+
+export const getSaveStatus = (): SaveStatus => currentSaveStatus;
+
+export const subscribeSaveStatus = (
+  listener: (status: SaveStatus) => void,
+): (() => void) => {
+  statusListeners.add(listener);
+  listener(currentSaveStatus);
+  return () => {
+    statusListeners.delete(listener);
+  };
+};
+
+const notifySaveStatus = (status: SaveStatus): void => {
+  currentSaveStatus = status;
+  for (const listener of statusListeners) {
+    listener(status);
+  }
+};
+
 /** What a restore produced. `empty` is the ordinary first run. */
 export type RestoreResult =
   | { status: "restored"; elements: number }
@@ -115,6 +140,7 @@ let restoreFailed = false;
 
 /** Write the document out. Never rejects; a failed save is reported, not thrown. */
 export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
+  notifySaveStatus("saving");
   if (restoreFailed) {
     /*
      * Refuse only while there is something to destroy.
@@ -135,6 +161,7 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
        * Not `unavailable`: nothing is wrong with storage, and a caller reporting
        * this as "storage is broken" sends the reader looking in the wrong place.
        */
+      notifySaveStatus("error");
       return {
         ok: false,
         reason: "unavailable",
@@ -155,6 +182,7 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
      * about it here, and it must not reject into the editor's change handler — a
      * failed autosave is a nuisance, a rejected one is an unhandled rejection.
      */
+    notifySaveStatus("error");
     return {
       ok: false,
       reason: "failed",
@@ -165,6 +193,7 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
   try {
     await set(KEY, payload, boardStore);
   } catch (error) {
+    notifySaveStatus("error");
     return {
       ok: false,
       reason: "failed",
@@ -172,6 +201,7 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
     };
   }
 
+  notifySaveStatus("saved");
   return { ok: true, bytes: payload.length };
 };
 
@@ -183,6 +213,9 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
  * one, and the one place where a blank canvas has no explanation.
  */
 export const restoreBoard = async (doc: FiroDoc): Promise<RestoreResult> => {
+  if (typeof navigator !== "undefined" && navigator.storage?.persist) {
+    void navigator.storage.persist().catch(() => {});
+  }
   let payload: string | undefined;
   try {
     payload = await storedBoard();

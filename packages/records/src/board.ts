@@ -297,11 +297,15 @@ export const boardProjection: Projection = {
           // under a key nothing reads.
           return null;
         }
+        const value =
+          target.type === "singleSelect"
+            ? { type: "singleSelect" as const, value: intent.value || null }
+            : { type: "text" as const, value: intent.value };
         return {
           kind: "setField",
           recordId: record.id,
           columnKey: target.key,
-          value: { type: "text", value: intent.value },
+          value,
         };
       }
 

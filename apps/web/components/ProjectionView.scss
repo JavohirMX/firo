@@ -1,0 +1,305 @@
+.firo-projections-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.firo-projection-container {
+  position: absolute;
+  pointer-events: auto;
+  background: var(--color-bg, #ffffff);
+  border: 1px solid var(--default-border-color, #dee2e6);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-family: inherit;
+  color: var(--color-text, #212529);
+  min-width: 640px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.firo-projection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface, #f8f9fa);
+  border-bottom: 1px solid var(--default-border-color, #dee2e6);
+  gap: 1rem;
+
+  &__title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+  }
+
+  &__count {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #6c757d);
+  }
+
+  &__add {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid var(--default-border-color, #ced4da);
+    background: var(--color-bg, #ffffff);
+    color: var(--color-text, #212529);
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: var(--color-primary-light, #e7f5ff);
+      color: var(--color-primary, #1971c2);
+    }
+  }
+}
+
+.firo-projection-switcher {
+  display: flex;
+  background: var(--color-gray-100, #e9ecef);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+
+  &__tab {
+    border: none;
+    background: transparent;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--color-text-secondary, #495057);
+    transition: all 0.15s ease;
+
+    &.is-active {
+      background: var(--color-bg, #ffffff);
+      color: var(--color-primary, #1971c2);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    &:hover:not(.is-active) {
+      color: var(--color-text, #212529);
+    }
+  }
+}
+
+.firo-projection-body {
+  padding: 1rem;
+  max-height: 520px;
+  overflow: auto;
+}
+
+/* Board (Kanban) View */
+.firo-board-view {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.firo-board-column {
+  flex: 1;
+  min-width: 220px;
+  background: var(--color-surface, #f8f9fa);
+  border: 1px solid var(--default-border-color, #e9ecef);
+  border-radius: 6px;
+  padding: 0.75rem;
+  min-height: 280px;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  &__badge {
+    font-size: 0.75rem;
+    background: var(--color-gray-200, #dee2e6);
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
+  }
+
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+.firo-board-card {
+  background: var(--color-bg, #ffffff);
+  border: 1px solid var(--default-border-color, #ced4da);
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: grab;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &__title {
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  &__move-btn {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    border: 1px solid var(--default-border-color, #dee2e6);
+    background: var(--color-surface, #f8f9fa);
+    border-radius: 3px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-primary-light, #e7f5ff);
+      color: var(--color-primary, #1971c2);
+    }
+  }
+}
+
+/* Table View */
+.firo-table-view {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.firo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+
+  &__header-cell {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-surface, #f8f9fa);
+    border-bottom: 2px solid var(--default-border-color, #dee2e6);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary, #495057);
+  }
+
+  &__cell {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--default-border-color, #e9ecef);
+    vertical-align: middle;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.02);
+    }
+  }
+
+  &__cell-input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    border: 1px solid var(--color-primary, #1971c2);
+    border-radius: 3px;
+    outline: none;
+  }
+
+  &__select {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+    border: 1px solid var(--default-border-color, #ced4da);
+    border-radius: 4px;
+    background: var(--color-bg, #ffffff);
+    color: inherit;
+  }
+}
+
+/* Grid View */
+.firo-grid-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.firo-grid-card {
+  background: var(--color-surface, #f8f9fa);
+  border: 1px solid var(--default-border-color, #dee2e6);
+  border-radius: 6px;
+  padding: 0.75rem;
+
+  &__title {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  &__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+  }
+
+  &__field {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  &__label {
+    color: var(--color-text-secondary, #6c757d);
+  }
+
+  &__val {
+    font-weight: 500;
+  }
+}
+
+/* Save Status Indicator (AC-10) */
+.firo-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #6c757d);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--color-success, #2f9e44);
+  }
+
+  &--saving {
+    .firo-save-status__dot {
+      background-color: var(--color-warning, #f59f00);
+      animation: pulse 1s infinite;
+    }
+  }
+
+  &--error {
+    color: var(--color-danger, #e03131);
+    .firo-save-status__dot {
+      background-color: var(--color-danger, #e03131);
+    }
+  }
+}

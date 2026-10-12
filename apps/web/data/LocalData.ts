@@ -22,8 +22,6 @@ import {
   get,
 } from "idb-keyval";
 
-import { getNonDeletedElements } from "@firo/element";
-
 import type { LibraryPersistedData } from "@firo/editor/data/library";
 import type { ImportedDataState } from "@firo/editor/data/types";
 import type { ExcalidrawElement, FileId } from "@firo/element/types";
@@ -79,10 +77,11 @@ const saveDataStateToLocalStorage = (
       _appState.openSidebar = null;
     }
 
-    localStorage.setItem(
-      STORAGE_KEYS.LOCAL_STORAGE_ELEMENTS,
-      JSON.stringify(getNonDeletedElements(elements)),
-    );
+    /*
+     * Elements come from the document model (@firo/doc + IndexedDB autosave).
+     * Writing a redundant copy to localStorage is removed to avoid synchronous
+     * 5MB writes on the main thread (ADR-0005).
+     */
     localStorage.setItem(
       STORAGE_KEYS.LOCAL_STORAGE_APP_STATE,
       JSON.stringify(_appState),
