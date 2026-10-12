@@ -92,6 +92,17 @@ export default defineConfig(({ mode }) => {
           ),
         },
         {
+          find: /^@firo\/records$/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/records/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/records\/(.*?)/,
+          replacement: path.resolve(__dirname, "../../packages/records/src/$1"),
+        },
+        {
           find: /^@firo\/facilitation$/,
           replacement: path.resolve(
             __dirname,

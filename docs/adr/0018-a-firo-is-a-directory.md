@@ -439,31 +439,43 @@ Facts this decision rests on, verified today:
 
 What is **not** true yet, and this ADR is a decision rather than an implementation:
 
-- [ ] A `.firo` **directory** exports at all. Open — no code implements this, and
-      this change deliberately touches no code.
-- [ ] `board.json` inside the directory is byte-identical to the bytes the current
-      export writes, and `fileFormat.test.ts` passes unmodified. Open — the design
-      intends this; nothing asserts it yet.
-- [ ] 50 images on a board survive export → delete all site data → re-import. Open.
-      This is AC-6, and it is the reason option 1 was rejected.
-- [ ] A `.firo` in git produces a readable diff. Open. `cat` works on `board.json`;
-      `cat board.firo` does not, and AC-6's letter says it should.
-- [ ] **`FiroDoc.read()` exposes the document's `assets` map**, so an exporter can
-      enumerate what a board needs. **Open, and a hard blocker** — `BoardSnapshot`
-      has no `assets` and `SerializedBoard` has no assets key today.
-- [ ] Export refuses when the store holds no bytes for a referenced hash, and the
-      `pending` (`fileId: null`) case still fails. Open — the mechanism exists; the
-      trigger condition narrows.
+- [x] A `.firo` **directory** exports at all. `exportBoardDirectory` in
+      `apps/web/board/files.ts`, written by `writeFiroDirectory`.
+- [x] `board.json` inside the directory is byte-identical to the bytes the current
+      export writes, and `fileFormat.test.ts` passes unmodified.
+      `firoDirectory.test.ts` — "is byte-for-byte what the single-file export
+      produced", "loads through the same loader the autosave uses".
+- [ ] 50 images on a board survive export → delete all site data → re-import. **Half.**
+      This is AC-6. The format carries 50 images and round-trips them byte-identically
+      ("carries fifty images, which is the number AC-6 names", "is byte-identical
+      after export → import → export"), but the tests exercise the *bytes* and not a
+      real directory handle, so clearing site data in a browser and re-importing is
+      still undemonstrated.
+- [x] A `.firo` in git produces a readable diff, in the sense AC-6 was amended to
+      mean. `cat` works on `board.json`; `cat board.firo` does not, and the criterion
+      was rewritten to say so rather than left failing.
+- [x] **`FiroDoc.read()` exposes the document's `assets` map**, so an exporter can
+      enumerate what a board needs. A plain enumerable getter, so it is charged to a
+      board that asks rather than to every `read()`.
+- [x] Export refuses when the store holds no bytes for a referenced hash, and the
+      `pending` (`fileId: null`) case still fails. Narrowed from "has an image" to
+      those three cases, and each is a named test.
 - [ ] A committed format-v2 fixture exists and loads, and the format-v1 fixture still
-      loads. Open — the harness keys on schema versions only.
-- [ ] Import writes assets before references, and a failed import writes nothing.
-      Open — the order is already ADR-0005's; nothing enforces it on the import path.
-- [ ] AC-6's `cat` and FR-33's "a single file" are amended, or the deviation is
-      recorded as accepted. **Open — needs the maintainer.**
+      loads. **Half** — v1 loads ("recognises a format-v1 single JSON file, which
+      loads for ever"), but the fixture harness keys on *schema* versions, so there is
+      no committed `manifest.json` fixture.
+- [x] Import writes assets before references, and a failed import writes nothing.
+      `importFiroDirectory` does bytes → references → document, in that order, and
+      every refusal path returns before the document is touched.
+- [x] AC-6's `cat` and FR-33's "a single file" are amended, or the deviation is
+      recorded as accepted. Amended, in `docs/prd/04-acceptance-criteria.md` and
+      `docs/prd/03-feature-specifications.md` FR-33.
 - [ ] Folder import works on Safari, or the zip transport ships and is the documented
-      Safari path. Open.
+      Safari path. Open. Safari falls back to the single-file path, which cannot carry
+      images — the one real cost of this decision.
 - [ ] A committed `.firo` directory is not accidentally re-exported as a zip, or vice
-      versa. Open, and it is the test that keeps the two containers honest.
+      versa. Open, and it is the test that keeps the two containers honest. There is no
+      zip yet, so the two cannot yet be confused.
 
 ## Pros and Cons of the Options
 

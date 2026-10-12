@@ -90,15 +90,19 @@ this section asked for.
   its own. Its `appState` half — zoom, theme, scroll — stays; the document model has
   no opinion about it and never will.
 - Import refuses a board that already has content. See below.
-- **The `.firo` container is still a single JSON file**, because
-  [ADR-0018](../adr/0018-a-firo-is-a-directory.md) has been written but not
-  implemented. The format it specifies is a directory; the export here still writes
-  one file and still refuses a board with an image. AC-6 names 50 images, so this
-  is the gap between the criterion and the code.
-- **`FiroDoc.read()` does not expose the document's `assets` map.** `setAsset`
-  writes one and `BoardSnapshot` has no field for it, so nothing can currently ask a
-  board which bytes it needs. ADR-0018 needs this closed before the export can
-  assemble a manifest.
+- **The `.firo` container is a directory, not a single JSON file.**
+  [ADR-0018](../adr/0018-a-firo-is-a-directory.md) has been written *and* implemented:
+  `apps/web/board/firoDirectory.ts` builds and parses `manifest.json`, `board.json` and
+  a content-addressed `assets/`, and `firoDownload.ts` writes and reads it through
+  `showDirectoryPicker`. `board.json` is byte-for-byte the file this section already
+  wrote, so every committed fixture still loads. Covered by
+  `apps/web/board/tests/firoDirectory.test.ts`, including a board of 50 images — the
+  number AC-6 names. What is left is a browser-level demonstration: the tests exercise
+  the bytes, not the directory handle. The format-v1 single file still loads, for ever.
+- **`FiroDoc.read()` does expose the document's `assets` map**, as a plain
+  enumerable getter (`packages/doc/src/doc.ts`). It was written not to be a fifth walk,
+  so it is charged to a board that asks for it rather than to every `read()`. This
+  bullet was true when written and was closed with the directory.
 - §7.2 compaction is answered for the *file* (see above) but not for the document
   itself. The autosave grows with tombstones indefinitely, which is correct for a CRDT
   and wrong for a long-lived board: a year of edits accumulates dead elements that are
@@ -147,16 +151,17 @@ instead. Both are in packages outside this section.
 
 Covered by `apps/web/board/tests/files.test.ts`, including the tombstone case and a
 board of frames, which carries no assets and must keep exporting normally. That test
-block is the single-file format's and will be rewritten when the container lands.
+block is the single-file format's, and it stays: [ADR-0018](../adr/0018-a-firo-is-a-directory.md)
+chose the directory as the *default* container and kept the single file loading for
+ever, so both formats need their own tests rather than one replacing the other.
 
 ### 7.1a — `.firo` export and import
 
-Done, and AC-6 passes **for a board with no images**. It does not pass for the board
-AC-6 actually names — one with 50 images in it — because the container is still a
-single file and the export still refuses. [ADR-0018](../adr/0018-a-firo-is-a-directory.md)
-chooses the container that closes that; see the refusal subsection above and §7.3.
-
-Both live in the app's own menu (`apps/web/components/AppMainMenu.tsx`), beside
+Done, in both containers. The single file (`files.test.ts`) and the directory
+(`firoDirectory.test.ts`) are both covered, and the directory is what the menu prefers
+where `showDirectoryPicker` exists. AC-6's board of 50 images is carried; the
+directory round-trips byte-identically after export → import → export. Both are in the
+app's own menu (`apps/web/components/AppMainMenu.tsx`), beside
 "Export image...", because that is the same intent and someone looking for one will
 look near the other.
 

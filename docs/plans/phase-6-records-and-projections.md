@@ -57,6 +57,15 @@ multi select, checkbox, person, duration.
 
 ### 6.2 — The projection interface
 
+**Implemented, with two members outstanding.** `Projection` in
+`packages/records/src/types.ts` has `id`, `name`, `supports`, `layout`, `interpret`
+and `group`; `applyChange` and `order` are not there yet, which is why property 2 below
+cannot be enforced by a call-count test and property 4 is a documented v1 compromise
+rather than a guarantee. Both projections read `record.order`, so reordering a kanban
+column also moves the table row — recorded in `src/ordering.ts` and `src/board.ts`.
+
+The original shape:
+
 ```ts
 interface Projection {
   readonly id: string
@@ -158,6 +167,12 @@ text strategy, and this is the phase to find out, not production.
 ## Verification
 
 - **AC-3**, in full, including across reload and export/import
+- **The mechanism half of AC-3 passes.** A drag becomes a `RecordMutation`, the mutation
+  becomes a document commit, and the other projection reads the new value from that same
+  record — across reload, across export/import, and as one undo step. Proven in
+  `apps/web/board/tests/records.test.ts` (15 cases). The criterion is **not** met: AC-3
+  also says *drag* and *switch to table*, and neither a renderer for a
+  `ProjectionElement` nor a control to change projection exists yet
 - A `table` element contains no row data
 - No `kanban` element type in the schema
 - `layout` purity test; `applyChange` call-count test; `interpret` non-mutation test

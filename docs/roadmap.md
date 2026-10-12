@@ -12,8 +12,8 @@ Each phase has an **exit criterion**. A phase is done when its criterion is met 
 | 3 | [Interaction](plans/phase-3-interaction.md) | Full tool set, selection, transforms, arrow binding, undo/redo, full keyboard |
 | 4 | [Miro objects and nesting](plans/phase-4-miro-objects.md) | Sticky notes, cards, frames, sections, connectors, arbitrary nesting |
 | 5 | [Facilitation](plans/phase-5-facilitation.md) | Voting, timer, private mode, reactions, presentation mode |
-| 6 | [Records and projections](plans/phase-6-records-and-projections.md) | One record store; table and board projections; **AC-3 passes** |
-| 7 | [Persistence and formats](plans/phase-7-persistence-and-formats.md) | **AC-6 and AC-7 pass.** `.firo` round-trips losslessly; offline works fully. Open: the container is still a single file, so AC-6 fails on the 50 images it names — [`ADR-0018`](adr/0018-a-firo-is-a-directory.md) decides the directory that fixes it |
+| 6 | [Records and projections](plans/phase-6-records-and-projections.md) | One record store; table and board projections; **AC-3 passes.** Three projections and the apply path are built and tested (113 cases); AC-3's *mechanism* passes end-to-end through the document. The criterion still needs a renderer and a way to switch views |
+| 7 | [Persistence and formats](plans/phase-7-persistence-and-formats.md) | **AC-6 and AC-7 pass.** `.firo` round-trips losslessly; offline works fully. The container is now a directory, per [`ADR-0018`](adr/0018-a-firo-is-a-directory.md), so the 50 images AC-6 names are carried — including a test for exactly that board |
 | 8 | [Project layer](plans/phase-8-pm-layer.md) | Board index, folders, tags, search, activity |
 | 9 | [Sync server](plans/phase-9-sync-server.md) | **AC-12 passes.** One container, local accounts, roles, presence |
 | 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | Local-model AI, MCP server, VPAT published, Tauri shell |

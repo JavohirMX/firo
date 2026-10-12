@@ -102,6 +102,14 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "./packages/laser-pointer/src/$1"),
       },
       {
+        find: /^@firo\/records$/,
+        replacement: path.resolve(__dirname, "./packages/records/src/index.ts"),
+      },
+      {
+        find: /^@firo\/records\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/records/src/$1"),
+      },
+      {
         find: /^@firo\/schema$/,
         replacement: path.resolve(__dirname, "./packages/schema/src/index.ts"),
       },

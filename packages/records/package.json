@@ -1,0 +1,61 @@
+{
+  "name": "@firo/records",
+  "version": "0.1.0",
+  "type": "module",
+  "types": "./dist/types/records/src/index.d.ts",
+  "main": "./dist/prod/index.js",
+  "module": "./dist/prod/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/types/records/src/index.d.ts",
+      "development": "./dist/dev/index.js",
+      "production": "./dist/prod/index.js",
+      "default": "./dist/prod/index.js"
+    },
+    "./*": {
+      "types": "./dist/types/records/src/*.d.ts",
+      "development": "./dist/dev/*.js",
+      "production": "./dist/prod/*.js",
+      "default": "./dist/prod/*.js"
+    }
+  },
+  "files": [
+    "dist/*"
+  ],
+  "description": "Projections over a record store: table, board and grid as views of one data set",
+  "license": "MIT",
+  "keywords": [
+    "firo",
+    "records",
+    "projections"
+  ],
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not ie <= 11",
+      "not op_mini all",
+      "not safari < 12",
+      "not kaios <= 2.5",
+      "not edge < 79",
+      "not chrome < 70",
+      "not and_uc < 13",
+      "not samsung < 10"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "scripts": {
+    "gen:types": "rimraf types && tsc",
+    "build:esm": "rimraf dist && node ../../scripts/buildBase.js && yarn gen:types"
+  },
+  "dependencies": {
+    "@firo/common": "0.1.0",
+    "@firo/fractional-indexing": "0.1.0",
+    "@firo/schema": "0.1.0"
+  },
+  "devDependencies": {}
+}
