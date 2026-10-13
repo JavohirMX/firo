@@ -2,8 +2,7 @@
 
 ## Reading order
 
-If you are new, read these four in sequence. They take about forty minutes and
-they are the whole design.
+If you are new, read these four in sequence. They take about forty minutes and they are the whole design.
 
 1. **[`vision.md`](vision.md)** — the problem, the thesis, and what we refuse to build
 2. **[`competitive.md`](competitive.md)** — how Firo compares to Miro, Excalidraw, Weje, tldraw and AFFiNE
@@ -25,25 +24,18 @@ Then, as needed:
 
 ## The one-page version
 
-Firo is a free, MIT-licensed, local-first infinite canvas. It is a Miro replacement
-with Excalidraw's hand-drawn aesthetic and Weje's low-clutter discipline.
+Firo is a free, MIT-licensed, local-first infinite canvas. It is a Miro replacement with Excalidraw's hand-drawn aesthetic and Weje's low-clutter discipline.
 
 Four ideas carry the product:
 
-- **Local-first.** Boards live on your machine. No account, no network, no server
-  required. Collaboration is optional, never a prerequisite.
-- **One data set, many views.** A task exists once and is viewed as a table, a
-  board, a grid, or a timeline.
-- **Anything can hold anything.** Any object is a container; containers nest to any
-  depth.
-- **Green information.** Information stays live on one surface. We do not build a
-  second status table to keep in sync.
+- **Local-first.** Boards live on your machine. No account, no network, no server required. Collaboration is optional, never a prerequisite.
+- **One data set, many views.** A task exists once and is viewed as a table, a board, a grid, or a timeline.
+- **Anything can hold anything.** Any object is a container; containers nest to any depth.
+- **Green information.** Information stays live on one surface. We do not build a second status table to keep in sync.
 
 ## How decisions are made
 
-Every significant decision gets an ADR in [`adr/`](adr/) recording context,
-options considered, the decision, and consequences. Accepted ADRs are immutable —
-to change one, write a new ADR that supersedes it.
+Every significant decision gets an ADR in [`adr/`](adr/) recording context, options considered, the decision, and consequences. Accepted ADRs are immutable — to change one, write a new ADR that supersedes it.
 
 The decisions that shaped everything else:
 
@@ -64,22 +56,19 @@ The decisions that shaped everything else:
 | [0013](adr/0013-replace-the-virgil-font.md) | Replace the Virgil font |
 | [0016](adr/0016-enforce-the-write-path-with-a-proxy.md) | Enforce the write path with a Proxy, not a `beforeTransaction` listener |
 | [0017](adr/0017-do-not-rewrite-the-renderer.md) | Keep the inherited renderer; the rewrite was justified by a measurement artefact |
+| [0018](adr/0018-a-firo-is-a-directory.md) | A `.firo` is a directory: `board.json`, a manifest, and content-addressed assets |
+| [0020](adr/0020-stop-walking-the-whole-document-to-read-it.md) | Memoise `read()` and make its snapshot fields lazy getters |
 
 ## Document conventions
 
-- **Markdown only.** No site generator, no build step. Every document must render
-  legibly on GitHub and be greppable by an agent.
-- **State facts, not aspirations, in `trd/` and `adr/`.** Aspiration belongs in
-  `vision.md` and the roadmap.
-- **Mark unverified claims.** If a claim about a third party could not be
-  confirmed from a primary source, say so inline.
-- **Link, do not restate.** A document that duplicates another document will drift
-  out of sync with it.
+- **Markdown only.** No site generator, no build step. Every document must render legibly on GitHub and be greppable by an agent.
+- **State facts, not aspirations, in `trd/` and `adr/`.** Aspiration belongs in `vision.md` and the roadmap.
+- **Mark unverified claims.** If a claim about a third party could not be confirmed from a primary source, say so inline.
+- **Link, do not restate.** A document that duplicates another document will drift out of sync with it.
 
 ## Repository records
 
-These live at the repository root, not under `docs/`, because they are legal
-records rather than design documents.
+These live at the repository root, not under `docs/`, because they are legal records rather than design documents.
 
 | File | What it is |
 | --- | --- |

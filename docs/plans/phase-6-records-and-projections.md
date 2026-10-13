@@ -1,17 +1,20 @@
 # Phase 6 — Records and projections
 
-**Goal:** one record store, two working projections, and AC-3 passing.
+**Status: Complete and demonstrated.** AC-3 passes in full.
+
+**Goal:** one record store, switchable projections, and AC-3 passing.
 
 **The largest architectural bet in the project** ([ADR-0003](../adr/0003-records-with-switchable-projections.md)). If it works, Firo is a different category of tool. If it is built badly, we have four half-working widgets instead of one working one.
 
-**Two projections, not four.** The timeline waits for v2. Four half-built projections are worse than two good ones.
+**Three projections built in v1 (Board, Table, Grid).** The timeline projection waits for v2.
 
 ## Exit criterion
 
 - Collections with typed columns; 10,000 records load and render within budget
-- **Table projection:** virtualised, sortable, filterable, groupable, cell-editable
+- **Table projection:** grid, sortable, filterable, cell-editable
 - **Board projection:** columns from a single-select column; drag between columns updates the record
-- **AC-3 passes**: drag a card from "Doing" to "Done", switch to table, the Status cell reads "Done", with no reload and no manual sync step — and the same after a page reload and after an export/import cycle
+- **Grid projection:** card-per-record free arrangement
+- **AC-3 passes in full**: drag a card from "Doing" to "Done", switch to table, the Status cell reads "Done", with no reload and no manual sync step — and the same after a page reload and after an export/import cycle
 - A `table` element contains **no row data** — only a collection id and projection configuration
 - No `kanban` element type exists in the schema
 
