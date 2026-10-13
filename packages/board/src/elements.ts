@@ -946,9 +946,9 @@ const sharedDocumentFields = (element: ExcalidrawElement) => {
   } as unknown as Omit<ShapeElement, "type"> & { type: ShapeElement["type"] };
 };
 
-export const fromEditorElements = (
+export const editorLabelsByContainer = (
   elements: readonly ExcalidrawElement[],
-): FiroElement[] => {
+): Map<string, ExcalidrawTextElement> => {
   // Labels first, so a note can find its own without a second pass.
   //
   // Only *live* labels. A tombstone is skipped, and that is the whole point:
@@ -968,409 +968,442 @@ export const fromEditorElements = (
       labelByContainer.set(element.containerId, element);
     }
   }
+  return labelByContainer;
+};
 
-  const folded: FiroElement[] = [];
-
-  for (const element of elements) {
-    if (element.type === "text") {
-      /*
-       * A text element is one of two things, and which one is a single nullable
-       * field.
-       *
-       * With a `containerId` it is a *label*: already consumed by its container above,
-       * or an orphan with no note to belong to, and either way there is nothing to put
-       * it in. Consumed.
-       *
-       * Without one it is a *free-standing annotation* — the text tool's output, with
-       * no box around it — and it is a document element in its own right.
-       *
-       * This branch is why that distinction is drawn here rather than by type. Both are
-       * `type: "text"` in the editor, so a fold that skipped the type outright dropped
-       * every annotation: measured, the editor held `["freedraw", "text"]` and the
-       * document held `[]`. It drew correctly, because the canvas never asks the
-       * document.
-       */
-      if (element.containerId) {
-        continue;
-      }
-
-      const annotation = element as unknown as {
-        originalText: string;
-        fontSize: number;
-        fontFamily: number;
-        textAlign: TextElement["textAlign"];
-        verticalAlign: TextElement["verticalAlign"];
-        autoResize: boolean;
-        lineHeight: number;
-      };
-
-      const textFields = sharedDocumentFields(element);
-      const {
-        containerId,
-        customData: textCustomData,
-        ...facilitationFlags
-      } = splitCustomData(element);
-
-      folded.push({
-        ...textFields,
-        type: "text",
-        /*
-         * `originalText`, not `text` — the same reasoning as a note's label, and the
-         * same bug if it is ignored. `text` is the input after wrapping inserted hard
-         * breaks to fit the width, so storing it bakes the current layout into the
-         * document; every later edit then wraps text that already has breaks in it, and
-         * the damage only becomes visible when someone widens the element.
-         */
-        text: annotation.originalText,
-        fontSize: annotation.fontSize,
-        fontFamily: annotation.fontFamily,
-        textAlign: annotation.textAlign,
-        verticalAlign: annotation.verticalAlign,
-        autoResize: annotation.autoResize,
-        lineHeight: annotation.lineHeight,
-        ...(containerId ? { containerId } : {}),
-        ...(textCustomData ? { customData: textCustomData } : {}),
-        ...facilitationFlags,
-      } as unknown as TextElement);
-      continue;
+/**
+ * Fold one editor element into document form, or `null` when it has none.
+ *
+ * The editor's whole scene is folded by `fromEditorElements`, but `BoardSync`
+ * also folds scenes *partially* -- when only a handful of elements changed it
+ * folds just those and reuses the last folded copy for the rest. Both callers
+ * need the same per-element translation, so the fold lives here: one element
+ * in, its document form out, and `null` for the elements the document has no
+ * form for -- a bound label (consumed by its container and not a document
+ * element in its own right) and a type this version of the schema does not
+ * know (`embeddable`, `magicframe`).
+ *
+ * `labelByContainer` comes from `editorLabelsByContainer`, built once over the
+ * whole scene; a note reads its text from there.
+ */
+export const foldEditorElement = (
+  element: ExcalidrawElement,
+  labelByContainer: ReadonlyMap<string, ExcalidrawTextElement>,
+): FiroElement | null => {
+  if (element.type === "text") {
+    /*
+     * A text element is one of two things, and which one is a single nullable
+     * field.
+     *
+     * With a `containerId` it is a *label*: already consumed by its container above,
+     * or an orphan with no note to belong to, and either way there is nothing to put
+     * it in. Consumed.
+     *
+     * Without one it is a *free-standing annotation* — the text tool's output, with
+     * no box around it — and it is a document element in its own right.
+     *
+     * This branch is why that distinction is drawn here rather than by type. Both are
+     * `type: "text"` in the editor, so a fold that skipped the type outright dropped
+     * every annotation: measured, the editor held `["freedraw", "text"]` and the
+     * document held `[]`. It drew correctly, because the canvas never asks the
+     * document.
+     */
+    if (element.containerId) {
+      return null;
     }
 
-    if (
-      element.type === "rectangle" ||
-      element.type === "diamond" ||
-      element.type === "ellipse"
-    ) {
-      /*
-       * A shape, and a single editor element — so nothing to consume and nothing
-       * to fold. The fields come straight off it.
-       *
-       * This branch is why the document can be the board's source of truth.
-       * Before it existed the fold skipped every type it did not recognise, which
-       * meant a rectangle drawn in the app was drawn, looked fine, and reached
-       * the document as nothing at all: the editor held four elements and the
-       * document held zero. Skipping is still right for a type this version
-       * genuinely does not know, and that case is below.
-       */
-      const fields = sharedDocumentFields(element);
-      /*
-       * `...facilitationFlags` is spread from the rest of `splitCustomData`'s
-       * result, so every branch gets the same two flags from one implementation and
-       * a branch cannot forget them. The other six branches are identical here --
-       * deliberately: a per-branch hand-written `hiddenUntilRevealed: element
-       * .customData?.[...]` is seven copies, and the copy somebody misses loses a
-       * facilitator's decision rather than raising an error.
-       */
-      const {
-        containerId,
-        customData: shapeCustomData,
-        ...facilitationFlags
-      } = splitCustomData(element);
+    const annotation = element as unknown as {
+      originalText: string;
+      fontSize: number;
+      fontFamily: number;
+      textAlign: TextElement["textAlign"];
+      verticalAlign: TextElement["verticalAlign"];
+      autoResize: boolean;
+      lineHeight: number;
+    };
 
-      folded.push({
-        ...fields,
-        type: element.type,
-        ...(containerId ? { containerId } : {}),
-        ...(shapeCustomData ? { customData: shapeCustomData } : {}),
-        ...facilitationFlags,
-      } as ShapeElement);
-      continue;
-    }
-
-    if (element.type === "freedraw") {
-      /*
-       * A stroke, and a single editor element — so nothing to consume and nothing
-       * to fold, the same as a shape.
-       *
-       * Every pressure field is copied. This is where a stroke is most easily
-       * damaged: the fold runs on every editor change, so a stroke that lost
-       * `pressures` here would come back on the next sync as a flat line and look
-       * like a rendering bug rather than a lost field.
-       *
-       * The fields are read defensively, which they are not elsewhere in this
-       * fold, and the reason is the spreads. `[...stroke.pressures]` on an element
-       * with no `pressures` throws, and the fold runs over the whole scene on
-       * every editor change — so one malformed stroke would take the entire board's
-       * sync down with it. That is the failure the "skips a type the document has
-       * no schema for" test exists to prevent, reached from the other direction.
-       *
-       * An incomplete stroke is folded with defaults rather than dropped: the
-       * schema's validator repairs it on load, so a stroke that arrives missing
-       * its pressures becomes a valid even-width stroke instead of vanishing.
-       */
-      const stroke = element as unknown as {
-        points?: unknown;
-        pressures?: readonly number[];
-        simulatePressure?: boolean;
-        strokeOptions?: Partial<FreedrawElement["strokeOptions"]>;
-      };
-
-      const fields = sharedDocumentFields(element);
-      const {
-        containerId,
-        customData: strokeCustomData,
-        ...facilitationFlags
-      } = splitCustomData(element);
-
-      folded.push({
-        ...fields,
-        type: "freedraw",
-        points: Array.isArray(stroke.points) ? [...stroke.points] : [],
-        pressures: Array.isArray(stroke.pressures) ? [...stroke.pressures] : [],
-        // `true` is the safe default: the renderer can draw from points alone,
-        // whereas `false` with no pressures hands it `undefined` per point.
-        simulatePressure: stroke.simulatePressure !== false,
-        strokeOptions: {
-          variability: stroke.strokeOptions?.variability ?? "variable",
-          streamline: stroke.strokeOptions?.streamline ?? 0.4,
-        },
-        ...(containerId ? { containerId } : {}),
-        ...(strokeCustomData ? { customData: strokeCustomData } : {}),
-        ...facilitationFlags,
-      } as unknown as FreedrawElement);
-      continue;
-    }
-
-    if (element.type === "frame") {
-      /*
-       * A frame, and a single editor element — nothing to consume, nothing to fold,
-       * the same as a shape.
-       *
-       * `name` is copied straight across, including `null`. An unnamed frame is a
-       * real state and not a missing value, and folding it to `""` would make every
-       * unnamed frame on a board indistinguishable from a frame someone cleared.
-       *
-       * A frame's *membership* arrives on the elements inside it, as `frameId`, and
-       * those are folded by their own branches. There is deliberately no list of
-       * children here: the base already carries the relation, and a second copy of it
-       * is a second thing to disagree.
-       */
-      const frame = element as unknown as { name?: string | null };
-
-      const fields = sharedDocumentFields(element);
-      const {
-        containerId,
-        customData: frameCustomData,
-        ...facilitationFlags
-      } = splitCustomData(element);
-
-      folded.push({
-        ...fields,
-        type: "frame",
-        name: typeof frame.name === "string" ? frame.name : null,
-        ...(containerId ? { containerId } : {}),
-        ...(frameCustomData ? { customData: frameCustomData } : {}),
-        ...facilitationFlags,
-      } as FrameElement);
-      continue;
-    }
-
-    if (element.type === "image") {
-      /*
-       * An image, and a single editor element. The last type the fold did not know,
-       * so the last one that could be drawn, autosaved in the editor's own copy,
-       * and then absent from every file.
-       *
-       * Read defensively, like the stroke branch and for the same reason: the fold
-       * runs over the whole scene on every editor change, so a spread of an element
-       * whose `scale` is missing would take the entire board's sync down rather than
-       * lose one picture.
-       *
-       * `fileId` is folded as `null` when absent rather than defaulted to anything.
-       * An image with no reference is the renderer's pending case — placed, not yet
-       * read — and inventing an id for it would produce an element pointing at bytes
-       * that do not exist. That is the state the file writer refuses to export, so it
-       * has to be representable rather than papered over.
-       */
-      const image = element as unknown as {
-        fileId?: string | null;
-        status?: string;
-        scale?: unknown;
-        crop?: ImageCrop | null;
-      };
-
-      const fields = sharedDocumentFields(element);
-      const {
-        containerId,
-        customData: imageCustomData,
-        ...facilitationFlags
-      } = splitCustomData(element);
-
-      folded.push({
-        ...fields,
-        type: "image",
-        fileId: typeof image.fileId === "string" ? image.fileId : null,
-        status:
-          image.status === "pending" || image.status === "error"
-            ? image.status
-            : "saved",
-        /*
-         * Copied rather than shared, for the stroke's reason. The editor may or may
-         * not replace this array rather than mutate it — that is current behaviour,
-         * not an invariant — and an element handed the document's own pair and then
-         * written into would change the document with no commit, no diff and no undo
-         * entry.
-         */
-        scale: Array.isArray(image.scale)
-          ? ([image.scale[0], image.scale[1]] as [number, number])
-          : [1, 1],
-        crop: plainCrop(image.crop) ? { ...image.crop } : null,
-        ...(containerId ? { containerId } : {}),
-        ...(imageCustomData ? { customData: imageCustomData } : {}),
-        ...facilitationFlags,
-      } as unknown as ImageElement);
-      continue;
-    }
-
-    if (element.type === "arrow" || element.type === "line") {
-      const connector = element as unknown as {
-        points: unknown;
-        startArrowhead: unknown;
-        endArrowhead: unknown;
-        elbowed: unknown;
-        startBinding: {
-          elementId: string;
-          fixedPoint?: readonly [number, number];
-          mode?: string;
-        } | null;
-        endBinding: {
-          elementId: string;
-          fixedPoint?: readonly [number, number];
-          mode?: string;
-        } | null;
-      };
-      /*
-       * A connector, and the only element whose bindings the fold has to
-       * *assemble* rather than read.
-       *
-       * The renderer splits a connector's bindings into `startBinding` and
-       * `endBinding`; the document keeps them as one ordered list. So the fold
-       * puts start first and end second, and the projection above reads them back
-       * the same way. The two must agree, which is the reason both directions
-       * live next to each other rather than in separate files.
-       */
-      const fields = sharedDocumentFields(element);
-      const {
-        containerId,
-        customData: linearCustomData,
-        ...facilitationFlags
-      } = splitCustomData(element);
-
-      folded.push({
-        ...fields,
-        type: element.type,
-        points: connector.points as LinearElement["points"],
-        startArrowhead: (connector.startArrowhead ??
-          null) as LinearElement["startArrowhead"],
-        endArrowhead: (connector.endArrowhead ??
-          null) as LinearElement["endArrowhead"],
-        elbowed: connector.elbowed === true,
-        /*
-         * Order matters and is load-bearing. `fields.bindings` came from the
-         * editor's `boundElements`, which for a connector is *not* where the
-         * geometry lives -- that is in `startBinding`/`endBinding` -- so the
-         * bindings built there are replaced wholesale by these.
-         */
-        bindings: [
-          ...(connector.startBinding
-            ? [fromFixedPointBinding(connector.startBinding)]
-            : []),
-          ...(connector.endBinding
-            ? [fromFixedPointBinding(connector.endBinding)]
-            : []),
-        ].slice(0, 2) as unknown as FiroElement["bindings"],
-        ...(containerId ? { containerId } : {}),
-        ...(linearCustomData ? { customData: linearCustomData } : {}),
-        ...facilitationFlags,
-      } as unknown as LinearElement);
-      continue;
-    }
-
-    if (element.type !== "stickynote") {
-      // A shape the editor can draw that Firo has no type for — `embeddable`, and
-      // `magicframe`. Skipped rather than thrown: a board may legitimately hold an
-      // element type this version does not understand, and refusing to sync would
-      // freeze the board over something the user can see.
-      //
-      // The gap is now empty of everything a person can draw with the toolbar. It was
-      // not: `freedraw`, `image` and `frame` were all in this branch, which means a
-      // stroke, a picture or a frame drawn in the app reached the document as nothing
-      // at all — drawn correctly, saved by the editor's own redundant copy, and
-      // absent from every `.firo` file. Anything added here needs an element type in
-      // `@firo/schema` and a branch above, in the same commit.
-      continue;
-    }
-
-    const label = labelByContainer.get(element.id);
+    const textFields = sharedDocumentFields(element);
     const {
       containerId,
-      customData: noteCustomData,
+      customData: textCustomData,
       ...facilitationFlags
     } = splitCustomData(element);
 
-    folded.push({
-      id: element.id as ElementId,
-      type: "stickynote",
-      x: element.x,
-      y: element.y,
-      width: element.width,
-      height: element.height,
-      angle: element.angle,
-      strokeColor: element.strokeColor,
-      backgroundColor: element.backgroundColor,
-      fillStyle: element.fillStyle as FiroElement["fillStyle"],
-      strokeWidth: element.strokeWidth,
-      strokeStyle: element.strokeStyle,
-      roundness: element.roundness as FiroElement["roundness"],
-      roughness: element.roughness,
-      opacity: element.opacity,
-      version: element.version,
-      versionNonce: element.versionNonce,
-      index: element.index,
-      isDeleted: element.isDeleted,
-      groupIds: element.groupIds,
-      frameId: element.frameId,
+    return {
+      ...textFields,
+      type: "text",
       /*
-       * Lossy, and the reason this must not be used to write a whole element
-       * back over the document: the editor's `boundElements` carries no `focus`
-       * or `gap`, so bindings read this way arrive with the geometry the document
-       * is holding replaced by nothing. Sync goes field by field for this.
+       * `originalText`, not `text` — the same reasoning as a note's label, and the
+       * same bug if it is ignored. `text` is the input after wrapping inserted hard
+       * breaks to fit the width, so storing it bakes the current layout into the
+       * document; every later edit then wraps text that already has breaks in it, and
+       * the damage only becomes visible when someone widens the element.
        */
-      bindings: (element.boundElements ?? []).map((bound) => ({
-        elementId: bound.id as ElementId,
-        focus: 0,
-        gap: 1,
-      })),
-      /*
-       * `originalText`, not `text`.
-       *
-       * A sticky note's bound label carries two strings: `originalText` is what
-       * the user typed, and `text` is that string after `wrapText` has inserted
-       * hard line breaks to fit the note's width (element/src/stickyNote.ts).
-       *
-       * Reading `text` stores the *layout* as if it were the content. The note
-       * still looks right, so nothing appears broken — but every save bakes the
-       * current wrapping into the document, and the next layout pass wraps text
-       * that already has breaks in it. Notes that have been edited enough times
-       * accumulate line breaks, and the corruption is invisible until someone
-       * widens the note and finds the text is not where they left it.
-       *
-       * Found by drawing a note, typing "hello board", and finding "hello
-       * newline board" in the document.
-       */
-      text: label?.originalText ?? "",
-      fontSize: label?.fontSize ?? 20,
-      fontFamily: label?.fontFamily ?? 1,
-      textAlign: label?.textAlign ?? "center",
-      verticalAlign: label?.verticalAlign ?? "middle",
-      isContainer: false,
-      link: element.link,
-      locked: element.locked,
-      created: element.created ?? null,
-      updated: element.updated,
+      text: annotation.originalText,
+      fontSize: annotation.fontSize,
+      fontFamily: annotation.fontFamily,
+      textAlign: annotation.textAlign,
+      verticalAlign: annotation.verticalAlign,
+      autoResize: annotation.autoResize,
+      lineHeight: annotation.lineHeight,
       ...(containerId ? { containerId } : {}),
-      ...(noteCustomData ? { customData: noteCustomData } : {}),
+      ...(textCustomData ? { customData: textCustomData } : {}),
       ...facilitationFlags,
-    } as unknown as StickyNoteElement);
+    } as unknown as TextElement;
+  }
+
+  if (
+    element.type === "rectangle" ||
+    element.type === "diamond" ||
+    element.type === "ellipse"
+  ) {
+    /*
+     * A shape, and a single editor element — so nothing to consume and nothing
+     * to fold. The fields come straight off it.
+     *
+     * This branch is why the document can be the board's source of truth.
+     * Before it existed the fold skipped every type it did not recognise, which
+     * meant a rectangle drawn in the app was drawn, looked fine, and reached
+     * the document as nothing at all: the editor held four elements and the
+     * document held zero. Skipping is still right for a type this version
+     * genuinely does not know, and that case is below.
+     */
+    const fields = sharedDocumentFields(element);
+    /*
+     * `...facilitationFlags` is spread from the rest of `splitCustomData`'s
+     * result, so every branch gets the same two flags from one implementation and
+     * a branch cannot forget them. The other six branches are identical here --
+     * deliberately: a per-branch hand-written `hiddenUntilRevealed: element
+     * .customData?.[...]` is seven copies, and the copy somebody misses loses a
+     * facilitator's decision rather than raising an error.
+     */
+    const {
+      containerId,
+      customData: shapeCustomData,
+      ...facilitationFlags
+    } = splitCustomData(element);
+
+    return {
+      ...fields,
+      type: element.type,
+      ...(containerId ? { containerId } : {}),
+      ...(shapeCustomData ? { customData: shapeCustomData } : {}),
+      ...facilitationFlags,
+    } as ShapeElement;
+  }
+
+  if (element.type === "freedraw") {
+    /*
+     * A stroke, and a single editor element — so nothing to consume and nothing
+     * to fold, the same as a shape.
+     *
+     * Every pressure field is copied. This is where a stroke is most easily
+     * damaged: the fold runs on every editor change, so a stroke that lost
+     * `pressures` here would come back on the next sync as a flat line and look
+     * like a rendering bug rather than a lost field.
+     *
+     * The fields are read defensively, which they are not elsewhere in this
+     * fold, and the reason is the spreads. `[...stroke.pressures]` on an element
+     * with no `pressures` throws, and the fold runs over the whole scene on
+     * every editor change — so one malformed stroke would take the entire board's
+     * sync down with it. That is the failure the "skips a type the document has
+     * no schema for" test exists to prevent, reached from the other direction.
+     *
+     * An incomplete stroke is folded with defaults rather than dropped: the
+     * schema's validator repairs it on load, so a stroke that arrives missing
+     * its pressures becomes a valid even-width stroke instead of vanishing.
+     */
+    const stroke = element as unknown as {
+      points?: unknown;
+      pressures?: readonly number[];
+      simulatePressure?: boolean;
+      strokeOptions?: Partial<FreedrawElement["strokeOptions"]>;
+    };
+
+    const fields = sharedDocumentFields(element);
+    const {
+      containerId,
+      customData: strokeCustomData,
+      ...facilitationFlags
+    } = splitCustomData(element);
+
+    return {
+      ...fields,
+      type: "freedraw",
+      points: Array.isArray(stroke.points) ? [...stroke.points] : [],
+      pressures: Array.isArray(stroke.pressures) ? [...stroke.pressures] : [],
+      // `true` is the safe default: the renderer can draw from points alone,
+      // whereas `false` with no pressures hands it `undefined` per point.
+      simulatePressure: stroke.simulatePressure !== false,
+      strokeOptions: {
+        variability: stroke.strokeOptions?.variability ?? "variable",
+        streamline: stroke.strokeOptions?.streamline ?? 0.4,
+      },
+      ...(containerId ? { containerId } : {}),
+      ...(strokeCustomData ? { customData: strokeCustomData } : {}),
+      ...facilitationFlags,
+    } as unknown as FreedrawElement;
+  }
+
+  if (element.type === "frame") {
+    /*
+     * A frame, and a single editor element — nothing to consume, nothing to fold,
+     * the same as a shape.
+     *
+     * `name` is copied straight across, including `null`. An unnamed frame is a
+     * real state and not a missing value, and folding it to `""` would make every
+     * unnamed frame on a board indistinguishable from a frame someone cleared.
+     *
+     * A frame's *membership* arrives on the elements inside it, as `frameId`, and
+     * those are folded by their own branches. There is deliberately no list of
+     * children here: the base already carries the relation, and a second copy of it
+     * is a second thing to disagree.
+     */
+    const frame = element as unknown as { name?: string | null };
+
+    const fields = sharedDocumentFields(element);
+    const {
+      containerId,
+      customData: frameCustomData,
+      ...facilitationFlags
+    } = splitCustomData(element);
+
+    return {
+      ...fields,
+      type: "frame",
+      name: typeof frame.name === "string" ? frame.name : null,
+      ...(containerId ? { containerId } : {}),
+      ...(frameCustomData ? { customData: frameCustomData } : {}),
+      ...facilitationFlags,
+    } as FrameElement;
+  }
+
+  if (element.type === "image") {
+    /*
+     * An image, and a single editor element. The last type the fold did not know,
+     * so the last one that could be drawn, autosaved in the editor's own copy,
+     * and then absent from every file.
+     *
+     * Read defensively, like the stroke branch and for the same reason: the fold
+     * runs over the whole scene on every editor change, so a spread of an element
+     * whose `scale` is missing would take the entire board's sync down rather than
+     * lose one picture.
+     *
+     * `fileId` is folded as `null` when absent rather than defaulted to anything.
+     * An image with no reference is the renderer's pending case — placed, not yet
+     * read — and inventing an id for it would produce an element pointing at bytes
+     * that do not exist. That is the state the file writer refuses to export, so it
+     * has to be representable rather than papered over.
+     */
+    const image = element as unknown as {
+      fileId?: string | null;
+      status?: string;
+      scale?: unknown;
+      crop?: ImageCrop | null;
+    };
+
+    const fields = sharedDocumentFields(element);
+    const {
+      containerId,
+      customData: imageCustomData,
+      ...facilitationFlags
+    } = splitCustomData(element);
+
+    return {
+      ...fields,
+      type: "image",
+      fileId: typeof image.fileId === "string" ? image.fileId : null,
+      status:
+        image.status === "pending" || image.status === "error"
+          ? image.status
+          : "saved",
+      /*
+       * Copied rather than shared, for the stroke's reason. The editor may or may
+       * not replace this array rather than mutate it — that is current behaviour,
+       * not an invariant — and an element handed the document's own pair and then
+       * written into would change the document with no commit, no diff and no undo
+       * entry.
+       */
+      scale: Array.isArray(image.scale)
+        ? ([image.scale[0], image.scale[1]] as [number, number])
+        : [1, 1],
+      crop: plainCrop(image.crop) ? { ...image.crop } : null,
+      ...(containerId ? { containerId } : {}),
+      ...(imageCustomData ? { customData: imageCustomData } : {}),
+      ...facilitationFlags,
+    } as unknown as ImageElement;
+  }
+
+  if (element.type === "arrow" || element.type === "line") {
+    const connector = element as unknown as {
+      points: unknown;
+      startArrowhead: unknown;
+      endArrowhead: unknown;
+      elbowed: unknown;
+      startBinding: {
+        elementId: string;
+        fixedPoint?: readonly [number, number];
+        mode?: string;
+      } | null;
+      endBinding: {
+        elementId: string;
+        fixedPoint?: readonly [number, number];
+        mode?: string;
+      } | null;
+    };
+    /*
+     * A connector, and the only element whose bindings the fold has to
+     * *assemble* rather than read.
+     *
+     * The renderer splits a connector's bindings into `startBinding` and
+     * `endBinding`; the document keeps them as one ordered list. So the fold
+     * puts start first and end second, and the projection above reads them back
+     * the same way. The two must agree, which is the reason both directions
+     * live next to each other rather than in separate files.
+     */
+    const fields = sharedDocumentFields(element);
+    const {
+      containerId,
+      customData: linearCustomData,
+      ...facilitationFlags
+    } = splitCustomData(element);
+
+    return {
+      ...fields,
+      type: element.type,
+      points: connector.points as LinearElement["points"],
+      startArrowhead: (connector.startArrowhead ??
+        null) as LinearElement["startArrowhead"],
+      endArrowhead: (connector.endArrowhead ??
+        null) as LinearElement["endArrowhead"],
+      elbowed: connector.elbowed === true,
+      /*
+       * Order matters and is load-bearing. `fields.bindings` came from the
+       * editor's `boundElements`, which for a connector is *not* where the
+       * geometry lives -- that is in `startBinding`/`endBinding` -- so the
+       * bindings built there are replaced wholesale by these.
+       */
+      bindings: [
+        ...(connector.startBinding
+          ? [fromFixedPointBinding(connector.startBinding)]
+          : []),
+        ...(connector.endBinding
+          ? [fromFixedPointBinding(connector.endBinding)]
+          : []),
+      ].slice(0, 2) as unknown as FiroElement["bindings"],
+      ...(containerId ? { containerId } : {}),
+      ...(linearCustomData ? { customData: linearCustomData } : {}),
+      ...facilitationFlags,
+    } as unknown as LinearElement;
+  }
+
+  if (element.type !== "stickynote") {
+    // A shape the editor can draw that Firo has no type for — `embeddable`, and
+    // `magicframe`. Skipped rather than thrown: a board may legitimately hold an
+    // element type this version does not understand, and refusing to sync would
+    // freeze the board over something the user can see.
+    //
+    // The gap is now empty of everything a person can draw with the toolbar. It was
+    // not: `freedraw`, `image` and `frame` were all in this branch, which means a
+    // stroke, a picture or a frame drawn in the app reached the document as nothing
+    // at all — drawn correctly, saved by the editor's own redundant copy, and
+    // absent from every `.firo` file. Anything added here needs an element type in
+    // `@firo/schema` and a branch above, in the same commit.
+    return null;
+  }
+
+  const label = labelByContainer.get(element.id);
+  const {
+    containerId,
+    customData: noteCustomData,
+    ...facilitationFlags
+  } = splitCustomData(element);
+
+  return {
+    id: element.id as ElementId,
+    type: "stickynote",
+    x: element.x,
+    y: element.y,
+    width: element.width,
+    height: element.height,
+    angle: element.angle,
+    strokeColor: element.strokeColor,
+    backgroundColor: element.backgroundColor,
+    fillStyle: element.fillStyle as FiroElement["fillStyle"],
+    strokeWidth: element.strokeWidth,
+    strokeStyle: element.strokeStyle,
+    roundness: element.roundness as FiroElement["roundness"],
+    roughness: element.roughness,
+    opacity: element.opacity,
+    version: element.version,
+    versionNonce: element.versionNonce,
+    index: element.index,
+    isDeleted: element.isDeleted,
+    groupIds: element.groupIds,
+    frameId: element.frameId,
+    /*
+     * Lossy, and the reason this must not be used to write a whole element
+     * back over the document: the editor's `boundElements` carries no `focus`
+     * or `gap`, so bindings read this way arrive with the geometry the document
+     * is holding replaced by nothing. Sync goes field by field for this.
+     */
+    bindings: (element.boundElements ?? []).map((bound) => ({
+      elementId: bound.id as ElementId,
+      focus: 0,
+      gap: 1,
+    })),
+    /*
+     * `originalText`, not `text`.
+     *
+     * A sticky note's bound label carries two strings: `originalText` is what
+     * the user typed, and `text` is that string after `wrapText` has inserted
+     * hard line breaks to fit the note's width (element/src/stickyNote.ts).
+     *
+     * Reading `text` stores the *layout* as if it were the content. The note
+     * still looks right, so nothing appears broken — but every save bakes the
+     * current wrapping into the document, and the next layout pass wraps text
+     * that already has breaks in it. Notes that have been edited enough times
+     * accumulate line breaks, and the corruption is invisible until someone
+     * widens the note and finds the text is not where they left it.
+     *
+     * Found by drawing a note, typing "hello board", and finding "hello
+     * newline board" in the document.
+     */
+    text: label?.originalText ?? "",
+    fontSize: label?.fontSize ?? 20,
+    fontFamily: label?.fontFamily ?? 1,
+    textAlign: label?.textAlign ?? "center",
+    verticalAlign: label?.verticalAlign ?? "middle",
+    isContainer: false,
+    link: element.link,
+    locked: element.locked,
+    created: element.created ?? null,
+    updated: element.updated,
+    ...(containerId ? { containerId } : {}),
+    ...(noteCustomData ? { customData: noteCustomData } : {}),
+    ...facilitationFlags,
+  } as unknown as StickyNoteElement;
+};
+
+/**
+ * Fold a whole editor scene into document form.
+ *
+ * Nothing more than the per-element fold applied in scene order — the scene
+ * order *is* the z-order, and the fold preserves it. Kept as a named export
+ * because it is the wholesale path: the initial sync, a full pull's echo, and
+ * the pushes `BoardSync` sends when the scene's *composition* changed.
+ */
+export const fromEditorElements = (
+  elements: readonly ExcalidrawElement[],
+): FiroElement[] => {
+  const labelByContainer = editorLabelsByContainer(elements);
+  const folded: FiroElement[] = [];
+
+  for (const element of elements) {
+    const one = foldEditorElement(element, labelByContainer);
+    if (one) {
+      folded.push(one);
+    }
   }
 
   return folded;

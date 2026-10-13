@@ -62,12 +62,14 @@ import {
   elementsForPresentation,
 } from "@firo/facilitation";
 
-import type { FiroElement, StickyNoteElement } from "@firo/schema";
+import type { ElementId, FiroElement, StickyNoteElement } from "@firo/schema";
 import type { EphemeralPresentation, Mutation } from "@firo/doc";
 import type { PresentationState, RevealState } from "@firo/facilitation";
 
 import {
   EDITOR_OWNED_FIELDS,
+  editorLabelsByContainer,
+  foldEditorElement,
   fromEditorElements,
   toEditorScene,
 } from "./elements.js";
@@ -120,6 +122,120 @@ const isEcho = (
   );
 };
 
+/**
+ * Whether a raw editor element still folds to the baseline `push()` holds,
+ * judged by the fields the editor owns.
+ *
+ * This is how `push()` decides *whether to fold an element at all*, and it is
+ * `isEcho` run on the raw element rather than a copy of the fold. The field list
+ * is the same `EDITOR_OWNED_FIELDS` the echo check has always used, so it draws
+ * the line in exactly the same place, and draws it no wider: a field outside the
+ * list is already one whose change the push treats as invisible once the fold
+ * comes back unchanged, and the list's own comment already makes maintaining it
+ * part of adding an element field.
+ *
+ * ## By value, not by `versionNonce`
+ *
+ * `mutateElement` bumps `versionNonce` on every edit, so a counter looks like it
+ * would do. It is deliberately not the test. The bridge is a plain `read`/`write`
+ * seam (see `EditorBridge`) and says nothing about *how* a host edits an element;
+ * an in-place edit that bumps no counter -- the shape the tests use, and a host
+ * could use -- has to be seen too, or the edit is silently frozen in the
+ * document. Comparing values is the same choice `isEcho` makes and for the same
+ * reason.
+ *
+ * ## Raw against folded is safe here
+ *
+ * `isEcho` runs folded-against-folded because a note's `text` lives on the
+ * editor's label, not on the note, so a raw note has no `text` and would read as
+ * changed every time. That is harmless for *this* test: reading a note as changed
+ * costs one fold, the fold reads the label, and the fold equals the baseline, so
+ * `diff` still commits nothing. Erring toward "changed" is the only safe
+ * direction for a test whose failure mode is a dropped edit.
+ *
+ * ## Arrays by length and endpoints
+ *
+ * Comparing a stroke's `points` element by element would walk every vertex on
+ * every push, which is the cost this whole path exists to avoid. Arrays are
+ * compared by length and two endpoints instead, enough to see the two shapes they
+ * take in practice -- a stroke's points only ever grow, a binding list only ever
+ * gains or loses an entry -- and no worse than the echo test, which is allowed to
+ * be conservative.
+ */
+const sameTrackedElement = (
+  raw: Record<string, unknown>,
+  baseline: Record<string, unknown>,
+): boolean => {
+  for (const field of EDITOR_OWNED_FIELDS) {
+    const next = raw[field];
+    const previous = baseline[field];
+    if (next === previous) {
+      continue;
+    }
+    if (Array.isArray(next) && Array.isArray(previous)) {
+      if (
+        next.length !== previous.length ||
+        !sameValue(next[0], previous[0]) ||
+        (next.length > 1 &&
+          !sameValue(next[next.length - 1], previous[previous.length - 1]))
+      ) {
+        return false;
+      }
+      continue;
+    }
+    if (!sameValue(next, previous)) {
+      return false;
+    }
+  }
+  return raw.isDeleted === baseline.isDeleted;
+};
+
+/**
+ * Fold only the elements `push()` found changed, reusing the baseline copy for
+ * the rest.
+ *
+ * The result has the scene's order and the scene's complete set of document
+ * elements, so `diff` sees what a full fold would have shown it. Compositional
+ * changes -- an element added, deleted, or reordered -- are not handled here;
+ * they take the full fold.
+ *
+ * A clean element reuses the exact baseline object. That is the point (no fold,
+ * no deep compare) and it is also the echo: the copy *is* the baseline, so the
+ * `isEcho` comparison in `push` short-circuits on identity.
+ *
+ * A label is the one element that can change without folding: it has no document
+ * form of its own, but a note reads its text from it. So the caller adds the
+ * label's container to the dirty set before calling this, and a dirty label is
+ * folded here only to be dropped again -- correctly, since it is not an element.
+ */
+const foldDirtyElements = (
+  incoming: readonly Record<string, unknown>[],
+  baseline: ReadonlyMap<string, FiroElement>,
+  dirty: ReadonlySet<string>,
+): FiroElement[] => {
+  const labelByContainer = editorLabelsByContainer(incoming as never[]);
+  const folded: FiroElement[] = [];
+
+  for (const raw of incoming) {
+    const id = raw.id as string;
+    if (!dirty.has(id)) {
+      // A clean label, or any clean element with no document form, is simply
+      // absent from the baseline; nothing to reuse and nothing to emit.
+      const previous = baseline.get(id as ElementId);
+      if (previous) {
+        folded.push(previous);
+      }
+      continue;
+    }
+    const one = foldEditorElement(raw as never, labelByContainer);
+    if (one) {
+      folded.push(one);
+    }
+  }
+
+  return folded;
+};
+
 /** What the sync needs from the editor, and the one way it touches it. */
 export type EditorBridge = {
   /** Every element the editor holds, deleted ones included. */
@@ -168,6 +284,27 @@ export class BoardSync {
   private pushedElements: readonly FiroElement[] = [];
 
   private lastDocElements: readonly FiroElement[] = [];
+
+  /**
+   * The ids of the editor's scene, in scene order, as of the last time a push or
+   * pull looked at it.
+   *
+   * `push()` compares the incoming scene's ids against this order and each
+   * element's tracked fields against the `pushedElements` baseline. When neither
+   * moved, the scene cannot fold differently than it did last time, so `push()`
+   * returns without folding or diffing anything. That is the whole of the
+   * pan/zoom/hover fix: those interactions fire the editor's change event without
+   * touching an element, and the old path paid a full fold and a full deep
+   * compare on every one of them.
+   *
+   * The ids are kept for their *order*, which the field comparison cannot see:
+   * scene order is z-order, so a reorder changes the scene while every element's
+   * fields stay equal. Refreshed on *every* observed push, not only the ones that
+   * commit -- the question is "have I looked at this scene before", not "did I
+   * commit it", and a scene the editor hands back unchanged must read as
+   * unchanged on every push, forever.
+   */
+  private lastIds: readonly string[] | null = null;
 
   private suspended = false;
 
@@ -340,17 +477,106 @@ export class BoardSync {
     }
 
     const incoming = this.editor.read();
-    const folded = fromEditorElements(incoming as never[]);
+
+    /*
+     * ## Compare before folding: the fast path and the dirty set
+     *
+     * Pan, zoom, hover and selection changes all fire the editor's change event
+     * without touching an element, and `push()` runs at input frequency -- on
+     * every wheel event, every pointer move over the canvas. On a board holding
+     * a handful of long strokes the old path paid for a full fold and a full
+     * deep compare on every one of those events: `fromEditorElements` copied
+     * every stroke's `points`, and `isEcho`/`changedFields` walked every point of
+     * every stroke. All of it to commit nothing.
+     *
+     * So the scene is walked once *before* folding, each element against the
+     * baseline copy it last folded to and its id against the order last seen.
+     * Nothing tracked moved and the order held -> the scene folds exactly as it
+     * did last time, so there is nothing to fold and nothing to diff and the push
+     * returns. Something moved -> the same walk has already named the elements to
+     * fold, so a stroke being drawn costs one walk of *fields* plus one fold,
+     * instead of a walk of every point in the scene.
+     *
+     * The walk compares values, not `version`/`versionNonce`; see
+     * `sameTrackedElement` for why, and for why arrays are read only at their
+     * ends.
+     */
+    const baseline = new Map(
+      this.pushedElements.map((element) => [element.id, element]),
+    );
+
+    const dirty = new Set<string>();
+    for (const raw of incoming) {
+      const id = raw.id as string;
+      const previous = baseline.get(id as ElementId);
+      if (
+        !previous ||
+        !sameTrackedElement(raw, previous as unknown as Record<string, unknown>)
+      ) {
+        dirty.add(id);
+      }
+    }
+
+    /*
+     * Scene order is z-order, and no element's *fields* move when the order does,
+     * so the order is compared on its own -- against the order last pushed, which
+     * is the order the document holds. A reorder is the one change the field walk
+     * is blind to, and the one the fast path would otherwise swallow as "nothing
+     * moved".
+     */
+    let orderChanged =
+      this.lastIds === null || this.lastIds.length !== incoming.length;
+    if (!orderChanged && this.lastIds) {
+      for (let i = 0; i < incoming.length; i += 1) {
+        if (incoming[i].id !== this.lastIds[i]) {
+          orderChanged = true;
+          break;
+        }
+      }
+    }
+
+    /*
+     * Remember the scene we just looked at. This is what makes the fast path
+     * *stay* fast: an editor that hands the scene back with fresh
+     * `version`/`versionNonce` but nothing else moved must still read as
+     * unchanged on the next push.
+     */
+    this.lastIds = incoming.map((raw) => raw.id as string);
+
+    if (!orderChanged && dirty.size === 0) {
+      return [];
+    }
+
+    /*
+     * A note is two editor elements, and the text lives on the label. Folding
+     * the note reads the label, so a dirty label has to drag its note along;
+     * otherwise the note would be reused from the baseline and the typed text
+     * would never reach the document. Every other type's fields are entirely its
+     * own.
+     */
+    for (const raw of incoming) {
+      if (
+        raw.type === "text" &&
+        typeof raw.containerId === "string" &&
+        dirty.has(raw.id as string)
+      ) {
+        dirty.add(raw.containerId);
+      }
+    }
+
+    const folded = orderChanged
+      ? fromEditorElements(incoming as never[])
+      : foldDirtyElements(incoming, baseline, dirty);
 
     /*
      * Every incoming element is folded, echoes included -- dropping the echoes
      * instead would make the diff read as "the document has notes the editor
      * does not" and delete them. An echo is instead replaced by the baseline it
      * matches, so the diff sees no change and the loop closes.
+     *
+     * A reused baseline copy compares by identity, so `isEcho` short-circuits:
+     * an element that came from the baseline *is* the baseline.
      */
-    const baseline = new Map(
-      this.pushedElements.map((element) => [element.id, element]),
-    );
     const normalised = folded.map((element) => {
       const previous = baseline.get(element.id);
       return previous && isEcho(element, previous) ? previous : element;
@@ -372,6 +598,7 @@ export class BoardSync {
       normalised,
       this.withheldIds,
     );
+
     if (!mutations.length) {
       return [];
     }
@@ -716,6 +943,7 @@ export class BoardSync {
       // was never given cannot come back as an echo, and there is nothing for it
       // to be compared against.
       this.pushedElements = fromEditorElements(elements as never[]);
+      this.lastIds = elements.map((element) => element.id as string);
       this.editor.write(elements);
     } finally {
       // Cleared in a `finally` because an exception here would otherwise leave

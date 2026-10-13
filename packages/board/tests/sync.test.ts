@@ -942,6 +942,91 @@ describe("BoardSync", () => {
     });
   });
 
+  describe("incremental folding", () => {
+    /*
+     * `push` no longer folds the whole board on every change. It folds the
+     * elements whose fingerprint moved and reuses the last folded copy for the
+     * rest, so a gesture on a board of fifty strokes costs one stroke rather than
+     * fifty. These tests pin the two things that make that safe: only the changed
+     * element is written, and a change that lives on an element *other* than the
+     * one it reaches still gets folded.
+     */
+
+    it("folds a changed field even when the editor bumps no version", () => {
+      // The fingerprint compares every scalar, not just `version`/`versionNonce`.
+      // If it leaned on those, a change that carried neither -- which the app's
+      // own edits never do, but a host's might -- would be skipped and silently
+      // lost.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.id === "b" ? { ...element, x: 77 } : element,
+        ),
+      );
+
+      expect(sync.push().length).toBeGreaterThan(0);
+      expect(doc.element("b")?.x).toBe(77);
+    });
+
+    it("writes only the element that moved, not the whole board", () => {
+      const { editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.id === "b" ? { ...element, x: 42, version: 2 } : element,
+        ),
+      );
+
+      const updates = sync
+        .push()
+        .filter((mutation) => mutation.kind === "updateElements");
+      expect(updates).toHaveLength(1);
+      if (updates[0]?.kind === "updateElements") {
+        expect(updates[0].updates.map((update) => update.id)).toEqual(["b"]);
+      }
+    });
+
+    it("folds a note when only its label changed", () => {
+      // A note's text lives on its label, a *separate* editor element, so the
+      // label is fingerprinted as dirty while the note itself is not. If the
+      // note stayed on its baseline copy its text would never update: the fold
+      // reads the label, and only the label.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.id === "b~label"
+            ? { ...element, originalText: "typed", text: "typed", version: 5 }
+            : element,
+        ),
+      );
+
+      sync.push();
+      const b = doc.element("b");
+      expect(b?.type === "stickynote" && b.text).toBe("typed");
+    });
+
+    it("commits once, then treats the settled scene as unchanged", () => {
+      // After a commit the document writes its own stamped state back into the
+      // editor, so the next change event is that write's echo. The scene memo has
+      // to have followed it, or every idle push would fold the board again.
+      const { doc, editor, sync } = seedThree();
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.id === "b" ? { ...element, x: 42, version: 2 } : element,
+        ),
+      );
+      expect(sync.push().length).toBeGreaterThan(0);
+
+      const settled = doc.revision;
+      editor.set([...editor.elements]);
+      expect(sync.push()).toEqual([]);
+      expect(doc.revision).toBe(settled);
+    });
+  });
+
   it("keeps working when the editor throws", () => {
     // A `finally` rather than a plain reset: an exception mid-push would
     // otherwise leave the sync deaf, with no symptom except a board that quietly
