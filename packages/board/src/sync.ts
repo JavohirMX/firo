@@ -283,6 +283,40 @@ export class BoardSync {
   /** What we last handed the editor, folded into document form. */
   private pushedElements: readonly FiroElement[] = [];
 
+  /**
+   * `pushedElements` indexed by id, and the array it was built from.
+   *
+   * The dirty walk in `push()` needs an id lookup for every element in the scene,
+   * and `push()` runs at input frequency -- on every wheel event, every pointer
+   * move over the canvas. Building that lookup allocates one `[id, element]` pair
+   * per element, per event: on a board with thousands of strokes that is the fast
+   * path's most expensive step, and every event that does not commit throws the
+   * whole thing away unread, because `pushedElements` is unchanged and the next
+   * lookup is built identically to the one just discarded.
+   *
+   * So it is built once per version of `pushedElements`, keyed on the array's
+   * identity. Identity is a sound key here because `pushedElements` is only ever
+   * *replaced*, never mutated: it is either a frozen `read()` snapshot or a fresh
+   * fold this class owns.
+   */
+  private pushedById: Map<ElementId, FiroElement> | null = null;
+  private pushedByIdFor: readonly FiroElement[] | null = null;
+
+  private baselineForPush = (): Map<ElementId, FiroElement> => {
+    if (
+      this.pushedById !== null &&
+      this.pushedByIdFor === this.pushedElements
+    ) {
+      return this.pushedById;
+    }
+    const rebuilt = new Map<ElementId, FiroElement>(
+      this.pushedElements.map((element) => [element.id, element]),
+    );
+    this.pushedById = rebuilt;
+    this.pushedByIdFor = this.pushedElements;
+    return rebuilt;
+  };
+
   private lastDocElements: readonly FiroElement[] = [];
 
   /**
@@ -501,9 +535,7 @@ export class BoardSync {
      * `sameTrackedElement` for why, and for why arrays are read only at their
      * ends.
      */
-    const baseline = new Map(
-      this.pushedElements.map((element) => [element.id, element]),
-    );
+    const baseline = this.baselineForPush();
 
     const dirty = new Set<string>();
     for (const raw of incoming) {
@@ -540,8 +572,15 @@ export class BoardSync {
      * *stay* fast: an editor that hands the scene back with fresh
      * `version`/`versionNonce` but nothing else moved must still read as
      * unchanged on the next push.
+     *
+     * Only when the order actually moved. Ids in the same order are the ids
+     * already in `lastIds`, so re-deriving them on every pan and zoom would
+     * allocate a whole id array, once per input event, to store exactly what is
+     * already there.
      */
-    this.lastIds = incoming.map((raw) => raw.id as string);
+    if (orderChanged) {
+      this.lastIds = incoming.map((raw) => raw.id as string);
+    }
 
     if (!orderChanged && dirty.size === 0) {
       return [];

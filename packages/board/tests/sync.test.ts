@@ -276,6 +276,45 @@ describe("BoardSync", () => {
       expect(doc.element("a")?.x).toBe(300);
     });
 
+    it("keeps committing after pushes that changed nothing", () => {
+      /*
+       * The dirty walk reuses an index of `pushedElements`, keyed on that array's
+       * identity, so the wheel and pointer events of a pan do not rebuild it
+       * element by element. A stale index would compare the scene against copies
+       * the document no longer agrees with, and the edit below would land with
+       * old values or not at all.
+       */
+      const { doc, editor, sync } = started();
+      doc.commit([{ kind: "createElement", element: note("a", { x: 0 }) }]);
+      sync.pull();
+
+      // A pan: the scene is handed back untouched, twice.
+      expect(sync.push()).toEqual([]);
+      expect(sync.push()).toEqual([]);
+
+      editor.set(
+        editor.elements.map((element) =>
+          element.type === "stickynote"
+            ? { ...element, x: 120, version: 2 }
+            : element,
+        ),
+      );
+      sync.push();
+      expect(doc.element("a")?.x).toBe(120);
+
+      // The commit replaced the baseline, so the index has to be rebuilt for it:
+      // a second edit still reaches the document.
+      editor.set(
+        editor.elements.map((element) =>
+          element.type === "stickynote"
+            ? { ...element, x: 240, version: 3 }
+            : element,
+        ),
+      );
+      sync.push();
+      expect(doc.element("a")?.x).toBe(240);
+    });
+
     it("writes only the fields the edit changed", () => {
       // A whole-element write would reset the fields the editor cannot represent
       // — a binding's focus and gap, for one — and merge would stop working.
