@@ -38,11 +38,34 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
   >({});
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
 
-  // Subscribe to document updates
+  /*
+   * Re-render on document updates, but only when there is something to show.
+   *
+   * Every committed transaction notifies subscribers, and a stroke being drawn
+   * commits once per pointer move -- so this used to throw away a render per
+   * pointer move, on every board, including the many boards that hold no
+   * collections at all. The component renders `null` in that case, so the render
+   * was pure waste.
+   *
+   * The gate keeps the boolean answer in the loop instead. It re-renders when
+   * there are collections (so their contents stay live), and when the answer
+   * *changed* -- so a board that loses its last collection still unmounts its
+   * view rather than freezing on a stale one.
+   */
   useEffect(() => {
     const doc = boardDoc();
+    const hasCollections = () =>
+      doc
+        .read()
+        .collections.some((collection) => collection.id !== VOTE_COLLECTION_ID);
+
+    let last = hasCollections();
     const unsubscribe = doc.onUpdate(() => {
-      setDocRevision((prev) => prev + 1);
+      const now = hasCollections();
+      if (now || now !== last) {
+        setDocRevision((prev) => prev + 1);
+      }
+      last = now;
     });
     return () => {
       unsubscribe();

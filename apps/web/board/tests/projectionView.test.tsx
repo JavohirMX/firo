@@ -136,6 +136,36 @@ describe("ProjectionView & AC-3 Verification", () => {
 
     spyBoardDoc.mockRestore();
   });
+
+  it("follows collections arriving and leaving, including the last one out", () => {
+    const doc = new FiroDoc(new Y.Doc());
+    const spyBoardDoc = vi.spyOn(boardModule, "boardDoc").mockReturnValue(doc);
+
+    const { queryByTestId } = render(<ProjectionView excalidrawAPI={null} />);
+
+    // A board with nothing to project shows nothing.
+    expect(queryByTestId("firo-projections-layer")).toBeNull();
+
+    // A collection committed from outside the component still has to reach it:
+    // the view only re-renders on a document update, so this is the subscription
+    // doing the work, not a parent re-render.
+    let collectionId = "";
+    act(() => {
+      ({ collectionId } = insertTaskCollection(() => doc));
+    });
+    expect(queryByTestId("firo-projections-layer")).not.toBeNull();
+
+    // Losing the last collection has to re-render *back* to nothing. The gate
+    // skips updates when there was nothing to show and still is; the transition
+    // out of "something to show" is the one it must not skip, or the view would
+    // freeze on a collection that no longer exists.
+    act(() => {
+      doc.commit([{ kind: "deleteCollection", id: collectionId }]);
+    });
+    expect(queryByTestId("firo-projections-layer")).toBeNull();
+
+    spyBoardDoc.mockRestore();
+  });
 });
 
 describe("SaveStatusIndicator (AC-10)", () => {
