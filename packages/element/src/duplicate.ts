@@ -638,7 +638,26 @@ const _deepCopyElement = (val: any, depth: number = 0) => {
         ? Object.create(Object.getPrototypeOf(val))
         : {};
     for (const key in val) {
-      if (val.hasOwnProperty(key)) {
+      /*
+       * `Object.prototype.hasOwnProperty.call`, not `val.hasOwnProperty`.
+       *
+       * An element can carry a value with no prototype. `@firo/doc` reads every
+       * nested object out of the Yjs document as `Object.create(null)` -- see
+       * `fromYMap` in `packages/doc/src/structure.ts` -- deliberately, so that a
+       * document key literally named `__proto__` becomes an ordinary own key
+       * instead of replacing the object's prototype. Those values ride along on
+       * projected elements untouched, and `deepCopyElement` is what the store
+       * calls on every scene, so `val.hasOwnProperty` here is not a missing
+       * method on one element: it takes the whole editor down the moment a board
+       * is opened or synced. Measured: reloading a board holding one rectangle
+       * threw `val.hasOwnProperty is not a function` from `createElementsSnapshot`
+       * and left the canvas on "Loading scene..." forever.
+       *
+       * `for...in` walks the prototype chain, so the own-property filter is still
+       * needed; calling it off `Object.prototype` gives the same answer for every
+       * object and an answer at all for a prototype-less one.
+       */
+      if (Object.prototype.hasOwnProperty.call(val, key)) {
         // don't copy non-serializable objects like these caches. They'll be
         // populated when the element is rendered.
         if (depth === 0 && (key === "shape" || key === "canvas")) {
