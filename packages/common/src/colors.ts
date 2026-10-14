@@ -265,7 +265,35 @@ export const BUCKET_FILL_BACKGROUND_PICKS = [
 ] as ColorTuple;
 
 // sticky notes are their own color domain (own defaults, own picks)
-export const DEFAULT_STICKY_NOTE_BG = "#ffdf6b";
+export const DEFAULT_STICKY_NOTE_BG = "#FFF9B1";
+
+export const MIRO_STICKY_NOTE_COLORS = {
+  yellow: "#FFF9B1",
+  yellowDark: "#FFE66D",
+  greenLight: "#D5F591",
+  greenMint: "#C3F2CB",
+  blueSky: "#D0E7FF",
+  blue: "#A6D1FF",
+  pinkSoft: "#FFD2E5",
+  pink: "#FFA9D2",
+  purple: "#E1D5FA",
+  orange: "#FFD8B3",
+  gray: "#E5E7EB",
+} as const;
+
+export const MIRO_PASTEL_STICKY_NOTE_PALETTE = [
+  "#FFF9B1",
+  "#FFE66D",
+  "#D5F591",
+  "#C3F2CB",
+  "#D0E7FF",
+  "#A6D1FF",
+  "#FFD2E5",
+  "#FFA9D2",
+  "#E1D5FA",
+  "#FFD8B3",
+  "#E5E7EB",
+] as const;
 
 export const STICKY_NOTE_STROKE_PICKS: ColorTuple =
   DEFAULT_ELEMENT_STROKE_PICKS;
@@ -274,10 +302,10 @@ export const STICKY_NOTE_STROKE_PICKS: ColorTuple =
 // first one is `DEFAULT_STICKY_NOTE_BG`. Never transparent.
 export const STICKY_NOTE_BACKGROUND_PICKS = [
   DEFAULT_STICKY_NOTE_BG,
-  COLOR_PALETTE.pink[1],
-  COLOR_PALETTE.green[1],
-  COLOR_PALETTE.blue[1],
-  COLOR_PALETTE.orange[1],
+  "#FFD2E5",
+  "#D5F591",
+  "#D0E7FF",
+  "#FFD8B3",
 ] as ColorTuple;
 
 // ORDER matters for positioning in quick picker

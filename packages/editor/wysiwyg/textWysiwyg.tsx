@@ -1,3 +1,5 @@
+import { flushSync } from "react-dom";
+
 import {
   CODES,
   KEYS,
@@ -46,10 +48,13 @@ import {
   isBoundToContainer,
   isStickyNoteElement,
   isTextElement,
+  makeNextSelectedElementIds,
+  newStickyNoteElement,
 } from "@firo/element";
 
 import type {
   ExcalidrawLinearElement,
+  ExcalidrawStickyNoteElement,
   ExcalidrawTextElementWithContainer,
   ExcalidrawTextElement,
   NonDeleted,
@@ -874,6 +879,104 @@ export const textWysiwyg = ({
       event.preventDefault();
       handleSubmit();
       app.actionManager.executeAction(actionSaveFileToDisk, "keyboard");
+    } else if (
+      (() => {
+        const currentText = app.scene.getElement<ExcalidrawTextElement>(
+          element.id,
+        );
+        const container = currentText
+          ? getContainerElement(
+              currentText,
+              app.scene.getNonDeletedElementsMap(),
+            )
+          : null;
+        const isSticky = !!(container && isStickyNoteElement(container));
+        const isCmdOrCtrlEnter =
+          event.key === KEYS.ENTER &&
+          (Boolean(event[KEYS.CTRL_OR_CMD]) ||
+            event.metaKey ||
+            event.ctrlKey ||
+            (!event.shiftKey &&
+              Boolean((app.state as any)?.stickyNoteQuickMode)));
+        return isSticky && (event.key === KEYS.TAB || isCmdOrCtrlEnter);
+      })()
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.isComposing || event.keyCode === 229) {
+        return;
+      }
+      const currentText = app.scene.getElement<ExcalidrawTextElement>(
+        element.id,
+      );
+      const container = currentText
+        ? (getContainerElement(
+            currentText,
+            app.scene.getNonDeletedElementsMap(),
+          ) as ExcalidrawStickyNoteElement)
+        : null;
+
+      if (!container) {
+        return;
+      }
+
+      const direction: "right" | "left" | "down" =
+        event.key === KEYS.TAB ? (event.shiftKey ? "left" : "right") : "down";
+
+      submittedViaKeyboard = false;
+      handleSubmit();
+
+      const committedContainer =
+        (app.scene.getElement(container.id) as ExcalidrawStickyNoteElement) ??
+        container;
+
+      const GAP = 24;
+      const targetX =
+        direction === "right"
+          ? committedContainer.x + committedContainer.width + GAP
+          : direction === "left"
+          ? committedContainer.x - committedContainer.width - GAP
+          : committedContainer.x;
+      const targetY =
+        direction === "down"
+          ? committedContainer.y + committedContainer.height + GAP
+          : committedContainer.y;
+
+      const newNote = newStickyNoteElement({
+        type: "stickynote",
+        x: targetX,
+        y: targetY,
+        width: committedContainer.width,
+        height: committedContainer.baseHeight || committedContainer.height,
+        baseHeight: committedContainer.baseHeight || committedContainer.height,
+        strokeColor: committedContainer.strokeColor,
+        backgroundColor: committedContainer.backgroundColor,
+        fillStyle: committedContainer.fillStyle,
+        strokeWidth: committedContainer.strokeWidth,
+        strokeStyle: committedContainer.strokeStyle,
+        roughness: committedContainer.roughness,
+        opacity: committedContainer.opacity,
+        roundness: committedContainer.roundness,
+        locked: false,
+        frameId: committedContainer.frameId,
+      });
+
+      app.insertNewElement(newNote);
+
+      flushSync(() => {
+        app.setState({
+          selectedElementIds: makeNextSelectedElementIds(
+            { [newNote.id]: true },
+            app.state,
+          ),
+        });
+      });
+
+      app.text.startTextEditing({
+        sceneX: newNote.x + newNote.width / 2,
+        sceneY: newNote.y + newNote.height / 2,
+        container: newNote,
+      });
     } else if (event.key === KEYS.ENTER && event[KEYS.CTRL_OR_CMD]) {
       event.preventDefault();
       if (event.isComposing || event.keyCode === 229) {

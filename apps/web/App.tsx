@@ -493,6 +493,7 @@ export const WebNavToolbar = ({
         onResetZoom={() => actionManager.executeAction(actionResetZoom)}
         onZoomToFit={() => actionManager.executeAction(actionZoomToFit)}
         gridEnabled={appState.gridModeEnabled}
+        gridType={appState.gridType}
         onToggleGrid={() => actionManager.executeAction(actionToggleGridMode)}
         minimapEnabled={minimapVisible}
         isMinimapOpen={minimapVisible}

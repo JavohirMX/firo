@@ -437,11 +437,31 @@ const drawElementOnCanvas = (
   switch (element.type) {
     case "stickynote": {
       context.save();
-      context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY})`;
-      fillStickyNoteShape(
-        context,
-        getStickyNotePathCommands(element, { shadow: true }),
-      );
+
+      // Miro-style realistic paper elevation: soft diffuse drop shadow + paper lift
+      const shadowCommands = getStickyNotePathCommands(element, {
+        shadow: true,
+      });
+
+      // Ambient soft diffuse shadow
+      context.save();
+      context.shadowColor = "rgba(0, 0, 0, 0.08)";
+      context.shadowBlur = 10;
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = 3;
+      context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY * 0.45})`;
+      fillStickyNoteShape(context, shadowCommands);
+      context.restore();
+
+      // Directional tangible paper lift shadow
+      context.save();
+      context.shadowColor = "rgba(0, 0, 0, 0.12)";
+      context.shadowBlur = 4;
+      context.shadowOffsetX = 1;
+      context.shadowOffsetY = 2;
+      context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY * 0.65})`;
+      fillStickyNoteShape(context, shadowCommands);
+      context.restore();
 
       const commands = getStickyNotePathCommands(element);
       context.fillStyle = applyDarkModeFilter(

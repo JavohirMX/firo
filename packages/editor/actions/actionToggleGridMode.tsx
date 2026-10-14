@@ -6,6 +6,15 @@ import { gridIcon } from "../components/icons";
 
 import { register } from "./register";
 
+import type { GridType } from "../types";
+
+export const GRID_TYPES: readonly GridType[] = [
+  "dots",
+  "lines",
+  "crosses",
+  "isometric",
+] as const;
+
 export const actionToggleGridMode = register({
   name: "gridMode",
   icon: gridIcon,
@@ -16,11 +25,41 @@ export const actionToggleGridMode = register({
     category: "canvas",
     predicate: (appState) => appState.gridModeEnabled,
   },
-  perform(elements, appState) {
+  perform(elements, appState, formData) {
+    let nextGridModeEnabled: boolean;
+    let nextGridType: GridType = appState.gridType ?? "dots";
+
+    if (typeof formData === "boolean") {
+      nextGridModeEnabled = formData;
+    } else if (
+      typeof formData === "string" &&
+      GRID_TYPES.includes(formData as GridType)
+    ) {
+      nextGridModeEnabled = true;
+      nextGridType = formData as GridType;
+    } else if (formData === "toggle") {
+      nextGridModeEnabled = !appState.gridModeEnabled;
+    } else if (!appState.gridModeEnabled) {
+      // Cycling: off -> dots -> lines -> crosses -> isometric -> off
+      nextGridModeEnabled = true;
+      nextGridType = appState.gridType ?? "dots";
+    } else {
+      const currentType = appState.gridType ?? "dots";
+      const currentIndex = GRID_TYPES.indexOf(currentType);
+      if (currentIndex >= 0 && currentIndex < GRID_TYPES.length - 1) {
+        nextGridModeEnabled = true;
+        nextGridType = GRID_TYPES[currentIndex + 1];
+      } else {
+        nextGridModeEnabled = false;
+        nextGridType = "dots";
+      }
+    }
+
     return {
       appState: {
         ...appState,
-        gridModeEnabled: !this.checked!(appState),
+        gridModeEnabled: nextGridModeEnabled,
+        gridType: nextGridType,
         objectsSnapModeEnabled: false,
       },
       captureUpdate: CaptureUpdateAction.EVENTUALLY,

@@ -211,6 +211,7 @@ export type StaticCanvasAppState = Readonly<
     selectedElementsAreBeingDragged: AppState["selectedElementsAreBeingDragged"];
     gridSize: AppState["gridSize"];
     gridStep: AppState["gridStep"];
+    gridType?: AppState["gridType"];
     frameRendering: AppState["frameRendering"];
     currentHoveredFontFamily: AppState["currentHoveredFontFamily"];
     hoveredElementIds: AppState["hoveredElementIds"];
@@ -322,6 +323,8 @@ export type ScrollConstraints = {
    */
   offsets?: Offsets;
 };
+
+export type GridType = "dots" | "lines" | "crosses" | "isometric";
 
 export interface AppState {
   contextMenu: {
@@ -518,6 +521,7 @@ export interface AppState {
   gridSize: number;
   gridStep: number;
   gridModeEnabled: boolean;
+  gridType?: GridType;
   viewModeEnabled: boolean;
 
   /** top-most selected groups (i.e. does not include nested groups) */
@@ -1023,6 +1027,7 @@ export interface ExcalidrawProps {
     | { type: "custom"; customType: string };
   zenModeEnabled?: boolean;
   gridModeEnabled?: boolean;
+  gridType?: GridType;
   objectsSnapModeEnabled?: boolean;
   libraryReturnUrl?: string;
   theme?: Theme;

@@ -1,6 +1,8 @@
 import {
   DEFAULT_ELEMENT_PROPS,
   DEFAULT_STICKY_NOTE_BG,
+  MIRO_STICKY_NOTE_COLORS,
+  MIRO_PASTEL_STICKY_NOTE_PALETTE,
   MIN_FONT_SIZE,
   arrayToMap,
   STICKY_NOTE_BODY_INSET_Y,
@@ -39,6 +41,9 @@ import type {
   ExcalidrawTextElementWithContainer,
   NonDeletedExcalidrawElement,
 } from "./types";
+
+export { MIRO_STICKY_NOTE_COLORS, MIRO_PASTEL_STICKY_NOTE_PALETTE };
+export const MIRO_PASTEL_PALETTE = MIRO_STICKY_NOTE_COLORS;
 
 export type StickyNoteRenderPoint = {
   x: number;
@@ -229,10 +234,12 @@ export const getStickyNoteRenderPoints = (
     offsetX = 0,
     offsetY = 0,
     seedOffset = 0,
+    isShadow = false,
   }: {
     offsetX?: number;
     offsetY?: number;
     seedOffset?: number;
+    isShadow?: boolean;
   } = {},
 ): StickyNoteRenderPoint[] => {
   const roughness = Math.max(0, Math.min(2, Math.round(element.roughness)));
@@ -241,12 +248,26 @@ export const getStickyNoteRenderPoints = (
     Math.min(element.width, element.height) * 0.012,
   );
 
+  // Subtle bottom-corner shadow offset giving tangible paper lift (Miro elevation)
+  const shadowCornerOffsetX = isShadow
+    ? Math.min(Math.min(element.width, element.height) * 0.012, 2.5)
+    : 0;
+  const shadowCornerOffsetY = isShadow
+    ? Math.min(Math.min(element.width, element.height) * 0.018, 3.5)
+    : 0;
+
   if (!amount) {
     return [
       { x: offsetX, y: offsetY },
       { x: offsetX + element.width, y: offsetY },
-      { x: offsetX + element.width, y: offsetY + element.height },
-      { x: offsetX, y: offsetY + element.height },
+      {
+        x: offsetX + element.width + shadowCornerOffsetX,
+        y: offsetY + element.height + shadowCornerOffsetY,
+      },
+      {
+        x: offsetX,
+        y: offsetY + element.height + shadowCornerOffsetY * 0.5,
+      },
     ];
   }
 
@@ -262,12 +283,17 @@ export const getStickyNoteRenderPoints = (
       y: offsetY + jitter(random, amount),
     },
     {
-      x: offsetX + element.width + jitter(random, amount),
-      y: offsetY + element.height + jitter(random, amount),
+      x: offsetX + element.width + shadowCornerOffsetX + jitter(random, amount),
+      y:
+        offsetY + element.height + shadowCornerOffsetY + jitter(random, amount),
     },
     {
       x: offsetX + jitter(random, amount),
-      y: offsetY + element.height + jitter(random, amount),
+      y:
+        offsetY +
+        element.height +
+        shadowCornerOffsetY * 0.5 +
+        jitter(random, amount),
     },
   ];
 };
@@ -283,6 +309,7 @@ export const getStickyNotePathCommands = (
           offsetX: STICKY_NOTE_SHADOW_OFFSET,
           offsetY: STICKY_NOTE_SHADOW_OFFSET,
           seedOffset: 1,
+          isShadow: true,
         }
       : undefined,
   );

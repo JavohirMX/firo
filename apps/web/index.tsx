@@ -4,6 +4,8 @@ import { registerSW } from "virtual:pwa-register";
 
 import { loadChromeFonts } from "@firo/ui";
 
+import "./index.scss";
+
 import { Root } from "./Root";
 
 window.__FIRO_SHA__ = import.meta.env.VITE_APP_GIT_SHA;

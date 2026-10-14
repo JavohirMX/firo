@@ -17,6 +17,7 @@ export interface NavToolbarProps {
   onResetZoom: () => void;
   onZoomToFit: () => void;
   gridEnabled?: boolean;
+  gridType?: "dots" | "lines" | "crosses" | "isometric";
   onToggleGrid?: () => void;
   minimapEnabled?: boolean;
   isMinimapOpen?: boolean;
@@ -30,13 +31,15 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
   onResetZoom,
   onZoomToFit,
   gridEnabled = false,
+  gridType,
   onToggleGrid,
   minimapEnabled = false,
   isMinimapOpen,
   onToggleMinimap,
 }) => {
   const isMinimapActive = isMinimapOpen ?? minimapEnabled;
-  const zoomPercent = Math.round(zoom * 100);
+  const zoomDisplay =
+    zoom < 0.01 ? `${(zoom * 100).toFixed(1)}%` : `${Math.round(zoom * 100)}%`;
 
   return (
     <div
@@ -59,9 +62,9 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
         className="firo-nav-toolbar__zoom-value"
         onClick={onResetZoom}
         title="Reset Zoom to 100% (Ctrl+0)"
-        aria-label={`Current Zoom: ${zoomPercent}%. Click to reset.`}
+        aria-label={`Current Zoom: ${zoomDisplay}. Click to reset.`}
       >
-        {zoomPercent}%
+        {zoomDisplay}
       </button>
 
       <button
@@ -93,8 +96,13 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
             gridEnabled ? "firo-nav-toolbar__button--active" : ""
           }`}
           onClick={onToggleGrid}
-          title="Toggle Grid (Ctrl+')"
+          title={
+            gridEnabled && gridType
+              ? `Toggle Grid (${gridType}) (Ctrl+')`
+              : "Toggle Grid (Ctrl+')"
+          }
           aria-label="Toggle Grid"
+          data-grid-type={gridType}
           aria-pressed={gridEnabled}
         >
           <GridIcon size={18} />

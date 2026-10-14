@@ -52,7 +52,7 @@ import type {
   StaticCanvasRenderConfig,
   StaticSceneRenderConfig,
 } from "../scene/types";
-import type { StaticCanvasAppState, Zoom } from "../types";
+import type { StaticCanvasAppState, Zoom, GridType } from "../types";
 
 const GridLineColor = {
   [THEME.LIGHT]: {
@@ -65,7 +65,39 @@ const GridLineColor = {
   },
 } as const;
 
-const strokeGrid = (
+const GridDotColor = {
+  [THEME.LIGHT]: "#b8b8b8",
+  [THEME.DARK]: applyDarkModeFilter("#b8b8b8"),
+} as const;
+
+const GridCrossColor = {
+  [THEME.LIGHT]: "#cccccc",
+  [THEME.DARK]: applyDarkModeFilter("#cccccc"),
+} as const;
+
+export const calculateEffectiveGridSize = (
+  gridSize: number,
+  zoomValue: number,
+): number => {
+  let scaleMultiplier = 1;
+  if (Number.isFinite(zoomValue) && zoomValue > 0 && gridSize > 0) {
+    while (
+      gridSize * scaleMultiplier * zoomValue < 15 &&
+      scaleMultiplier < 1e8
+    ) {
+      scaleMultiplier *= 5;
+    }
+    while (
+      gridSize * scaleMultiplier * zoomValue > 80 &&
+      scaleMultiplier > 1e-8
+    ) {
+      scaleMultiplier /= 5;
+    }
+  }
+  return gridSize * scaleMultiplier;
+};
+
+export const strokeGrid = (
   context: CanvasRenderingContext2D,
   /** grid cell pixel size */
   gridSize: number,
@@ -78,26 +110,114 @@ const strokeGrid = (
   width: number,
   height: number,
   scale: number,
+  gridType: GridType = "dots",
 ) => {
-  const offsetX = (scrollX % gridSize) - gridSize;
-  const offsetY = (scrollY % gridSize) - gridSize;
+  const effectiveGridSize = calculateEffectiveGridSize(gridSize, zoom.value);
+  const offsetX = (scrollX % effectiveGridSize) - effectiveGridSize;
+  const offsetY = (scrollY % effectiveGridSize) - effectiveGridSize;
 
-  const actualGridSize = gridSize * zoom.value;
+  context.save();
 
+  if (gridType === "dots") {
+    const dotRadius = 1.5 / zoom.value;
+    context.fillStyle = GridDotColor[theme];
+    context.beginPath();
+    for (
+      let x = offsetX;
+      x < offsetX + width + effectiveGridSize * 2;
+      x += effectiveGridSize
+    ) {
+      for (
+        let y = offsetY;
+        y < offsetY + height + effectiveGridSize * 2;
+        y += effectiveGridSize
+      ) {
+        context.moveTo(x + dotRadius, y);
+        context.arc(x, y, dotRadius, 0, Math.PI * 2);
+      }
+    }
+    context.fill();
+    context.restore();
+    return;
+  }
+
+  if (gridType === "crosses") {
+    const arm = 3.5 / zoom.value;
+    context.lineWidth = 1 / zoom.value;
+    context.strokeStyle = GridCrossColor[theme];
+    context.beginPath();
+    for (
+      let x = offsetX;
+      x < offsetX + width + effectiveGridSize * 2;
+      x += effectiveGridSize
+    ) {
+      for (
+        let y = offsetY;
+        y < offsetY + height + effectiveGridSize * 2;
+        y += effectiveGridSize
+      ) {
+        context.moveTo(x - arm, y);
+        context.lineTo(x + arm, y);
+        context.moveTo(x, y - arm);
+        context.lineTo(x, y + arm);
+      }
+    }
+    context.stroke();
+    context.restore();
+    return;
+  }
+
+  if (gridType === "isometric") {
+    const minX = offsetX - effectiveGridSize;
+    const maxX = offsetX + width + effectiveGridSize * 2;
+    const minY = offsetY - effectiveGridSize;
+    const maxY = offsetY + height + effectiveGridSize * 2;
+
+    const s = 1 / Math.sqrt(3);
+    const stepY = (2 * effectiveGridSize) / Math.sqrt(3);
+
+    context.lineWidth = 1 / zoom.value;
+    context.strokeStyle = GridLineColor[theme].regular;
+    context.beginPath();
+
+    // 1. Vertical lines
+    for (let x = offsetX; x <= maxX; x += effectiveGridSize) {
+      context.moveTo(x, minY);
+      context.lineTo(x, maxY);
+    }
+
+    // 2. Diagonal lines at +30 degrees (slope s)
+    const cMin1 = minY - scrollY - s * (maxX - scrollX);
+    const cMax1 = maxY - scrollY - s * (minX - scrollX);
+    const startC1 = Math.floor(cMin1 / stepY) * stepY;
+    for (let c = startC1; c <= cMax1; c += stepY) {
+      const y1 = scrollY + s * (minX - scrollX) + c;
+      const y2 = scrollY + s * (maxX - scrollX) + c;
+      context.moveTo(minX, y1);
+      context.lineTo(maxX, y2);
+    }
+
+    // 3. Diagonal lines at -30 degrees (slope -s)
+    const cMin2 = minY - scrollY + s * (minX - scrollX);
+    const cMax2 = maxY - scrollY + s * (maxX - scrollX);
+    const startC2 = Math.floor(cMin2 / stepY) * stepY;
+    for (let c = startC2; c <= cMax2; c += stepY) {
+      const y1 = scrollY - s * (minX - scrollX) + c;
+      const y2 = scrollY - s * (maxX - scrollX) + c;
+      context.moveTo(minX, y1);
+      context.lineTo(maxX, y2);
+    }
+
+    context.stroke();
+    context.restore();
+    return;
+  }
+
+  // gridType === "lines"
   const spaceWidth = 1 / zoom.value;
-
-  // scene units → device pixels
   const devicePixels = zoom.value * scale;
 
-  // A line at least a device pixel wide is drawn a whole number of device
-  // pixels wide and centered to cover them exactly — on the half pixel when
-  // the count is odd. Straddling a pixel boundary renders it as two lighter
-  // pixels, which is how the grid looked at every zoom but 100%. Thinner
-  // lines (zoomed far out) keep their sub-pixel width: their lightness is
-  // the point.
   const snap = (position: number, maxWidthInCssPixels: number) => {
-    // a line is `min(1 / zoom, max)` scene units wide; computed straight in
-    // device pixels, so `(1 / zoom) × zoom` never lands just under 1
     const widthInDevicePixels = Math.min(
       scale,
       maxWidthInCssPixels * devicePixels,
@@ -114,16 +234,14 @@ const strokeGrid = (
     };
   };
 
-  context.save();
-
   // vertical lines
-  for (let x = offsetX; x < offsetX + width + gridSize * 2; x += gridSize) {
-    const isBold =
-      gridStep > 1 && Math.round(x - scrollX) % (gridStep * gridSize) === 0;
-    // don't render regular lines when zoomed out and they're barely visible
-    if (!isBold && actualGridSize < 10) {
-      continue;
-    }
+  for (
+    let x = offsetX;
+    x < offsetX + width + effectiveGridSize * 2;
+    x += effectiveGridSize
+  ) {
+    const gridIndex = Math.round((x - scrollX) / effectiveGridSize);
+    const isBold = gridStep > 1 && Math.abs(gridIndex) % gridStep === 0;
 
     const { position, lineWidth } = snap(x, isBold ? 4 : 1);
     context.lineWidth = lineWidth;
@@ -134,17 +252,22 @@ const strokeGrid = (
     context.strokeStyle = isBold
       ? GridLineColor[theme].bold
       : GridLineColor[theme].regular;
-    context.moveTo(position, offsetY - gridSize);
-    context.lineTo(position, Math.ceil(offsetY + height + gridSize * 2));
+    context.moveTo(position, offsetY - effectiveGridSize);
+    context.lineTo(
+      position,
+      Math.ceil(offsetY + height + effectiveGridSize * 2),
+    );
     context.stroke();
   }
 
-  for (let y = offsetY; y < offsetY + height + gridSize * 2; y += gridSize) {
-    const isBold =
-      gridStep > 1 && Math.round(y - scrollY) % (gridStep * gridSize) === 0;
-    if (!isBold && actualGridSize < 10) {
-      continue;
-    }
+  // horizontal lines
+  for (
+    let y = offsetY;
+    y < offsetY + height + effectiveGridSize * 2;
+    y += effectiveGridSize
+  ) {
+    const gridIndex = Math.round((y - scrollY) / effectiveGridSize);
+    const isBold = gridStep > 1 && Math.abs(gridIndex) % gridStep === 0;
 
     const { position, lineWidth } = snap(y, isBold ? 4 : 1);
     context.lineWidth = lineWidth;
@@ -155,10 +278,14 @@ const strokeGrid = (
     context.strokeStyle = isBold
       ? GridLineColor[theme].bold
       : GridLineColor[theme].regular;
-    context.moveTo(offsetX - gridSize, position);
-    context.lineTo(Math.ceil(offsetX + width + gridSize * 2), position);
+    context.moveTo(offsetX - effectiveGridSize, position);
+    context.lineTo(
+      Math.ceil(offsetX + width + effectiveGridSize * 2),
+      position,
+    );
     context.stroke();
   }
+
   context.restore();
 };
 
@@ -322,6 +449,7 @@ const _renderStaticScene = ({
       normalizedWidth / appState.zoom.value,
       normalizedHeight / appState.zoom.value,
       scale,
+      appState.gridType,
     );
   }
 

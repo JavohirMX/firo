@@ -128,6 +128,29 @@ export const BoardCard: React.FC<BoardCardProps> = ({
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(board.name);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleDocumentClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
 
   // Keep the field in step with the board unless it is the thing being edited:
   // a rename that round-trips through storage can land a moment later, and the
@@ -301,7 +324,7 @@ export const BoardCard: React.FC<BoardCardProps> = ({
             >
               <TrashIcon size={16} />
             </button>
-            <div className="firo-board-card__menu-wrapper">
+            <div className="firo-board-card__menu-wrapper" ref={menuRef}>
               <button
                 type="button"
                 className="firo-board-card__action"
@@ -919,7 +942,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                         scope="col"
                         className="firo-board-table__th firo-board-table__th--folder"
                       >
-                        Folder
+                        Project / Folder
                       </th>
                       <th
                         scope="col"

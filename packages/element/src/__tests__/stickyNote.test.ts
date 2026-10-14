@@ -1,7 +1,10 @@
 import {
+  DEFAULT_STICKY_NOTE_BG,
   DEFAULT_STICKY_NOTE_SIZE,
   FONT_FAMILY,
   MIN_FONT_SIZE,
+  MIRO_STICKY_NOTE_COLORS,
+  MIRO_PASTEL_STICKY_NOTE_PALETTE,
   ROUNDNESS,
   STICKY_NOTE_FALLBACK_FONT_SIZE,
   STICKY_NOTE_MAX_FONT_SIZE,
@@ -37,6 +40,8 @@ import {
   getStickyNoteDateLabel,
   getStickyNoteFooter,
   getStickyNoteMinSize,
+  getStickyNoteRenderPoints,
+  getStickyNotePathCommands,
   syncStickyNoteInk,
   normalizeStickyNoteFontSize,
   updateStickyNoteLayout,
@@ -1125,5 +1130,53 @@ describe("sticky note ink", () => {
     expect(
       inks(syncStickyNoteInk(pair(RED, "transparent"), new Map())),
     ).toEqual([RED, RED]);
+  });
+});
+
+describe("Miro sticky note aesthetic and paper elevation", () => {
+  it("uses the authentic Miro pastel palette", () => {
+    expect(DEFAULT_STICKY_NOTE_BG).toBe("#FFF9B1");
+    expect(MIRO_STICKY_NOTE_COLORS.yellow).toBe("#FFF9B1");
+    expect(MIRO_STICKY_NOTE_COLORS.yellowDark).toBe("#FFE66D");
+    expect(MIRO_STICKY_NOTE_COLORS.greenLight).toBe("#D5F591");
+    expect(MIRO_STICKY_NOTE_COLORS.greenMint).toBe("#C3F2CB");
+    expect(MIRO_STICKY_NOTE_COLORS.blueSky).toBe("#D0E7FF");
+    expect(MIRO_STICKY_NOTE_COLORS.blue).toBe("#A6D1FF");
+    expect(MIRO_STICKY_NOTE_COLORS.pinkSoft).toBe("#FFD2E5");
+    expect(MIRO_STICKY_NOTE_COLORS.pink).toBe("#FFA9D2");
+    expect(MIRO_STICKY_NOTE_COLORS.purple).toBe("#E1D5FA");
+    expect(MIRO_STICKY_NOTE_COLORS.orange).toBe("#FFD8B3");
+    expect(MIRO_STICKY_NOTE_COLORS.gray).toBe("#E5E7EB");
+
+    expect(MIRO_PASTEL_STICKY_NOTE_PALETTE).toContain("#FFF9B1");
+    expect(MIRO_PASTEL_STICKY_NOTE_PALETTE).toContain("#D5F591");
+    expect(MIRO_PASTEL_STICKY_NOTE_PALETTE).toContain("#D0E7FF");
+    expect(MIRO_PASTEL_STICKY_NOTE_PALETTE).toContain("#FFD2E5");
+  });
+
+  it("renders realistic paper elevation with subtle bottom-corner shadow offset", () => {
+    const sticky = newStickyNoteElement({
+      type: "stickynote",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 200,
+      roughness: 0,
+    });
+
+    const normalPoints = getStickyNoteRenderPoints(sticky);
+    const shadowPoints = getStickyNoteRenderPoints(sticky, { isShadow: true });
+
+    // Top edge has no extra corner lift
+    expect(normalPoints[0].x).toBe(0);
+    expect(normalPoints[0].y).toBe(0);
+
+    // Bottom-right corner has subtle tangible paper elevation offset
+    expect(shadowPoints[2].x).toBeGreaterThan(normalPoints[2].x);
+    expect(shadowPoints[2].y).toBeGreaterThan(normalPoints[2].y);
+
+    // Path commands for shadow reflect paper lift
+    const shadowCommands = getStickyNotePathCommands(sticky, { shadow: true });
+    expect(shadowCommands.length).toBeGreaterThan(0);
   });
 });

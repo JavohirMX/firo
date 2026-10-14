@@ -1174,4 +1174,168 @@ describe("sticky notes", () => {
       );
     });
   });
+
+  describe("fast-ideation workflow (Tab & Enter)", () => {
+    it("creates a new sticky note to the right on Tab", async () => {
+      const { note, label } = createNote({
+        id: "note1",
+        x: 100,
+        y: 100,
+        text: "Note 1",
+        fontSize: 24,
+      });
+      API.setElements([note, label]);
+      layoutNotes(note.id);
+
+      mouse.doubleClickAt(note.x + note.width / 2, note.y + note.height / 2);
+      const editor = await getTextEditor();
+      updateTextEditor(editor, "Committed Note 1");
+
+      fireEvent.keyDown(editor, { key: KEYS.TAB });
+
+      // Note 1 should be committed with the updated text
+      const committedNote1 = getElement<ExcalidrawStickyNoteElement>("note1");
+      const label1 = getElement<ExcalidrawTextElement>(label.id);
+      expect(label1.text).toBe("Committed Note 1");
+
+      // A new sticky note should be created directly to the right
+      const stickyNotes = h.elements.filter(
+        (el) => el.type === "stickynote" && !el.isDeleted,
+      );
+      expect(stickyNotes.length).toBe(2);
+
+      const note2 = stickyNotes.find(
+        (el) => el.id !== "note1",
+      ) as ExcalidrawStickyNoteElement;
+      expect(note2).toBeDefined();
+      expect(note2.x).toBe(committedNote1.x + committedNote1.width + 24);
+      expect(note2.y).toBe(committedNote1.y);
+      expect(note2.width).toBe(committedNote1.width);
+      expect(note2.height).toBe(committedNote1.baseHeight);
+      expect(note2.backgroundColor).toBe(committedNote1.backgroundColor);
+      expect(note2.strokeColor).toBe(committedNote1.strokeColor);
+
+      // Text editing should immediately be open on the new note
+      const newEditor = await getTextEditor();
+      expect(newEditor).toBeDefined();
+      expect(newEditor).not.toBe(editor);
+      expect(h.state.editingTextElement?.containerId).toBe(note2.id);
+
+      // Escaping text editing should leave the new note selected
+      Keyboard.keyPress(KEYS.ESCAPE, newEditor);
+      expect(h.state.selectedElementIds[note2.id]).toBe(true);
+    });
+
+    it("creates a new sticky note to the left on Shift+Tab", async () => {
+      const { note, label } = createNote({
+        id: "note1",
+        x: 300,
+        y: 100,
+        text: "Center Note",
+        fontSize: 24,
+      });
+      API.setElements([note, label]);
+      layoutNotes(note.id);
+
+      mouse.doubleClickAt(note.x + note.width / 2, note.y + note.height / 2);
+      const editor = await getTextEditor();
+
+      fireEvent.keyDown(editor, { key: KEYS.TAB, shiftKey: true });
+
+      const stickyNotes = h.elements.filter(
+        (el) => el.type === "stickynote" && !el.isDeleted,
+      );
+      expect(stickyNotes.length).toBe(2);
+
+      const noteLeft = stickyNotes.find(
+        (el) => el.id !== "note1",
+      ) as ExcalidrawStickyNoteElement;
+      expect(noteLeft).toBeDefined();
+      expect(noteLeft.x).toBe(note.x - note.width - 24);
+      expect(noteLeft.y).toBe(note.y);
+
+      // Text editing should immediately be open on the new note
+      const newEditor = await getTextEditor();
+      expect(newEditor).toBeDefined();
+      expect(newEditor).not.toBe(editor);
+      expect(h.state.editingTextElement?.containerId).toBe(noteLeft.id);
+
+      // Escaping text editing should leave the new note selected
+      Keyboard.keyPress(KEYS.ESCAPE, newEditor);
+      expect(h.state.selectedElementIds[noteLeft.id]).toBe(true);
+    });
+
+    it("creates a new sticky note directly below on Cmd+Enter / Ctrl+Enter", async () => {
+      const { note, label } = createNote({
+        id: "note1",
+        x: 100,
+        y: 100,
+        text: "Top Note",
+        fontSize: 24,
+      });
+      API.setElements([note, label]);
+      layoutNotes(note.id);
+
+      mouse.doubleClickAt(note.x + note.width / 2, note.y + note.height / 2);
+      const editor = await getTextEditor();
+
+      fireEvent.keyDown(editor, { key: KEYS.ENTER, ctrlKey: true });
+
+      const stickyNotes = h.elements.filter(
+        (el) => el.type === "stickynote" && !el.isDeleted,
+      );
+      expect(stickyNotes.length).toBe(2);
+
+      const noteBelow = stickyNotes.find(
+        (el) => el.id !== "note1",
+      ) as ExcalidrawStickyNoteElement;
+      expect(noteBelow).toBeDefined();
+      expect(noteBelow.x).toBe(note.x);
+      expect(noteBelow.y).toBe(note.y + note.height + 24);
+
+      // Text editing should immediately be open on the new note
+      const newEditor = await getTextEditor();
+      expect(newEditor).toBeDefined();
+      expect(newEditor).not.toBe(editor);
+      expect(h.state.editingTextElement?.containerId).toBe(noteBelow.id);
+
+      // Escaping text editing should leave the new note selected
+      Keyboard.keyPress(KEYS.ESCAPE, newEditor);
+      expect(h.state.selectedElementIds[noteBelow.id]).toBe(true);
+    });
+
+    it("chains fast ideation across multiple sticky notes seamlessly", async () => {
+      const { note, label } = createNote({
+        id: "note1",
+        x: 100,
+        y: 100,
+        text: "",
+        fontSize: 24,
+      });
+      API.setElements([note, label]);
+      layoutNotes(note.id);
+
+      mouse.doubleClickAt(note.x + note.width / 2, note.y + note.height / 2);
+      let editor = await getTextEditor();
+      updateTextEditor(editor, "Idea 1");
+
+      // Press Tab -> creates Idea 2 to right
+      fireEvent.keyDown(editor, { key: KEYS.TAB });
+
+      editor = await getTextEditor();
+      updateTextEditor(editor, "Idea 2");
+
+      // Press Ctrl+Enter -> creates Idea 3 below Idea 2
+      fireEvent.keyDown(editor, { key: KEYS.ENTER, metaKey: true });
+
+      editor = await getTextEditor();
+      updateTextEditor(editor, "Idea 3");
+      Keyboard.keyPress(KEYS.ESCAPE, editor);
+
+      const stickyNotes = h.elements.filter(
+        (el) => el.type === "stickynote" && !el.isDeleted,
+      );
+      expect(stickyNotes.length).toBe(3);
+    });
+  });
 });

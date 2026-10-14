@@ -126,6 +126,43 @@ describe("@firo/ui shell components", () => {
       fireEvent.click(minimapBtn);
       expect(onToggleMinimap).toHaveBeenCalledTimes(1);
     });
+
+    it("formats zoom < 1% with one decimal place and reflects gridType", () => {
+      const { rerender } = render(
+        <NavToolbar
+          zoom={0.005}
+          onZoomIn={vi.fn()}
+          onZoomOut={vi.fn()}
+          onResetZoom={vi.fn()}
+          onZoomToFit={vi.fn()}
+          gridEnabled={true}
+          gridType="dots"
+          onToggleGrid={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("0.5%")).toBeDefined();
+      const gridBtn = screen.getByRole("button", { name: "Toggle Grid" });
+      expect(gridBtn.getAttribute("data-grid-type")).toBe("dots");
+      expect(gridBtn.getAttribute("title")).toContain("dots");
+
+      rerender(
+        <NavToolbar
+          zoom={0.001}
+          onZoomIn={vi.fn()}
+          onZoomOut={vi.fn()}
+          onResetZoom={vi.fn()}
+          onZoomToFit={vi.fn()}
+          gridEnabled={true}
+          gridType="isometric"
+          onToggleGrid={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("0.1%")).toBeDefined();
+      expect(gridBtn.getAttribute("data-grid-type")).toBe("isometric");
+      expect(gridBtn.getAttribute("title")).toContain("isometric");
+    });
   });
 
   describe("BoardMenu", () => {
