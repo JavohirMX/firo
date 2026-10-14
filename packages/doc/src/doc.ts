@@ -16,7 +16,12 @@
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness.js";
 
-import type { Collection, FiroElement, FiroRecord } from "@firo/schema";
+import type {
+  Collection,
+  CommentThread,
+  FiroElement,
+  FiroRecord,
+} from "@firo/schema";
 
 import { LOAD_ORIGIN, LOCAL_ORIGIN } from "./origin.js";
 import { guardedDoc, WriteGuard } from "./guard.js";
@@ -33,6 +38,7 @@ import {
   isPlainObject,
   readAllAssets,
   readAllCollections,
+  readAllComments,
   readAllElements,
   readAllRecords,
   structure,
@@ -53,6 +59,15 @@ export type BoardSnapshot = {
   elementOrder: string[];
   collections: Collection[];
   records: FiroRecord[];
+  /**
+   * Comment threads, oldest first.
+   *
+   * A lane of its own rather than a field on an element: see `CommentThread` in
+   * `@firo/schema`. Sorted by `createdAt` on read, because a map has no order to
+   * give and a timeline needs one -- the sibling readers do not sort because
+   * their order is authored and stored (`elementOrder`, `recordOrder`).
+   */
+  comments: CommentThread[];
   meta: Record<string, unknown>;
   /**
    * Every asset reference, keyed by the id an element faces it as (`fileId`).
@@ -375,6 +390,7 @@ export class FiroDoc {
     let elementOrder: string[] | undefined;
     let collections: Collection[] | undefined;
     let records: FiroRecord[] | undefined;
+    let comments: CommentThread[] | undefined;
     let meta: Record<string, unknown> | undefined;
     let assets: Record<string, AssetReference> | undefined;
 
@@ -404,6 +420,10 @@ export class FiroDoc {
       get records(): FiroRecord[] {
         records ??= freezeEach(readAllRecords(nodes));
         return records;
+      },
+      get comments(): CommentThread[] {
+        comments ??= freezeEach(readAllComments(nodes));
+        return comments;
       },
       get meta(): Record<string, unknown> {
         meta ??= frozen(fromYMap(nodes.meta));
@@ -450,6 +470,12 @@ export class FiroDoc {
   record(id: string): FiroRecord | null {
     const node = this.nodes.records.get(id);
     return node ? (fromYMap(node) as unknown as FiroRecord) : null;
+  }
+
+  /** One comment thread by id, or null. */
+  comment(id: string): CommentThread | null {
+    const node = this.nodes.comments.get(id);
+    return node ? (fromYMap(node) as unknown as CommentThread) : null;
   }
 
   /**
@@ -575,6 +601,7 @@ export class FiroDoc {
     const willHaveElements = new Set(this.nodes.elements.keys());
     const willHaveRecords = new Set(this.nodes.records.keys());
     const willHaveCollections = new Set(this.nodes.collections.keys());
+    const willHaveComments = new Set(this.nodes.comments.keys());
 
     const absent = (present: ReadonlySet<string>, id: string, what: string) => {
       if (!present.has(id)) {
@@ -627,6 +654,18 @@ export class FiroDoc {
           absent(willHaveCollections, mutation.id, "updateCollection");
           break;
         case "deleteCollection":
+          break;
+        case "createCommentThread":
+          willHaveComments.add(mutation.thread.id);
+          break;
+        case "updateCommentThread":
+          absent(willHaveComments, mutation.id, "updateCommentThread");
+          break;
+        case "deleteCommentThread":
+          // Unlike an element, a deleted thread is gone rather than tombstoned,
+          // so naming it afterwards is a real error -- caught here rather than
+          // silently skipped in `applyMutation`.
+          absent(willHaveComments, mutation.id, "deleteCommentThread");
           break;
         case "setMeta":
         case "setAsset":
@@ -729,6 +768,12 @@ export class FiroDoc {
       mutations.push({
         kind: "createRecord",
         record: record as FiroRecord,
+      });
+    }
+    for (const comment of board.comments ?? []) {
+      mutations.push({
+        kind: "createCommentThread",
+        thread: comment as CommentThread,
       });
     }
     if (board.meta && Object.keys(board.meta).length) {
@@ -1108,6 +1153,53 @@ const applyMutation = (nodes: DocStructure, mutation: Mutation): void => {
       return;
     }
 
+    case "createCommentThread": {
+      // Written whole, like a collection. The thread carries its own `createdAt`
+      // and `author`; the write path stamps nothing, because a create has nothing
+      // to preserve and inventing a time here would overwrite the one the caller
+      // (an importer, or the author's click) already decided.
+      nodes.comments.set(
+        mutation.thread.id,
+        toYMap(mutation.thread as unknown as Record<string, unknown>),
+      );
+      return;
+    }
+
+    case "updateCommentThread": {
+      const node = nodes.comments.get(mutation.id);
+      if (!node) {
+        // Unreachable; see the note in `updateElements`.
+        throw new Error(
+          `updateCommentThread names "${mutation.id}", which vanished mid-commit.`,
+        );
+      }
+      const changes = mutation.changes as Record<string, unknown>;
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === undefined) {
+          node.delete(key);
+        } else {
+          node.set(
+            key,
+            isPlainObject(value) ? toYMap(value) : (value as never),
+          );
+        }
+      }
+      // Derived, never caller-supplied (`CommentThreadChanges` omits it), so
+      // "last changed" has one author and a resolve plus a reply cannot disagree
+      // about which of them moved it.
+      node.set("updatedAt", timestamp);
+      return;
+    }
+
+    case "deleteCommentThread": {
+      // Gone, not tombstoned: an element keeps a tombstone because undo and a
+      // concurrent edit have to be able to bring it back, and a thread has no
+      // such promise. Re-anchoring, resolving and replying all survive, so the
+      // only operation that cannot is one on a thread that is no longer there.
+      nodes.comments.delete(mutation.id);
+      return;
+    }
+
     case "setMeta": {
       for (const [key, value] of Object.entries(mutation.entries)) {
         if (value === undefined) {
@@ -1157,6 +1249,8 @@ export type BoardImport = {
   elements: readonly unknown[];
   collections: readonly unknown[];
   records: readonly unknown[];
+  /** Comment threads. Optional; a board written before comments has none. */
+  comments?: readonly unknown[];
   /** z-order, front to back. Optional for a bare paste; required in a file. */
   elementOrder?: readonly string[];
   meta?: Record<string, unknown>;

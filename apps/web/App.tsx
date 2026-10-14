@@ -29,6 +29,7 @@ import {
   UnlockIcon,
   BringToFrontIcon,
   TrashIcon,
+  CommentIcon,
 } from "@firo/ui";
 
 import { trackEvent } from "@firo/editor/analytics";
@@ -105,6 +106,7 @@ import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { ProjectionView } from "./components/ProjectionView";
+import { CommentLayer } from "./components/CommentLayer";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
 
@@ -497,7 +499,13 @@ const WebInspector = ({ appState }: { appState: UIAppState }) => {
  * it tracks pan and zoom without a viewport offset, because the overlay and the
  * canvas share an origin.
  */
-const WebSelectionToolbar = ({ appState }: { appState: UIAppState }) => {
+const WebSelectionToolbar = ({
+  appState,
+  onComment,
+}: {
+  appState: UIAppState;
+  onComment: (elementId: string) => void;
+}) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
 
@@ -534,6 +542,25 @@ const WebSelectionToolbar = ({ appState }: { appState: UIAppState }) => {
       x={x}
       y={y}
       items={[
+        /*
+         * Comment, only for a single element.
+         *
+         * A thread lives on exactly one element, so with several selected there
+         * is no honest answer to "which one" and no sensible default — the
+         * alternative, commenting the group, is a different feature (a thread
+         * with several anchors) that the schema does not have. With one selected
+         * the question does not arise.
+         */
+        ...(selected.length === 1
+          ? [
+              {
+                id: "comment",
+                label: "Comment",
+                icon: <CommentIcon />,
+                onClick: () => onComment(selected[0].id),
+              },
+            ]
+          : []),
         {
           id: "duplicate",
           label: "Duplicate",
@@ -568,6 +595,15 @@ const ExcalidrawWrapper = () => {
   const excalidrawAPI = useExcalidrawAPI();
 
   const [errorMessage, setErrorMessage] = useState("");
+
+  /*
+   * Which element a comment is being written about.
+   *
+   * Held here rather than in the comment layer because the *trigger* is the
+   * selection toolbar, a sibling — the editor owns selection, so it owns the
+   * question "what is selected", and the layer only owns "where does the pin go".
+   */
+  const [commentTarget, setCommentTarget] = useState<string | null>(null);
 
   const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
 
@@ -1019,7 +1055,10 @@ const ExcalidrawWrapper = () => {
           <WebInspector appState={appState} />
         )}
         renderSelectionUI={(_isMobile, appState) => (
-          <WebSelectionToolbar appState={appState} />
+          <WebSelectionToolbar
+            appState={appState}
+            onComment={setCommentTarget}
+          />
         )}
         renderTopRightUI={() => (
           <CollabBar>
@@ -1056,6 +1095,11 @@ const ExcalidrawWrapper = () => {
         }}
       >
         <ProjectionView excalidrawAPI={excalidrawAPI} />
+        <CommentLayer
+          excalidrawAPI={excalidrawAPI}
+          composerTarget={commentTarget}
+          onCloseComposer={() => setCommentTarget(null)}
+        />
         <AppMainMenu
           isCollaborating={isCollaborating}
           theme={appTheme}

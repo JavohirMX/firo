@@ -32,6 +32,8 @@ import { isProseMirrorDoc, parseProseMirrorDoc } from "./prosemirror.js";
 import type {
   Collection,
   ColumnType,
+  CommentEntry,
+  CommentThread,
   ElementId,
   FiroElement,
   FiroRecord,
@@ -333,6 +335,128 @@ const migrateCollection = (input: unknown, log: RepairLog): Collection => {
 export { migrateCollection };
 
 /* -------------------------------------------------------------------------- */
+/* Comments                                                                   */
+/* -------------------------------------------------------------------------- */
+
+const KNOWN_COMMENT_ENTRY_FIELDS = [
+  "id",
+  "body",
+  "author",
+  "createdAt",
+] as const;
+
+const KNOWN_COMMENT_THREAD_FIELDS = [
+  "id",
+  "elementId",
+  "anchor",
+  "comments",
+  "resolved",
+  "author",
+  "createdAt",
+  "updatedAt",
+] as const;
+
+const KNOWN_COMMENT_ANCHOR_FIELDS = ["x", "y"] as const;
+
+/**
+ * Migrate and validate one message.
+ *
+ * Same shape as every other validator in this file: spread the original object
+ * first so a field a newer build wrote survives, then overlay the fields this
+ * build knows how to type. A message that is not an object at all is dropped by
+ * the caller, not here — a thread with one malformed message should lose the
+ * message, not the conversation.
+ */
+const migrateCommentEntry = (
+  input: Record<string, unknown>,
+  log: RepairLog,
+  at: string,
+): CommentEntry =>
+  ({
+    ...preserveUnknownFields(input, KNOWN_COMMENT_ENTRY_FIELDS, log),
+    id: string(input.id, "", log, `${at}.id`),
+    body: string(input.body, "", log, `${at}.body`),
+    author: string(input.author, "", log, `${at}.author`),
+    createdAt: number(input.createdAt, 0, log, `${at}.createdAt`),
+  } as CommentEntry);
+
+/**
+ * Migrate and validate one comment thread.
+ *
+ * ## Why this is not `migrateElement` with a version
+ *
+ * A thread has no schema version of its own. The board header's
+ * `recordSchemaVersion` governs the non-element durable lanes (see
+ * [`./version.ts`](./version.ts)), so a board from a newer record version is
+ * refused once, at the board boundary, rather than re-checked per thread. That is
+ * the same reason `migrateCollection` takes no version.
+ *
+ * ## Why a malformed thread is repaired and not dropped
+ *
+ * A thread is a conversation, and a load path that answers "some of your comments
+ * are gone" is worse than one that answers "one comment was blank". Every
+ * individual field is repaired to a safe value and reported; only a thread that
+ * is not an object at all is subject to the caller's drop policy. The one field a
+ * repair cannot invent is `id`, so an empty id is reported and kept as the empty
+ * string — the caller sees it in the log and in the board rather than losing the
+ * thread silently.
+ */
+export const migrateCommentThread = (
+  input: unknown,
+  log: RepairLog,
+  at = "comment",
+): CommentThread => {
+  if (!plainObject(input)) {
+    throw new TypeError(
+      `A comment thread must be an object, got ${
+        input === null ? "null" : typeof input
+      }.`,
+    );
+  }
+
+  const raw = input as Record<string, unknown>;
+
+  const anchorRaw = plainObject(raw.anchor) ? raw.anchor : {};
+  if (raw.anchor !== undefined && !plainObject(raw.anchor)) {
+    log.coerced(`${at}.anchor`, raw.anchor, { x: 0, y: 0 });
+  }
+
+  const rawComments = Array.isArray(raw.comments) ? raw.comments : [];
+  if (raw.comments !== undefined && !Array.isArray(raw.comments)) {
+    log.coerced(`${at}.comments`, raw.comments, []);
+  }
+
+  const comments = rawComments.flatMap((entry, index) => {
+    if (!plainObject(entry)) {
+      log.dropped(`${at}.comments[${index}]`, "not an object");
+      return [];
+    }
+    return [migrateCommentEntry(entry, log, `${at}.comments[${index}]`)];
+  });
+
+  return {
+    ...preserveUnknownFields(raw, KNOWN_COMMENT_THREAD_FIELDS, log),
+    id: string(raw.id, "", log, `${at}.id`),
+    elementId: string(raw.elementId, "", log, `${at}.elementId`),
+    anchor: {
+      ...preserveUnknownFields(anchorRaw, KNOWN_COMMENT_ANCHOR_FIELDS, log),
+      x: number(anchorRaw.x, 0, log, `${at}.anchor.x`),
+      y: number(anchorRaw.y, 0, log, `${at}.anchor.y`),
+    },
+    comments,
+    resolved: boolean(raw.resolved, false, log, `${at}.resolved`),
+    author: string(raw.author, "", log, `${at}.author`),
+    createdAt: number(raw.createdAt, 0, log, `${at}.createdAt`),
+    updatedAt: number(
+      raw.updatedAt,
+      number(raw.createdAt, 0, log, `${at}.createdAt`),
+      log,
+      `${at}.updatedAt`,
+    ),
+  } as CommentThread;
+};
+
+/* -------------------------------------------------------------------------- */
 /* Whole boards                                                               */
 /* -------------------------------------------------------------------------- */
 
@@ -358,6 +482,23 @@ export type SerializedBoard = {
   elements: unknown[];
   collections: unknown[];
   records: unknown[];
+  /**
+   * Comment threads.
+   *
+   * ## Why this field is optional, and absent when there is nothing to say
+   *
+   * Every other lane is an array that is always present. This one is omitted when
+   * it is empty, and that is a deliberate choice with a consequence worth naming:
+   * a board written before comments existed has no `comments` key at all, so
+   * loading and re-saving it must not *gain* one. `roundTripFixture` compares the
+   * whole structure, so materialising `[]` would fail the v1 and v2 fixtures —
+   * which is exactly the whole-file churn the canonical writer exists to prevent,
+   * caught mechanically rather than by review.
+   *
+   * Absence and `[]` therefore mean the same thing on load, and `serializeBoard`
+   * is the one place that decides to write neither.
+   */
+  comments?: unknown[];
   meta: Record<string, unknown>;
 };
 
@@ -375,6 +516,7 @@ export type LoadedBoard = {
   elementOrder: ElementId[];
   collections: Collection[];
   records: FiroRecord[];
+  comments: CommentThread[];
   meta: Record<string, unknown>;
   log: RepairLog;
 };
@@ -535,11 +677,37 @@ export const loadBoard = (input: unknown): LoadedBoard => {
     })
     .filter((r): r is FiroRecord => r !== null);
 
+  /*
+   * Comments.
+   *
+   * Unlike `elements`/`collections`/`records`, absence is *not* reported: the
+   * field is optional by design (`SerializedBoard.comments`) and every board
+   * written before comments existed has no such key. Recording a `missing` here
+   * would make every committed fixture log a repair and turn "this old file
+   * still loads clean" into a statement nobody could assert. A present-but-wrong
+   * value is still reported, because that is corruption.
+   */
+  const comments: CommentThread[] = [];
+  if (Array.isArray(raw.comments)) {
+    raw.comments.forEach((rawThread, index) => {
+      try {
+        comments.push(
+          migrateCommentThread(rawThread, log, `comments[${index}]`),
+        );
+      } catch (error) {
+        log.dropped(`comments[${index}]`, (error as Error).message);
+      }
+    });
+  } else if (raw.comments !== undefined) {
+    log.coerced("comments", raw.comments, []);
+  }
+
   return {
     elements: ordered,
     elementOrder: order,
     collections,
     records,
+    comments,
     meta: plainObject(raw.meta) ? raw.meta : {},
     log,
   };
@@ -626,10 +794,20 @@ export const serializeBoard = (board: {
   elements: readonly FiroElement[];
   collections: readonly Collection[];
   records: readonly FiroRecord[];
+  /**
+   * Comment threads.
+   *
+   * Optional, and written only when there is at least one. An empty board that
+   * dropped its last comment must serialise back to the file it came from, which
+   * had no `comments` key — see `SerializedBoard.comments` for why absence and
+   * `[]` are the same thing here.
+   */
+  comments?: readonly CommentThread[];
   /** z-order. Defaults to `elements` order when the caller has none. */
   elementOrder?: readonly string[];
   meta?: Record<string, unknown>;
 }): SerializedBoard => {
+  const comments = board.comments ?? [];
   return {
     elementSchemaVersion: CURRENT_ELEMENT_VERSION,
     recordSchemaVersion: CURRENT_RECORD_VERSION,
@@ -640,6 +818,11 @@ export const serializeBoard = (board: {
     elements: [...board.elements],
     collections: [...board.collections],
     records: [...board.records],
+    // Omitted when empty; see `SerializedBoard.comments`. Spread rather than
+    // assigning `undefined`, so the key is genuinely absent rather than present
+    // and undefined -- `JSON.stringify` drops the latter but `Object.keys` and a
+    // structural comparison do not.
+    ...(comments.length ? { comments: [...comments] } : {}),
     /*
      * Stated rather than inferred. A caller with no order of its own gets the
      * array order it passed, which is the honest reading of "no order given" --

@@ -61,6 +61,8 @@ The decisions that shaped everything else:
 | [0021](adr/0021-miro-style-shell-and-clean-aesthetic.md) | Adopt a Miro-style UI shell and a clean-by-default canvas aesthetic |
 | [0022](adr/0022-ui-package-owns-the-chrome.md) | `@firo/ui` owns the app chrome; `@firo/editor` exposes layout tunnels |
 | [0023](adr/0023-open-icons-and-ui-typeface.md) | Author our own icon set; adopt Plus Jakarta Sans for the chrome |
+| [0026](adr/0026-board-home-and-its-index.md) | The board home reads its index from the autosave store, beside the boards it names |
+| [0027](adr/0027-comments-are-their-own-lane.md) | Comments are their own durable lane, not elements or records |
 
 ## Document conventions
 

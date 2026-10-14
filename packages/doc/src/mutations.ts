@@ -20,7 +20,12 @@
  * from never having existed, which breaks undo and lets a concurrent edit
  * resurrect a deleted element.
  */
-import type { Collection, FiroElement, FiroRecord } from "@firo/schema";
+import type {
+  Collection,
+  CommentThread,
+  FiroElement,
+  FiroRecord,
+} from "@firo/schema";
 
 /** The fields a caller may change on an element. */
 export type ElementChanges = Partial<
@@ -32,6 +37,22 @@ export type ElementChanges = Partial<
 
 /** The fields a caller may change on a record. */
 export type RecordChanges = Partial<Omit<FiroRecord, "id" | "created">>;
+
+/**
+ * The fields a caller may change on a comment thread.
+ *
+ * `id` and `createdAt` are omitted because they are identity: a thread that
+ * changed its id would be a different thread, and one that changed its creation
+ * time would move in the chronological order `readAllComments` sorts by.
+ * `updatedAt` is omitted because the write path stamps it, for the same reason
+ * `updated` is derived on an element -- a caller that supplied it would have a
+ * second way to say "when did this change", and the merge would have no single
+ * answer. Both are the caller-getting-it-wrong shape the module header warns
+ * about, so neither is accepted here.
+ */
+export type CommentThreadChanges = Partial<
+  Omit<CommentThread, "id" | "createdAt" | "updatedAt">
+>;
 
 export type Mutation =
   /** Insert a new element, at the end of the z-order. */
@@ -70,6 +91,21 @@ export type Mutation =
   /** Archive rather than delete: a record in a projection can come back. */
   | { kind: "archiveRecords"; ids: readonly string[] }
   | { kind: "unarchiveRecords"; ids: readonly string[] }
+
+  /*
+   * Comments.
+   *
+   * Three mutations rather than a generic `setComments`, for the same reason
+   * elements have `create`/`update`/`delete` rather than one `set`: the intent is
+   * what decides the bookkeeping. Create writes a whole thread and its
+   * `createdAt`; update touches only the named keys so a concurrent resolve and a
+   * concurrent reply both survive; delete removes it outright rather than
+   * tombstoning -- a thread no longer exists as a conversation, and unlike an
+   * element there is no `isDeleted` field to carry the tombstone.
+   */
+  | { kind: "createCommentThread"; thread: CommentThread }
+  | { kind: "updateCommentThread"; id: string; changes: CommentThreadChanges }
+  | { kind: "deleteCommentThread"; id: string }
 
   /** Board-level metadata: name, created, theme, schema versions. */
   | { kind: "setMeta"; entries: Readonly<Record<string, unknown>> }
@@ -124,6 +160,9 @@ export const MUTATION_KINDS = [
   "updateRecords",
   "archiveRecords",
   "unarchiveRecords",
+  "createCommentThread",
+  "updateCommentThread",
+  "deleteCommentThread",
   "setMeta",
   "setAsset",
   "removeAsset",

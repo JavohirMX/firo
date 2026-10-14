@@ -217,6 +217,7 @@ describe("a five-second drag produces zero document updates", () => {
     expect([...doc.ydoc.share.keys()].sort()).toEqual([
       "assets",
       "collections",
+      "comments",
       "elementOrder",
       "elements",
       "meta",

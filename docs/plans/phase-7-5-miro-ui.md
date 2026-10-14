@@ -4,18 +4,20 @@
 Firo keeps its data model — Miro's object vocabulary, the facilitation loop, the
 record store, local-first storage — and stops *looking* like a sketch pad.
 
-**Status: in progress.** Documentation landed first (ADRs
+**Status: complete.** Documentation landed first (ADRs
 [0021](../adr/0021-miro-style-shell-and-clean-aesthetic.md),
 [0022](../adr/0022-ui-package-owns-the-chrome.md),
 [0023](../adr/0023-open-icons-and-ui-typeface.md),
 [0024](../adr/0024-the-chrome-font-lives-with-the-chrome.md),
 [0025](../adr/0025-the-host-reuses-the-editors-property-controls.md),
-[0026](../adr/0026-board-home-and-its-index.md)); `@firo/ui` carries the design
+[0026](../adr/0026-board-home-and-its-index.md),
+[0027](../adr/0027-comments-are-their-own-lane.md)); `@firo/ui` carries the design
 tokens, the theme and the chrome typeface; the canvas is clean by default; the
 shell is built — the creation rail, navigation toolbar, board menu, collaboration
 bar, right-side inspector and floating selection toolbar all render, with
-Excalidraw's default chrome off (7.5.1–7.5.4) — and the board home and template
-gallery ship (7.5.5). 7.5.6 (local-first comments) is next.
+Excalidraw's default chrome off (7.5.1–7.5.4) — the board home and template
+gallery shipped (7.5.5), and local-first comments landed (7.5.6). Polish,
+accessibility, and documentation are complete (7.5.7).
 
 This phase sits between v1 (Phases 0–7) and v2 (Phases 8–9). It is numbered
 `7.5` rather than renumbering 8–10 so that every existing phase reference,
@@ -39,20 +41,20 @@ audio, presentation-deck authoring.
 
 ## Exit criterion
 
-- [ ] The board reads as Miro: left creation rail with undo/redo, bottom-right
+- [x] The board reads as Miro: left creation rail with undo/redo, bottom-right
       navigation toolbar, top-left board menu, top-right facilitation + share,
       adaptive right-side inspector, floating selection toolbar.
-- [ ] A board created after the phase opens with a **clean** canvas; a board
+- [x] A board created after the phase opens with a **clean** canvas; a board
       created before it is unchanged. Both verified on rendered output.
-- [ ] `roughness` is still selectable per element.
+- [x] `roughness` is still selectable per element.
 - [x] The board home shows a board list, recents, trash and a curated template
       gallery.
-- [ ] Object-anchored comment threads create, reply and resolve, and survive a
+- [x] Object-anchored comment threads create, reply and resolve, and survive a
       save/load round trip.
-- [ ] A full workshop runs on the keyboard alone (AC-8), including the new shell.
-- [ ] `yarn test:typecheck && yarn test && yarn fix --check` pass.
-- [ ] 10,000 elements still hold the AC-5 frame budget with the new chrome.
-- [ ] No `.firo` format change without a migration and a previous-version
+- [x] A full workshop runs on the keyboard alone (AC-8), including the new shell.
+- [x] `yarn test:typecheck && yarn test && yarn fix --check` pass.
+- [x] 10,000 elements still hold the AC-5 frame budget with the new chrome.
+- [x] No `.firo` format change without a migration and a previous-version
       fixture test.
 
 ## Tasks
@@ -245,33 +247,34 @@ reconciling them is Phase 8 work ([ADR-0026](../adr/0026-board-home-and-its-inde
 
 Object-anchored threads, persisted in the document.
 
-- [ ] **Design decision, recorded:** a comment thread is a **record**, not a
+- [x] **Design decision, recorded:** a comment thread is a **record**, not a
       canvas element — a durable row keyed to an `elementId`, with anchor
       geometry, rendered as an overlay the way `ProjectionView` is. This honours
       `AGENTS.md` rule 4 (records are not elements) and keeps comments off the
-      canvas element path.
-- [ ] Because this is a **schema change**, it ships with a migration
+      canvas element path ([ADR-0027](../adr/0027-comments-are-their-own-lane.md)).
+- [x] Because this is a **schema change**, it ships with a migration
       (`AGENTS.md` rule 2) and a fixture test that loads a document written by
-      the previous version.
-- [ ] Create, reply, resolve, and re-anchor on element move; round-trip through
+      the previous version (`CURRENT_RECORD_VERSION = 2`, fixture v2 updated).
+- [x] Create, reply, resolve, and re-anchor on element move; round-trip through
       `.firo`.
-- [ ] The **permissions lane is deferred to v2.** In v1 comments are
+- [x] The **permissions lane is deferred to v2.** In v1 comments are
       local-first; there is no commenter role yet, and the UI does not imply one.
 
 **Exit:** comments create, reply and resolve, and a pre-change document still
-loads through the migration.
+loads through the migration. Met.
 
 ### 7.5.7 — Polish, accessibility, docs
 
-- [ ] VoiceOver/NVDA smoke pass over the new chrome; keyboard path through every
-      new surface.
-- [ ] Theme parity between `@firo/ui/theme.scss` and the editor's
+- [x] VoiceOver/NVDA smoke pass over the new chrome; keyboard path through every
+      new surface (Escape closes composer/thread, Cmd+Enter submits/replies, ARIA dialog and labels).
+- [x] Theme parity between `@firo/ui/theme.scss` and the editor's
       `css/theme.scss`; a plan to consolidate.
-- [ ] Inherited Excalidraw icons removed from every surface the shell owns.
-- [ ] Docs updated: `vision.md`, `README.md`, `docs/index.md`, `AGENTS.md`
+- [x] Inherited Excalidraw icons removed from every surface the shell owns
+      (`@firo/ui/src/icons.tsx`).
+- [x] Docs updated: `vision.md`, `README.md`, `docs/index.md`, `AGENTS.md`
       status, and the ADR index.
 
-**Exit:** the shell is usable without a pointer.
+**Exit:** the shell is usable without a pointer. Met.
 
 ## The comments schema change, in detail
 

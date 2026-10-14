@@ -749,6 +749,98 @@ export type Collection = Readonly<{
   version: number;
 }>;
 
+/* -------------------------------------------------------------------------- */
+/* Comments                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One message in a comment thread.
+ *
+ * ## Why `body` is a plain string and not a ProseMirror document
+ *
+ * Rule 3 ([`../../docs/trd/05-rich-text.md`](../../docs/trd/05-rich-text.md))
+ * says any *element* with editable rich text stores ProseMirror. A comment is not
+ * an element, and the TRD's own table puts a rich-text comment body in v2:
+ * "Comment body | ProseMirror | v2". So v1 stores plain text, and upgrading the
+ * body is a migration on this lane rather than a reinterpretation of a string
+ * that was never a document.
+ *
+ * ## Why `author` is a string and not a user id
+ *
+ * There are no accounts in v1 (Phase 9 owns them). A local display name is the
+ * honest placeholder: it is what a single-user board can know, and a
+ * `CommentEntry` written today has a field for the account id to arrive in later
+ * rather than a field to rename.
+ */
+export type CommentEntry = Readonly<{
+  id: string;
+  body: string;
+  author: string;
+  createdAt: number;
+}>;
+
+/**
+ * Where a thread is pinned, **relative to its anchor element's origin**.
+ *
+ * ## Why relative and not absolute
+ *
+ * An absolute board coordinate would have to be rewritten every time the element
+ * moved -- one mutation per pointer-up for every comment on the board, and a
+ * comment that drifts off its note the moment one of those writes is missed. A
+ * relative offset moves *with* the element by construction: the renderer adds it
+ * to the element's current position, so "re-anchor on move" costs nothing.
+ *
+ * `(0, 0)` is the element's top-left, which is the only origin every element type
+ * shares (`frame`, `image` and the shapes do not agree on a centre).
+ */
+export type CommentAnchor = Readonly<{
+  x: number;
+  y: number;
+}>;
+
+/**
+ * A threaded, object-anchored comment conversation.
+ *
+ * ## Why this is a lane of its own and not an element or a record
+ *
+ * - **Not an element.** A comment is not a positioned object on the canvas; it
+ *   is a durable row *about* one. Making it an element is what the TRD rules out
+ *   because it would put comments in the element map, so a commenter would need
+ *   edit rights on the whole board ([`../../docs/trd/08-server-and-auth.md`](../../docs/trd/08-server-and-auth.md)).
+ * - **Not a record in a collection.** The record model keys values by
+ *   `Column.key` and validates them against a `FieldValue` union that has no
+ *   place for an array of messages or an anchor. Forcing a thread into columns
+ *   means encoding structured data as text, which is the one thing a typed record
+ *   store exists to prevent.
+ *
+ * So it is a third durable lane, sibling to `elements` and `records`, versioned
+ * under the record chain (see [`./version.ts`](./version.ts)) and stored in its
+ * own Yjs root. That is the separation a separate permission partition needs in
+ * v2, built now rather than retrofitted.
+ *
+ * ## Why a thread survives its anchor
+ *
+ * `elementId` may name an element that has been deleted. The thread is *not*
+ * cascaded: a conversation someone had about a note is not destroyed because the
+ * note was. A renderer that cannot find the element shows the thread in an
+ * orphaned list rather than dropping it, which is the v2 "survives as a
+ * tombstone" behaviour available from the shape alone.
+ */
+export type CommentThread = Readonly<{
+  id: string;
+  /** The element this thread is about. May name a deleted element. */
+  elementId: string;
+  anchor: CommentAnchor;
+  /** Oldest first. Never empty for a thread that was created normally. */
+  comments: readonly CommentEntry[];
+  /** A resolved thread stays and is hidden by default; it is not deleted. */
+  resolved: boolean;
+  /** Who opened the thread. */
+  author: string;
+  createdAt: number;
+  updatedAt: number;
+}>;
+
 /** The set of `FieldValue["type"]` a column type accepts. */
 export const FIELD_TYPE_FOR_COLUMN: Readonly<
   Record<ColumnType, FieldValue["type"]>

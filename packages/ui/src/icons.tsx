@@ -740,3 +740,56 @@ export const BoardsIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     />
   </svg>
 );
+
+/**
+ * A speech bubble, for the comment lane.
+ *
+ * The tail on the lower-left is what reads it as a *comment* rather than an
+ * empty chat icon; the two dots are placed high enough to stay clear of it at
+ * 16px, which is the pin's size on the canvas.
+ */
+export const CommentIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M4 4.75C4 3.78 4.78 3 5.75 3H14.25C15.22 3 16 3.78 16 4.75V11.25C16 12.22 15.22 13 14.25 13H8.5L5 16V13H5.75C4.78 13 4 12.22 4 11.25V4.75Z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M7.5 8H12.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/** A check in a circle, for a resolved comment thread. */
+export const CheckIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="10" cy="10" r="6.25" stroke="currentColor" strokeWidth="1.75" />
+    <path
+      d="M7 10.25L9 12.25L13 8"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);

@@ -1,10 +1,17 @@
 /**
  * The Yjs document layout.
  *
- * One `Y.Doc` per board, with the seven roots the TRD specifies. This module owns
+ * One `Y.Doc` per board, with the eight roots the TRD specifies. This module owns
  * *where things live*; `doc.ts` owns *who may change them*. Splitting it that way
  * is what lets the write-path guard be a single hook rather than a review
  * convention.
+ *
+ * The eighth root is `comments`, added in Phase 7.5.6. It is a map of id ->
+ * nested map like `records`, deliberately *not* a second field on an element and
+ * not a record: a comment thread is a durable row *about* an element, versioned
+ * under the record chain, and keeping it in its own root is what lets a future
+ * commenter permission partition operate on it without touching the element
+ * grant ([`../../docs/adr/0027-comments-are-their-own-lane.md`](../../docs/adr/0027-comments-are-their-own-lane.md)).
  *
  * ## Why nested `Y.Map` per element
  *
@@ -23,7 +30,12 @@
  */
 import * as Y from "yjs";
 
-import type { Collection, FiroElement, FiroRecord } from "@firo/schema";
+import type {
+  Collection,
+  CommentThread,
+  FiroElement,
+  FiroRecord,
+} from "@firo/schema";
 
 import type { AssetReference } from "./mutations.js";
 
@@ -34,6 +46,7 @@ export const ROOTS = {
   collections: "collections",
   records: "records",
   recordOrder: "recordOrder",
+  comments: "comments",
   meta: "meta",
   assets: "assets",
 } as const;
@@ -58,6 +71,7 @@ export type DocStructure = {
   collections: Y.Map<Y.Map<unknown>>;
   records: Y.Map<Y.Map<unknown>>;
   recordOrder: Y.Array<string>;
+  comments: Y.Map<Y.Map<unknown>>;
   meta: Y.Map<unknown>;
   assets: Y.Map<Y.Map<unknown>>;
 };
@@ -77,6 +91,7 @@ export const structure = (doc: Y.Doc): DocStructure => ({
   collections: rootMap<Y.Map<unknown>>(doc, ROOTS.collections),
   records: rootMap<Y.Map<unknown>>(doc, ROOTS.records),
   recordOrder: doc.getArray<string>(ROOTS.recordOrder),
+  comments: rootMap<Y.Map<unknown>>(doc, ROOTS.comments),
   meta: rootMap<unknown>(doc, ROOTS.meta),
   assets: rootMap<Y.Map<unknown>>(doc, ROOTS.assets),
 });
@@ -226,6 +241,41 @@ export const readAllCollections = (structure: DocStructure): Collection[] => {
     out.push(fromYMap(node) as unknown as Collection);
   });
   return out;
+};
+
+/**
+ * Read every comment thread, oldest first.
+ *
+ * ## Why this sorts and the sibling readers do not
+ *
+ * `readAllElements` has `elementOrder` and `readAllRecords` has `recordOrder`,
+ * both stored as `Y.Array`s because their order is *authored* -- a note's z-index
+ * and a row's place in a projection are things a user chose. Comments have no
+ * such order to preserve: they are read chronologically, and a `createdAt` is
+ * already on every thread. A map has no inherent order, so reading one without a
+ * sort would produce a snapshot whose order is a side effect of the merge history
+ * -- fine for a set, wrong for a timeline, and impossible to assert against.
+ *
+ * The `id` tiebreak makes it total: two threads created in the same millisecond
+ * (which a paste or a re-import can produce) still have one defined order, so
+ * `serializeBoard` is byte-stable across reloads.
+ *
+ * ## Why a foreign value is sorted to the end rather than dropped
+ *
+ * A node that is not shaped like a thread still has whatever `createdAt` it has,
+ * which may be `undefined`. Sorting it to the front would put garbage first; the
+ * `?? 0` sends it to the back, where a caller that filters malformed threads
+ * finds them last. Dropping it here would be the silent loss a read must not do.
+ */
+export const readAllComments = (structure: DocStructure): CommentThread[] => {
+  const out: CommentThread[] = [];
+  structure.comments.forEach((node) => {
+    out.push(fromYMap(node) as unknown as CommentThread);
+  });
+  return out.sort(
+    (a, b) =>
+      (a.createdAt ?? 0) - (b.createdAt ?? 0) || a.id.localeCompare(b.id),
+  );
 };
 
 /**

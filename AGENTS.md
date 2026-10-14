@@ -6,7 +6,7 @@ This file is **operational policy**, not a human-facing README. It exists to be 
 
 ## Repository status
 
-**Version 1 complete; Phase 7.5 in progress.** Phases 0 through 7 are complete, built, and tested. The repository is a fully operational Yarn v1 classic workspaces monorepo containing 13 packages and apps. **Phase 7.5 — the Miro-style UI shell** ([`docs/plans/phase-7-5-miro-ui.md`](docs/plans/phase-7-5-miro-ui.md)) is the active work: a Miro-shaped shell in `@firo/ui`, a clean-default canvas, a board home, and local-first comments ([ADR-0021](docs/adr/0021-miro-style-shell-and-clean-aesthetic.md), [ADR-0022](docs/adr/0022-ui-package-owns-the-chrome.md), [ADR-0023](docs/adr/0023-open-icons-and-ui-typeface.md)). Version 2 (Phases 8 & 9) follows it.
+**Version 1 complete; Phase 7.5 complete.** Phases 0 through 7.5 are complete, built, and tested. The repository is a fully operational Yarn v1 classic workspaces monorepo containing 13 packages and apps: a Miro-shaped shell in `@firo/ui`, a clean-default canvas, a board home, and local-first comments ([ADR-0021](docs/adr/0021-miro-style-shell-and-clean-aesthetic.md), [ADR-0022](docs/adr/0022-ui-package-owns-the-chrome.md), [ADR-0023](docs/adr/0023-open-icons-and-ui-typeface.md), [ADR-0027](docs/adr/0027-comments-are-their-own-lane.md)). Version 2 (Phases 8 & 9) is the active roadmap.
 
 All verification checks below are active and enforced.
 

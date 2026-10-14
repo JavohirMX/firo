@@ -37,9 +37,24 @@
  */
 export const CURRENT_ELEMENT_VERSION = 2;
 
-/** Current record/collection schema version. Bump with a migration + fixture. */
-export const CURRENT_RECORD_VERSION = 1;
-
+/**
+ * Current record/collection schema version. Bump with a migration + fixture.
+ *
+ * **v2 adds the comment lane** -- threaded, object-anchored comments on
+ * `ElementBase`'s board, stored as their own root rather than as elements or
+ * records ([`./types.ts`](./types.ts), [`./migrate.ts`](./migrate.ts)). The
+ * chain is the *non-element* one: elements and records are versioned separately
+ * because they migrate and fail independently, and a comment is neither, so it
+ * rides with records as the durable-not-an-element family.
+ *
+ * Bumping this is load-bearing beyond the additive field. A board written at
+ * record v2 names a lane a v1 build does not understand, and the board-level
+ * `ForwardVersionError` makes that build *refuse* the file rather than load it
+ * and drop the comments on the next save. [`tests/fixtures/v2/board.json`](../../tests/fixtures/v2/board.json)
+ * pins the promise that the merged v2 board loads, and the record-chain fixture
+ * in [`./fixtures.ts`](./fixtures.ts) pins the comment case specifically.
+ */
+export const CURRENT_RECORD_VERSION = 2;
 /**
  * A file whose stored version is above the current one.
  *

@@ -1,6 +1,6 @@
 {
   "elementSchemaVersion": 2,
-  "recordSchemaVersion": 1,
+  "recordSchemaVersion": 2,
   "elementOrder": ["el-note-hidden", "el-note-plain", "el-note-future"],
   "meta": {
     "id": "board-fixture-v2",

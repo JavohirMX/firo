@@ -176,6 +176,7 @@ describe("serialise is the exact inverse of load", () => {
     expect(serializeBoard(loaded)).toEqual({
       ...boardV1,
       elementSchemaVersion: CURRENT_ELEMENT_VERSION,
+      recordSchemaVersion: CURRENT_RECORD_VERSION,
     });
   });
 

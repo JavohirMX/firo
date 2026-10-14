@@ -1,0 +1,225 @@
+/*
+ * The comment lane's chrome.
+ *
+ * Tokens are the `--firo-*` set from `@firo/ui/src/theme.scss`, loaded by the
+ * host in `index.scss`, so a pin follows the chrome's theme (and its dark mode)
+ * rather than the editor's own variables. The layer sits above the canvas but
+ * below the shell panels.
+ */
+
+.firo-comments-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.firo-comment-pin {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  pointer-events: auto;
+  border: 1px solid var(--firo-color-panel);
+  border-radius: var(--firo-radius-pill);
+  background: var(--firo-color-accent);
+  color: var(--firo-color-on-accent);
+  cursor: pointer;
+  box-shadow: var(--firo-elevation-panel);
+  font-family: var(--firo-font-ui);
+  font-size: var(--firo-font-size-sm);
+  font-weight: var(--firo-font-weight-semibold);
+  /* The anchor is the element's top-right; sit the pin on that corner rather
+     than with its own top-left there. */
+  transform: translate(-50%, -50%);
+  transition: transform var(--firo-motion-fast) var(--firo-motion-ease),
+    box-shadow var(--firo-motion-fast) var(--firo-motion-ease);
+
+  &:hover {
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--firo-color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  &.is-resolved {
+    background: var(--firo-color-panel);
+    color: var(--firo-color-success);
+    border-color: var(--firo-color-border-strong);
+  }
+
+  &__count {
+    font-size: var(--firo-font-size-xs);
+    line-height: 1;
+  }
+}
+
+.firo-comment-popover {
+  position: absolute;
+  /* Anchored at the pin; offset down-right so it does not cover the element's
+     corner. */
+  transform: translate(12px, 12px);
+  width: 280px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--firo-space-sm);
+  padding: var(--firo-space-md);
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-md);
+  background: var(--firo-color-panel);
+  color: var(--firo-color-text);
+  box-shadow: var(--firo-elevation-floating);
+  font-family: var(--firo-font-ui);
+  font-size: var(--firo-font-size-md);
+}
+
+.firo-comment-popover__input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  resize: vertical;
+  padding: var(--firo-space-sm);
+  border: 1px solid var(--firo-color-border-strong);
+  border-radius: var(--firo-radius-sm);
+  background: var(--firo-color-surface);
+  color: var(--firo-color-text);
+  font-family: var(--firo-font-ui);
+  font-size: var(--firo-font-size-md);
+  line-height: var(--firo-line-height-normal);
+
+  &:focus-visible {
+    outline: 2px solid var(--firo-color-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+.firo-comment-popover__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--firo-space-sm);
+}
+
+.firo-comment-popover__hint {
+  color: var(--firo-color-text-muted);
+  font-size: var(--firo-font-size-xs);
+}
+
+.firo-comment-popover__send {
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--firo-radius-sm);
+  background: var(--firo-color-accent);
+  color: var(--firo-color-on-accent);
+  font-family: inherit;
+  font-size: var(--firo-font-size-sm);
+  font-weight: var(--firo-font-weight-semibold);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.firo-comment-thread__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.firo-comment-thread__status {
+  font-size: var(--firo-font-size-xs);
+  font-weight: var(--firo-font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--firo-color-text-muted);
+
+  &.is-resolved {
+    color: var(--firo-color-success);
+  }
+}
+
+.firo-comment-thread__close {
+  border: none;
+  background: none;
+  color: var(--firo-color-text-muted);
+  font-size: var(--firo-font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.firo-comment-thread__messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--firo-space-sm);
+}
+
+.firo-comment-thread__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--firo-space-sm);
+}
+
+.firo-comment-thread__author {
+  font-weight: var(--firo-font-weight-semibold);
+}
+
+.firo-comment-thread__time {
+  color: var(--firo-color-text-muted);
+  font-size: var(--firo-font-size-xs);
+}
+
+.firo-comment-thread__body {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: var(--firo-line-height-normal);
+}
+
+.firo-comment-thread__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--firo-space-sm);
+}
+
+.firo-comment-thread__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--firo-color-border-strong);
+  border-radius: var(--firo-radius-sm);
+  background: var(--firo-color-panel);
+  color: var(--firo-color-text);
+  font-family: inherit;
+  font-size: var(--firo-font-size-sm);
+  font-weight: var(--firo-font-weight-medium);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &.is-danger {
+    color: var(--firo-color-danger);
+    border-color: var(--firo-color-danger);
+  }
+}

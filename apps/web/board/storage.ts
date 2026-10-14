@@ -302,6 +302,7 @@ export const restoreBoard = async (doc: FiroDoc): Promise<RestoreResult> => {
     elements: loaded.elements,
     collections: loaded.collections,
     records: loaded.records,
+    comments: loaded.comments,
     elementOrder: loaded.elementOrder,
     meta: loaded.meta,
   });

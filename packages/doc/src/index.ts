@@ -44,6 +44,7 @@ export {
 } from "./mutations.js";
 export type {
   AssetReference,
+  CommentThreadChanges,
   ElementChanges,
   ElementUpdate,
   Mutation,
@@ -69,10 +70,9 @@ export type {
  * The readers, exported as a family.
  *
  * `readAllAssets` joined three siblings that were reachable only by deep import
- * into the package. Exposing one of the four from the root and not the other
- * three would be an arbitrary line: they are the same shape, they are the same
- * `fromYMap` pattern, and a caller who wants one has the same reason to want the
- * others.
+ * into the package. Exposing a subset from the root and not the rest would be an
+ * arbitrary line: they are the same shape, they are the same `fromYMap` pattern,
+ * and a caller who wants one has the same reason to want the others.
  */
 export {
   ROOTS,
@@ -80,6 +80,7 @@ export {
   isPlainObject,
   readAllAssets,
   readAllCollections,
+  readAllComments,
   readAllElements,
   readAllRecords,
   structure,

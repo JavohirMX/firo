@@ -238,7 +238,7 @@ const FIXTURES: readonly Fixture[] = [
       "event as absence and that a v2 file round-trips a v3 field intact.",
     board: {
       elementSchemaVersion: 2,
-      recordSchemaVersion: 1,
+      recordSchemaVersion: 2,
       elementOrder: ["el-note-hidden", "el-note-plain", "el-note-future"],
       meta: {
         id: "board-fixture-v2",
@@ -357,6 +357,70 @@ const FIXTURES: readonly Fixture[] = [
         },
       ],
       records: [],
+    },
+  },
+  {
+    version: 2,
+    chain: "record",
+    description:
+      "The record-v2 case: the comment lane. Two threads anchored to one element " +
+      "id -- one open with a reply, one resolved -- pinning threading, resolve, the " +
+      "element-relative anchor, and that a thread whose element is gone still " +
+      "loads. It deliberately carries no elements: a comment surviving its anchor " +
+      "is the property, and a fixture with an element present could not show it.",
+    board: {
+      elementSchemaVersion: 2,
+      recordSchemaVersion: 2,
+      elementOrder: [],
+      meta: {
+        id: "board-fixture-v2-comments",
+        name: "Reviewed board",
+      },
+      collections: [],
+      elements: [],
+      records: [],
+      comments: [
+        {
+          id: "ct-1",
+          elementId: "el-note-gone",
+          anchor: { x: 210, y: 12 },
+          comments: [
+            {
+              id: "cm-1",
+              body: "Can we split this into two?",
+              author: "ada",
+              createdAt: 1750000100000,
+            },
+            {
+              id: "cm-2",
+              body: "Yes — a cause and an effect card.",
+              author: "grace",
+              createdAt: 1750000200000,
+            },
+          ],
+          resolved: false,
+          author: "ada",
+          createdAt: 1750000100000,
+          updatedAt: 1750000200000,
+        },
+        {
+          id: "ct-2",
+          elementId: "el-note-gone",
+          anchor: { x: 4, y: 4 },
+          comments: [
+            {
+              id: "cm-3",
+              body: "Agreed, done.",
+              author: "grace",
+              createdAt: 1750000300000,
+            },
+          ],
+          resolved: true,
+          author: "grace",
+          createdAt: 1750000300000,
+          updatedAt: 1750000400000,
+        },
+      ],
     },
   },
 ];
