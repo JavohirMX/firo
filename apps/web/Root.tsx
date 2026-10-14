@@ -43,41 +43,48 @@ export const Root: React.FC = () => {
     let cancelled = false;
 
     const decide = async () => {
-      const route = readRoute(window.location.search);
+      try {
+        const route = readRoute(window.location.search);
 
-      if (route?.kind === "home") {
-        setScreen({ kind: "home" });
-        return;
-      }
+        if (route?.kind === "home") {
+          setScreen({ kind: "home" });
+          return;
+        }
 
-      if (route?.kind === "board") {
-        const meta = await openBoardById(route.id);
+        if (route?.kind === "board") {
+          const meta = await openBoardById(route.id);
+          if (cancelled) {
+            return;
+          }
+          if (meta) {
+            setActiveBoard(meta);
+            setScreen({ kind: "board" });
+          } else {
+            // An id that names no live board — a deleted board, or a stale link.
+            // The home is the honest answer; a blank editor pretending to be a
+            // board is not.
+            setScreen({ kind: "home" });
+          }
+          return;
+        }
+
+        // No route. Resume the last board, or land on the home when there is none.
+        const meta = await resolveInitialBoard();
         if (cancelled) {
           return;
         }
         if (meta) {
           setActiveBoard(meta);
+          window.history.replaceState(null, "", boardUrl(meta.id));
           setScreen({ kind: "board" });
         } else {
-          // An id that names no live board — a deleted board, or a stale link.
-          // The home is the honest answer; a blank editor pretending to be a
-          // board is not.
           setScreen({ kind: "home" });
         }
-        return;
-      }
-
-      // No route. Resume the last board, or land on the home when there is none.
-      const meta = await resolveInitialBoard();
-      if (cancelled) {
-        return;
-      }
-      if (meta) {
-        setActiveBoard(meta);
-        window.history.replaceState(null, "", boardUrl(meta.id));
-        setScreen({ kind: "board" });
-      } else {
-        setScreen({ kind: "home" });
+      } catch (error) {
+        console.error("Failed to resolve route, falling back to home:", error);
+        if (!cancelled) {
+          setScreen({ kind: "home" });
+        }
       }
     };
 

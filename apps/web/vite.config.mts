@@ -103,6 +103,39 @@ export default defineConfig(({ mode }) => {
           replacement: path.resolve(__dirname, "../../packages/records/src/$1"),
         },
         {
+          find: /^@firo\/schema$/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/schema/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/schema\/(.*?)/,
+          replacement: path.resolve(__dirname, "../../packages/schema/src/$1"),
+        },
+        {
+          find: /^@firo\/board$/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/board/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/board\/(.*?)/,
+          replacement: path.resolve(__dirname, "../../packages/board/src/$1"),
+        },
+        {
+          find: /^@firo\/doc$/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/doc/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/doc\/(.*?)/,
+          replacement: path.resolve(__dirname, "../../packages/doc/src/$1"),
+        },
+        {
           find: /^@firo\/facilitation$/,
           replacement: path.resolve(
             __dirname,
