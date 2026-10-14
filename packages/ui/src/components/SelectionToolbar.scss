@@ -1,0 +1,52 @@
+.firo-selection-toolbar {
+  position: absolute;
+  // Sit just above the selection's top edge, horizontally centred on the anchor.
+  transform: translate(-50%, calc(-100% - 10px));
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--firo-space-xs);
+  background-color: var(--firo-color-panel-raised);
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-md);
+  box-shadow: var(--firo-elevation-floating);
+  // The container that hosts it is `pointer-events: none` so the canvas stays
+  // interactive; the toolbar re-enables them for itself.
+  pointer-events: auto;
+  user-select: none;
+  z-index: var(--firo-z-selection);
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: var(--firo-radius-sm);
+    color: var(--firo-color-text);
+    cursor: pointer;
+    transition: background-color var(--firo-motion-fast) var(--firo-motion-ease),
+      color var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover:not(:disabled) {
+      background-color: var(--firo-color-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    &[aria-pressed="true"] {
+      color: var(--firo-color-accent);
+    }
+  }
+}

@@ -1,0 +1,79 @@
+.firo-nav-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--firo-space-xs);
+  padding: var(--firo-space-xs);
+  background-color: var(--firo-color-panel);
+  border-radius: var(--firo-radius-md);
+  box-shadow: var(--firo-elevation-panel);
+  border: 1px solid var(--firo-color-border);
+  user-select: none;
+
+  &__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: var(--firo-radius-sm);
+    color: var(--firo-color-text);
+    cursor: pointer;
+    transition: background-color var(--firo-motion-fast) var(--firo-motion-ease),
+      color var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover:not(:disabled) {
+      background-color: var(--firo-color-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+
+    &--active {
+      background-color: var(--firo-color-surface) !important;
+      color: var(--firo-color-accent) !important;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  &__zoom-value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    height: 32px;
+    padding: 0 var(--firo-space-xs);
+    border: none;
+    background: transparent;
+    border-radius: var(--firo-radius-sm);
+    color: var(--firo-color-text);
+    font-family: var(--firo-font-family);
+    font-size: var(--firo-font-size-sm);
+    font-weight: var(--firo-font-weight-medium);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--firo-color-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+  }
+
+  &__divider {
+    width: 1px;
+    height: 18px;
+    background-color: var(--firo-color-border);
+    margin: 0 2px;
+  }
+}

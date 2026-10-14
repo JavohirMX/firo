@@ -116,6 +116,12 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     viewportStatusFrame,
     currentUserControls,
     imageOptions,
+    defaultChromeEnabled,
+    renderCreationRailUI,
+    renderNavigationUI,
+    renderBoardMenuUI,
+    renderInspectorUI,
+    renderSelectionUI,
   } = props;
 
   const canvasActions = props.UIOptions?.canvasActions;
@@ -258,6 +264,12 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           viewportStatusFrame={viewportStatusFrame}
           currentUserControls={currentUserControls}
           imageOptions={normalizedImageOptions}
+          defaultChromeEnabled={defaultChromeEnabled}
+          renderCreationRailUI={renderCreationRailUI}
+          renderNavigationUI={renderNavigationUI}
+          renderBoardMenuUI={renderBoardMenuUI}
+          renderInspectorUI={renderInspectorUI}
+          renderSelectionUI={renderSelectionUI}
         >
           {children}
         </App>
@@ -467,6 +479,7 @@ export {
   useStylesPanelMode,
   useExcalidrawAPI,
   ExcalidrawAPIContext,
+  useExcalidrawActionManager,
 } from "./components/App";
 
 export { WelcomeScreen };
@@ -552,3 +565,17 @@ export function useExcalidrawStateValue(
 export { _useOnAppStateChange as useOnExcalidrawStateChange };
 
 export { applyDarkModeFilter, getStrokeWidthByKey };
+
+export { TOOLS, getToolShortcut } from "./components/Tools";
+export type { ToolConfig } from "./components/Tools";
+export { SelectedShapeActions } from "./components/Actions";
+
+export { useApp, useExcalidrawSetAppState } from "./components/App";
+
+export {
+  actionZoomIn,
+  actionZoomOut,
+  actionResetZoom,
+  actionZoomToFit,
+  actionToggleGridMode,
+} from "./actions";

@@ -929,6 +929,35 @@ export interface ExcalidrawProps {
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
+  /**
+   * Layout tunnels for host-provided Miro shell chrome (ADR-0022).
+   */
+  renderCreationRailUI?: (
+    isMobile: boolean,
+    appState: UIAppState,
+  ) => JSX.Element | null;
+  renderNavigationUI?: (
+    isMobile: boolean,
+    appState: UIAppState,
+  ) => JSX.Element | null;
+  renderBoardMenuUI?: (
+    isMobile: boolean,
+    appState: UIAppState,
+  ) => JSX.Element | null;
+  renderInspectorUI?: (
+    isMobile: boolean,
+    appState: UIAppState,
+  ) => JSX.Element | null;
+  renderSelectionUI?: (
+    isMobile: boolean,
+    appState: UIAppState,
+  ) => JSX.Element | null;
+  /**
+   * Whether Excalidraw's default top-centre toolbar, top-left shape actions island,
+   * and bottom-left footer render. When false, the host chrome owns these placements (ADR-0022).
+   * @default true
+   */
+  defaultChromeEnabled?: boolean;
   langCode?: Language["code"];
   viewModeEnabled?: boolean;
   /**

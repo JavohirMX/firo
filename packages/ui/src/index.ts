@@ -17,3 +17,10 @@
  */
 export * from "./fonts";
 export * from "./tokens";
+export * from "./icons";
+export * from "./components/CreationRail";
+export * from "./components/NavToolbar";
+export * from "./components/BoardMenu";
+export * from "./components/CollabBar";
+export * from "./components/Inspector";
+export * from "./components/SelectionToolbar";

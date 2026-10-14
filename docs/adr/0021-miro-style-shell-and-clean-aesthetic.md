@@ -154,14 +154,18 @@ one is reversible.
 ## Confirmation
 
 - [x] Decision recorded and the two superseded clauses named.
-- [ ] `DEFAULT_ELEMENT_PROPS.roughness === ROUGHNESS.architect` in
-      `packages/common/src/constants.ts`, with a test asserting the default.
-- [ ] A board created after the change renders clean; a board created before it
-      renders as it did. Both verified on rendered output.
-- [ ] `@firo/ui` owns the shell and Excalidraw's default chrome is disabled, per
+- [x] `DEFAULT_ELEMENT_PROPS.roughness === ROUGHNESS.architect` in
+      `packages/common/src/constants.ts`, with a test asserting the default
+      (`packages/common/tests/element-defaults.test.ts`).
+- [x] A board created after the change renders clean; a board created before it
+      renders as it did. Both verified on rendered output — new elements render
+      at `roughness: 0` (re-baselined snapshots, every diff read), and stored
+      per-element values survive a restore unchanged
+      (`restore keeps the roughness a board was saved with`).
+- [x] `@firo/ui` owns the shell and Excalidraw's default chrome is disabled, per
       [ADR-0022](0022-ui-package-owns-the-chrome.md).
-- [ ] `roughness` remains selectable in the shape-properties UI.
-- [ ] `vision.md`, `README.md` and `docs/index.md` no longer claim a hand-drawn
+- [x] `roughness` remains selectable in the shape-properties UI.
+- [x] `vision.md`, `README.md` and `docs/index.md` no longer claim a hand-drawn
       default canvas.
 
 ## Pros and Cons of the Options

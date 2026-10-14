@@ -9,6 +9,12 @@ is **not yet done**; it is task 7.5.0 and it needs REA plus its Chrome DevTools
 provider, which are not installed here. Every claim that rests on documentation
 alone is marked, and §"Unverified" lists what still has to be looked at directly.
 
+**Decision (2026-10-14).** Live inspection also needs an *authenticated Miro
+board*, which the maintainer chose not to supply: the phase proceeds on the
+documented-behaviour fallback and every documentation-only claim stays flagged
+rather than asserted. The clean-room guardrail below is unaffected — it is a
+constraint on what may be used, not on what may be observed.
+
 Researched **13 October 2026**.
 
 ## Clean-room guardrail

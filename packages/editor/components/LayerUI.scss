@@ -189,4 +189,59 @@
       }
     }
   }
+
+  // Miro-style shell layout slots (ADR-0022)
+  .firo-creation-rail-container {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    pointer-events: var(--ui-pointerEvents);
+  }
+
+  .firo-navigation-container {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 10;
+    pointer-events: var(--ui-pointerEvents);
+  }
+
+  .firo-board-menu-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    pointer-events: var(--ui-pointerEvents);
+
+    .main-menu-trigger {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 32px;
+      height: 32px;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 2;
+    }
+  }
+
+  .firo-inspector-container {
+    position: absolute;
+    right: 1rem;
+    top: 4.5rem;
+    z-index: 10;
+    pointer-events: var(--ui-pointerEvents);
+  }
+
+  .firo-selection-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 12;
+
+    & > * {
+      pointer-events: var(--ui-pointerEvents);
+    }
+  }
 }

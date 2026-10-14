@@ -1,0 +1,19 @@
+.firo-collab-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--firo-space-sm);
+  padding: var(--firo-space-xs) var(--firo-space-sm);
+  background-color: var(--firo-color-panel);
+  border-radius: var(--firo-radius-md);
+  box-shadow: var(--firo-elevation-panel);
+  border: 1px solid var(--firo-color-border);
+  user-select: none;
+  height: 40px;
+  box-sizing: border-box;
+
+  &__content {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-sm);
+  }
+}

@@ -299,9 +299,14 @@ const LayerUI = ({
     );
   };
 
+  const defaultChromeEnabled = appProps.defaultChromeEnabled ?? true;
+  const isMobile = editorInterface.formFactor === "phone";
+
   const renderFixedSideContainer = () => {
     const shouldRenderSelectedShapeActions =
-      defaultUIEnabled && showSelectedShapeActions(appState, elements);
+      defaultUIEnabled &&
+      defaultChromeEnabled &&
+      showSelectedShapeActions(appState, elements);
 
     const shouldShowStats =
       defaultUIEnabled &&
@@ -317,8 +322,15 @@ const LayerUI = ({
             gap={spacing.menuTopGap}
             className={clsx("App-menu_top__left")}
           >
-            {renderCanvasActions()}
-            {defaultUIEnabled && (
+            {appProps.renderBoardMenuUI ? (
+              <div className="firo-board-menu-container">
+                {appProps.renderBoardMenuUI(isMobile, appState)}
+                <tunnels.MainMenuTunnel.Out />
+              </div>
+            ) : (
+              renderCanvasActions()
+            )}
+            {defaultUIEnabled && defaultChromeEnabled && (
               <div
                 className={clsx("selected-shape-actions-container", {
                   "selected-shape-actions-container--compact":
@@ -335,6 +347,7 @@ const LayerUI = ({
                 actions island, i.e. when a drawing tool or elements are
                 selected */}
             {defaultUIEnabled &&
+              defaultChromeEnabled &&
               isCompactStylesPanel &&
               !appState.viewModeEnabled &&
               shouldRenderSelectedShapeActions && (
@@ -348,6 +361,7 @@ const LayerUI = ({
               )}
           </Stack.Col>
           {defaultUIEnabled &&
+            defaultChromeEnabled &&
             !appState.viewModeEnabled &&
             appState.openDialog?.name !== "elementLinkSelector" && (
               <Section heading="shapes" className="shapes-section">
@@ -655,14 +669,36 @@ const LayerUI = ({
           >
             {renderWelcomeScreen && <tunnels.WelcomeScreenCenterTunnel.Out />}
             {renderFixedSideContainer()}
-            <Footer
-              appState={appState}
-              actionManager={actionManager}
-              showExitZenModeBtn={showExitZenModeBtn}
-              renderWelcomeScreen={renderWelcomeScreen}
-              defaultUIEnabled={defaultUIEnabled}
-              zoomUIEnabled={zoomUIEnabled}
-            />
+            {defaultChromeEnabled && (
+              <Footer
+                appState={appState}
+                actionManager={actionManager}
+                showExitZenModeBtn={showExitZenModeBtn}
+                renderWelcomeScreen={renderWelcomeScreen}
+                defaultUIEnabled={defaultUIEnabled}
+                zoomUIEnabled={zoomUIEnabled}
+              />
+            )}
+            {appProps.renderCreationRailUI && (
+              <div className="firo-creation-rail-container">
+                {appProps.renderCreationRailUI(isMobile, appState)}
+              </div>
+            )}
+            {appProps.renderNavigationUI && (
+              <div className="firo-navigation-container">
+                {appProps.renderNavigationUI(isMobile, appState)}
+              </div>
+            )}
+            {appProps.renderInspectorUI && (
+              <div className="firo-inspector-container">
+                {appProps.renderInspectorUI(isMobile, appState)}
+              </div>
+            )}
+            {appProps.renderSelectionUI && (
+              <div className="firo-selection-container">
+                {appProps.renderSelectionUI(isMobile, appState)}
+              </div>
+            )}
             {(appState.toast ||
               (scrollBackToContentUIEnabled && appState.scrolledOutside) ||
               appProps.viewportStatusFrame?.label) && (

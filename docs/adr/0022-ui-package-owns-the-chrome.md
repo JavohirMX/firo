@@ -139,13 +139,16 @@ This ADR makes it real and puts the chrome in it.
       builds it.
 - [x] `@firo/ui` is resolvable from both `tsconfig.json` and
       `vitest.config.mts` without going through `dist/`.
-- [ ] The five tunnels exist in `@firo/editor` and each is exercised by the app.
-      **Open — task 7.5.3.**
-- [ ] `defaultChromeEnabled` defaults to the current behaviour: with no host
-      chrome, the editor renders exactly as it does today.
-- [ ] `CreationRail` reads the tool registry from `@firo/editor` rather than
-      re-declaring it.
-- [ ] No change to `packages/editor/components/App.tsx`.
+- [x] The five tunnels exist in `@firo/editor` and each is exercised by the app.
+      All five are wired by `apps/web`: creation rail, navigation, board menu,
+      inspector and selection toolbar (task 7.5.4).
+- [x] `defaultChromeEnabled` defaults to the current behaviour: with no host
+      chrome, the editor renders exactly as it does today
+      (`LayerUI.tsx`, `appProps.defaultChromeEnabled ?? true`).
+- [x] `CreationRail` reads the tool registry from `@firo/editor` rather than
+      re-declaring it — `apps/web` builds the rail's `tools` from `TOOLS` and
+      `getToolShortcut`, and `@firo/ui` owns no second tool list.
+- [x] No change to `packages/editor/components/App.tsx`.
 
 ## More Information
 
@@ -154,5 +157,8 @@ This ADR makes it real and puts the chrome in it.
 - [ADR-0001](0001-fork-excalidraw-and-refactor-aggressively.md) — the
   refactor-aggressively policy that makes `@firo/ui` the right move rather than
   keeping edits small for upstream's sake
+- [ADR-0025](0025-the-host-reuses-the-editors-property-controls.md) — the two
+  further named exports clause 6's list did not anticipate, and why reusing the
+  editor's property controls was chosen over duplicating them
 - [`../architecture/overview.md`](../architecture/overview.md) — where
   `@firo/ui` was already listed as planned

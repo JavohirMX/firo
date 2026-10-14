@@ -109,15 +109,26 @@ chunky, marker-drawn — fight the clean aesthetic.
 ## Confirmation
 
 - [x] Decision recorded, with the licence reasoning for both assets.
-- [ ] `packages/ui/src/icons.tsx` exists and every glyph the shell uses is
-      authored there.
-- [ ] No third-party icon dependency appears in `packages/ui/package.json`.
-- [ ] Plus Jakarta Sans is bundled, with `OFL.txt` beside the binary.
-- [ ] `FONT-LICENSES.md` carries a row for it, with the URL read from a primary
-      source.
-- [ ] `packages/common/tests/fonts.test.ts` passes with the new font present.
-- [ ] `DEFAULT_FONT_FAMILY` is **unchanged** (still Nunito) at the end of this
-      phase.
+- [x] `packages/ui/src/icons.tsx` exists and every glyph the shell uses is
+      authored there (task 7.5.3; the six selection-toolbar glyphs — close,
+      duplicate, trash, lock, unlock, bring-to-front — were added in 7.5.4).
+- [x] No third-party icon dependency appears in `packages/ui/package.json`
+      (`dependencies` and `devDependencies` are both empty; the icons land in
+      7.5.3 and this is what keeps them dependency-free).
+- [x] Plus Jakarta Sans is bundled, with `OFL.txt` beside the binary — in
+      `packages/ui/src/fonts/PlusJakartaSans/`, per
+      [ADR-0024](0024-the-chrome-font-lives-with-the-chrome.md), which supersedes
+      this ADR's clause 2 on *where* the files live. Its four subsets are
+      registered by `packages/ui/src/fonts.ts`, and a production build emits them
+      and loads them in a browser.
+- [x] `FONT-LICENSES.md` carries a row for it, with the URL read from a primary
+      source, plus the size and SHA-256 of each binary.
+- [x] `packages/common/tests/fonts.test.ts` passes with the new font present —
+      and walks both font roots now, failing by directory name if the licence
+      text or the row is ever removed.
+- [x] `DEFAULT_FONT_FAMILY` is **unchanged** (still Nunito) as of task 7.5.2,
+      and `packages/common/tests/fonts.test.ts` asserts it on every run — so a
+      change cannot land quietly. Re-confirmed at the end of the phase.
 
 ## Pros and Cons of the Options
 

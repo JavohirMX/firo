@@ -3,7 +3,34 @@ import {
   CaptureUpdateAction,
   ExcalidrawAPIProvider,
   useExcalidrawAPI,
+  useApp,
+  useExcalidrawActionManager,
+  useExcalidrawSetAppState,
+  useExcalidrawStateValue,
+  TOOLS,
+  getToolShortcut,
+  SelectedShapeActions,
+  actionZoomIn,
+  actionZoomOut,
+  actionResetZoom,
+  actionZoomToFit,
+  actionToggleGridMode,
 } from "@firo/editor";
+import {
+  CreationRail,
+  NavToolbar,
+  BoardMenu,
+  CollabBar,
+  Inspector,
+  SelectionToolbar,
+  RAIL_TOOL_ICONS,
+  DuplicateIcon,
+  LockIcon,
+  UnlockIcon,
+  BringToFrontIcon,
+  TrashIcon,
+} from "@firo/ui";
+
 import { trackEvent } from "@firo/editor/analytics";
 import {
   CommandPalette,
@@ -18,6 +45,7 @@ import {
   APP_NAME,
   EVENT,
   VERSION_TIMEOUT,
+  capitalizeString,
   debounce,
   getVersion,
   getFrame,
@@ -33,6 +61,11 @@ import { t } from "@firo/editor/i18n";
 
 import { isElementLink } from "@firo/element";
 import {
+  getCommonBounds,
+  getSelectedElements,
+  showSelectedShapeActions,
+} from "@firo/element";
+import {
   bumpElementVersions,
   restoreAppState,
   restoreElements,
@@ -44,6 +77,8 @@ import {
   parseLibraryTokensFromUrl,
   useHandleLibrary,
 } from "@firo/editor/data/library";
+
+import type { RailToolItem, RailToolType } from "@firo/ui";
 
 import type { RestoredDataState } from "@firo/editor/data/restore";
 import type {
@@ -325,6 +360,203 @@ const initializeScene = async (opts: {
       : { scene, isExternalScene: false };
   }
   return { scene: null, isExternalScene: false };
+};
+
+/**
+ * The rail's order. Presentation only — a tool's label, shortcut and icon come
+ * from the editor's `TOOLS` registry and `@firo/ui`'s glyph set, so `@firo/ui`
+ * owns no second copy of the tool list
+ * ([ADR-0022](../../docs/adr/0022-ui-package-owns-the-chrome.md), clause 4).
+ */
+const RAIL_TOOL_ORDER: RailToolType[] = [
+  "selection",
+  "hand",
+  "stickynote",
+  "rectangle",
+  "diamond",
+  "ellipse",
+  "arrow",
+  "line",
+  "text",
+  "freedraw",
+  "frame",
+  "eraser",
+  "laser",
+];
+
+const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
+  const app = useApp();
+  const actionManager = useExcalidrawActionManager();
+  const activeToolType = appState.activeTool.type as RailToolType;
+
+  const tools: RailToolItem[] = RAIL_TOOL_ORDER.filter((id) => id in TOOLS).map(
+    (id) => {
+      const label = capitalizeString(t(`toolBar.${id}`));
+      const shortcut = getToolShortcut(id);
+      return {
+        id,
+        icon: RAIL_TOOL_ICONS[id],
+        label: shortcut ? `${label} (${shortcut})` : label,
+      };
+    },
+  );
+
+  return (
+    <CreationRail
+      tools={tools}
+      activeTool={activeToolType}
+      onSelectTool={(tool) => {
+        if (app.state.activeTool.type !== tool) {
+          trackEvent("toolbar", tool, "ui");
+          app.setActiveTool({ type: tool as any });
+        }
+      }}
+      onPointerDownTool={(tool, event) => {
+        app.toolDrag.handleButtonPointerDown(tool as any, event.nativeEvent);
+      }}
+      onUndo={() => {
+        if (actionManager.actions.undo) {
+          actionManager.executeAction(actionManager.actions.undo);
+        }
+      }}
+      onRedo={() => {
+        if (actionManager.actions.redo) {
+          actionManager.executeAction(actionManager.actions.redo);
+        }
+      }}
+    />
+  );
+};
+
+const WebNavToolbar = ({ appState }: { appState: UIAppState }) => {
+  const actionManager = useExcalidrawActionManager();
+  const zoomValue = useExcalidrawStateValue((state) => state.zoom.value) ?? 1;
+
+  return (
+    <NavToolbar
+      zoom={zoomValue}
+      onZoomIn={() => actionManager.executeAction(actionZoomIn)}
+      onZoomOut={() => actionManager.executeAction(actionZoomOut)}
+      onResetZoom={() => actionManager.executeAction(actionResetZoom)}
+      onZoomToFit={() => actionManager.executeAction(actionZoomToFit)}
+      gridEnabled={appState.gridModeEnabled}
+      onToggleGrid={() => actionManager.executeAction(actionToggleGridMode)}
+    />
+  );
+};
+
+const WebBoardMenu = () => {
+  const setAppState = useExcalidrawSetAppState();
+  return (
+    <BoardMenu
+      boardName="Untitled"
+      onOpenMenu={() => {
+        setAppState((prevState) => ({
+          openMenu: prevState.openMenu === "canvas" ? null : "canvas",
+        }));
+      }}
+    />
+  );
+};
+
+/**
+ * The right-side inspector. It hosts the editor's own property controls —
+ * `SelectedShapeActions` — rather than re-implementing them, so there is one
+ * copy of "how a stroke colour is edited"
+ * ([ADR-0025](../../docs/adr/0025-the-host-reuses-the-editors-property-controls.md)).
+ */
+const WebInspector = ({ appState }: { appState: UIAppState }) => {
+  const app = useApp();
+  const actionManager = useExcalidrawActionManager();
+  const elements = app.scene.getNonDeletedElements();
+
+  if (!showSelectedShapeActions(appState, elements)) {
+    return null;
+  }
+
+  return (
+    <Inspector>
+      <SelectedShapeActions
+        appState={appState}
+        elementsMap={app.scene.getNonDeletedElementsMap()}
+        renderAction={actionManager.renderAction}
+        app={app}
+      />
+    </Inspector>
+  );
+};
+
+/**
+ * The floating selection toolbar, anchored to the selection's top edge. The
+ * anchor is computed in container coordinates — `(scene + scroll) * zoom` — so
+ * it tracks pan and zoom without a viewport offset, because the overlay and the
+ * canvas share an origin.
+ */
+const WebSelectionToolbar = ({ appState }: { appState: UIAppState }) => {
+  const app = useApp();
+  const actionManager = useExcalidrawActionManager();
+
+  const selected = getSelectedElements(
+    app.scene.getNonDeletedElements(),
+    appState,
+  );
+
+  if (
+    appState.viewModeEnabled ||
+    appState.editingTextElement ||
+    !selected.length
+  ) {
+    return null;
+  }
+
+  const [minX, minY, maxX] = getCommonBounds(selected);
+  const { zoom, scrollX, scrollY } = app.state;
+  const x = ((minX + maxX) / 2 + scrollX) * zoom.value;
+  const y = (minY + scrollY) * zoom.value;
+
+  const allLocked = selected.every((element) => element.locked);
+
+  const run = (
+    action: typeof actionManager.actions[keyof typeof actionManager.actions],
+  ) => {
+    if (action) {
+      actionManager.executeAction(action);
+    }
+  };
+
+  return (
+    <SelectionToolbar
+      x={x}
+      y={y}
+      items={[
+        {
+          id: "duplicate",
+          label: "Duplicate",
+          icon: <DuplicateIcon />,
+          onClick: () => run(actionManager.actions.duplicateSelection),
+        },
+        {
+          id: "lock",
+          label: allLocked ? "Unlock" : "Lock",
+          icon: allLocked ? <UnlockIcon /> : <LockIcon />,
+          pressed: allLocked,
+          onClick: () => run(actionManager.actions.toggleElementLock),
+        },
+        {
+          id: "front",
+          label: "Bring to front",
+          icon: <BringToFrontIcon />,
+          onClick: () => run(actionManager.actions.bringToFront),
+        },
+        {
+          id: "delete",
+          label: "Delete",
+          icon: <TrashIcon />,
+          onClick: () => run(actionManager.actions.deleteSelectedElements),
+        },
+      ]}
+    />
+  );
 };
 
 const ExcalidrawWrapper = () => {
@@ -770,6 +1002,26 @@ const ExcalidrawWrapper = () => {
       })}
     >
       <Excalidraw
+        defaultChromeEnabled={false}
+        renderCreationRailUI={(_isMobile, appState) => (
+          <WebCreationRail appState={appState} />
+        )}
+        renderNavigationUI={(_isMobile, appState) => (
+          <WebNavToolbar appState={appState} />
+        )}
+        renderBoardMenuUI={() => <WebBoardMenu />}
+        renderInspectorUI={(_isMobile, appState) => (
+          <WebInspector appState={appState} />
+        )}
+        renderSelectionUI={(_isMobile, appState) => (
+          <WebSelectionToolbar appState={appState} />
+        )}
+        renderTopRightUI={() => (
+          <CollabBar>
+            <SaveStatusIndicator />
+            <FacilitatorBar />
+          </CollabBar>
+        )}
         viewportStatusFrame={viewportStatusFrame}
         onChange={onChange}
         onExport={onExport}
@@ -787,12 +1039,6 @@ const ExcalidrawWrapper = () => {
         autoFocus={true}
         theme={editorTheme}
         onThemeChange={setAppTheme}
-        renderTopRightUI={() => (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <SaveStatusIndicator />
-            <FacilitatorBar />
-          </div>
-        )}
         onLinkOpen={(element, event) => {
           if (element.link && isElementLink(element.link)) {
             event.preventDefault();

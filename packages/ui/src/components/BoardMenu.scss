@@ -1,0 +1,49 @@
+.firo-board-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--firo-space-sm);
+  padding: var(--firo-space-xs) var(--firo-space-sm);
+  background-color: var(--firo-color-panel);
+  border-radius: var(--firo-radius-md);
+  box-shadow: var(--firo-elevation-panel);
+  border: 1px solid var(--firo-color-border);
+  user-select: none;
+  height: 40px;
+  box-sizing: border-box;
+
+  &__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: var(--firo-radius-sm);
+    color: var(--firo-color-text);
+    cursor: pointer;
+    transition: background-color var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover {
+      background-color: var(--firo-color-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+  }
+
+  &__title {
+    font-family: var(--firo-font-family);
+    font-size: var(--firo-font-size-md);
+    font-weight: var(--firo-font-weight-semibold);
+    color: var(--firo-color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+    padding: 0 var(--firo-space-xs);
+  }
+}
