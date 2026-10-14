@@ -1,0 +1,334 @@
+/*
+ * The board home.
+ *
+ * Colours, spacing, radii and motion come from the `--firo-*` custom properties
+ * in `../theme.scss`, so the page follows the chrome's theme rather than
+ * inventing a second one. It reads `--firo-font-ui` for the same reason: the
+ * home is chrome, and the chrome has one typeface.
+ *
+ * Card actions are revealed on hover or keyboard focus rather than shown always
+ * — the grid stays quiet — except under `hover: none`, where a touch device has
+ * no way to reveal them and they must simply be visible.
+ */
+
+.firo-board-home {
+  min-height: 100vh;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--firo-space-xl) var(--firo-space-xxl);
+  overflow-y: auto;
+  background-color: var(--firo-color-surface);
+  color: var(--firo-color-text);
+  font-family: var(--firo-font-ui);
+  font-size: var(--firo-font-size-md);
+  line-height: var(--firo-line-height-normal);
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--firo-space-lg);
+    max-width: 1100px;
+    margin: 0 auto var(--firo-space-xl);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: var(--firo-font-weight-semibold);
+    letter-spacing: -0.01em;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-md);
+  }
+
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-sm);
+    box-sizing: border-box;
+    height: 40px;
+    padding: 0 var(--firo-space-md);
+    color: var(--firo-color-text-muted);
+    background-color: var(--firo-color-panel);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-pill);
+
+    input {
+      width: 180px;
+      border: none;
+      outline: none;
+      background: transparent;
+      font: inherit;
+      color: var(--firo-color-text);
+
+      &::placeholder {
+        color: var(--firo-color-text-muted);
+      }
+    }
+  }
+
+  &__new {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--firo-space-sm);
+    height: 40px;
+    padding: 0 var(--firo-space-lg);
+    border: none;
+    border-radius: var(--firo-radius-pill);
+    background-color: var(--firo-color-accent);
+    color: var(--firo-color-on-accent);
+    font: inherit;
+    font-weight: var(--firo-font-weight-medium);
+    cursor: pointer;
+    transition: filter var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover {
+      filter: brightness(1.06);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  &__section {
+    max-width: 1100px;
+    margin: 0 auto var(--firo-space-xl);
+  }
+
+  &__section-title {
+    margin: 0 0 var(--firo-space-md);
+    font-size: var(--firo-font-size-lg);
+    font-weight: var(--firo-font-weight-semibold);
+  }
+
+  &__empty {
+    margin: 0;
+    padding: var(--firo-space-lg);
+    color: var(--firo-color-text-muted);
+    background-color: var(--firo-color-panel);
+    border: 1px dashed var(--firo-color-border-strong);
+    border-radius: var(--firo-radius-md);
+  }
+}
+
+.firo-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--firo-space-lg);
+}
+
+.firo-board-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--firo-color-panel);
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-lg);
+  box-shadow: var(--firo-elevation-panel);
+  transition: box-shadow var(--firo-motion-fast) var(--firo-motion-ease);
+
+  &:hover {
+    box-shadow: var(--firo-elevation-floating);
+  }
+
+  &__open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: -2px;
+    }
+  }
+
+  &__thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 10;
+    width: 100%;
+    overflow: hidden;
+    color: var(--firo-color-text-muted);
+    background-color: var(--firo-color-surface);
+  }
+
+  &__thumb-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-xs);
+    padding: var(--firo-space-md);
+  }
+
+  &__name {
+    overflow: hidden;
+    font-weight: var(--firo-font-weight-medium);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__name-input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 2px var(--firo-space-xs);
+    font: inherit;
+    font-weight: var(--firo-font-weight-medium);
+    color: var(--firo-color-text);
+    background-color: var(--firo-color-panel);
+    border: 1px solid var(--firo-color-accent);
+    border-radius: var(--firo-radius-sm);
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+  }
+
+  &__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--firo-space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__tag {
+    padding: 1px var(--firo-space-sm);
+    font-size: var(--firo-font-size-xs);
+    color: var(--firo-color-text-muted);
+    background-color: var(--firo-color-surface);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-pill);
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-xs);
+    font-size: var(--firo-font-size-xs);
+    color: var(--firo-color-text-muted);
+  }
+
+  &__actions {
+    position: absolute;
+    top: var(--firo-space-sm);
+    right: var(--firo-space-sm);
+    display: flex;
+    gap: var(--firo-space-xs);
+    opacity: 0;
+    transition: opacity var(--firo-motion-fast) var(--firo-motion-ease);
+  }
+
+  &:hover &__actions,
+  &:focus-within &__actions {
+    opacity: 1;
+  }
+
+  &__action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    cursor: pointer;
+    color: var(--firo-color-text);
+    background-color: var(--firo-color-panel-raised);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-sm);
+    box-shadow: var(--firo-elevation-panel);
+
+    &:hover {
+      background-color: var(--firo-color-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+
+    &--danger:hover {
+      color: var(--firo-color-danger);
+      border-color: var(--firo-color-danger);
+    }
+  }
+}
+
+@media (hover: none) {
+  .firo-board-card__actions {
+    opacity: 1;
+  }
+}
+
+.firo-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--firo-space-lg);
+}
+
+.firo-template-card {
+  display: flex;
+  gap: var(--firo-space-md);
+  padding: var(--firo-space-md);
+  font: inherit;
+  color: var(--firo-color-text);
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--firo-color-panel);
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-lg);
+  transition: box-shadow var(--firo-motion-fast) var(--firo-motion-ease),
+    border-color var(--firo-motion-fast) var(--firo-motion-ease);
+
+  &:hover {
+    box-shadow: var(--firo-elevation-floating);
+    border-color: var(--firo-color-border-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--firo-color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  &__swatch {
+    flex: 0 0 auto;
+    width: 44px;
+    border-radius: var(--firo-radius-md);
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__name {
+    font-weight: var(--firo-font-weight-semibold);
+  }
+
+  &__desc {
+    font-size: var(--firo-font-size-sm);
+    line-height: var(--firo-line-height-normal);
+    color: var(--firo-color-text-muted);
+  }
+}

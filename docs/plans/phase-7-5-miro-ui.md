@@ -9,12 +9,13 @@ record store, local-first storage — and stops *looking* like a sketch pad.
 [0022](../adr/0022-ui-package-owns-the-chrome.md),
 [0023](../adr/0023-open-icons-and-ui-typeface.md),
 [0024](../adr/0024-the-chrome-font-lives-with-the-chrome.md),
-[0025](../adr/0025-the-host-reuses-the-editors-property-controls.md)); `@firo/ui`
-carries the design tokens, the theme and the chrome typeface; the canvas is clean
-by default; and the shell is built — the creation rail, navigation toolbar, board
-menu, collaboration bar, right-side inspector and floating selection toolbar all
-render, with Excalidraw's default chrome off (7.5.1–7.5.4). 7.5.5 (board home and
-template gallery) is next.
+[0025](../adr/0025-the-host-reuses-the-editors-property-controls.md),
+[0026](../adr/0026-board-home-and-its-index.md)); `@firo/ui` carries the design
+tokens, the theme and the chrome typeface; the canvas is clean by default; the
+shell is built — the creation rail, navigation toolbar, board menu, collaboration
+bar, right-side inspector and floating selection toolbar all render, with
+Excalidraw's default chrome off (7.5.1–7.5.4) — and the board home and template
+gallery ship (7.5.5). 7.5.6 (local-first comments) is next.
 
 This phase sits between v1 (Phases 0–7) and v2 (Phases 8–9). It is numbered
 `7.5` rather than renumbering 8–10 so that every existing phase reference,
@@ -44,7 +45,7 @@ audio, presentation-deck authoring.
 - [ ] A board created after the phase opens with a **clean** canvas; a board
       created before it is unchanged. Both verified on rendered output.
 - [ ] `roughness` is still selectable per element.
-- [ ] The board home shows a board list, recents, trash and a curated template
+- [x] The board home shows a board list, recents, trash and a curated template
       gallery.
 - [ ] Object-anchored comment threads create, reply and resolve, and survive a
       save/load round trip.
@@ -207,15 +208,38 @@ selection at every zoom. Both hold.
 The first screen, which is where most of the "this is Miro" impression is
 formed.
 
-- [ ] A board home: board list, recents, trash, minimal tags.
-- [ ] A curated, in-app template gallery — a handful of boards, not a
-      marketplace.
-- [ ] Board metadata (name, tags, thumbnail, last-opened) extends
-      `apps/web/board/storage.ts`.
-- [ ] **Coordinate with Phase 8.** Folders, full search and activity are Phase 8
+- [x] A board home: board list, recents, trash, minimal tags. `@firo/ui`'s
+      `BoardHome` (with `BoardCard` and `TemplateGallery`) is presentational and
+      takes boards, templates and callbacks from the host;
+      `apps/web/BoardHomeScreen.tsx` wires it to storage.
+- [x] A curated, in-app template gallery — four authored boards (Retrospective,
+      Brainstorm, User story map, Meeting notes) built from `@firo/board`'s
+      factory in `apps/web/board/templates.ts`, not a marketplace.
+- [x] Board metadata (name, tags, thumbnail, last-opened) extends
+      `apps/web/board/storage.ts`. Each board's document moves to
+      `autosave:<id>` while the default board keeps the original `autosave` key,
+      so a pre-existing board is untouched; a `board-index` record holds one
+      `BoardMeta` per board, and `apps/web/board/library.ts` owns the index, the
+      domain operations and the active-board cache.
+- [x] **Coordinate with Phase 8.** Folders, full search and activity are Phase 8
       depth; this phase ships the minimum that makes the home feel real.
 
-**Exit:** a new user lands on a board home and can start from a template.
+**Navigation.** Opening a board is `?board=<id>` and a full reload — a tab's
+document is built at module scope, so the switch is a reload rather than a swap
+([ADR-0026](../adr/0026-board-home-and-its-index.md)). `?home=1` is the explicit
+way back to the home (the board menu's title), and a URL naming neither resumes
+the most recently opened board. The editor is loaded lazily so the home path
+never imports the editor's module-scope document and `pagehide` flush.
+
+**Recorded divergence.** `@firo/doc` already ships a board index and persistence
+(`packages/doc/src/library.ts`, `persistence.ts`) that `apps/web` does not use:
+the app persists each board as a JSON snapshot in `./storage.ts`
+(ADR-0018 clause 9), not as a `y-indexeddb` update log. The home's index is
+therefore the index of the store the documents are actually in, kept in
+`apps/web`; the two board indexes are recorded rather than reconciled, and
+reconciling them is Phase 8 work ([ADR-0026](../adr/0026-board-home-and-its-index.md)).
+
+**Exit:** a new user lands on a board home and can start from a template. Met.
 
 ### 7.5.6 — Comments (local-first)
 

@@ -36,7 +36,7 @@
   }
 
   &__title {
-    font-family: var(--firo-font-family);
+    font-family: var(--firo-font-ui);
     font-size: var(--firo-font-size-md);
     font-weight: var(--firo-font-weight-semibold);
     color: var(--firo-color-text);
@@ -45,5 +45,28 @@
     text-overflow: ellipsis;
     max-width: 240px;
     padding: 0 var(--firo-space-xs);
+
+    /*
+     * The same title, as a control. Reset the button's own chrome so it reads as
+     * the plain title it replaces, and give it back the affordances a control
+     * needs: a pointer, a hover surface and a visible focus ring.
+     */
+    &--button {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: var(--firo-radius-sm);
+      transition: background-color var(--firo-motion-fast)
+        var(--firo-motion-ease);
+
+      &:hover {
+        background-color: var(--firo-color-surface);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--firo-color-focus-ring);
+        outline-offset: 1px;
+      }
+    }
   }
 }

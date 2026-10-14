@@ -142,6 +142,8 @@ import {
 
 import { facilitatorCommandPaletteItems } from "./board/facilitatorActions";
 import { recordCommandPaletteItems } from "./board/recordActions";
+import { getActiveBoard } from "./board/library";
+import { homeUrl } from "./board/routes";
 
 import "./index.scss";
 
@@ -449,7 +451,10 @@ const WebBoardMenu = () => {
   const setAppState = useExcalidrawSetAppState();
   return (
     <BoardMenu
-      boardName="Untitled"
+      boardName={getActiveBoard()?.name ?? "Untitled"}
+      onOpenHome={() => {
+        window.location.assign(homeUrl());
+      }}
       onOpenMenu={() => {
         setAppState((prevState) => ({
           openMenu: prevState.openMenu === "canvas" ? null : "canvas",

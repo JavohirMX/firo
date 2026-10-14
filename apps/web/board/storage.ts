@@ -82,7 +82,57 @@ import type { FiroDoc } from "@firo/doc";
  */
 export const boardStore = createStore("firo", "board");
 
+/**
+ * The key the one board Firo has always had was saved under.
+ *
+ * Kept as the *default* board's key, exactly as it was, rather than renamed to
+ * `autosave:default`. That is deliberate: every browser that has used Firo
+ * before the board home landed holds its board under this string, and renaming
+ * it would present as an empty board on the next open — the silent-loss failure
+ * the rest of this file exists to prevent. The default board's bytes are
+ * unchanged; only *other* boards gained a key of their own.
+ */
 const KEY = "autosave";
+
+/**
+ * The id of the board a browser held before boards had ids.
+ *
+ * `?board` absent from the URL resolves to this, and this board's payload lives
+ * under `autosave` rather than `autosave:default`, so an existing board opens
+ * without a migration step.
+ */
+export const DEFAULT_BOARD_ID = "default";
+
+/**
+ * The board this tab is showing.
+ *
+ * Module scope, like the document in `./board.ts`, because the payload key is
+ * derived from it and two callers disagreeing about which board is open would
+ * write one board's bytes over another's. Set once, before the editor mounts and
+ * therefore before the first autosave, by whoever resolved the route.
+ *
+ * Switching boards is a full reload in this slice, so this is never changed
+ * after the editor exists. The `restoreFailed` flag below depends on that: it is
+ * global to the module, so if boards could be switched in place a failure on one
+ * would disarm the autosave of the next.
+ */
+let activeBoardId: string = DEFAULT_BOARD_ID;
+
+export const setActiveBoardId = (id: string): void => {
+  activeBoardId = id || DEFAULT_BOARD_ID;
+};
+
+export const getActiveBoardId = (): string => activeBoardId;
+
+/**
+ * The store key a board's serialised document lives under.
+ *
+ * The default board keeps the original `autosave` key; every other board is
+ * namespaced. One function rather than the string built at each call site, so
+ * the two can never disagree about which board a key names.
+ */
+const payloadKey = (id: string): string =>
+  id === DEFAULT_BOARD_ID ? KEY : `${KEY}:${id}`;
 
 /** What a save produced, so the caller can tell success from silent failure. */
 export type SaveResult =
@@ -191,7 +241,7 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
   }
 
   try {
-    await set(KEY, payload, boardStore);
+    await set(payloadKey(activeBoardId), payload, boardStore);
   } catch (error) {
     notifySaveStatus("error");
     return {
@@ -261,7 +311,9 @@ export const restoreBoard = async (doc: FiroDoc): Promise<RestoreResult> => {
 
 /** The raw stored string, or `undefined` when nothing is stored. */
 const storedBoard = (): Promise<string | undefined> =>
-  get<string>(KEY, boardStore) as Promise<string | undefined>;
+  get<string>(payloadKey(activeBoardId), boardStore) as Promise<
+    string | undefined
+  >;
 
 /** Whether anything has been autosaved. Cheap, and safe to call before a restore. */
 export const hasSavedBoard = async (): Promise<boolean> => {
@@ -282,9 +334,55 @@ export const hasSavedBoard = async (): Promise<boolean> => {
 export const clearSavedBoard = async (): Promise<void> => {
   restoreFailed = false;
   try {
-    await del(KEY, boardStore);
+    await del(payloadKey(activeBoardId), boardStore);
   } catch {
     // A board that cannot be cleared is a nuisance.
+  }
+};
+
+/**
+ * Read a board's payload by id, without switching to it.
+ *
+ * For the board library (`./library.ts`), which has to answer "does this board
+ * have a document?" and "copy this one" without changing the active board or
+ * disturbing the autosave's failed-restore guard. Reading is not saving, so
+ * this is free of that guard's concerns.
+ */
+export const readBoardPayload = async (
+  id: string,
+): Promise<string | undefined> =>
+  get<string>(payloadKey(id), boardStore) as Promise<string | undefined>;
+
+/** Whether a board has a stored document. The home uses it to skip empty ids. */
+export const hasBoardPayload = async (id: string): Promise<boolean> => {
+  try {
+    return (await readBoardPayload(id)) !== undefined;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Write a payload for a board by id, without switching to it.
+ *
+ * Used by the board home to create a board (from a template or blank) *before*
+ * navigating to it. The navigated-to tab then restores it through the ordinary
+ * autosave path, so creation and editing write the same bytes.
+ */
+export const writeBoardPayload = async (
+  id: string,
+  payload: string,
+): Promise<void> => {
+  await set(payloadKey(id), payload, boardStore);
+};
+
+/** Remove a board's document. The explicitly destructive half of delete. */
+export const deleteBoardPayload = async (id: string): Promise<void> => {
+  try {
+    await del(payloadKey(id), boardStore);
+  } catch {
+    // A board that cannot be removed is a nuisance, and the index entry that
+    // names it is removed by the caller either way.
   }
 };
 
