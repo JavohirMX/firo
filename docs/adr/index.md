@@ -59,6 +59,9 @@ deciders: <names or roles>
 | [0018](0018-a-firo-is-a-directory.md) | A `.firo` is a directory: `board.json`, a manifest, and content-addressed assets beside it | Accepted — implemented | 2026-10-02 |
 | [0019](0019-keep-read-a-full-snapshot.md) | Keep `FiroDoc.read()` a full snapshot for now; the fix is an interface decision, not an optimisation | Rejected — superseded by [0020](0020-stop-walking-the-whole-document-to-read-it.md) | 2026-10-03 |
 | [0020](0020-stop-walking-the-whole-document-to-read-it.md) | Adopt options A and B: memoise `read()` and make its fields lazy getters | Accepted (options A and B; supersedes 0019) | 2026-10-04 |
+| [0021](0021-miro-style-shell-and-clean-aesthetic.md) | Adopt a Miro-style UI shell and a clean-by-default canvas aesthetic | Accepted (supersedes the roughness clause of 0014) | 2026-10-13 |
+| [0022](0022-ui-package-owns-the-chrome.md) | `@firo/ui` owns the app chrome; `@firo/editor` exposes layout tunnels | Accepted | 2026-10-13 |
+| [0023](0023-open-icons-and-ui-typeface.md) | Author our own icon set; adopt Plus Jakarta Sans for the chrome | Accepted | 2026-10-13 |
 
 ## Open questions
 
@@ -75,3 +78,5 @@ Deliberately deferred. Each is answered before the phase that depends on it.
 | Why is 10% zoom ~30× slower than 50%, with the cost outside the renderer's JavaScript? | Before criterion 5 can be demonstrated. The Chrome trace exists and rules GPU rasterisation out; it has not reproduced a mechanism. See [ADR-0017](0017-do-not-rewrite-the-renderer.md) and [§2.1f](../plans/phase-2-renderer.md#21f--the-trace-exists-now-and-it-did-not-settle-it) |
 | Is losing the one-file download worth the readable diff, and is AC-6's `cat` amended or the deviation accepted? **Raised by [ADR-0018](0018-a-firo-is-a-directory.md), which chose the directory and left both to the maintainer.** | Closed — the criterion was amended to say `cat board.json`; Safari folder import is the remaining cost |
 | Product name and trademark clearance | Before any public release |
+| Should the **canvas** default face move off Nunito to Plus Jakarta Sans now that the chrome uses it? Chrome text is UI labels at UI sizes; canvas text is diagram labels at 12 px and is measured on rendered output. [ADR-0023](0023-open-icons-and-ui-typeface.md) deliberately leaves `DEFAULT_FONT_FAMILY` unchanged. | Phase 7.5 — **answered: no.** The canvas default is measured, not chosen by the chrome's taste. Revisit only against ADR-0013 requirement 4 |
+| Plus Jakarta Sans is decided for the chrome but **not yet bundled**, so its licence is not yet stated. A decision without an artefact is not compliance; the font gate (`packages/common/tests/fonts.test.ts`) blocks a shipped binary without OFL text and a `FONT-LICENSES.md` row. | Phase 7.5, task 7.5.2 |

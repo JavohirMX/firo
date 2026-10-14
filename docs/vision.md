@@ -123,10 +123,12 @@ frames become slides. A deck-authoring tool with themes and animations, no.
 resource levelling, no workload balancing, no timesheets, no sprint automation. We
 do the visual planning layer well and we link out from there.
 
-**We will not chase vector-design fidelity.** Firo is not a Figma replacement. The
-hand-drawn aesthetic is deliberate: it signals that this is a thinking tool, not a
-production asset, and it removes the pressure to make things look finished before
-they are.
+**We will not chase vector-design fidelity.** Firo is not a Figma replacement. Its
+default surface is clean rather than hand-drawn, so that a board reads as the tool
+teams already know ([`ADR-0021`](adr/0021-miro-style-shell-and-clean-aesthetic.md));
+the sketch stroke is kept as a per-element option, for the divergent half of a
+session. What we still refuse is production-asset rigour: no pixel-perfect design
+tooling, no pressure to make a thing look finished before it is.
 
 **We will not support real-time video, audio calls, or screen sharing.** Miro added
 these in beta. They are a conferencing product, not a whiteboard, and building them
@@ -164,12 +166,14 @@ The measurable version:
 
 ## The honest risk
 
-The largest risk is Phase 2, the renderer rewrite
-([`docs/plans/phase-2-renderer.md`](plans/phase-2-renderer.md)). Rewriting a canvas
-renderer is where this project either works or quietly does not.
+The largest risk is no longer the renderer. Phase 2's gate measured the inherited
+one rather than assuming, and closed it — 73 fps at 9,766 elements, no rewrite
+([`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md)).
 
-We have chosen it deliberately: the hand-drawn aesthetic is a genuine
-differentiator, and no library gives us both that and the structural control we
-need. But the mitigation is real and stated up front — if Phase 2 is not working by
-the end of its timebox, we fall back to a thinner fork with far fewer divergences,
-and the product is smaller but real.
+The risk that remains is **the shell**. Firo's data model is Miro's, but the canvas
+and chrome it inherited are Excalidraw's, and a person who decides in the first
+thirty seconds that this is a sketch pad never reaches the object vocabulary.
+[Phase 7.5](plans/phase-7-5-miro-ui.md) exists to close that gap, and it is a real
+risk precisely because the differentiator is not a drawing style. It is the
+workshop loop, the object vocabulary and local-first storage — none of which are
+visible until the shell stops hiding them.

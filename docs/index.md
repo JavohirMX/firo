@@ -24,7 +24,7 @@ Then, as needed:
 
 ## The one-page version
 
-Firo is a free, MIT-licensed, local-first infinite canvas. It is a Miro replacement with Excalidraw's hand-drawn aesthetic and Weje's low-clutter discipline.
+Firo is a free, MIT-licensed, local-first infinite canvas. It is a Miro replacement — Miro's shell, object vocabulary and facilitation loop, running on your own machine — with a clean canvas by default, an optional sketch mode, and Weje's low-clutter discipline.
 
 Four ideas carry the product:
 
@@ -58,6 +58,9 @@ The decisions that shaped everything else:
 | [0017](adr/0017-do-not-rewrite-the-renderer.md) | Keep the inherited renderer; the rewrite was justified by a measurement artefact |
 | [0018](adr/0018-a-firo-is-a-directory.md) | A `.firo` is a directory: `board.json`, a manifest, and content-addressed assets |
 | [0020](adr/0020-stop-walking-the-whole-document-to-read-it.md) | Memoise `read()` and make its snapshot fields lazy getters |
+| [0021](adr/0021-miro-style-shell-and-clean-aesthetic.md) | Adopt a Miro-style UI shell and a clean-by-default canvas aesthetic |
+| [0022](adr/0022-ui-package-owns-the-chrome.md) | `@firo/ui` owns the app chrome; `@firo/editor` exposes layout tunnels |
+| [0023](adr/0023-open-icons-and-ui-typeface.md) | Author our own icon set; adopt Plus Jakarta Sans for the chrome |
 
 ## Document conventions
 

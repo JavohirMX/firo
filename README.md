@@ -4,9 +4,9 @@
 
 Miro is an excellent tool with a business model that prices out small teams: three boards on the free plan, then $8 per person per month for the parts of the product you actually use to run a workshop. Excalidraw is free and genuinely open source, but it is a sketching tool, not a workshop tool — no sticky-note workflow, no facilitation, no structure, no backend.
 
-Firo is the third thing: Miro's object vocabulary and facilitation loop, on Excalidraw's hand-drawn canvas, stored on your own machine, under the MIT licence, forever.
+Firo is the third thing: Miro's object vocabulary, facilitation loop and board layout, on a canvas that is clean by default and sketchable when you want it, stored on your own machine, under the MIT licence, forever.
 
-> **Status: Version 1 complete.** The local-first single-player application is built, tested, and operational. Phases 0 through 7 are complete — offline workshop canvas, Miro object vocabulary, facilitation tools (voting, timer, presentation, private mode), structured records with switchable projections (Table, Board, Grid), and lossless `.firo` directory format persistence. See [`docs/roadmap.md`](docs/roadmap.md) for Version 2 (Phases 8 & 9).
+> **Status: Version 1 complete.** The local-first single-player application is built, tested, and operational. Phases 0 through 7 are complete — offline workshop canvas, Miro object vocabulary, facilitation tools (voting, timer, presentation, private mode), structured records with switchable projections (Table, Board, Grid), and lossless `.firo` directory format persistence. **[Phase 7.5](docs/plans/phase-7-5-miro-ui.md) is now in progress**: a Miro-style shell (left creation rail, bottom-right navigation, right inspector, floating selection toolbar) and a clean default canvas. See [`docs/roadmap.md`](docs/roadmap.md) for what follows (Phases 8 & 9).
 
 ---
 

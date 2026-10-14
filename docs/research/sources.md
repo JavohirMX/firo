@@ -55,6 +55,8 @@ way.
 | [miro.com/accessibility](https://miro.com/accessibility/) | "strive to meet" WCAG 2.2 AA — an aspiration, not a certification. VPAT on request. Accessibility Checker exists |
 | [Help — export](https://help.miro.com/hc/en-us/articles/360017572754-How-to-export-your-board) | PNG/JPG/SVG/PDF/CSV, `.rtb` backup. Free plan is watermarked and low-res. **Comments and voting results are not exported.** |
 | [Help — import](https://help.miro.com/hc/en-us/articles/18656338276626-Import-content-from-other-tools-to-Miro) | Import is **Starter+ only**. Miro **cannot import its own `.rtb` board** |
+| [Help — Toolbars](https://help.miro.com/hc/en-us/articles/360017730553-Toolbars) | The board shell: top-left board menu, top-right collaboration and people, the left vertical **creation toolbar** with undo/redo beneath it, the bottom-right **navigation toolbar** (zoom, frames, layers, minimap, grid, fit). Tools are one-time, drag onto the board, and Select/Hand cannot be removed. The full analysis is [`miro-ui.md`](miro-ui.md) |
+| [Help — Board interface](https://help.miro.com/hc/en-us/sections/360001412314-Board-interface) | The board screen's documented sections |
 
 **Unverified:** minimum/maximum zoom percentages; per-board object limits; sticky-note
 counts (there is no published cap — treat "sticky note limit" as a myth); history
@@ -109,6 +111,21 @@ code); whether voting works in production (advertised with a GIF, no code path f
 the status of "Publisher Mode" (labelled coming soon, code exists).
 
 ---
+
+## Reverse-engineering tooling
+
+For Phase 7.5 the shell is re-implemented from observed behaviour, not copied
+([`miro-ui.md`](miro-ui.md), clean-room guardrail). The tool intended for the
+observation step:
+
+| Source | What it establishes |
+| --- | --- |
+| [morluto/rea — "Reverse Engineer Anything"](https://github.com/morluto/rea) | An MCP server that routes an agent to Ghidra, Hopper, IDA or **Chrome DevTools**. For a web app only the Chrome DevTools provider is relevant — no binary engine is needed. **Not installed** in the environment this was researched in; live inspection is task 7.5.0 and is pending |
+| [Chrome DevTools Protocol — DOM and CSS](https://chromedevtools.github.io/devtools-protocol/) | What the provider would read: DOM structure, computed styles, CSS custom properties, and network traffic |
+
+The relevance is narrow: it establishes *layout and interaction*, never assets.
+Text extraction for a UI is not a capability it needs; the board's rendered
+output is the evidence.
 
 ## Adjacent projects
 
