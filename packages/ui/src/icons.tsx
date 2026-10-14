@@ -793,3 +793,161 @@ export const CheckIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     />
   </svg>
 );
+
+export type StarIconProps = IconProps & {
+  filled?: boolean;
+};
+
+export const StarIcon: React.FC<StarIconProps> = ({
+  size = 20,
+  filled = false,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill={filled ? "currentColor" : "none"}
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M10 2.5L12.3 7.4L17.7 8.1L13.8 11.9L14.7 17.2L10 14.6L5.3 17.2L6.2 11.9L2.3 8.1L7.7 7.4L10 2.5Z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const StarFilledIcon: React.FC<IconProps> = (props) => (
+  <StarIcon filled {...props} />
+);
+
+export const StarOutlineIcon: React.FC<IconProps> = (props) => (
+  <StarIcon filled={false} {...props} />
+);
+
+export const FolderIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3 5.5C3 4.67 3.67 4 4.5 4H8L9.8 6.25C10.1 6.63 10.55 6.85 11.03 6.85H15.5C16.33 6.85 17 7.52 17 8.35V14.5C17 15.33 16.33 16 15.5 16H4.5C3.67 16 3 15.33 3 14.5V5.5Z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const GridViewIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <rect
+      x="3.5"
+      y="3.5"
+      width="5.5"
+      height="5.5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    />
+    <rect
+      x="11"
+      y="3.5"
+      width="5.5"
+      height="5.5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    />
+    <rect
+      x="3.5"
+      y="11"
+      width="5.5"
+      height="5.5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    />
+    <rect
+      x="11"
+      y="11"
+      width="5.5"
+      height="5.5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    />
+  </svg>
+);
+
+export const ListViewIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3.5 5.5H5.5M8.5 5.5H16.5M3.5 10H5.5M8.5 10H16.5M3.5 14.5H5.5M8.5 14.5H16.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const SortIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M4 6H11M4 10H9M4 14H7M13.5 4.5V15.5M13.5 15.5L16.5 12.5M13.5 15.5L10.5 12.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const MoreVerticalIcon: React.FC<IconProps> = ({
+  size = 20,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="10" cy="4.5" r="1.25" fill="currentColor" />
+    <circle cx="10" cy="10" r="1.25" fill="currentColor" />
+    <circle cx="10" cy="15.5" r="1.25" fill="currentColor" />
+  </svg>
+);

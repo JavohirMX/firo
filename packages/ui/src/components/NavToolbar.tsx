@@ -19,6 +19,7 @@ export interface NavToolbarProps {
   gridEnabled?: boolean;
   onToggleGrid?: () => void;
   minimapEnabled?: boolean;
+  isMinimapOpen?: boolean;
   onToggleMinimap?: () => void;
 }
 
@@ -31,8 +32,10 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
   gridEnabled = false,
   onToggleGrid,
   minimapEnabled = false,
+  isMinimapOpen,
   onToggleMinimap,
 }) => {
+  const isMinimapActive = isMinimapOpen ?? minimapEnabled;
   const zoomPercent = Math.round(zoom * 100);
 
   return (
@@ -102,12 +105,12 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
         <button
           type="button"
           className={`firo-nav-toolbar__button ${
-            minimapEnabled ? "firo-nav-toolbar__button--active" : ""
+            isMinimapActive ? "firo-nav-toolbar__button--active" : ""
           }`}
           onClick={onToggleMinimap}
           title="Toggle Minimap"
           aria-label="Toggle Minimap"
-          aria-pressed={minimapEnabled}
+          aria-pressed={isMinimapActive}
         >
           <MinimapIcon size={18} />
         </button>

@@ -1,0 +1,84 @@
+.firo-minimap {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--firo-color-panel);
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-md);
+  box-shadow: var(--firo-elevation-panel);
+  backdrop-filter: blur(8px);
+  user-select: none;
+  overflow: hidden;
+  margin-bottom: var(--firo-space-sm);
+  width: 220px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--firo-space-xs) var(--firo-space-sm);
+    border-bottom: 1px solid var(--firo-color-border);
+  }
+
+  &__title {
+    font-family: var(--firo-font-ui);
+    font-size: var(--firo-font-size-xs, 12px);
+    font-weight: var(--firo-font-weight-medium, 500);
+    color: var(--firo-color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: var(--firo-radius-sm);
+    color: var(--firo-color-text-muted);
+    cursor: pointer;
+    transition: background-color var(--firo-motion-fast) var(--firo-motion-ease),
+      color var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover {
+      background-color: var(--firo-color-surface);
+      color: var(--firo-color-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+  }
+
+  &__body {
+    position: relative;
+    width: 220px;
+    height: 140px;
+    background-color: var(--firo-color-surface);
+  }
+
+  &__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+
+    &--grabbing {
+      cursor: grabbing !important;
+    }
+
+    &--grab {
+      cursor: grab;
+    }
+  }
+}
+
+.firo-nav-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}

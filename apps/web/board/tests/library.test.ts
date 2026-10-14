@@ -25,7 +25,7 @@ import "fake-indexeddb/auto";
 import { clear, get } from "idb-keyval";
 
 import { createFiroDoc } from "@firo/doc";
-import { loadBoard } from "@firo/schema";
+import { loadBoard, serializeBoard } from "@firo/schema";
 import { createStickyNote } from "@firo/board";
 
 import {
@@ -41,19 +41,27 @@ import {
   createBlankBoard,
   createBoard,
   createBoardFromTemplate,
+  createFolder,
   deleteBoardForever,
+  deleteFolder,
+  duplicateBoard,
   formatLastOpened,
   getBoardMeta,
   listBoards,
+  listFolders,
   openBoard,
   openBoardById,
   putBoardMeta,
   renameBoard,
+  renameFolder,
   resolveInitialBoard,
   restoreTrashedBoard,
   setActiveBoard,
+  setBoardFolder,
+  toggleStarBoard,
   trashBoard,
 } from "../library";
+import { searchBoardsContent } from "../search";
 import { templateById } from "../templates";
 
 beforeEach(async () => {
@@ -275,5 +283,259 @@ describe("formatLastOpened", () => {
 
   it("never reports a negative age for a clock that jumped", () => {
     expect(formatLastOpened(now + 5_000, now)).toBe("just now");
+  });
+});
+
+describe("folders", () => {
+  it("starts with an empty folder list", async () => {
+    expect(await listFolders()).toEqual([]);
+  });
+
+  it("creates and lists folders", async () => {
+    const f1 = await createFolder("Work", "#ff0000");
+    const f2 = await createFolder("Personal");
+
+    expect(f1.id).toBeDefined();
+    expect(f1.name).toBe("Work");
+    expect(f1.color).toBe("#ff0000");
+    expect(f1.created).toBeGreaterThan(0);
+    expect(f2.name).toBe("Personal");
+    expect(f2.id).toBeDefined();
+
+    const all = await listFolders();
+    expect(all).toHaveLength(2);
+    expect(all.map((f) => f.name)).toEqual(["Work", "Personal"]);
+  });
+
+  it("renames a folder, and ignores empty input", async () => {
+    const folder = await createFolder("Design");
+    const renamed = await renameFolder(folder.id, "  UX Design  ");
+    expect(renamed?.name).toBe("UX Design");
+
+    const unchanged = await renameFolder(folder.id, "   ");
+    expect(unchanged?.name).toBe("UX Design");
+    expect((await listFolders())[0].name).toBe("UX Design");
+  });
+
+  it("assigns and unassigns a board to a folder", async () => {
+    const folder = await createFolder("Projects");
+    const board = await createBlankBoard("Roadmap");
+
+    const withFolder = await setBoardFolder(board.id, folder.id);
+    expect(withFolder.folderId).toBe(folder.id);
+
+    const cleared = await setBoardFolder(board.id, undefined);
+    expect(cleared.folderId).toBeUndefined();
+  });
+
+  it("deleting a folder un-assigns boards in that folder without deleting boards", async () => {
+    const folder = await createFolder("Archive");
+    const b1 = await createBlankBoard("Board 1");
+    const b2 = await createBlankBoard("Board 2");
+    await setBoardFolder(b1.id, folder.id);
+    await setBoardFolder(b2.id, folder.id);
+
+    await deleteFolder(folder.id);
+
+    expect(await listFolders()).toEqual([]);
+    expect((await getBoardMeta(b1.id))?.folderId).toBeUndefined();
+    expect((await getBoardMeta(b2.id))?.folderId).toBeUndefined();
+    // Boards still exist!
+    expect(await getBoardMeta(b1.id)).toBeDefined();
+    expect(await getBoardMeta(b2.id)).toBeDefined();
+  });
+});
+
+describe("starring", () => {
+  it("toggles starred flag on a board", async () => {
+    const board = await createBlankBoard("Important");
+    expect(board.starred).toBeFalsy();
+
+    const starred = await toggleStarBoard(board.id);
+    expect(starred.starred).toBe(true);
+    expect((await getBoardMeta(board.id))?.starred).toBe(true);
+
+    const unstarred = await toggleStarBoard(board.id);
+    expect(unstarred.starred).toBe(false);
+    expect((await getBoardMeta(board.id))?.starred).toBe(false);
+  });
+
+  it("explicitly sets starred value", async () => {
+    const board = await createBlankBoard("Starred Test");
+    await toggleStarBoard(board.id, true);
+    expect((await getBoardMeta(board.id))?.starred).toBe(true);
+
+    await toggleStarBoard(board.id, true);
+    expect((await getBoardMeta(board.id))?.starred).toBe(true);
+
+    await toggleStarBoard(board.id, false);
+    expect((await getBoardMeta(board.id))?.starred).toBe(false);
+  });
+});
+
+describe("duplicating a board", () => {
+  it("duplicates a board with payload, tags, and folder, but leaves original alone", async () => {
+    const folder = await createFolder("Duplication Target");
+    const original = await createBoard({
+      id: "orig-1",
+      name: "Strategy",
+      tags: ["q3", "exec"],
+    });
+    await setBoardFolder(original.id, folder.id);
+
+    // Write note payload to original
+    const note = createStickyNote({
+      id: "note-orig",
+      x: 100,
+      y: 200,
+      text: "Revenue target: 10M",
+    });
+    const payload = JSON.stringify(
+      serializeBoard({
+        elements: [note],
+        collections: [],
+        records: [],
+      }),
+    );
+    await writeBoardPayload(original.id, payload);
+
+    const copy = await duplicateBoard(original.id);
+
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.name).toBe("Strategy (Copy)");
+    expect(copy.tags).toEqual(["q3", "exec"]);
+    expect(copy.folderId).toBe(folder.id);
+    expect(copy.lastOpened).toBeGreaterThanOrEqual(original.lastOpened);
+
+    // Check copied payload
+    const copyPayloadStr = await readBoardPayload(copy.id);
+    expect(copyPayloadStr).toBeDefined();
+    const copyPayload = loadBoard(JSON.parse(copyPayloadStr!));
+    expect(copyPayload.elements).toHaveLength(1);
+    expect((copyPayload.elements[0] as any).text).toBe("Revenue target: 10M");
+    expect(copyPayload.meta.id).toBe(copy.id);
+
+    // Original is unchanged
+    const origMeta = await getBoardMeta(original.id);
+    expect(origMeta?.name).toBe("Strategy");
+  });
+});
+
+describe("content search (Task 8.2)", () => {
+  it("finds matches in board title, sticky notes, text, cards, and comments", async () => {
+    const board = await createBlankBoard("Q3 Roadmap & Planning");
+
+    const payload = JSON.stringify(
+      serializeBoard({
+        elements: [
+          createStickyNote({
+            id: "sn-1",
+            x: 0,
+            y: 0,
+            text: "Urgent fix for database connection pool",
+          }),
+          {
+            ...createStickyNote({ id: "txt-1", x: 10, y: 10 }),
+            type: "text",
+            text: "Architecture diagram overview",
+          } as any,
+        ],
+        collections: [],
+        records: [
+          {
+            id: "rec-1",
+            collectionId: "col-1",
+            values: {
+              title: {
+                type: "text",
+                value: "Implement user authentication flow",
+              },
+            },
+            created: Date.now(),
+            updated: Date.now(),
+            order: "a0" as any,
+            archived: false,
+          },
+        ],
+        comments: [
+          {
+            id: "th-1",
+            elementId: "sn-1",
+            anchor: { x: 0, y: 0 },
+            resolved: false,
+            author: "Alice",
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            comments: [
+              {
+                id: "c-1",
+                body: "Security audit needs to sign off on this",
+                author: "Alice",
+                createdAt: Date.now(),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    await writeBoardPayload(board.id, payload);
+
+    // 1. Title match
+    const titleResults = await searchBoardsContent("Roadmap");
+    expect(titleResults).toEqual([
+      expect.objectContaining({
+        boardId: board.id,
+        boardName: "Q3 Roadmap & Planning",
+        matchType: "title",
+      }),
+    ]);
+
+    // 2. Sticky note match
+    const stickyResults = await searchBoardsContent("connection pool");
+    expect(stickyResults).toEqual([
+      expect.objectContaining({
+        boardId: board.id,
+        matchType: "stickynote",
+        snippet: expect.stringContaining("connection pool"),
+      }),
+    ]);
+
+    // 3. Text element match
+    const textResults = await searchBoardsContent("architecture");
+    expect(textResults).toEqual([
+      expect.objectContaining({
+        boardId: board.id,
+        matchType: "text",
+        snippet: expect.stringContaining("Architecture"),
+      }),
+    ]);
+
+    // 4. Card / Record match
+    const cardResults = await searchBoardsContent("authentication");
+    expect(cardResults).toEqual([
+      expect.objectContaining({
+        boardId: board.id,
+        matchType: "card",
+        snippet: expect.stringContaining("authentication"),
+      }),
+    ]);
+
+    // 5. Comment match
+    const commentResults = await searchBoardsContent("Security audit");
+    expect(commentResults).toEqual([
+      expect.objectContaining({
+        boardId: board.id,
+        matchType: "comment",
+        snippet: expect.stringContaining("Security audit"),
+      }),
+    ]);
+
+    // 6. Skips trashed boards
+    await trashBoard(board.id);
+    const searchAfterTrash = await searchBoardsContent("Roadmap");
+    expect(searchAfterTrash).toEqual([]);
+
+    // 7. Empty query returns empty array
+    expect(await searchBoardsContent("   ")).toEqual([]);
   });
 });

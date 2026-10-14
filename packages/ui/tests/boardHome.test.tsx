@@ -204,4 +204,230 @@ describe("@firo/ui BoardHome", () => {
       expect(screen.getByText("Sprint planning")).toBeDefined();
     });
   });
+
+  describe("Miro-style navigation and controls", () => {
+    const extendedBoards: BoardCardData[] = [
+      {
+        id: "b1",
+        name: "Alpha board",
+        tags: ["Design"],
+        lastOpenedLabel: "1 hour ago",
+        starred: true,
+        folderId: "f1",
+        folderName: "Work",
+      },
+      {
+        id: "b2",
+        name: "Beta board",
+        tags: ["Engineering"],
+        starred: false,
+      },
+      {
+        id: "b3",
+        name: "Old trashed",
+        tags: [],
+        trashed: true,
+      },
+    ];
+
+    const testFolders = [
+      { id: "f1", name: "Work" },
+      { id: "f2", name: "Personal" },
+    ];
+
+    it("navigates through sidebar sections and triggers onSelectSection", () => {
+      const onSelectSection = vi.fn();
+      render(
+        <BoardHome
+          boards={extendedBoards}
+          folders={testFolders}
+          onSelectSection={onSelectSection}
+        />,
+      );
+
+      // Click Recent
+      fireEvent.click(screen.getByRole("button", { name: "Recent" }));
+      expect(onSelectSection).toHaveBeenCalledWith("recent");
+      expect(screen.getByText("Alpha board")).toBeDefined();
+      expect(screen.queryByText("Beta board")).toBeNull();
+
+      // Click Starred
+      fireEvent.click(screen.getByRole("button", { name: "Starred" }));
+      expect(onSelectSection).toHaveBeenCalledWith("starred");
+      expect(screen.getByText("Alpha board")).toBeDefined();
+      expect(screen.queryByText("Beta board")).toBeNull();
+
+      // Click Folder Work
+      fireEvent.click(screen.getByRole("button", { name: "Folder Work" }));
+      expect(onSelectSection).toHaveBeenCalledWith("f1");
+      expect(screen.getByText("Alpha board")).toBeDefined();
+      expect(screen.queryByText("Beta board")).toBeNull();
+
+      // Click Trash
+      fireEvent.click(screen.getByRole("button", { name: "Trash" }));
+      expect(onSelectSection).toHaveBeenCalledWith("trash");
+      expect(screen.getByText("Old trashed")).toBeDefined();
+      expect(screen.queryByText("Alpha board")).toBeNull();
+
+      // Click All Boards
+      fireEvent.click(screen.getByRole("button", { name: "All Boards" }));
+      expect(onSelectSection).toHaveBeenCalledWith("all");
+      expect(screen.getByText("Alpha board")).toBeDefined();
+      expect(screen.getByText("Beta board")).toBeDefined();
+    });
+
+    it("supports controlled activeSection prop", () => {
+      const { rerender } = render(
+        <BoardHome boards={extendedBoards} activeSection="starred" />,
+      );
+      expect(screen.getByText("Alpha board")).toBeDefined();
+      expect(screen.queryByText("Beta board")).toBeNull();
+
+      rerender(<BoardHome boards={extendedBoards} activeSection="all" />);
+      expect(screen.getByText("Alpha board")).toBeDefined();
+      expect(screen.getByText("Beta board")).toBeDefined();
+    });
+
+    it("toggles star status on card", () => {
+      const onToggleStarBoard = vi.fn();
+      render(
+        <BoardHome
+          boards={extendedBoards}
+          onToggleStarBoard={onToggleStarBoard}
+        />,
+      );
+
+      // Star Beta board
+      fireEvent.click(screen.getByRole("button", { name: "Star Beta board" }));
+      expect(onToggleStarBoard).toHaveBeenCalledWith("b2", true);
+
+      // Unstar Alpha board
+      fireEvent.click(
+        screen.getByRole("button", { name: "Unstar Alpha board" }),
+      );
+      expect(onToggleStarBoard).toHaveBeenCalledWith("b1", false);
+    });
+
+    it("duplicates a board", () => {
+      const onDuplicateBoard = vi.fn();
+      render(
+        <BoardHome
+          boards={extendedBoards}
+          onDuplicateBoard={onDuplicateBoard}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Duplicate Alpha board" }),
+      );
+      expect(onDuplicateBoard).toHaveBeenCalledWith("b1");
+    });
+
+    it("toggles between grid and list views", () => {
+      const onChangeViewMode = vi.fn();
+      render(
+        <BoardHome
+          boards={extendedBoards}
+          onChangeViewMode={onChangeViewMode}
+        />,
+      );
+
+      // Switch to list view
+      fireEvent.click(screen.getByRole("button", { name: "List view" }));
+      expect(onChangeViewMode).toHaveBeenCalledWith("list");
+      expect(screen.getByRole("table", { name: "Boards" })).toBeDefined();
+
+      // Switch back to grid view
+      fireEvent.click(screen.getByRole("button", { name: "Grid view" }));
+      expect(onChangeViewMode).toHaveBeenCalledWith("grid");
+      expect(screen.queryByRole("table", { name: "Boards" })).toBeNull();
+    });
+
+    it("creates a new folder via the sidebar prompt", () => {
+      const onCreateFolder = vi.fn();
+      render(
+        <BoardHome
+          boards={extendedBoards}
+          folders={testFolders}
+          onCreateFolder={onCreateFolder}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Create folder" }));
+      const input = screen.getByRole("textbox", { name: "New folder name" });
+      fireEvent.change(input, { target: { value: "Designs" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirm folder" }));
+
+      expect(onCreateFolder).toHaveBeenCalledWith("Designs");
+    });
+
+    it("renames and deletes folders", () => {
+      const onRenameFolder = vi.fn();
+      const onDeleteFolder = vi.fn();
+      render(
+        <BoardHome
+          boards={extendedBoards}
+          folders={testFolders}
+          onRenameFolder={onRenameFolder}
+          onDeleteFolder={onDeleteFolder}
+        />,
+      );
+
+      // Rename
+      fireEvent.click(
+        screen.getByRole("button", { name: "Rename folder Work" }),
+      );
+      const renameInput = screen.getByRole("textbox", {
+        name: "Rename folder Work",
+      });
+      fireEvent.change(renameInput, { target: { value: "Workplace" } });
+      fireEvent.keyDown(renameInput, { key: "Enter" });
+      expect(onRenameFolder).toHaveBeenCalledWith("f1", "Workplace");
+
+      // Delete
+      fireEvent.click(
+        screen.getByRole("button", { name: "Delete folder Work" }),
+      );
+      expect(onDeleteFolder).toHaveBeenCalledWith("f1");
+    });
+
+    it("moves a board to a folder using the dialog", () => {
+      const onMoveBoardToFolder = vi.fn();
+      render(
+        <BoardHome
+          boards={extendedBoards}
+          folders={testFolders}
+          onMoveBoardToFolder={onMoveBoardToFolder}
+        />,
+      );
+
+      // Open context menu on Alpha board and click move
+      fireEvent.click(
+        screen.getByRole("button", { name: "More actions for Alpha board" }),
+      );
+      fireEvent.click(
+        screen.getByRole("menuitem", { name: "Move to folder..." }),
+      );
+
+      // The dialog opens
+      expect(
+        screen.getByRole("dialog", { name: "Move Alpha board to folder" }),
+      ).toBeDefined();
+
+      // Click Personal folder in the dialog
+      fireEvent.click(screen.getByRole("button", { name: "Personal" }));
+      expect(onMoveBoardToFolder).toHaveBeenCalledWith("b1", "f2");
+    });
+
+    it("sorts boards by name, creation, or last opened", () => {
+      const onChangeSortBy = vi.fn();
+      render(
+        <BoardHome boards={extendedBoards} onChangeSortBy={onChangeSortBy} />,
+      );
+
+      const sortSelect = screen.getByRole("combobox", { name: "Sort boards" });
+      fireEvent.change(sortSelect, { target: { value: "name" } });
+      expect(onChangeSortBy).toHaveBeenCalledWith("name");
+    });
+  });
 });

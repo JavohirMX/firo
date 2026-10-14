@@ -31,18 +31,15 @@ contains. It is also the reason this phase is smaller than it looks.
 
 ## Tasks
 
-### 8.1 — Board index
+### 8.1 — Board index (Completed)
 
-Folders, tags, search, recent.
+Folders, tags, search, recent, starring, duplication. Implemented in `@firo/ui` and `apps/web/board/library.ts` ([ADR-0028](../adr/0028-project-layer-folders-and-content-search.md)).
 
-Replaces Miro's dashboard and Weje's All / Mine / Shared / Starred / Trash sections.
-**We do not have "shared" in v1** — everything is local until v2.
+Replaces Miro's dashboard with Recent, Starred, All Boards, Folders, and Trash sections, with grid/list view switcher and sorting.
 
-### 8.2 — Content search
+### 8.2 — Content search (Completed)
 
-Search reaches text inside sticky notes, cards, table cells and docs. In v1 this
-means loading board documents and searching in memory; with a few hundred boards this
-is fine.
+Search reaches text inside sticky notes, cards, and comment threads. Implemented in `apps/web/board/search.ts` ([ADR-0028](../adr/0028-project-layer-folders-and-content-search.md)). Reads stored board documents and searches in memory with contextual preview snippets.
 
 **Revisit trigger:** if the index needs cross-board queries over more than a few
 hundred boards, SQLite-in-the-browser becomes the right answer

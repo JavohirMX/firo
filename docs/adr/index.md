@@ -66,6 +66,7 @@ deciders: <names or roles>
 | [0025](0025-the-host-reuses-the-editors-property-controls.md) | Reuse the editor's property controls for the inspector, and expose them as named seams | Accepted (extends the edit list of [0022](0022-ui-package-owns-the-chrome.md) by two exports) | 2026-10-14 |
 | [0026](0026-board-home-and-its-index.md) | The board home reads its index from the autosave store, beside the boards it names | Accepted | 2026-10-14 |
 | [0027](0027-comments-are-their-own-lane.md) | Comments are their own durable lane, not elements or records | Accepted | 2026-10-14 |
+| [0028](0028-project-layer-folders-and-content-search.md) | Folders, starring, and content search in the project layer | Accepted | 2026-10-14 |
 
 ## Open questions
 

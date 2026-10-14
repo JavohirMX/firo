@@ -69,7 +69,10 @@ export const RAIL_TOOL_ICONS: Record<RailToolType, React.ReactNode> = {
 
 export interface CreationRailProps {
   activeTool: string;
-  onSelectTool: (tool: RailToolType) => void;
+  onSelectTool: (
+    tool: RailToolType,
+    event?: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
   onPointerDownTool?: (
     tool: RailToolType,
     event: React.PointerEvent<HTMLButtonElement>,
@@ -105,7 +108,13 @@ export const CreationRail: React.FC<CreationRailProps> = ({
               className={`firo-rail__item ${
                 isActive ? "firo-rail__item--active" : ""
               }`}
-              onClick={() => onSelectTool(tool.id)}
+              onClick={(e) => {
+                if (e.shiftKey) {
+                  onSelectTool(tool.id, e);
+                } else {
+                  onSelectTool(tool.id);
+                }
+              }}
               onPointerDown={(e) => onPointerDownTool?.(tool.id, e)}
               title={tool.label}
               aria-label={tool.label}

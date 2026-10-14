@@ -109,6 +109,7 @@ import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer } from "./components/CommentLayer";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
+import { Minimap } from "./components/Minimap";
 
 import { importFromBackend } from "./data";
 
@@ -388,10 +389,32 @@ const RAIL_TOOL_ORDER: RailToolType[] = [
   "laser",
 ];
 
-const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
+/**
+ * Shape and note creation tools that default to Miro-style one-time placement:
+ * selecting the tool places it in one-time mode (`locked: false`), so stamping or
+ * drawing on the canvas automatically reverts to Select mode upon element completion
+ * unless explicitly locked via double-click or shift-click.
+ */
+export const CREATION_TOOLS = new Set<RailToolType>([
+  "stickynote",
+  "rectangle",
+  "diamond",
+  "ellipse",
+  "arrow",
+  "line",
+  "text",
+  "frame",
+]);
+
+export const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
   const activeToolType = appState.activeTool.type as RailToolType;
+
+  const lastClickRef = useRef<{ tool: RailToolType; time: number } | null>(
+    null,
+  );
+  const isShiftPressedRef = useRef(false);
 
   const tools: RailToolItem[] = RAIL_TOOL_ORDER.filter((id) => id in TOOLS).map(
     (id) => {
@@ -409,13 +432,29 @@ const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
     <CreationRail
       tools={tools}
       activeTool={activeToolType}
-      onSelectTool={(tool) => {
-        if (app.state.activeTool.type !== tool) {
-          trackEvent("toolbar", tool, "ui");
+      onSelectTool={(tool, event) => {
+        const now = Date.now();
+        const lastClick = lastClickRef.current;
+        const isDoubleClick =
+          lastClick?.tool === tool && now - lastClick.time < 350;
+        lastClickRef.current = { tool, time: now };
+
+        const isShift = Boolean(event?.shiftKey) || isShiftPressedRef.current;
+        isShiftPressedRef.current = false;
+
+        trackEvent("toolbar", tool, "ui");
+
+        if (CREATION_TOOLS.has(tool)) {
+          // Double-clicking or shift-clicking locks the tool for continuous creation;
+          // single-clicking defaults to Miro-style one-time placement reverting to selection.
+          const locked = isDoubleClick || isShift;
+          app.setActiveTool({ type: tool as any, locked });
+        } else if (app.state.activeTool.type !== tool) {
           app.setActiveTool({ type: tool as any });
         }
       }}
       onPointerDownTool={(tool, event) => {
+        isShiftPressedRef.current = event.shiftKey;
         app.toolDrag.handleButtonPointerDown(tool as any, event.nativeEvent);
       }}
       onUndo={() => {
@@ -432,20 +471,34 @@ const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
   );
 };
 
-const WebNavToolbar = ({ appState }: { appState: UIAppState }) => {
+export const WebNavToolbar = ({
+  appState,
+  minimapVisible,
+  onToggleMinimap,
+}: {
+  appState: UIAppState;
+  minimapVisible: boolean;
+  onToggleMinimap: () => void;
+}) => {
   const actionManager = useExcalidrawActionManager();
   const zoomValue = useExcalidrawStateValue((state) => state.zoom.value) ?? 1;
 
   return (
-    <NavToolbar
-      zoom={zoomValue}
-      onZoomIn={() => actionManager.executeAction(actionZoomIn)}
-      onZoomOut={() => actionManager.executeAction(actionZoomOut)}
-      onResetZoom={() => actionManager.executeAction(actionResetZoom)}
-      onZoomToFit={() => actionManager.executeAction(actionZoomToFit)}
-      gridEnabled={appState.gridModeEnabled}
-      onToggleGrid={() => actionManager.executeAction(actionToggleGridMode)}
-    />
+    <div className="firo-nav-wrapper">
+      {minimapVisible && <Minimap onClose={onToggleMinimap} />}
+      <NavToolbar
+        zoom={zoomValue}
+        onZoomIn={() => actionManager.executeAction(actionZoomIn)}
+        onZoomOut={() => actionManager.executeAction(actionZoomOut)}
+        onResetZoom={() => actionManager.executeAction(actionResetZoom)}
+        onZoomToFit={() => actionManager.executeAction(actionZoomToFit)}
+        gridEnabled={appState.gridModeEnabled}
+        onToggleGrid={() => actionManager.executeAction(actionToggleGridMode)}
+        minimapEnabled={minimapVisible}
+        isMinimapOpen={minimapVisible}
+        onToggleMinimap={onToggleMinimap}
+      />
+    </div>
   );
 };
 
@@ -604,6 +657,7 @@ const ExcalidrawWrapper = () => {
    * question "what is selected", and the layer only owns "where does the pin go".
    */
   const [commentTarget, setCommentTarget] = useState<string | null>(null);
+  const [minimapVisible, setMinimapVisible] = useState(false);
 
   const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
 
@@ -1048,7 +1102,11 @@ const ExcalidrawWrapper = () => {
           <WebCreationRail appState={appState} />
         )}
         renderNavigationUI={(_isMobile, appState) => (
-          <WebNavToolbar appState={appState} />
+          <WebNavToolbar
+            appState={appState}
+            minimapVisible={minimapVisible}
+            onToggleMinimap={() => setMinimapVisible((v) => !v)}
+          />
         )}
         renderBoardMenuUI={() => <WebBoardMenu />}
         renderInspectorUI={(_isMobile, appState) => (

@@ -31,14 +31,16 @@
 
 import { createFiroDoc } from "@firo/doc";
 import { mintBoardId } from "@firo/board";
+import { randomId } from "@firo/common";
 import { get, set } from "idb-keyval";
-import { serializeBoard } from "@firo/schema";
+import { loadBoard, serializeBoard } from "@firo/schema";
 
 import {
   boardStore,
   DEFAULT_BOARD_ID,
   deleteBoardPayload,
   hasBoardPayload,
+  readBoardPayload,
   setActiveBoardId,
   writeBoardPayload,
 } from "./storage";
@@ -47,6 +49,16 @@ import type { BoardTemplate } from "./templates";
 
 /** The store key the board index lives under. Not a board's payload key. */
 const INDEX_KEY = "board-index";
+
+/** The store key folders are saved under. */
+const FOLDERS_KEY = "board-folders";
+
+export interface BoardFolder {
+  id: string;
+  name: string;
+  color?: string;
+  created: number;
+}
 
 /** What the home needs to know about a board, and nothing more. */
 export interface BoardMeta {
@@ -64,6 +76,8 @@ export interface BoardMeta {
   thumbnail?: string;
   /** epoch ms when moved to the trash; absent means the board is live. */
   trashedAt?: number;
+  folderId?: string;
+  starred?: boolean;
 }
 
 type BoardIndex = Record<string, BoardMeta>;
@@ -127,6 +141,9 @@ export const putBoardMeta = async (
     created: input.created ?? existing?.created ?? now,
     lastOpened: input.lastOpened ?? existing?.lastOpened ?? now,
   };
+  if ("folderId" in input && input.folderId === undefined) {
+    delete meta.folderId;
+  }
   index[meta.id] = meta;
   await writeIndex(index);
   return meta;
@@ -184,6 +201,112 @@ export const restoreTrashedBoard = async (id: string): Promise<void> => {
   delete meta.trashedAt;
   index[id] = meta;
   await writeIndex(index);
+};
+
+export const toggleStarBoard = async (
+  boardId: string,
+  starred?: boolean,
+): Promise<BoardMeta> => {
+  const meta = await getBoardMeta(boardId);
+  const nextStarred = starred !== undefined ? starred : !meta?.starred;
+  return putBoardMeta({ id: boardId, starred: nextStarred });
+};
+
+export const listFolders = async (): Promise<BoardFolder[]> => {
+  let raw: unknown;
+  try {
+    raw = await get(FOLDERS_KEY, boardStore);
+  } catch {
+    return [];
+  }
+  if (!raw) {
+    return [];
+  }
+  if (Array.isArray(raw)) {
+    return raw.filter((f): f is BoardFolder =>
+      Boolean(f && typeof f.id === "string" && typeof f.name === "string"),
+    );
+  }
+  if (typeof raw === "object") {
+    return Object.values(raw as Record<string, BoardFolder>).filter(
+      (f): f is BoardFolder =>
+        Boolean(f && typeof f.id === "string" && typeof f.name === "string"),
+    );
+  }
+  return [];
+};
+
+export const createFolder = async (
+  name: string,
+  color?: string,
+): Promise<BoardFolder> => {
+  const folders = await listFolders();
+  const folder: BoardFolder = {
+    id: randomId(),
+    name: name.trim(),
+    color,
+    created: Date.now(),
+  };
+  await set(FOLDERS_KEY, [...folders, folder], boardStore);
+  return folder;
+};
+
+export const renameFolder = async (
+  id: string,
+  name: string,
+): Promise<BoardFolder | undefined> => {
+  const trimmed = name.trim();
+  const folders = await listFolders();
+  if (!trimmed) {
+    return folders.find((f) => f.id === id);
+  }
+  let updated: BoardFolder | undefined;
+  const next = folders.map((f) => {
+    if (f.id === id) {
+      updated = { ...f, name: trimmed };
+      return updated;
+    }
+    return f;
+  });
+  if (updated) {
+    await set(FOLDERS_KEY, next, boardStore);
+  }
+  return updated;
+};
+
+export const deleteFolder = async (id: string): Promise<void> => {
+  const folders = await listFolders();
+  const next = folders.filter((f) => f.id !== id);
+  await set(FOLDERS_KEY, next, boardStore);
+
+  // Un-assign folderId from all boards that were in this folder
+  const index = await readIndex();
+  let changed = false;
+  for (const meta of Object.values(index)) {
+    if (meta.folderId === id) {
+      delete meta.folderId;
+      changed = true;
+    }
+  }
+  if (changed) {
+    await writeIndex(index);
+  }
+};
+
+export const setBoardFolder = async (
+  boardId: string,
+  folderId?: string,
+): Promise<BoardMeta> => {
+  const index = await readIndex();
+  const existing = index[boardId] ?? (await putBoardMeta({ id: boardId }));
+  if (folderId) {
+    existing.folderId = folderId;
+  } else {
+    delete existing.folderId;
+  }
+  index[boardId] = existing;
+  await writeIndex(index);
+  return existing;
 };
 
 /**
@@ -260,12 +383,56 @@ export const createBoardFromTemplate = async (
 };
 
 /** Create an empty board, with its identity already stamped. */
-export const createBlankBoard = async (): Promise<BoardMeta> => {
+export const createBlankBoard = async (
+  name = "Untitled board",
+): Promise<BoardMeta> => {
   const { id, mutation } = mintBoardId();
   const doc = createFiroDoc();
   doc.commit([mutation]);
   const payload = JSON.stringify(serializeBoard(doc.read()));
-  return createBoard({ id, name: "Untitled board", payload });
+  return createBoard({ id, name, payload });
+};
+
+/**
+ * Duplicate an existing board.
+ *
+ * Loads the original board's payload, creates a new board with "(Copy)",
+ * saves the cloned payload with the new board's id, copies tags and folderId,
+ * and updates recents.
+ */
+export const duplicateBoard = async (boardId: string): Promise<BoardMeta> => {
+  const original = await getBoardMeta(boardId);
+  if (!original) {
+    throw new Error(`Board not found: ${boardId}`);
+  }
+  const copyName = `${original.name} (Copy)`;
+  const newBoard = await createBlankBoard(copyName);
+
+  const rawPayload = await readBoardPayload(boardId);
+  if (rawPayload) {
+    try {
+      const loaded = loadBoard(JSON.parse(rawPayload));
+      const clonedPayload = JSON.stringify(
+        serializeBoard({
+          ...loaded,
+          meta: { ...loaded.meta, id: newBoard.id },
+        }),
+      );
+      await writeBoardPayload(newBoard.id, clonedPayload);
+    } catch {
+      // Keep blank payload if loading original failed
+    }
+  }
+
+  const now = Date.now();
+  return putBoardMeta({
+    id: newBoard.id,
+    name: copyName,
+    tags: [...(original.tags ?? [])],
+    folderId: original.folderId,
+    color: original.color,
+    lastOpened: now,
+  });
 };
 
 /**
