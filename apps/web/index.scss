@@ -1,3 +1,20 @@
+/**
+ * The `@firo/ui` theme: the chrome's design tokens as custom properties, plus
+ * the chrome typeface's `@font-face` rules (ADR-0022, ADR-0024).
+ *
+ * It is loaded now, before the shell exists, for two reasons: the tokens are
+ * already referenced by the shell work in progress, and loading it is what makes
+ * the bundled font resolve in a real build. It declares custom properties and
+ * font faces and nothing else, so with no component reading it this file changes
+ * no rendering.
+ *
+ * `@use` before `@import`, which is not a style preference: Dart Sass requires
+ * every `@use` to precede the first rule in the file. `@use` rather than a
+ * second `@import` because the repo is on the far side of the `@import`
+ * deprecation — the editor's own stylesheets are `@use` for the same reason.
+ */
+@use "../../packages/ui/src/theme";
+
 @import "../../packages/editor/css/variables.module.scss";
 
 .excalidraw {

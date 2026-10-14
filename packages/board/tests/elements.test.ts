@@ -1,4 +1,4 @@
-import { ROUNDNESS } from "@firo/common";
+import { DEFAULT_ELEMENT_PROPS, ROUGHNESS, ROUNDNESS } from "@firo/common";
 
 import { asElementId } from "@firo/schema";
 
@@ -539,6 +539,20 @@ describe("fromEditorElements", () => {
 });
 
 describe("createStickyNote", () => {
+  it("is born clean, like every other new element", () => {
+    /*
+     * ADR-0021 made the canvas clean by default. A note this package creates is
+     * a new element, so it has to be as clean as one drawn with the tool -- a
+     * board of clean shapes with hand-drawn notes on it reads as broken rather
+     * than as a choice. The value is compared against the shared default rather
+     * than a literal so the two cannot drift apart.
+     */
+    expect(createStickyNote({ id: "n", x: 0, y: 0 }).roughness).toBe(
+      DEFAULT_ELEMENT_PROPS.roughness,
+    );
+    expect(DEFAULT_ELEMENT_PROPS.roughness).toBe(ROUGHNESS.architect);
+  });
+
   it("keeps Excalidraw's width-to-height ratio", () => {
     const created = createStickyNote({ id: "n", x: 0, y: 0, height: 200 });
     expect(created.width).toBe(260);

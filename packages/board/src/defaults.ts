@@ -33,8 +33,12 @@ export const STICKY_NOTE_DEFAULTS = {
   strokeWidth: 1,
   strokeStyle: "solid",
   roundness: null,
-  /** 1 is Excalidraw's hand-drawn default. 0 is a clean geometric edge. */
-  roughness: 1,
+  /**
+   * Clean, matching `DEFAULT_ELEMENT_PROPS.roughness` ([ADR-0021](../../../docs/adr/0021-miro-style-shell-and-clean-aesthetic.md)).
+   * A note this package creates is a new element, and a new element is clean;
+   * the hand-drawn stroke is the per-element option, not the resting state.
+   */
+  roughness: 0,
   opacity: 100,
   fontSize: 20,
   fontFamily: 1,

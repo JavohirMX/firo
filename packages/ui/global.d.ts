@@ -12,7 +12,12 @@
  * declaration has to live here rather than being inherited from the editor's
  * `global.d.ts`, which this package deliberately does not reach into.
  *
- * There is no `/// <reference types="vite/client" />` here. Nothing in this
- * package reads `import.meta.env` yet; add it when something does, not before.
+ * `vite/client` is referenced for `*.woff2`: `src/fonts.ts` imports the chrome's
+ * four subsets so the bundler emits them (a `url()` in a stylesheet is not
+ * emitted at all — see that file). It also brings `import.meta.env`, which
+ * nothing here reads yet.
  */
+
+/// <reference types="vite/client" />
+
 declare module "*.scss";

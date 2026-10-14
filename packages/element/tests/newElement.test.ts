@@ -50,3 +50,48 @@ describe("element creation time", () => {
     },
   );
 });
+
+describe("the roughness a new element is born with", () => {
+  /*
+   * ADR-0021 makes the canvas clean by default. That decision is only real if
+   * it reaches the element constructors, because they are what a drawn shape
+   * goes through -- `DEFAULT_ELEMENT_PROPS.roughness` being 0 while these
+   * defaulted to `ROUGHNESS.artist` would leave the canvas exactly as sketchy
+   * as before, with the constant test in `@firo/common` still green.
+   */
+
+  it.each(["rectangle", "diamond", "ellipse"] as const)(
+    "is clean for a new %s",
+    (type) => {
+      expect(newElement({ type, x: 0, y: 0 }).roughness).toBe(
+        common.ROUGHNESS.architect,
+      );
+    },
+  );
+
+  it("is clean for a new line", () => {
+    expect(newLinearElement({ type: "line", x: 0, y: 0 }).roughness).toBe(
+      common.ROUGHNESS.architect,
+    );
+  });
+
+  it("is clean for a new arrow", () => {
+    expect(newLinearElement({ type: "arrow", x: 0, y: 0 }).roughness).toBe(
+      common.ROUGHNESS.architect,
+    );
+  });
+
+  it("still honours an explicit roughness", () => {
+    // The hand-drawn styles have to keep working per element: the default is a
+    // starting point, not an override (ADR-0021 leaves the option in place).
+    for (const roughness of [
+      common.ROUGHNESS.artist,
+      common.ROUGHNESS.cartoonist,
+      common.ROUGHNESS.architect,
+    ]) {
+      expect(
+        newElement({ type: "rectangle", x: 0, y: 0, roughness }).roughness,
+      ).toBe(roughness);
+    }
+  });
+});

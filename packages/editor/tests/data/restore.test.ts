@@ -6,6 +6,7 @@ import {
   DEFAULT_FONT_SIZE,
   DEFAULT_SIDEBAR,
   FONT_FAMILY,
+  ROUGHNESS,
   ROUNDNESS,
   STICKY_NOTE_MAX_FONT_SIZE,
   DEFAULT_STICKY_NOTE_BG,
@@ -501,6 +502,27 @@ describe("restoreElements", () => {
       seed: expect.any(Number),
       versionNonce: expect.any(Number),
     });
+  });
+
+  it("keeps the roughness a board was saved with", () => {
+    /*
+     * ADR-0021 moved the *default* roughness to `architect` (0) for new
+     * elements. It did not change what the value already stored on an element
+     * means, and `roughness` is stored per element — so a board drawn before
+     * that change has to open looking exactly as it was drawn. Without this
+     * test the change is only shown to affect *new* elements, which is the half
+     * that was never at risk.
+     */
+    for (const roughness of [
+      ROUGHNESS.architect,
+      ROUGHNESS.artist,
+      ROUGHNESS.cartoonist,
+    ]) {
+      const saved = API.createElement({ type: "rectangle", roughness });
+      const restored = restore.restoreElements([saved], null)[0];
+
+      expect(restored.roughness).toBe(roughness);
+    }
   });
 
   it("should restore arrow element correctly", () => {

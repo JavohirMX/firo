@@ -1,6 +1,8 @@
 # Bundled font licences
 
-**Status: one blocker left. Six of seven distributed fonts are cleared, and the licence text now ships with each of them.**
+**Status: one blocker left. Seven of eight distributed fonts are cleared, and the licence text now ships with each of them.**
+
+Two font roots are scanned, because two packages ship fonts: `packages/editor/fonts/` (the canvas faces and the editor's UI face) and `packages/ui/src/fonts/` (the chrome face). `packages/common/tests/fonts.test.ts` walks both.
 
 This file is the audit trail for the `AGENTS.md` rule that no font file may be shipped whose licence we cannot state. Every "verified" below was read from a primary source — the font's own upstream repository — on **2026-10-02**, not recalled. Full working, including what each licence actually says and what could not be verified, is in [`docs/research/font-licence-verification.md`](docs/research/font-licence-verification.md).
 
@@ -20,6 +22,7 @@ Both are handled in [`docs/adr/0013-replace-the-virgil-font.md`](docs/adr/0013-r
 | Font | `FONT_FAMILY` id | Licence | Verified | Source fetched | Ship |
 | --- | --- | --- | --- | --- | --- |
 | **Nunito** | 6 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/nunito/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/nunito/OFL.txt) | **yes** — `Nunito/OFL.txt` committed. Default body text; the most load-bearing licence here. |
+| **Plus Jakarta Sans** | — (**chrome only**; no `FONT_FAMILY` id) | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/plusjakartasans/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/plusjakartasans/OFL.txt) | **yes** — `packages/ui/src/fonts/PlusJakartaSans/OFL.txt` committed, four woff2 subsets beside it. The chrome typeface ([ADR-0023](docs/adr/0023-open-icons-and-ui-typeface.md)); not selectable on the canvas. |
 | Lilita One | 7 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/lilitaone/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/lilitaone/OFL.txt) | **yes** — `Lilita/OFL.txt` committed. RFN `Lilita One`; we ship unmodified. |
 | Assistant | 10 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/assistant/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/assistant/OFL.txt) + [`hafontia-zz/Assistant`](https://raw.githubusercontent.com/hafontia/Assistant/master/OFL.txt) | **yes** — `Assistant/OFL.txt` committed. **The previous entry in this table was wrong**; see below. |
 | Xiaolai (小赖) | fallback | SIL OFL 1.1 | **yes** | [`lxgw/kose-font/OFL.txt`](https://raw.githubusercontent.com/lxgw/kose-font/master/OFL.txt) | **yes** — `Xiaolai/OFL.txt` committed. Upstream requires the full OFL text on redistribution; it is there. |
@@ -28,6 +31,24 @@ Both are handled in [`docs/adr/0013-replace-the-virgil-font.md`](docs/adr/0013-r
 | **Liberation Sans** | 9 | **GPLv2 + font exception** | **yes — and it is not OFL** | [`License.txt`](https://web.archive.org/web/2019/https://pagure.io/liberation-fonts/raw/cf3040c146097d6b7361e2823d5c6b5c309a456a/f/master/License.txt) via Wayback; the live pagure URL 404s | **NO — release blocker.** See below. |
 | Helvetica | 2 | — | n/a | `local: true` | Not distributed — resolves to the OS copy. No binary, nothing to clear. |
 | Emoji | — | — | n/a | `local://` via `LOCAL_FONT_PROTOCOL` | Not distributed — resolves to the OS emoji font. No binary, nothing to clear. |
+
+### Plus Jakarta Sans is a chrome face, and lives with the chrome
+
+Verified 2026-10-14, from [google/fonts `ofl/plusjakartasans/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/plusjakartasans/OFL.txt): "Copyright 2020 The Plus Jakarta Sans Project Authors (https://github.com/tokotype/PlusJakartaSans)", SIL Open Font License 1.1. The text is committed beside the binaries.
+
+The four `.woff2` files are Google Fonts' own subsets, fetched from the stylesheet Google serves to a browser UA (`https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..700`), which is what the editor's faces are upstream too. SHA-256 at the time of the fetch:
+
+| File | Bytes | SHA-256 |
+| --- | --- | --- |
+| `PlusJakartaSans-cyrillic-ext.woff2` | 1716 | `a16f29d7d2a21a4f9b3249a82eb2725ed5bdb91500dfb5c4758977de27477f20` |
+| `PlusJakartaSans-vietnamese.woff2` | 8292 | `5c913fc1b1f86f4b475e5df45a796aa480d1f7f0891ed6f1a5991d6d1be887c3` |
+| `PlusJakartaSans-latin-ext.woff2` | 21688 | `0303e02b53b0298fb26a0193941a2e8754f0f9a9fce50d90b178d8da3424873f` |
+| `PlusJakartaSans-latin.woff2` | 27272 | `cd8db90cd950e26bc8761f65d323588bd5cd112d326d6d322bc7c8ea86771215` |
+
+Two things about this row are deliberate rather than unfinished:
+
+- **No `FONT_FAMILY` id, and not in `FONT_METADATA`.** That table is the _canvas_ font registry: it supplies per-face vertical metrics for text laid out on the canvas, and every entry is selectable in the picker. Chrome text is neither. ADR-0023 item 4 keeps the canvas default on Nunito.
+- **It lives under `packages/ui/`, not `packages/editor/fonts/`.** The editor's `fonts.css` is replaced wholesale in an `apps/web` production build by `scripts/woff2/woff2-vite-plugins.js`, which emits only the faces on screen before the scene mounts. A chrome face declared there and not in that plugin would build, test clean, and vanish from production. `@firo/ui` therefore ships its own binary and registers the faces from `packages/ui/src/fonts.ts`, against the URLs the bundler emits — Vite copies a font only when it is imported as a module, so a `url()` in a stylesheet is not enough either ([ADR-0024](docs/adr/0024-the-chrome-font-lives-with-the-chrome.md)).
 
 ## The remaining blocker: Liberation Sans is GPL, not OFL
 

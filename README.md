@@ -91,6 +91,6 @@ Firo is a solo project at the moment. Contributions are welcome, but please read
 
 MIT. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) for provenance — including the exact Excalidraw commit this fork started from.
 
-Firo ships font binaries, and their licences are tracked separately in [`FONT-LICENSES.md`](FONT-LICENSES.md). **That audit is not finished**: several bundled faces are recorded as unverified, which is a release blocker rather than a to-do. See [ADR-0014](docs/adr/0014-font-position-after-phase-0.md).
+Firo ships font binaries, and their licences are tracked in [`FONT-LICENSES.md`](FONT-LICENSES.md), which is the audit trail — a "believed" row there is treated as worse than an unverified one. Seven of the eight distributed faces are cleared with their licence text committed beside the binary, and `packages/common/tests/fonts.test.ts` fails the build if either half goes missing. One face, **Liberation Sans**, is a genuine **release blocker**: we ship its 2007 GPLv2 binary and GPLv2 §3 wants the corresponding source, which we do not have. See [ADR-0014](docs/adr/0014-font-position-after-phase-0.md).
 
 Firo will never charge for the software. If it becomes useful to you and you want to fund its maintenance, that will be handled through GitHub Sponsors and/or Open Collective. There is no paid tier and there will not be one.

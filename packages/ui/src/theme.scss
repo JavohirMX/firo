@@ -19,6 +19,15 @@
  * Every property carries the `--firo-` prefix (`CSS_PREFIX` in `tokens.ts`), so
  * these never collide with the editor's own variables in `css/theme.scss`.
  * Consolidating the two is tracked in `docs/plans/phase-7-5-miro-ui.md` §7.5.7.
+ *
+ * ## Fonts
+ *
+ * `--firo-font-ui` names the chrome typeface, but this file does **not** declare
+ * its `@font-face` rules: only font files that are imported as modules are
+ * emitted by the bundler, so the faces are registered from `./fonts` with the
+ * URLs the build actually produced. `loadChromeFonts()` is what makes
+ * `--firo-font-ui` resolve to Plus Jakarta Sans rather than falling through to
+ * Nunito.
  */
 
 :root {

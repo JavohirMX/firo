@@ -623,7 +623,11 @@ export const DEFAULT_ELEMENT_PROPS: {
   fillStyle: "solid",
   strokeWidth: STROKE_WIDTH[DEFAULT_ELEMENT_STROKE_WIDTH_KEY],
   strokeStyle: "solid",
-  roughness: ROUGHNESS.artist,
+  // Clean by default, per ADR-0021: a board should read as the tool teams
+  // already know, and the sketch stroke is the option rather than the frame.
+  // Stored per element, so a board created before this change keeps the
+  // roughness it was drawn with -- this only decides what a *new* element is.
+  roughness: ROUGHNESS.architect,
   opacity: 100,
   locked: false,
 };

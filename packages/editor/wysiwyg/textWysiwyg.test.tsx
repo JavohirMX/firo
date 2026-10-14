@@ -2390,7 +2390,8 @@ describe("textWysiwyg", () => {
           link: null,
           locked: false,
           opacity: 100,
-          roughness: 1,
+          // the clean default (ADR-0021): this container is a new element
+          roughness: 0,
           roundness: null,
           strokeColor: "#1e1e1e",
           strokeStyle: "solid",
