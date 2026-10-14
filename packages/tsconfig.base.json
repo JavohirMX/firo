@@ -28,7 +28,9 @@
       "@firo/schema": ["./schema/src/index.ts"],
       "@firo/schema/*": ["./schema/src/*"],
       "@firo/doc": ["./doc/src/index.ts"],
-      "@firo/doc/*": ["./doc/src/*"]
+      "@firo/doc/*": ["./doc/src/*"],
+      "@firo/ui": ["./ui/src/index.ts"],
+      "@firo/ui/*": ["./ui/src/*"]
     }
   }
 }

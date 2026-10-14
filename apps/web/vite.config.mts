@@ -116,6 +116,17 @@ export default defineConfig(({ mode }) => {
             "../../packages/facilitation/src/$1",
           ),
         },
+        {
+          find: /^@firo\/ui$/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/ui/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/ui\/(.*?)/,
+          replacement: path.resolve(__dirname, "../../packages/ui/src/$1"),
+        },
       ],
     },
     build: {

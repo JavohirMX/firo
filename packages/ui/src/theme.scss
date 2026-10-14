@@ -1,0 +1,121 @@
+/**
+ * `@firo/ui` theme — the custom properties the chrome reads.
+ *
+ * This file and `tokens.ts` are two views of one thing. `tokens.ts` is the
+ * source of truth for TypeScript; this file declares the same values as CSS
+ * custom properties. `tests/tokens.test.ts` asserts they agree: a token added in
+ * one place and not the other fails the suite.
+ *
+ * ## Dark mode
+ *
+ * The dark overrides are scoped to `.theme--dark`, not to a media query or a
+ * `prefers-color-scheme` block. That is the class the editor already toggles on
+ * its root (`packages/editor/components/App.tsx`) and on portal containers
+ * (`packages/editor/hooks/useCreatePortalContainer.ts`), so the chrome inherits
+ * the same theme signal as everything else with no second source of truth.
+ *
+ * ## Namespacing
+ *
+ * Every property carries the `--firo-` prefix (`CSS_PREFIX` in `tokens.ts`), so
+ * these never collide with the editor's own variables in `css/theme.scss`.
+ * Consolidating the two is tracked in `docs/plans/phase-7-5-miro-ui.md` §7.5.7.
+ */
+
+:root {
+  /* Typography */
+  --firo-font-ui: "Plus Jakarta Sans", "Nunito", system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --firo-font-size-xs: 11px;
+  --firo-font-size-sm: 12px;
+  --firo-font-size-md: 14px;
+  --firo-font-size-lg: 16px;
+  --firo-font-size-xl: 20px;
+  --firo-font-weight-regular: 400;
+  --firo-font-weight-medium: 500;
+  --firo-font-weight-semibold: 600;
+  --firo-line-height-tight: 1.2;
+  --firo-line-height-normal: 1.45;
+
+  /* Spacing */
+  --firo-space-xs: 4px;
+  --firo-space-sm: 8px;
+  --firo-space-md: 12px;
+  --firo-space-lg: 16px;
+  --firo-space-xl: 24px;
+  --firo-space-xxl: 32px;
+
+  /* Radii */
+  --firo-radius-sm: 4px;
+  --firo-radius-md: 8px;
+  --firo-radius-lg: 12px;
+  --firo-radius-pill: 999px;
+
+  /* Colour — light */
+  --firo-color-surface: #f5f6f8;
+  --firo-color-panel: #ffffff;
+  --firo-color-panel-raised: #ffffff;
+  --firo-color-border: #e4e5ea;
+  --firo-color-border-strong: #c9cbd3;
+  --firo-color-text: #111318;
+  --firo-color-text-muted: #5f6270;
+  --firo-color-accent: #5b4bff;
+  --firo-color-on-accent: #ffffff;
+  --firo-color-focus-ring: #0b7285;
+  --firo-color-selection: #5b4bff;
+  --firo-color-danger: #d5253c;
+  --firo-color-success: #12794a;
+  --firo-color-warning: #a35c00;
+  --firo-color-shadow: rgba(15, 17, 26, 0.12);
+
+  /* Elevation */
+  --firo-elevation-panel: 0 1px 2px var(--firo-color-shadow),
+    0 4px 12px var(--firo-color-shadow);
+  --firo-elevation-floating: 0 6px 20px var(--firo-color-shadow);
+
+  /* Motion */
+  --firo-motion-fast: 120ms;
+  --firo-motion-base: 180ms;
+  --firo-motion-slow: 260ms;
+  --firo-motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Stacking order */
+  --firo-z-rail: 3;
+  --firo-z-panel: 4;
+  --firo-z-selection: 5;
+  --firo-z-menu: 6;
+  --firo-z-overlay: 7;
+}
+
+.theme--dark {
+  --firo-color-surface: #151619;
+  --firo-color-panel: #212227;
+  --firo-color-panel-raised: #292a30;
+  --firo-color-border: #34363d;
+  --firo-color-border-strong: #454851;
+  --firo-color-text: #f2f3f7;
+  --firo-color-text-muted: #9c9fab;
+  --firo-color-accent: #8f86ff;
+  --firo-color-on-accent: #0d0e12;
+  --firo-color-focus-ring: #4dd4e8;
+  --firo-color-selection: #8f86ff;
+  --firo-color-danger: #ff7183;
+  --firo-color-success: #4fd18e;
+  --firo-color-warning: #f2b04a;
+  --firo-color-shadow: rgba(0, 0, 0, 0.5);
+}
+
+/**
+ * Respect the user's reduced-motion preference.
+ *
+ * The chrome animates tool switches and panel transitions. For anyone who has
+ * asked the OS for less motion, the durations collapse to zero rather than the
+ * animations being removed — that keeps every transition end event firing, which
+ * component state depends on.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --firo-motion-fast: 0ms;
+    --firo-motion-base: 0ms;
+    --firo-motion-slow: 0ms;
+  }
+}

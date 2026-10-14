@@ -42,7 +42,9 @@
       "@firo/math": ["./packages/math/src/index.ts"],
       "@firo/math/*": ["./packages/math/src/*"],
       "@firo/utils": ["./packages/utils/src/index.ts"],
-      "@firo/utils/*": ["./packages/utils/src/*"]
+      "@firo/utils/*": ["./packages/utils/src/*"],
+      "@firo/ui": ["./packages/ui/src/index.ts"],
+      "@firo/ui/*": ["./packages/ui/src/*"]
     }
   },
   "include": ["packages", "apps/web"],
