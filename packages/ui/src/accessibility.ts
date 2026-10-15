@@ -112,6 +112,35 @@ export const buildAccessibilityNodes = (
 };
 
 /**
+ * How many tree nodes are rendered at once.
+ *
+ * Large enough that a screen reader user navigates without the window chasing
+ * them on every arrow key, small enough that a 10,000-element board does not
+ * build a 10,000-node DOM on every debounced refresh. The full item list is
+ * always held by the component: this bounds the *render*, not the data.
+ */
+export const DEFAULT_TREE_WINDOW = 100;
+
+/**
+ * The first index to render, such that `activeIndex` is inside the window.
+ *
+ * Clamped at both ends so the window does not start before the first element or
+ * run past the last, which would leave blank space at the end of a list a
+ * screen reader is reading linearly.
+ */
+export const treeWindowStart = (
+  activeIndex: number,
+  length: number,
+  windowSize: number,
+): number => {
+  if (length <= windowSize) {
+    return 0;
+  }
+  const centred = activeIndex - Math.floor(windowSize / 2);
+  return Math.max(0, Math.min(centred, length - windowSize));
+};
+
+/**
  * The key that moves focus forward within the tree by one element, or `null`
  * at the end of the list.
  *

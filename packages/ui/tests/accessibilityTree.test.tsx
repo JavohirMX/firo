@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 
 import {
   AccessibilityTree,
+  DEFAULT_TREE_WINDOW,
   buildAccessibilityNodes,
   describeAccessibilityItem,
   resolveTabNavigation,
   resolveTreeNavigation,
+  treeWindowStart,
   type AccessibilityTreeItem,
 } from "../src";
 
@@ -260,6 +262,64 @@ describe("@firo/ui accessibility tree", () => {
       const status = screen.getByRole("status");
       expect(status.getAttribute("aria-live")).toBe("polite");
       expect(status.textContent).toBe("Saved");
+    });
+  });
+
+  describe("treeWindowStart", () => {
+    it("keeps the active element inside the window", () => {
+      // 10 of 500, centred where possible.
+      const start = treeWindowStart(250, 500, 10);
+      expect(start).toBeLessThanOrEqual(250);
+      expect(start + 10).toBeGreaterThan(250);
+    });
+
+    it("clamps at both ends", () => {
+      expect(treeWindowStart(0, 500, 10)).toBe(0);
+      expect(treeWindowStart(499, 500, 10)).toBe(490);
+    });
+
+    it("never starts below zero on a board smaller than the window", () => {
+      expect(treeWindowStart(3, 5, DEFAULT_TREE_WINDOW)).toBe(0);
+    });
+  });
+
+  describe("AccessibilityTree virtualisation", () => {
+    const many = Array.from({ length: 500 }, (_, i) => ({
+      id: `n${i}`,
+      kind: "Rectangle",
+    }));
+
+    it("renders only a window, while still reporting the true set size", () => {
+      render(
+        <AccessibilityTree items={many} windowSize={10} onActivate={vi.fn()} />,
+      );
+
+      expect(screen.getAllByRole("listitem")).toHaveLength(10);
+      // The position is the position in the board, not in the window.
+      const firstRendered = screen.getByRole("button", {
+        name: /Position 1 of 500/,
+      });
+      expect(firstRendered.closest("li")!.getAttribute("aria-setsize")).toBe(
+        "500",
+      );
+    });
+
+    it("shifts the window when focus moves past its end", () => {
+      render(
+        <AccessibilityTree items={many} windowSize={10} onActivate={vi.fn()} />,
+      );
+
+      const buttons = screen.getAllByRole("button");
+      act(() => {
+        buttons[9].focus();
+        fireEvent.keyDown(buttons[9], { key: "ArrowDown" });
+      });
+
+      // Focused element is now 11 of 500, and it is rendered.
+      expect(document.activeElement?.getAttribute("aria-label")).toBe(
+        "Rectangle. Position 11 of 500.",
+      );
+      expect(screen.getAllByRole("listitem")).toHaveLength(10);
     });
   });
 });
