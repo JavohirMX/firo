@@ -84,6 +84,8 @@
     "test:coverage": "vitest --coverage",
     "test:coverage:watch": "vitest --coverage --watch",
     "test:ui": "yarn test --ui --coverage.enabled=true",
+    "verify:contrast": "node scripts/verify/contrast.mjs",
+    "verify:a11y": "node scripts/verify/a11y.mjs",
     "fix:code": "yarn test:code --fix",
     "fix:other": "yarn prettier --write",
     "fix": "yarn fix:other && yarn fix:code",

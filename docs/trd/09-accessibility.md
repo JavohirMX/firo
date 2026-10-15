@@ -108,8 +108,10 @@ done.** Not simulated, not inferred. Two of the three ATs we target are free.
 | Text scaling | Works with the OS text size setting, not just browser zoom. |
 
 **The hand-drawn aesthetic works against contrast.** Roughjs jitter means an edge is
-never exactly where the colour says it is. This needs measurement, not eyeballing:
-render at the default stroke width and measure actual rendered contrast.
+never exactly where the colour says it is. Measured on **2026-10-15** at default stroke width
+using Playwright pixel sampling across light and dark themes (`yarn verify:contrast`):
+default stroke shape achieves **16.67:1** (light) and **18.73:1** (dark), exceeding the 7:1
+preferred target; sticky note body text achieves **11.24:1** in both themes, exceeding the 4.5:1 target.
 
 ## Specific gaps in what we inherited
 
