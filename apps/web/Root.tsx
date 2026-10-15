@@ -2,10 +2,13 @@ import React from "react";
 
 import { BoardHomeScreen } from "./BoardHomeScreen";
 import {
+  getBoardMeta,
   openBoardById,
+  putBoardMeta,
   resolveInitialBoard,
   setActiveBoard,
 } from "./board/library";
+import { resolveShareToken } from "./board/collabProvider";
 import { boardUrl, readRoute } from "./board/routes";
 
 /**
@@ -44,6 +47,28 @@ export const Root: React.FC = () => {
 
     const decide = async () => {
       try {
+        // Capability share link entry: /s/:token
+        const shareMatch = window.location.pathname.match(/^\/s\/([^/]+)/);
+        if (shareMatch) {
+          const token = shareMatch[1];
+          const resolved = await resolveShareToken(token);
+          if (cancelled) {
+            return;
+          }
+          if (resolved?.boardId) {
+            let meta = await getBoardMeta(resolved.boardId);
+            if (!meta) {
+              meta = await putBoardMeta({
+                id: resolved.boardId,
+                name: "Shared Board",
+              });
+            }
+            setActiveBoard(meta);
+            setScreen({ kind: "board" });
+            return;
+          }
+        }
+
         const route = readRoute(window.location.search);
 
         if (route?.kind === "home") {

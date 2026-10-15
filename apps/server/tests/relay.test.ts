@@ -312,10 +312,14 @@ describe("WebSocket Relay & Permission Gates", () => {
         .getMap("elements")
         .set("malicious-el", { x: 999, y: 999 });
 
+      const closePromise = new Promise<number>((resolve) => {
+        clientCommenter.ws.on("close", (code) => resolve(code));
+      });
+
       clientCommenter.sendUpdate(elementUpdate!);
 
-      // Give server event loop a moment to process/reject
-      await new Promise((r) => setTimeout(r, 100));
+      const closeCode = await closePromise;
+      expect(closeCode).toBe(4403);
 
       // Assert that room doc on server does NOT have malicious element
       const room = relay.getRoom("board-comment-gate");
@@ -326,21 +330,29 @@ describe("WebSocket Relay & Permission Gates", () => {
         clientOwner.doc.getMap("elements").get("malicious-el"),
       ).toBeUndefined();
 
-      // 3. INVALID WRITE: Commenter attempts to add collection record
+      // 3. INVALID WRITE: Commenter connects again and attempts to add collection record
+      const clientCommenter2 = await createClient(
+        `/boards/board-comment-gate?share=${share.token}`,
+      );
+
       let recordUpdate: Uint8Array;
-      clientCommenter.doc.on("update", (u) => (recordUpdate = u));
-      clientCommenter.doc
+      clientCommenter2.doc.on("update", (u) => (recordUpdate = u));
+      clientCommenter2.doc
         .getMap("records")
         .set("rec-1", { title: "Hacked Record" });
 
-      clientCommenter.sendUpdate(recordUpdate!);
-      await new Promise((r) => setTimeout(r, 100));
+      const closePromise2 = new Promise<number>((resolve) => {
+        clientCommenter2.ws.on("close", (code) => resolve(code));
+      });
+
+      clientCommenter2.sendUpdate(recordUpdate!);
+      const closeCode2 = await closePromise2;
+      expect(closeCode2).toBe(4403);
 
       expect(room?.doc.getMap("records").get("rec-1")).toBeUndefined();
       expect(clientOwner.doc.getMap("records").get("rec-1")).toBeUndefined();
 
       await clientOwner.close();
-      await clientCommenter.close();
     });
 
     it("disconnects an editor immediately if demoted mid-session upon write", async () => {

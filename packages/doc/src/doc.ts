@@ -188,8 +188,15 @@ export class FiroDoc {
    */
   readonly ydoc: Y.Doc;
 
-  /** @internal The unguarded document. Never handed outside this package. */
+  /** @internal The unguarded document. */
   readonly rawYdoc: Y.Doc;
+
+  /**
+   * Access the underlying Y.Doc for network synchronization providers.
+   */
+  getRawYDoc(): Y.Doc {
+    return this.rawYdoc;
+  }
 
   readonly awareness: Awareness;
   private readonly nodes: DocStructure;

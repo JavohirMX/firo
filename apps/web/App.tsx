@@ -115,8 +115,13 @@ import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer } from "./components/CommentLayer";
 import { TagLayer } from "./components/TagLayer";
 import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
-import { CollabBar } from "./components/CollabBar";
+import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
 import { ShareModal } from "./components/ShareModal";
+import {
+  CollabProvider,
+  resolveShareToken,
+  type CollaboratorInfo,
+} from "./board/collabProvider";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
 import { Minimap } from "./components/Minimap";
@@ -872,13 +877,71 @@ const ExcalidrawWrapper = () => {
     }, VERSION_TIMEOUT);
   }, []);
 
-  /**
-   * Firo v1 is single-player. Realtime collaboration arrives in v2 with a
-   * self-hosted sync server — see ADR-0002 and docs/prd/02-scope.md. These are
-   * hard-coded rather than atom-driven so the removed collab layer leaves no
-   * hooks behind in this component.
-   */
-  const isCollaborating = false;
+  const collabProviderRef = useRef<CollabProvider | null>(null);
+  const [collabStatus, setCollabStatus] =
+    useState<ConnectionStatus>("connecting");
+  const [collaborators, setCollaborators] = useState<
+    readonly CollaboratorInfo[]
+  >([]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const setupCollab = async () => {
+      const shareMatch =
+        typeof window !== "undefined"
+          ? window.location.pathname.match(/^\/s\/([^/]+)/)
+          : null;
+      const shareToken = shareMatch ? shareMatch[1] : null;
+
+      let boardId =
+        (boardDoc().read().meta?.id as string | undefined) ||
+        getActiveBoard()?.id ||
+        "default";
+
+      if (shareToken && (!boardId || boardId === "default")) {
+        const resolved = await resolveShareToken(shareToken);
+        if (resolved?.boardId) {
+          boardId = resolved.boardId;
+        }
+      }
+
+      if (isCancelled) {
+        return undefined;
+      }
+
+      const provider = new CollabProvider({
+        boardId,
+        shareToken,
+        doc: boardDoc(),
+      });
+
+      collabProviderRef.current = provider;
+
+      const unsubStatus = provider.onStatusChange((status) => {
+        setCollabStatus(status === "disconnected" ? "offline" : status);
+      });
+      const unsubCollabs = provider.onCollaboratorsChange((collabs) => {
+        setCollaborators(collabs);
+      });
+
+      return () => {
+        unsubStatus();
+        unsubCollabs();
+        provider.destroy();
+        collabProviderRef.current = null;
+      };
+    };
+
+    const cleanupPromise = setupCollab();
+
+    return () => {
+      isCancelled = true;
+      void cleanupPromise.then((cleanup) => cleanup?.());
+    };
+  }, []);
+
+  const isCollaborating = collabStatus === "connected";
   /**
    * Follow-mode viewport status. Presence arrives with the v2 sync server
    * (ADR-0002), so there is no followed user to display in v1 and this frame is
@@ -1150,6 +1213,10 @@ const ExcalidrawWrapper = () => {
      */
     commitBoard();
 
+    if (appState.activeTool?.type) {
+      collabProviderRef.current?.setLocalTool(appState.activeTool.type);
+    }
+
     // this check is redundant, but since this is a hot path, it's best
     // not to evaludate the nested expression every time
     if (!LocalData.isSavePaused()) {
@@ -1308,13 +1375,8 @@ const ExcalidrawWrapper = () => {
         )}
         renderTopRightUI={() => (
           <CollabBar
-            connectionStatus={
-              isOffline
-                ? "offline"
-                : isCollaborating
-                ? "connected"
-                : "connected"
-            }
+            connectionStatus={isOffline ? "offline" : collabStatus}
+            collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
             <button
@@ -1343,6 +1405,19 @@ const ExcalidrawWrapper = () => {
             <FacilitatorBar />
           </CollabBar>
         )}
+        onPointerUpdate={(payload) => {
+          if (payload.pointer.tool === "laser") {
+            collabProviderRef.current?.setLocalLaser(
+              payload.pointer.x,
+              payload.pointer.y,
+            );
+          } else {
+            collabProviderRef.current?.setLocalCursor(
+              payload.pointer.x,
+              payload.pointer.y,
+            );
+          }
+        }}
         viewportStatusFrame={viewportStatusFrame}
         onChange={onChange}
         onExport={onExport}
@@ -1396,7 +1471,10 @@ const ExcalidrawWrapper = () => {
           composerTarget={commentTarget}
           onCloseComposer={() => setCommentTarget(null)}
         />
-        <RemoteCursorLayer excalidrawAPI={excalidrawAPI} />
+        <RemoteCursorLayer
+          excalidrawAPI={excalidrawAPI}
+          collaborators={collaborators}
+        />
         <ShareModal
           isOpen={shareModalOpen}
           onClose={() => setShareModalOpen(false)}

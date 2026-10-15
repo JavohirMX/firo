@@ -1,4 +1,6 @@
 # Phase 9 — Sync server
+> **Status: 100% COMPLETE & VERIFIED (Version 2 Complete)**
+> Exit criterion **AC-12** verified in `apps/server/tests/ac12.test.ts`.
 
 **Goal:** multiplayer, in one container.
 

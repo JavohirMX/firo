@@ -59,6 +59,12 @@ export class Room {
     syncProtocol.writeSyncStep1(encoder, this.doc);
     client.send(encoding.toUint8Array(encoder));
 
+    // Send full document state to client so client is in sync immediately
+    const step2Encoder = encoding.createEncoder();
+    encoding.writeVarUint(step2Encoder, MESSAGE_SYNC);
+    syncProtocol.writeSyncStep2(step2Encoder, this.doc);
+    client.send(encoding.toUint8Array(step2Encoder));
+
     // 2. Send current awareness states to client
     const states = this.awareness.getStates();
     if (states.size > 0) {
@@ -161,7 +167,15 @@ export class Room {
           updateBytes,
         );
         if (!isAllowed) {
-          // Commenter attempted to write non-comment partitions: reject update!
+          // Unauthorized write attempt (e.g. Commenter writing elements/records):
+          // log violation, reject update, and disconnect socket
+          console.warn(
+            `[Room ${this.boardId}] Unauthorized write attempt by client ${
+              client.userId || "anonymous"
+            } (role: ${currentRole}). Disconnecting.`,
+          );
+          client.close(4403, "Unauthorized write attempt");
+          this.removeClient(client);
           return;
         }
 

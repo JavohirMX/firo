@@ -5,6 +5,7 @@
 !.npmrc
 !.prettierrc
 !apps/web/
+!apps/server/
 !package.json
 !public/
 !packages/

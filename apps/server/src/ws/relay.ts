@@ -159,7 +159,7 @@ export class WebSocketRelay {
       let shareToken =
         fullUrl.searchParams.get("share") ||
         fullUrl.searchParams.get("shareToken");
-      let boardId: string | null = null;
+      let boardId: string | null = fullUrl.searchParams.get("boardId");
 
       if (pathname.startsWith("/s/")) {
         shareToken = pathname.slice(3).split("/")[0];
@@ -167,7 +167,7 @@ export class WebSocketRelay {
         boardId = pathname.slice(8).split("/")[0];
       } else if (pathname.startsWith("/ws/")) {
         boardId = pathname.slice(4).split("/")[0];
-      } else {
+      } else if (!boardId) {
         // e.g. /:boardId
         const cleaned = pathname.replace(/^\/+|\/+$/g, "");
         if (cleaned && !cleaned.startsWith("api/")) {
