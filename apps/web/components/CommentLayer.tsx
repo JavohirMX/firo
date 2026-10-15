@@ -18,14 +18,17 @@ import {
 
 import "./CommentLayer.scss";
 
+export type CommentTarget =
+  | string
+  | { elementId?: string; point?: { x: number; y: number } };
+
 interface CommentLayerProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
   /**
-   * The element a comment is being written about, or null. Owned by the app
-   * shell and set from the selection toolbar, because "which element" is a
-   * *selection* concern and the selection lives in the editor, not here.
+   * The element or point a comment is being written about, or null. Owned by the
+   * app shell.
    */
-  composerTarget: string | null;
+  composerTarget: CommentTarget | null;
   onCloseComposer: () => void;
 }
 
@@ -35,6 +38,11 @@ const pinPosition = (
   elements: readonly FiroElement[],
   viewport: { scrollX: number; scrollY: number; zoom: number },
 ): { left: number; top: number } | null => {
+  if (!thread.elementId) {
+    const left = (thread.anchor.x + viewport.scrollX) * viewport.zoom;
+    const top = (thread.anchor.y + viewport.scrollY) * viewport.zoom;
+    return { left, top };
+  }
   const element = elements.find(
     (candidate) => candidate.id === thread.elementId,
   );
@@ -159,10 +167,19 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
     zoom: appState?.zoom.value ?? 1,
   };
 
-  const composerPosition = composerTarget
+  const targetElementId =
+    typeof composerTarget === "string"
+      ? composerTarget
+      : composerTarget?.elementId ?? null;
+  const targetPoint =
+    typeof composerTarget === "object" && composerTarget !== null
+      ? composerTarget.point ?? null
+      : null;
+
+  const composerPosition = targetElementId
     ? (() => {
         const element = elements.find(
-          (candidate) => candidate.id === composerTarget,
+          (candidate) => candidate.id === targetElementId,
         );
         if (!element) {
           return null;
@@ -172,18 +189,30 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
           top: (element.y + viewport.scrollY) * viewport.zoom,
         };
       })()
+    : targetPoint
+    ? {
+        left: (targetPoint.x + viewport.scrollX) * viewport.zoom,
+        top: (targetPoint.y + viewport.scrollY) * viewport.zoom,
+      }
     : null;
 
   const submitComposer = () => {
     if (!composerTarget) {
       return;
     }
-    const element = elements.find(
-      (candidate) => candidate.id === composerTarget,
-    );
-    const id = createCommentThread(doc, composerTarget, draft, {
-      elementWidth: element?.width,
-    });
+    let id: string | null = null;
+    if (targetElementId) {
+      const element = elements.find(
+        (candidate) => candidate.id === targetElementId,
+      );
+      id = createCommentThread(doc, targetElementId, draft, {
+        elementWidth: element?.width,
+      });
+    } else if (targetPoint) {
+      id = createCommentThread(doc, "", draft, {
+        anchor: targetPoint,
+      });
+    }
     setDraft("");
     onCloseComposer();
     if (id) {

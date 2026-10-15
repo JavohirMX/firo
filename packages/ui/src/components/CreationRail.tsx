@@ -17,6 +17,12 @@ import {
   UndoIcon,
   RedoIcon,
   MoreVerticalIcon,
+  TemplateIcon,
+  FlyoutChevron,
+  ConnectorIcon,
+  ShapesIcon,
+  CommentIcon,
+  PlusIcon,
 } from "../icons";
 
 import "./CreationRail.scss";
@@ -34,7 +40,20 @@ export type RailToolType =
   | "freedraw"
   | "frame"
   | "eraser"
-  | "laser";
+  | "laser"
+  | "templates"
+  | "comment"
+  | "shapes"
+  | "connectors"
+  | "pen"
+  | "more";
+
+export interface RailFlyoutItem {
+  id: RailToolType;
+  label: string;
+  icon: React.ReactNode;
+  shortcut?: string;
+}
 
 export interface RailToolItem {
   id: RailToolType;
@@ -54,6 +73,10 @@ export interface RailToolItem {
    * [ADR-0029]: ../../../../docs/adr/0029-the-rail-is-a-per-user-arrangement.md
    */
   activeOn?: RailToolType[];
+  /** Sub-tools available in a flyout popover for this tool group */
+  flyoutItems?: RailFlyoutItem[];
+  /** Currently selected sub-tool within the flyout group */
+  activeSubTool?: RailToolType;
 }
 
 /**
@@ -82,6 +105,12 @@ export const RAIL_TOOL_ICONS: Record<RailToolType, React.ReactNode> = {
   frame: <FrameIcon />,
   eraser: <EraserIcon />,
   laser: <LaserIcon />,
+  templates: <TemplateIcon />,
+  comment: <CommentIcon />,
+  shapes: <ShapesIcon />,
+  connectors: <ConnectorIcon />,
+  pen: <PenIcon />,
+  more: <PlusIcon />,
 };
 
 export interface CreationRailProps {
@@ -107,6 +136,8 @@ export interface CreationRailProps {
   onUnpin?: (tool: RailToolType) => void;
   /** Called when an unpinned tool is chosen from the hidden-tools list. */
   onRestore?: (tool: RailToolType) => void;
+  /** Called when Miro-style '+' button is clicked to open more tools/apps. */
+  onMoreTools?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   onUndo?: () => void;
@@ -144,6 +175,7 @@ export const CreationRail: React.FC<CreationRailProps> = ({
   onReorder,
   onUnpin,
   onRestore,
+  onMoreTools,
   canUndo = true,
   canRedo = true,
   onUndo,
@@ -153,17 +185,19 @@ export const CreationRail: React.FC<CreationRailProps> = ({
   const [dragging, setDragging] = useState<number | null>(null);
   const [menuFor, setMenuFor] = useState<RailToolType | null>(null);
   const [hiddenOpen, setHiddenOpen] = useState(false);
+  const [openFlyoutFor, setOpenFlyoutFor] = useState<RailToolType | null>(null);
 
   // Anything open closes on Escape, and on a pointer press outside the rail.
   // A press *inside* is left alone so the click that follows can land on the
   // menu item it was aimed at.
   useEffect(() => {
-    if (menuFor === null && !hiddenOpen) {
+    if (menuFor === null && !hiddenOpen && openFlyoutFor === null) {
       return;
     }
     const closeAll = () => {
       setMenuFor(null);
       setHiddenOpen(false);
+      setOpenFlyoutFor(null);
     };
     const onPointerDown = (event: PointerEvent) => {
       if (railRef.current?.contains(event.target as Node)) {
@@ -182,7 +216,7 @@ export const CreationRail: React.FC<CreationRailProps> = ({
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuFor, hiddenOpen]);
+  }, [menuFor, hiddenOpen, openFlyoutFor]);
 
   /**
    * Slot 0 is the pinned pointer entry, so nothing may land there: a drop aimed
@@ -212,6 +246,10 @@ export const CreationRail: React.FC<CreationRailProps> = ({
             activeTool as RailToolType,
           );
           const menuOpen = menuFor === tool.id;
+          const hasFlyout = Boolean(
+            tool.flyoutItems && tool.flyoutItems.length > 0,
+          );
+          const flyoutOpen = openFlyoutFor === tool.id;
 
           return (
             <div className="firo-rail__slot" key={tool.id}>
@@ -219,10 +257,21 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                 type="button"
                 className={`firo-rail__item${
                   isActive ? " firo-rail__item--active" : ""
-                }${dragging === index ? " firo-rail__item--dragging" : ""}`}
+                }${dragging === index ? " firo-rail__item--dragging" : ""}${
+                  hasFlyout ? " firo-rail__item--has-flyout" : ""
+                }`}
                 draggable={!tool.pinned && Boolean(onReorder)}
-                onClick={(event) => onSelectTool(tool.id, event)}
-                onPointerDown={(event) => onPointerDownTool?.(tool.id, event)}
+                onClick={(event) => {
+                  if (hasFlyout && isActive) {
+                    setOpenFlyoutFor(flyoutOpen ? null : tool.id);
+                  } else {
+                    setOpenFlyoutFor(null);
+                    onSelectTool(tool.activeSubTool ?? tool.id, event);
+                  }
+                }}
+                onPointerDown={(event) =>
+                  onPointerDownTool?.(tool.activeSubTool ?? tool.id, event)
+                }
                 onContextMenu={(event) => {
                   if (tool.pinned || !onUnpin) {
                     return;
@@ -258,10 +307,24 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                 title={tool.label}
                 aria-label={tool.label}
                 aria-pressed={isActive}
-                aria-haspopup={tool.pinned || !onUnpin ? undefined : "menu"}
-                aria-expanded={menuOpen || undefined}
+                aria-haspopup={
+                  hasFlyout
+                    ? "menu"
+                    : tool.pinned || !onUnpin
+                    ? undefined
+                    : "menu"
+                }
+                aria-expanded={hasFlyout ? flyoutOpen : menuOpen || undefined}
               >
                 {tool.icon}
+                {hasFlyout && (
+                  <span
+                    className="firo-rail__flyout-indicator"
+                    aria-hidden="true"
+                  >
+                    <FlyoutChevron />
+                  </span>
+                )}
               </button>
 
               {menuOpen ? (
@@ -283,52 +346,138 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                   </button>
                 </div>
               ) : null}
-            </div>
-          );
-        })}
-      </div>
 
-      {hiddenTools.length > 0 || onUnpin ? (
-        <div className="firo-rail__pill">
-          {/* The way back: every unpinned tool is offered here. */}
-          {hiddenTools.length > 0 ? (
-            <div className="firo-rail__slot">
-              <button
-                type="button"
-                className="firo-rail__item"
-                onClick={() => setHiddenOpen((open) => !open)}
-                title="Unpinned tools"
-                aria-label="Unpinned tools"
-                aria-haspopup="menu"
-                aria-expanded={hiddenOpen}
-              >
-                <MoreVerticalIcon />
-              </button>
-              {hiddenOpen ? (
+              {hasFlyout && flyoutOpen ? (
                 <div
-                  className="firo-rail__menu firo-rail__menu--wide"
+                  className="firo-rail__flyout"
                   role="menu"
-                  aria-label="Unpinned tools"
+                  aria-label={`${tool.label} options`}
                 >
-                  {hiddenTools.map((tool) => (
-                    <button
-                      key={tool.id}
-                      type="button"
-                      role="menuitem"
-                      className="firo-rail__menu-item"
-                      onClick={() => {
-                        setHiddenOpen(false);
-                        onRestore?.(tool.id);
-                      }}
-                    >
-                      <span className="firo-rail__menu-icon">{tool.icon}</span>
-                      {tool.label}
-                    </button>
-                  ))}
+                  {tool.flyoutItems!.map((sub) => {
+                    const isSubActive =
+                      activeTool === sub.id || tool.activeSubTool === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={isSubActive}
+                        className={`firo-rail__flyout-item${
+                          isSubActive ? " firo-rail__flyout-item--active" : ""
+                        }`}
+                        onClick={(event) => {
+                          setOpenFlyoutFor(null);
+                          onSelectTool(sub.id, event);
+                        }}
+                        title={sub.label}
+                        aria-label={sub.label}
+                      >
+                        <span className="firo-rail__flyout-icon">
+                          {sub.icon}
+                        </span>
+                        <span className="firo-rail__flyout-label">
+                          {sub.label}
+                        </span>
+                        {sub.shortcut ? (
+                          <span className="firo-rail__flyout-shortcut">
+                            {sub.shortcut}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
+          );
+        })}
+
+        {/* Miro-style '+' button at the bottom of the tools pill */}
+        <div className="firo-rail__slot">
+          <button
+            type="button"
+            className="firo-rail__item firo-rail__item--more"
+            onClick={() => {
+              if (onMoreTools) {
+                onMoreTools();
+              } else if (hiddenTools.length > 0) {
+                setHiddenOpen((open) => !open);
+              }
+            }}
+            title="More tools (+)"
+            aria-label={
+              hiddenTools.length > 0 ? "Unpinned tools" : "More tools"
+            }
+            aria-haspopup="menu"
+            aria-expanded={hiddenOpen}
+          >
+            <PlusIcon />
+          </button>
+          {hiddenOpen && hiddenTools.length > 0 && !onMoreTools ? (
+            <div
+              className="firo-rail__menu firo-rail__menu--wide"
+              role="menu"
+              aria-label="Unpinned tools"
+            >
+              {hiddenTools.map((tool) => (
+                <button
+                  key={tool.id}
+                  type="button"
+                  role="menuitem"
+                  className="firo-rail__menu-item"
+                  onClick={() => {
+                    setHiddenOpen(false);
+                    onRestore?.(tool.id);
+                  }}
+                >
+                  <span className="firo-rail__menu-icon">{tool.icon}</span>
+                  {tool.label}
+                </button>
+              ))}
+            </div>
           ) : null}
+        </div>
+      </div>
+
+      {/* Hidden tools backward-compatibility popover trigger when not in main pill */}
+      {hiddenTools.length > 0 && onMoreTools ? (
+        <div className="firo-rail__pill">
+          <div className="firo-rail__slot">
+            <button
+              type="button"
+              className="firo-rail__item"
+              onClick={() => setHiddenOpen((open) => !open)}
+              title="Unpinned tools"
+              aria-label="Unpinned tools"
+              aria-haspopup="menu"
+              aria-expanded={hiddenOpen}
+            >
+              <MoreVerticalIcon />
+            </button>
+            {hiddenOpen ? (
+              <div
+                className="firo-rail__menu firo-rail__menu--wide"
+                role="menu"
+                aria-label="Unpinned tools"
+              >
+                {hiddenTools.map((tool) => (
+                  <button
+                    key={tool.id}
+                    type="button"
+                    role="menuitem"
+                    className="firo-rail__menu-item"
+                    onClick={() => {
+                      setHiddenOpen(false);
+                      onRestore?.(tool.id);
+                    }}
+                  >
+                    <span className="firo-rail__menu-icon">{tool.icon}</span>
+                    {tool.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

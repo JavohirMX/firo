@@ -114,4 +114,79 @@
     background-color: var(--firo-color-border);
     margin: var(--firo-space-xs) 2px;
   }
+
+  &__flyout-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0.7;
+    color: currentColor;
+  }
+
+  &__flyout {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 8px);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    min-width: 144px;
+    padding: var(--firo-space-xs);
+    background-color: var(--firo-color-panel);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-md);
+    box-shadow: var(--firo-elevation-panel);
+  }
+
+  &__flyout-item {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-xs);
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    background: transparent;
+    border-radius: var(--firo-radius-sm);
+    color: var(--firo-color-text);
+    font: inherit;
+    font-size: var(--firo-font-size-sm);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--firo-motion-fast) var(--firo-motion-ease),
+      color var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover,
+    &:focus-visible {
+      background-color: var(--firo-color-surface);
+    }
+
+    &--active {
+      background-color: var(--firo-color-surface);
+      color: var(--firo-color-accent);
+      font-weight: 500;
+    }
+  }
+
+  &__flyout-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+
+  &__flyout-label {
+    flex: 1;
+  }
+
+  &__flyout-shortcut {
+    font-size: 11px;
+    color: var(--firo-color-text-muted);
+    margin-left: var(--firo-space-sm);
+  }
 }

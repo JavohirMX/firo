@@ -57,6 +57,7 @@ import {
   preventUnload,
   resolvablePromise,
   isDevEnv,
+  isWritableElement,
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -88,6 +89,7 @@ import type { RailToolItem, RailToolType } from "@firo/ui";
 
 import type { RestoredDataState } from "@firo/editor/data/restore";
 import type {
+  ExcalidrawElement,
   FileId,
   NonDeletedExcalidrawElement,
   OrderedExcalidrawElement,
@@ -117,11 +119,13 @@ import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { ProjectionView } from "./components/ProjectionView";
-import { CommentLayer } from "./components/CommentLayer";
+import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
 import { TagLayer } from "./components/TagLayer";
 import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
 import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
 import { ShareModal } from "./components/ShareModal";
+import { TemplateModal } from "./components/TemplateModal";
+
 import {
   CollabProvider,
   resolveShareToken,
@@ -421,10 +425,54 @@ export const CREATION_TOOLS = new Set<RailToolType>([
   "frame",
 ]);
 
-export const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
+export const WebCreationRail = ({
+  appState,
+  commentMode = false,
+  onToggleCommentMode,
+  onOpenTemplates,
+}: {
+  appState: UIAppState;
+  commentMode?: boolean;
+  onToggleCommentMode?: () => void;
+  onOpenTemplates?: () => void;
+}) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
   const activeToolType = appState.activeTool.type as RailToolType;
+
+  type ShapeSubTool = "rectangle" | "diamond" | "ellipse";
+  type ConnectorSubTool = "arrow" | "line";
+  type PenSubTool = "freedraw" | "eraser" | "laser";
+
+  interface SubToolsState {
+    shapes: ShapeSubTool;
+    connectors: ConnectorSubTool;
+    pen: PenSubTool;
+  }
+
+  const [subTools, setSubTools] = useState<SubToolsState>({
+    shapes: "rectangle",
+    connectors: "arrow",
+    pen: "freedraw",
+  });
+
+  // Keep subTools synchronized with live activeTool
+  useEffect(() => {
+    const live = appState.activeTool.type;
+    if (live === "rectangle" || live === "diamond" || live === "ellipse") {
+      setSubTools((prev) =>
+        prev.shapes === live ? prev : { ...prev, shapes: live },
+      );
+    } else if (live === "arrow" || live === "line") {
+      setSubTools((prev) =>
+        prev.connectors === live ? prev : { ...prev, connectors: live },
+      );
+    } else if (live === "freedraw" || live === "eraser" || live === "laser") {
+      setSubTools((prev) =>
+        prev.pen === live ? prev : { ...prev, pen: live },
+      );
+    }
+  }, [appState.activeTool.type]);
 
   const lastClickRef = useRef<{ tool: RailToolType; time: number } | null>(
     null,
@@ -462,8 +510,122 @@ export const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
   };
 
   const buildRailTool = (id: RailToolType): RailToolItem => {
-    const label = capitalizeString(t(`toolBar.${id}`));
-    const shortcut = getToolShortcut(id);
+    if (id === "shapes") {
+      const activeSub = subTools.shapes ?? "rectangle";
+      const activeLabel = capitalizeString(t(`toolBar.${activeSub}`));
+      const activeShortcut = getToolShortcut(activeSub);
+      return {
+        id: "shapes",
+        label: `${activeLabel} (${activeShortcut || "R"})`,
+        icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.shapes,
+        activeOn: ["shapes", "rectangle", "diamond", "ellipse"],
+        activeSubTool: activeSub,
+        flyoutItems: [
+          {
+            id: "rectangle",
+            label: capitalizeString(t("toolBar.rectangle")),
+            icon: RAIL_TOOL_ICONS.rectangle,
+            shortcut: getToolShortcut("rectangle"),
+          },
+          {
+            id: "diamond",
+            label: capitalizeString(t("toolBar.diamond")),
+            icon: RAIL_TOOL_ICONS.diamond,
+            shortcut: getToolShortcut("diamond"),
+          },
+          {
+            id: "ellipse",
+            label: capitalizeString(t("toolBar.ellipse")),
+            icon: RAIL_TOOL_ICONS.ellipse,
+            shortcut: getToolShortcut("ellipse"),
+          },
+        ],
+      };
+    }
+
+    if (id === "connectors") {
+      const activeSub = subTools.connectors ?? "arrow";
+      const activeLabel = capitalizeString(t(`toolBar.${activeSub}`));
+      const activeShortcut = getToolShortcut(activeSub);
+      return {
+        id: "connectors",
+        label: `${activeLabel} (${activeShortcut || "A"})`,
+        icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.connectors,
+        activeOn: ["connectors", "arrow", "line"],
+        activeSubTool: activeSub,
+        flyoutItems: [
+          {
+            id: "arrow",
+            label: capitalizeString(t("toolBar.arrow")),
+            icon: RAIL_TOOL_ICONS.arrow,
+            shortcut: getToolShortcut("arrow"),
+          },
+          {
+            id: "line",
+            label: capitalizeString(t("toolBar.line")),
+            icon: RAIL_TOOL_ICONS.line,
+            shortcut: getToolShortcut("line"),
+          },
+        ],
+      };
+    }
+
+    if (id === "pen") {
+      const activeSub = subTools.pen ?? "freedraw";
+      const activeLabel = capitalizeString(t(`toolBar.${activeSub}`));
+      const activeShortcut = getToolShortcut(activeSub);
+      return {
+        id: "pen",
+        label: `${activeLabel} (${activeShortcut || "P"})`,
+        icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.pen,
+        activeOn: ["pen", "freedraw", "eraser", "laser"],
+        activeSubTool: activeSub,
+        flyoutItems: [
+          {
+            id: "freedraw",
+            label: capitalizeString(t("toolBar.freedraw")),
+            icon: RAIL_TOOL_ICONS.freedraw,
+            shortcut: getToolShortcut("freedraw"),
+          },
+          {
+            id: "eraser",
+            label: capitalizeString(t("toolBar.eraser")),
+            icon: RAIL_TOOL_ICONS.eraser,
+            shortcut: getToolShortcut("eraser"),
+          },
+          {
+            id: "laser",
+            label: capitalizeString(t("toolBar.laser")),
+            icon: RAIL_TOOL_ICONS.laser,
+            shortcut: getToolShortcut("laser"),
+          },
+        ],
+      };
+    }
+
+    if (id === "templates") {
+      return {
+        id: "templates",
+        label: `${capitalizeString(t("toolBar.templates"))} (2)`,
+        icon: RAIL_TOOL_ICONS.templates,
+        activeOn: [],
+      };
+    }
+
+    if (id === "comment") {
+      return {
+        id: "comment",
+        label: `${capitalizeString(t("toolBar.comment"))} (C)`,
+        icon: RAIL_TOOL_ICONS.comment,
+        activeOn: ["comment"],
+      };
+    }
+
+    const toolKey = id in TOOLS ? (id as keyof typeof TOOLS) : undefined;
+    const label = toolKey
+      ? capitalizeString(t(`toolBar.${toolKey}`))
+      : capitalizeString(id);
+    const shortcut = toolKey ? getToolShortcut(toolKey) : undefined;
     return {
       id,
       icon: RAIL_TOOL_ICONS[id],
@@ -471,19 +633,23 @@ export const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
     };
   };
 
+  const isKnownTool = (id: RailToolType) =>
+    id in TOOLS ||
+    ["shapes", "connectors", "pen", "templates", "comment"].includes(id);
+
   const tools: RailToolItem[] = [
     pointerItem,
-    ...layout.order.filter((id) => id in TOOLS).map(buildRailTool),
+    ...layout.order.filter(isKnownTool).map(buildRailTool),
   ];
   const hiddenTools: RailToolItem[] = layout.unpinned
-    .filter((id) => id in TOOLS)
+    .filter(isKnownTool)
     .map(buildRailTool);
 
   return (
     <CreationRail
       tools={tools}
       hiddenTools={hiddenTools}
-      activeTool={activeToolType}
+      activeTool={commentMode ? "comment" : activeToolType}
       onReorder={(order) =>
         setLayout((current) => reorderRailTools(current, order))
       }
@@ -510,29 +676,85 @@ export const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
           return;
         }
 
+        if (tool === "templates") {
+          onOpenTemplates?.();
+          return;
+        }
+
+        if (tool === "comment") {
+          onToggleCommentMode?.();
+          return;
+        }
+
+        let targetTool: RailToolType = tool;
+        if (tool === "shapes") {
+          targetTool = subTools.shapes;
+        } else if (tool === "connectors") {
+          targetTool = subTools.connectors;
+        } else if (tool === "pen") {
+          targetTool = subTools.pen;
+        }
+
+        // Update subtool tracker
+        if (
+          targetTool === "rectangle" ||
+          targetTool === "diamond" ||
+          targetTool === "ellipse"
+        ) {
+          setSubTools((prev) => ({
+            ...prev,
+            shapes: targetTool as ShapeSubTool,
+          }));
+        } else if (targetTool === "arrow" || targetTool === "line") {
+          setSubTools((prev) => ({
+            ...prev,
+            connectors: targetTool as ConnectorSubTool,
+          }));
+        } else if (
+          targetTool === "freedraw" ||
+          targetTool === "eraser" ||
+          targetTool === "laser"
+        ) {
+          setSubTools((prev) => ({
+            ...prev,
+            pen: targetTool as PenSubTool,
+          }));
+        }
+
         const now = Date.now();
         const lastClick = lastClickRef.current;
         const isDoubleClick =
-          lastClick?.tool === tool && now - lastClick.time < 350;
-        lastClickRef.current = { tool, time: now };
+          lastClick?.tool === targetTool && now - lastClick.time < 350;
+        lastClickRef.current = { tool: targetTool, time: now };
 
         const isShift = Boolean(event?.shiftKey) || isShiftPressedRef.current;
         isShiftPressedRef.current = false;
 
-        trackEvent("toolbar", tool, "ui");
+        trackEvent("toolbar", targetTool, "ui");
 
-        if (CREATION_TOOLS.has(tool)) {
+        if (CREATION_TOOLS.has(targetTool)) {
           // Double-clicking or shift-clicking locks the tool for continuous creation;
           // single-clicking defaults to Miro-style one-time placement reverting to selection.
           const locked = isDoubleClick || isShift;
-          app.setActiveTool({ type: tool as any, locked });
-        } else if (app.state.activeTool.type !== tool) {
-          app.setActiveTool({ type: tool as any });
+          app.setActiveTool({ type: targetTool as any, locked });
+        } else if (app.state.activeTool.type !== targetTool) {
+          app.setActiveTool({ type: targetTool as any });
         }
       }}
       onPointerDownTool={(tool, event) => {
+        let targetTool = tool;
+        if (tool === "shapes") {
+          targetTool = subTools.shapes ?? "rectangle";
+        } else if (tool === "connectors") {
+          targetTool = subTools.connectors ?? "arrow";
+        } else if (tool === "pen") {
+          targetTool = subTools.pen ?? "freedraw";
+        }
         isShiftPressedRef.current = event.shiftKey;
-        app.toolDrag.handleButtonPointerDown(tool as any, event.nativeEvent);
+        app.toolDrag.handleButtonPointerDown(
+          targetTool as any,
+          event.nativeEvent,
+        );
       }}
       onUndo={() => {
         if (actionManager.actions.undo) {
@@ -821,12 +1043,40 @@ const ExcalidrawWrapper = () => {
    * selection toolbar, a sibling — the editor owns selection, so it owns the
    * question "what is selected", and the layer only owns "where does the pin go".
    */
-  const [commentTarget, setCommentTarget] = useState<string | null>(null);
+  const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(
+    null,
+  );
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [commentMode, setCommentMode] = useState(false);
   const [minimapVisible, setMinimapVisible] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
   const activityFeedDialogRef = useFocusTrap<HTMLDivElement>(activityFeedOpen);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isWritableElement(event.target)) {
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+      if (event.key.toLowerCase() === "c" && !event.shiftKey) {
+        event.preventDefault();
+        setCommentMode((prev) => !prev);
+      } else if (event.key === "2" && !event.shiftKey) {
+        event.preventDefault();
+        setTemplateModalOpen(true);
+      } else if (event.key === "Escape") {
+        setCommentMode(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   /*
    * The accessibility tree's contents.
@@ -1426,12 +1676,18 @@ const ExcalidrawWrapper = () => {
       style={{ height: "100%" }}
       className={clsx("firo-app", {
         "is-collaborating": isCollaborating,
+        "is-comment-mode": commentMode,
       })}
     >
       <Excalidraw
         defaultChromeEnabled={false}
         renderCreationRailUI={(_isMobile, appState) => (
-          <WebCreationRail appState={appState} />
+          <WebCreationRail
+            appState={appState}
+            commentMode={commentMode}
+            onToggleCommentMode={() => setCommentMode((mode) => !mode)}
+            onOpenTemplates={() => setTemplateModalOpen(true)}
+          />
         )}
         renderNavigationUI={(_isMobile, appState) => (
           <WebNavToolbar
@@ -1484,6 +1740,17 @@ const ExcalidrawWrapper = () => {
             <FacilitatorBar />
           </CollabBar>
         )}
+        onPointerDown={(_activeTool, pointerDownState) => {
+          if (commentMode) {
+            setCommentTarget({
+              point: {
+                x: pointerDownState.origin.x,
+                y: pointerDownState.origin.y,
+              },
+            });
+            setCommentMode(false);
+          }
+        }}
         onPointerUpdate={(payload) => {
           if (payload.pointer.tool === "laser") {
             collabProviderRef.current?.setLocalLaser(
@@ -1562,6 +1829,62 @@ const ExcalidrawWrapper = () => {
         <ShareModal
           isOpen={shareModalOpen}
           onClose={() => setShareModalOpen(false)}
+        />
+        <TemplateModal
+          isOpen={templateModalOpen}
+          onClose={() => setTemplateModalOpen(false)}
+          onInsertTemplate={(template) => {
+            if (!excalidrawAPI) {
+              setTemplateModalOpen(false);
+              return;
+            }
+            const elements = template.build();
+            if (!elements.length) {
+              setTemplateModalOpen(false);
+              return;
+            }
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+            for (const el of elements) {
+              minX = Math.min(minX, el.x);
+              minY = Math.min(minY, el.y);
+              maxX = Math.max(maxX, el.x + el.width);
+              maxY = Math.max(maxY, el.y + el.height);
+            }
+            const state = excalidrawAPI.getAppState();
+            const viewportCenterX =
+              -state.scrollX + state.width / 2 / state.zoom.value;
+            const viewportCenterY =
+              -state.scrollY + state.height / 2 / state.zoom.value;
+            const templateCenterX = minX + (maxX - minX) / 2;
+            const templateCenterY = minY + (maxY - minY) / 2;
+            const dx = viewportCenterX - templateCenterX;
+            const dy = viewportCenterY - templateCenterY;
+            const placed = elements.map((el) => ({
+              ...el,
+              x: el.x + dx,
+              y: el.y + dy,
+            }));
+            const current = excalidrawAPI.getSceneElements();
+            const selectedElementIds: Record<string, true> = {};
+            for (const el of placed) {
+              selectedElementIds[el.id] = true;
+            }
+            excalidrawAPI.updateScene({
+              elements: [
+                ...current,
+                ...restoreElements(
+                  placed as unknown as readonly ExcalidrawElement[],
+                  null,
+                ),
+              ],
+              appState: { selectedElementIds },
+              captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+            });
+            setTemplateModalOpen(false);
+          }}
         />
         <ActivityFeed
           isOpen={activityFeedOpen}

@@ -40,24 +40,35 @@ describe("the rail arrangement", () => {
 
   it("drops unknown ids and duplicates rather than trusting its input", () => {
     const layout = normaliseRailLayout({
-      order: ["laser", "laser", "telepathy", 7, null],
+      order: ["pen", "pen", "telepathy", 7, null],
     });
-    expect(layout.order[0]).toBe("laser");
-    expect(layout.order.filter((id) => id === "laser")).toHaveLength(1);
+    expect(layout.order[0]).toBe("pen");
+    expect(layout.order.filter((id) => id === "pen")).toHaveLength(1);
     expect(layout.order).not.toContain("telepathy");
   });
 
   it("shows a tool it has never heard of, because 'new' must not read as 'hidden'", () => {
-    // A layout stored by an older Firo: `eraser` had not been invented yet.
+    // A layout stored by an older Firo: `comment` had not been invented yet.
     const layout = normaliseRailLayout({
-      order: ["stickynote", "rectangle"],
-      unpinned: ["laser"],
+      order: ["stickynote", "shapes"],
+      unpinned: ["pen"],
     });
 
-    expect(layout.order).toContain("eraser");
+    expect(layout.order).toContain("comment");
     // ...but what the user explicitly hid stays hidden.
-    expect(layout.order).not.toContain("laser");
-    expect(layout.unpinned).toEqual(["laser"]);
+    expect(layout.order).not.toContain("pen");
+    expect(layout.unpinned).toEqual(["pen"]);
+  });
+
+  it("migrates legacy flat tools to Miro tool groups", () => {
+    const layout = normaliseRailLayout({
+      order: ["rectangle", "diamond", "arrow", "eraser"],
+      unpinned: ["laser"],
+    });
+    expect(layout.order).toContain("shapes");
+    expect(layout.order).toContain("connectors");
+    expect(layout.order).not.toContain("rectangle");
+    expect(layout.unpinned).toContain("pen");
   });
 
   it("falls back to the default order when storage is empty or unreadable", () => {
@@ -73,14 +84,14 @@ describe("the rail arrangement", () => {
   it("round-trips an arrangement through storage", () => {
     const layout = reorderRailTools(defaultRailLayout(), [
       "selection",
-      "laser",
-      ...RAIL_TOOL_DEFAULTS.filter((id) => id !== "laser"),
+      "pen",
+      ...RAIL_TOOL_DEFAULTS.filter((id) => id !== "pen"),
     ]);
     writeRailLayout(layout);
 
     expect(stored()).not.toBeNull();
     expect(readRailLayout()).toEqual(layout);
-    expect(readRailLayout().order[0]).toBe("laser");
+    expect(readRailLayout().order[0]).toBe("pen");
   });
 
   it("reorders, and keeps what was hidden hidden", () => {
@@ -96,9 +107,9 @@ describe("the rail arrangement", () => {
   });
 
   it("unpins a tool, and refuses to unpin the pointer", () => {
-    const hidden = unpinRailTool(defaultRailLayout(), "eraser");
-    expect(hidden.order).not.toContain("eraser");
-    expect(hidden.unpinned).toEqual(["eraser"]);
+    const hidden = unpinRailTool(defaultRailLayout(), "pen");
+    expect(hidden.order).not.toContain("pen");
+    expect(hidden.unpinned).toEqual(["pen"]);
 
     // Select and Hand are pinned: the request is a no-op, not an error.
     const layout = defaultRailLayout();
@@ -107,11 +118,11 @@ describe("the rail arrangement", () => {
   });
 
   it("brings an unpinned tool back at the end of the row", () => {
-    const hidden = unpinRailTool(defaultRailLayout(), "rectangle");
-    const restored = restoreRailTool(hidden, "rectangle");
+    const hidden = unpinRailTool(defaultRailLayout(), "shapes");
+    const restored = restoreRailTool(hidden, "shapes");
 
     expect(restored.unpinned).toEqual([]);
-    expect(restored.order[restored.order.length - 1]).toBe("rectangle");
+    expect(restored.order[restored.order.length - 1]).toBe("shapes");
   });
 
   it("is idempotent: restoring a visible tool changes nothing", () => {

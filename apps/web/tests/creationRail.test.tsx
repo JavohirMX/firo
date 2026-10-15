@@ -116,13 +116,104 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
   });
 
   it("clicking non-creation tools does not set locked flag", () => {
+    mockAppState.activeTool.type = "freedraw";
     render(<WebCreationRail appState={mockAppState} />);
 
-    const laserBtn = screen.getByRole("button", { name: /Laser/i });
-    fireEvent.click(laserBtn);
+    // Click Draw (pen slot) to open flyout, then select Laser
+    const drawBtn = screen.getByRole("button", { name: /Draw/i });
+    fireEvent.click(drawBtn);
+
+    const laserItem = screen.getByRole("menuitemradio", { name: /Laser/i });
+    fireEvent.click(laserItem);
 
     expect(setActiveToolMock).toHaveBeenCalledWith({
       type: "laser",
+    });
+  });
+
+  describe("Miro flyouts and grouped tools", () => {
+    it("toggles the Shapes flyout and selects an alternative shape", () => {
+      mockAppState.activeTool.type = "rectangle";
+      render(<WebCreationRail appState={mockAppState} />);
+
+      // Rectangle is currently active, so clicking it toggles the flyout
+      const rectBtn = screen.getByRole("button", { name: /Rectangle/i });
+      fireEvent.click(rectBtn);
+
+      // Flyout should be open with Diamond and Ellipse options
+      const diamondItem = screen.getByRole("menuitemradio", {
+        name: /Diamond/i,
+      });
+      expect(diamondItem).toBeDefined();
+
+      fireEvent.click(diamondItem);
+      expect(setActiveToolMock).toHaveBeenCalledWith({
+        type: "diamond",
+        locked: false,
+      });
+    });
+
+    it("toggles the Pen flyout and selects the Laser tool", () => {
+      mockAppState.activeTool.type = "freedraw";
+      render(<WebCreationRail appState={mockAppState} />);
+
+      const drawBtn = screen.getByRole("button", { name: /Draw/i });
+      fireEvent.click(drawBtn);
+
+      const laserItem = screen.getByRole("menuitemradio", { name: /Laser/i });
+      expect(laserItem).toBeDefined();
+
+      fireEvent.click(laserItem);
+      expect(setActiveToolMock).toHaveBeenCalledWith({
+        type: "laser",
+      });
+    });
+
+    it("toggles the Connectors flyout and selects the Line tool", () => {
+      mockAppState.activeTool.type = "arrow";
+      render(<WebCreationRail appState={mockAppState} />);
+
+      const arrowBtn = screen.getByRole("button", { name: /Arrow/i });
+      fireEvent.click(arrowBtn);
+
+      const lineItem = screen.getByRole("menuitemradio", { name: /Line/i });
+      expect(lineItem).toBeDefined();
+
+      fireEvent.click(lineItem);
+      expect(setActiveToolMock).toHaveBeenCalledWith({
+        type: "line",
+        locked: false,
+      });
+    });
+
+    it("triggers template modal callback when Templates tool is clicked", () => {
+      const onOpenTemplates = vi.fn();
+      render(
+        <WebCreationRail
+          appState={mockAppState}
+          onOpenTemplates={onOpenTemplates}
+        />,
+      );
+
+      const templatesBtn = screen.getByRole("button", { name: /Templates/i });
+      fireEvent.click(templatesBtn);
+
+      expect(onOpenTemplates).toHaveBeenCalledTimes(1);
+    });
+
+    it("triggers comment mode toggle callback when Comment tool is clicked", () => {
+      const onToggleCommentMode = vi.fn();
+      render(
+        <WebCreationRail
+          appState={mockAppState}
+          onToggleCommentMode={onToggleCommentMode}
+        />,
+      );
+
+      const commentBtn = screen.getByRole("button", { name: /Comment/i });
+      fireEvent.click(commentBtn);
+
+      expect(onToggleCommentMode).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -174,12 +265,12 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
 
       // ...while a movable tool does, so the absence above is the pin and not a
       // menu that simply never renders.
-      fireEvent.contextMenu(screen.getByRole("button", { name: /Laser/i }));
+      fireEvent.contextMenu(screen.getByRole("button", { name: /Draw/i }));
       expect(screen.getByRole("menuitem", { name: "Unpin" })).toBeDefined();
       fireEvent.keyDown(document, { key: "Escape" });
 
       fireEvent.dragStart(pointer());
-      fireEvent.drop(screen.getByRole("button", { name: /Laser/i }));
+      fireEvent.drop(screen.getByRole("button", { name: /Draw/i }));
 
       // Dragging the pointer moved nothing, so nothing was persisted but the
       // default order it was already in.
@@ -195,43 +286,43 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
     it("persists a reorder to localStorage, where a preference belongs", () => {
       render(<WebCreationRail appState={mockAppState} />);
 
-      fireEvent.dragStart(screen.getByRole("button", { name: /Laser/i }));
-      fireEvent.dragOver(screen.getByRole("button", { name: /Sticky note/i }));
-      fireEvent.drop(screen.getByRole("button", { name: /Sticky note/i }));
+      fireEvent.dragStart(screen.getByRole("button", { name: /Draw/i }));
+      fireEvent.dragOver(screen.getByRole("button", { name: /Templates/i }));
+      fireEvent.drop(screen.getByRole("button", { name: /Templates/i }));
 
       const payload = JSON.parse(
         window.localStorage.getItem(STORAGE_KEYS.LOCAL_STORAGE_RAIL_LAYOUT)!,
       );
-      expect(payload.order[0]).toBe("laser");
+      expect(payload.order[0]).toBe("pen");
     });
 
     it("persists an unpin, and offers the tool back", () => {
       render(<WebCreationRail appState={mockAppState} />);
 
-      fireEvent.contextMenu(screen.getByRole("button", { name: /Eraser/i }));
+      fireEvent.contextMenu(screen.getByRole("button", { name: /Draw/i }));
       fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
 
       const payload = JSON.parse(
         window.localStorage.getItem(STORAGE_KEYS.LOCAL_STORAGE_RAIL_LAYOUT)!,
       );
-      expect(payload.unpinned).toContain("eraser");
-      expect(payload.order).not.toContain("eraser");
+      expect(payload.unpinned).toContain("pen");
+      expect(payload.order).not.toContain("pen");
 
       // ...and it comes back.
       fireEvent.click(screen.getByRole("button", { name: "Unpinned tools" }));
-      fireEvent.click(screen.getByRole("menuitem", { name: /Eraser/i }));
+      fireEvent.click(screen.getByRole("menuitem", { name: /Draw/i }));
 
       expect(
         JSON.parse(
           window.localStorage.getItem(STORAGE_KEYS.LOCAL_STORAGE_RAIL_LAYOUT)!,
         ).order,
-      ).toContain("eraser");
+      ).toContain("pen");
     });
 
     it("restores the stored arrangement on the next mount", () => {
       window.localStorage.setItem(
         STORAGE_KEYS.LOCAL_STORAGE_RAIL_LAYOUT,
-        JSON.stringify({ order: ["laser", "rectangle"], unpinned: ["text"] }),
+        JSON.stringify({ order: ["pen", "shapes"], unpinned: ["text"] }),
       );
 
       render(<WebCreationRail appState={mockAppState} />);
@@ -244,9 +335,9 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
 
       // The pinned pointer is first regardless of what the stored order said.
       expect(position(/Select/)).toBe(0);
-      // The stored order wins: the laser sits ahead of the tools the stored
+      // The stored order wins: the pen sits ahead of the tools the stored
       // layout never mentioned, which are appended rather than hidden.
-      expect(position(/Laser/)).toBeLessThan(position(/Sticky note/));
+      expect(position(/Draw/)).toBeLessThan(position(/Sticky note/));
       // ...and what the user explicitly unpinned is out of the row.
       expect(screen.queryByRole("button", { name: /^Text/ })).toBeNull();
       expect(

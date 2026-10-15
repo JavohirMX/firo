@@ -1078,3 +1078,85 @@ export const LinkIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     />
   </svg>
 );
+
+export const TemplateIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <rect
+      x="3"
+      y="3"
+      width="14"
+      height="14"
+      rx="2"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    />
+    <path
+      d="M3 8H17M8 8V17"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const FlyoutChevron: React.FC<IconProps> = ({ size = 6, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 6 6"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path d="M5.5 5.5H1L5.5 1V5.5Z" />
+  </svg>
+);
+
+export const ConnectorIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="4" cy="5" r="2" stroke="currentColor" strokeWidth="1.75" />
+    <path
+      d="M6 5H12C13.6569 5 15 6.34315 15 8V13M12.5 11L15 14L17.5 11"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const ShapesIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.75" />
+    <rect
+      x="8"
+      y="8"
+      width="8"
+      height="8"
+      rx="1"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    />
+  </svg>
+);

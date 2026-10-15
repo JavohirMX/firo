@@ -347,7 +347,12 @@
     "hand": "Hand (panning tool)",
     "extraTools": "More tools",
     "mermaidToExcalidraw": "Mermaid to Excalidraw",
-    "convertElementType": "Toggle shape type"
+    "convertElementType": "Toggle shape type",
+    "shapes": "Shapes",
+    "connectors": "Connection line",
+    "pen": "Pen",
+    "templates": "Templates",
+    "comment": "Comment"
   },
   "bucketfill": {
     "noRegion": "Couldn't find an enclosed region to fill here.",

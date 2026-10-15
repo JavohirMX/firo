@@ -81,3 +81,9 @@
     }
   }
 }
+
+.firo-app.is-comment-mode {
+  .excalidraw__canvas {
+    cursor: crosshair !important;
+  }
+}

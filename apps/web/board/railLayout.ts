@@ -50,17 +50,14 @@ import { STORAGE_KEYS } from "../app_constants";
  * is not part of an arrangement — it is not draggable and it cannot be unpinned.
  */
 export const RAIL_TOOL_DEFAULTS: readonly RailToolType[] = [
-  "stickynote",
-  "rectangle",
-  "diamond",
-  "ellipse",
-  "arrow",
-  "line",
+  "templates",
   "text",
-  "freedraw",
+  "stickynote",
+  "shapes",
+  "connectors",
+  "pen",
   "frame",
-  "eraser",
-  "laser",
+  "comment",
 ];
 
 /**
@@ -70,6 +67,20 @@ export const RAIL_TOOL_DEFAULTS: readonly RailToolType[] = [
  * both — so neither may be removed, and either can be the active tool.
  */
 export const RAIL_PINNED_TOOLS: readonly RailToolType[] = ["selection", "hand"];
+
+/**
+ * Maps older flat tool ids to their Miro tool group.
+ */
+export const LEGACY_TOOL_MAP: Record<string, RailToolType> = {
+  rectangle: "shapes",
+  diamond: "shapes",
+  ellipse: "shapes",
+  arrow: "connectors",
+  line: "connectors",
+  freedraw: "pen",
+  eraser: "pen",
+  laser: "pen",
+};
 
 export interface RailLayout {
   /** Visible, ordered. Excludes the pinned pointer entry. */
@@ -84,9 +95,18 @@ export const defaultRailLayout = (): RailLayout => ({
   unpinned: [],
 });
 
-const isArrangementTool = (id: unknown): id is RailToolType =>
-  typeof id === "string" &&
-  (RAIL_TOOL_DEFAULTS as readonly string[]).includes(id);
+const mapArrangementTool = (id: unknown): RailToolType | null => {
+  if (typeof id !== "string") {
+    return null;
+  }
+  if (id in LEGACY_TOOL_MAP) {
+    return LEGACY_TOOL_MAP[id];
+  }
+  if ((RAIL_TOOL_DEFAULTS as readonly string[]).includes(id)) {
+    return id as RailToolType;
+  }
+  return null;
+};
 
 /**
  * Coerce anything — a parsed payload, a drag result, a hand-edited localStorage
@@ -102,19 +122,17 @@ export const normaliseRailLayout = (value: unknown): RailLayout => {
   const record = (value ?? {}) as { order?: unknown; unpinned?: unknown };
 
   const unpinned: RailToolType[] = [];
-  for (const id of Array.isArray(record.unpinned) ? record.unpinned : []) {
-    if (isArrangementTool(id) && !unpinned.includes(id)) {
+  for (const rawId of Array.isArray(record.unpinned) ? record.unpinned : []) {
+    const id = mapArrangementTool(rawId);
+    if (id && !unpinned.includes(id)) {
       unpinned.push(id);
     }
   }
 
   const order: RailToolType[] = [];
-  for (const id of Array.isArray(record.order) ? record.order : []) {
-    if (
-      isArrangementTool(id) &&
-      !order.includes(id) &&
-      !unpinned.includes(id)
-    ) {
+  for (const rawId of Array.isArray(record.order) ? record.order : []) {
+    const id = mapArrangementTool(rawId);
+    if (id && !order.includes(id) && !unpinned.includes(id)) {
       order.push(id);
     }
   }
