@@ -7,7 +7,11 @@ import {
   viewportCoordsToSceneCoords,
 } from "@firo/common";
 
-import { isStickyNoteElement, newStickyNoteElement } from "@firo/element";
+import {
+  isStickyNoteElement,
+  newElement,
+  newStickyNoteElement,
+} from "@firo/element";
 
 import type {
   ExcalidrawNonSelectionElement,
@@ -35,6 +39,8 @@ type DraggableTool = {
   onDrop?: (app: App, element: DraggedElement) => void;
 };
 
+const DEFAULT_SHAPE_SIZE = 100;
+
 const centered = (center: ScenePoint, width: number, height: number) => ({
   x: center.x - width / 2,
   y: center.y - height / 2,
@@ -42,11 +48,44 @@ const centered = (center: ScenePoint, width: number, height: number) => ({
   height,
 });
 
+const createShapeElement = (
+  app: App,
+  type: "rectangle" | "diamond" | "ellipse",
+  center: ScenePoint,
+): DraggedElement => {
+  const size = DEFAULT_SHAPE_SIZE;
+  const { state } = app;
+  return newElement({
+    type,
+    ...centered(center, size, size),
+    strokeColor: state.currentItemStrokeColor,
+    backgroundColor: state.currentItemBackgroundColor,
+    fillStyle: state.currentItemFillStyle,
+    strokeWidth: app.getCurrentItemStrokeWidth(type),
+    strokeStyle: state.currentItemStrokeStyle,
+    roughness: state.currentItemRoughness,
+    opacity: state.currentItemOpacity,
+    roundness: app.getCurrentItemRoundness(type),
+    locked: false,
+    frameId: app.getTopLayerFrameAtSceneCoords(center)?.id ?? null,
+  }) as DraggedElement;
+};
+
 /**
  * The tools that can be dragged out of the toolbar. Add an entry to make a
  * tool's button draggable — the gesture, preview and drop are shared.
  */
 export const DRAGGABLE_TOOLS: Partial<Record<ToolType, DraggableTool>> = {
+  rectangle: {
+    createElement: (app, center) =>
+      createShapeElement(app, "rectangle", center),
+  },
+  diamond: {
+    createElement: (app, center) => createShapeElement(app, "diamond", center),
+  },
+  ellipse: {
+    createElement: (app, center) => createShapeElement(app, "ellipse", center),
+  },
   stickynote: {
     createElement: (app, center) => {
       const size = DEFAULT_STICKY_NOTE_SIZE;

@@ -421,6 +421,7 @@ import { AppFlowchart } from "./App.flowchart";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
+import { AppMiroSticky } from "./App.miroSticky";
 import BraveMeasureTextError from "./BraveMeasureTextError";
 import { ContextMenu, CONTEXT_MENU_SEPARATOR } from "./ContextMenu";
 import { activeEyeDropperAtom } from "./EyeDropper";
@@ -702,6 +703,7 @@ class App extends React.Component<AppProps, AppState> {
     isGestureActive: () => gesture.pointers.size >= 2 || this.pan.isActive(),
   });
   public wheel: AppWheel = new AppWheel(this);
+  public miroSticky = new AppMiroSticky(this);
 
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
@@ -5145,6 +5147,10 @@ class App extends React.Component<AppProps, AppState> {
           this.state,
         );
 
+        if (this.miroSticky.maybeHandleRapidCreation(event, selectedElements)) {
+          return;
+        }
+
         if (
           selectedElements.length === 1 &&
           isImageElement(selectedElements[0]) &&
@@ -5157,6 +5163,14 @@ class App extends React.Component<AppProps, AppState> {
         // Shape switching
         if (event.key === KEYS.ESCAPE) {
           this.updateEditorAtom(convertElementTypePopupAtom, null);
+          if (
+            this.state.activeTool.type !== "selection" &&
+            this.state.activeTool.type !== "hand"
+          ) {
+            this.setActiveTool({ type: "selection" });
+            this.cursor.reset();
+            return;
+          }
         } else if (
           event.key === KEYS.TAB &&
           (this.ownerDocument.activeElement ===
@@ -6389,6 +6403,17 @@ class App extends React.Component<AppProps, AppState> {
             sceneX = midPoint.x;
             sceneY = midPoint.y;
           }
+        }
+
+        if (
+          this.miroSticky.maybeHandleCanvasDoubleClick(
+            event,
+            sceneX,
+            sceneY,
+            container,
+          )
+        ) {
+          return;
         }
 
         this.text.startTextEditing({
@@ -10838,6 +10863,34 @@ class App extends React.Component<AppProps, AppState> {
           container: newElement,
         });
         return;
+      }
+
+      if (
+        activeTool.type !== "selection" &&
+        newElement &&
+        oneOf(newElement.type, ["rectangle", "diamond", "ellipse"])
+      ) {
+        const zoom = this.state.zoom.value;
+        const isClick =
+          isInvisiblySmallElement(newElement) ||
+          (Math.abs(newElement.width) * zoom < DRAGGING_THRESHOLD &&
+            Math.abs(newElement.height) * zoom < DRAGGING_THRESHOLD);
+
+        if (isClick) {
+          const DEFAULT_SHAPE_SIZE = 100;
+          const [x, y] = getGridPoint(
+            pointerDownState.origin.x - DEFAULT_SHAPE_SIZE / 2,
+            pointerDownState.origin.y - DEFAULT_SHAPE_SIZE / 2,
+            childEvent[KEYS.CTRL_OR_CMD] ? null : this.getEffectiveGridSize(),
+          );
+
+          this.scene.mutateElement(newElement, {
+            x,
+            y,
+            width: DEFAULT_SHAPE_SIZE,
+            height: DEFAULT_SHAPE_SIZE,
+          });
+        }
       }
 
       if (

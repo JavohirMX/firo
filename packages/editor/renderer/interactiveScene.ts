@@ -27,11 +27,13 @@ import {
   deconstructRectanguloidElement,
   elementCenterPoint,
   getAllMidpoints,
+  getHoveredElementForBinding,
   FOCUS_POINT_SIZE,
   getOmitSidesForEditorInterface,
   getTransformHandles,
   getTransformHandlesFromCoords,
   hasBoundingBox,
+  hitElementBoundingBox,
   hitElementItself,
   isArrowElement,
   isBindableElement,
@@ -252,6 +254,166 @@ const renderSingleLinearPoint = <Point extends GlobalPoint | LocalPoint>(
   );
 };
 
+/**
+ * Render Miro-style visual quick connection anchor dots on element hover.
+ */
+export const renderConnectionDots = (
+  context: CanvasRenderingContext2D,
+  element: ExcalidrawBindableElement,
+  elementsMap: ElementsMap,
+  appState: InteractiveCanvasAppState,
+  translated = false,
+) => {
+  if (!isBindableElement(element) || element.isDeleted) {
+    return;
+  }
+
+  let map = elementsMap;
+  if (!map || !map.has(element.id)) {
+    map = new Map(elementsMap);
+    map.set(element.id, element);
+  }
+
+  const midpoints = getAllMidpoints(element, map);
+  const dotRadius = 4.5 / appState.zoom.value;
+  const strokeWidth = 1.5 / appState.zoom.value;
+  const fill = appState.theme === THEME.DARK ? "#6988ff" : "#4262ff";
+  const stroke = "#ffffff";
+
+  context.save();
+  if (!translated) {
+    context.translate(appState.scrollX, appState.scrollY);
+  }
+
+  for (const midpoint of midpoints) {
+    context.save();
+    context.beginPath();
+    context.arc(midpoint[0], midpoint[1], dotRadius, 0, 2 * Math.PI);
+    context.fillStyle = fill;
+    context.fill();
+    context.lineWidth = strokeWidth;
+    context.strokeStyle = stroke;
+    context.stroke();
+    context.restore();
+  }
+
+  context.restore();
+};
+
+export const getHoveredBindableElement = ({
+  appState,
+  app,
+  allElementsMap,
+  elementsMap,
+  visibleElements,
+}: {
+  appState: InteractiveCanvasAppState;
+  app?: AppClassProperties | null;
+  allElementsMap: NonDeletedSceneElementsMap;
+  elementsMap: ElementsMap;
+  visibleElements: readonly NonDeletedExcalidrawElement[];
+}): NonDeleted<ExcalidrawBindableElement> | null => {
+  // 1. Direct hoveredElement on appState or app
+  const directHovered =
+    (appState as any).hoveredElement || (app as any)?.hoveredElement;
+  if (
+    directHovered &&
+    !directHovered.isDeleted &&
+    isBindableElement(directHovered)
+  ) {
+    return directHovered as NonDeleted<ExcalidrawBindableElement>;
+  }
+
+  // 2. suggestedBinding?.element
+  if (
+    appState.suggestedBinding?.element &&
+    !appState.suggestedBinding.element.isDeleted &&
+    isBindableElement(appState.suggestedBinding.element)
+  ) {
+    return appState.suggestedBinding
+      .element as NonDeleted<ExcalidrawBindableElement>;
+  }
+
+  // 3. hoveredElementId on appState or app.state
+  const hoveredElementId =
+    (appState as any).hoveredElementId ||
+    ((app as any)?.state as any)?.hoveredElementId;
+  if (hoveredElementId && typeof hoveredElementId === "string") {
+    const el =
+      allElementsMap.get(hoveredElementId) || elementsMap.get(hoveredElementId);
+    if (el && !el.isDeleted && isBindableElement(el)) {
+      return el as NonDeleted<ExcalidrawBindableElement>;
+    }
+  }
+
+  // 4. hoveredElementIds on appState
+  if (
+    appState.hoveredElementIds &&
+    Object.keys(appState.hoveredElementIds).length > 0
+  ) {
+    for (const id of Object.keys(appState.hoveredElementIds)) {
+      const el = allElementsMap.get(id) || elementsMap.get(id);
+      if (el && !el.isDeleted && isBindableElement(el)) {
+        return el as NonDeleted<ExcalidrawBindableElement>;
+      }
+    }
+  }
+
+  // 5. Element at pointer
+  const pointerCoords =
+    (appState as any).pointerCoords ||
+    app?.lastPointerMoveCoords ||
+    (appState as any).lastPointerMoveCoords;
+  if (pointerCoords) {
+    const px =
+      typeof (pointerCoords as any).x === "number"
+        ? (pointerCoords as any).x
+        : (pointerCoords as any)[0];
+    const py =
+      typeof (pointerCoords as any).y === "number"
+        ? (pointerCoords as any).y
+        : (pointerCoords as any)[1];
+    if (
+      typeof px === "number" &&
+      typeof py === "number" &&
+      !isNaN(px) &&
+      !isNaN(py)
+    ) {
+      const pointer = pointFrom<GlobalPoint>(px, py);
+      const hit = getHoveredElementForBinding(
+        pointer,
+        visibleElements as any,
+        allElementsMap,
+        appState.zoom,
+      );
+      if (hit && !hit.isDeleted && isBindableElement(hit)) {
+        return hit;
+      }
+
+      // Fallback: check visibleElements backwards
+      for (let i = visibleElements.length - 1; i >= 0; i--) {
+        const el = visibleElements[i];
+        if (!el.isDeleted && isBindableElement(el)) {
+          if (
+            hitElementBoundingBox(pointer, el, allElementsMap, 10) ||
+            hitElementItself({
+              point: pointer,
+              element: el,
+              elementsMap: allElementsMap,
+              threshold: 10,
+              overrideShouldTestInside: true,
+            })
+          ) {
+            return el as NonDeleted<ExcalidrawBindableElement>;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
 const renderBindingHighlightForBindableElement_simple = (
   context: CanvasRenderingContext2D,
   suggestedBinding: NonNullable<AppState["suggestedBinding"]>,
@@ -437,6 +599,22 @@ const renderBindingHighlightForBindableElement_simple = (
       break;
   }
 
+  // Render quick connection anchor dots for bindable element in selection, arrow, or line tool mode
+  if (
+    isBindableElement(suggestedBinding.element) &&
+    (appState.activeTool.type === "selection" ||
+      appState.activeTool.type === "arrow" ||
+      appState.activeTool.type === "line")
+  ) {
+    renderConnectionDots(
+      context,
+      suggestedBinding.element,
+      elementsMap,
+      appState,
+      true,
+    );
+  }
+
   // Draw midpoint indicators
   if (
     appState.isMidpointSnappingEnabled &&
@@ -491,14 +669,24 @@ const renderBindingHighlightForBindableElement_simple = (
             : [];
       }
 
-      context.fillStyle = BINDING_MIDPOINT_COLOR[appState.theme];
-      for (const midpoint of shownMidpoints) {
-        if (highlightedMidpoint && pointsEqual(midpoint, highlightedMidpoint)) {
-          continue;
+      const isConnectionDotsActive =
+        appState.activeTool.type === "selection" ||
+        appState.activeTool.type === "arrow" ||
+        appState.activeTool.type === "line";
+
+      if (!isConnectionDotsActive) {
+        context.fillStyle = BINDING_MIDPOINT_COLOR[appState.theme];
+        for (const midpoint of shownMidpoints) {
+          if (
+            highlightedMidpoint &&
+            pointsEqual(midpoint, highlightedMidpoint)
+          ) {
+            continue;
+          }
+          context.beginPath();
+          context.arc(midpoint[0], midpoint[1], midpointRadius, 0, 2 * Math.PI);
+          context.fill();
         }
-        context.beginPath();
-        context.arc(midpoint[0], midpoint[1], midpointRadius, 0, 2 * Math.PI);
-        context.fill();
       }
 
       if (highlightedMidpoint) {
@@ -899,6 +1087,9 @@ const renderBindingHighlightForBindableElement = (
   );
   context.restore();
 };
+
+export const renderBindingHighlight = renderBindingHighlightForBindableElement;
+export { renderBindingHighlightForBindableElement };
 
 type ElementSelectionBorder = {
   angle: number;
@@ -1734,6 +1925,31 @@ const _renderInteractiveScene = ({
       ...animationState,
       bindingHighlight: undefined,
     };
+  }
+
+  // Visual quick connection anchor dots on element hover
+  if (
+    appState.activeTool.type === "selection" ||
+    appState.activeTool.type === "arrow" ||
+    appState.activeTool.type === "line"
+  ) {
+    const hoveredElement = getHoveredBindableElement({
+      appState,
+      app,
+      allElementsMap,
+      elementsMap,
+      visibleElements,
+    });
+
+    if (
+      hoveredElement &&
+      !(
+        appState.isBindingEnabled &&
+        appState.suggestedBinding?.element?.id === hoveredElement.id
+      )
+    ) {
+      renderConnectionDots(context, hoveredElement, allElementsMap, appState);
+    }
   }
 
   if (appState.textToolHover) {

@@ -80,7 +80,7 @@ export const TOOLS = defineTools({
   },
   rectangle: {
     icon: RectangleIcon,
-    letterKey: KEYS.R,
+    letterKey: [KEYS.R, KEYS.S],
     numericKey: KEYS["2"],
     fillable: true,
   },
