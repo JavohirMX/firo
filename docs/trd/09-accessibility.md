@@ -127,16 +127,14 @@ Excalidraw's accessibility position is not strong, and the fork gives us room:
 
 ## Definition of done per phase
 
-> **Status note (Phase 10).** The Phase 2 and Phase 3 rows below were **not met**
-> when those phases closed; this table states the target, not what shipped. As of
-> Phase 10 the canvas still has no `role="application"`, no parallel
-> accessibility tree and no `aria-posinset`/`aria-setsize`. The tree and the
-> keyboard model are therefore built in Phase 10
-> ([`../plans/phase-10-ai-mcp-a11y-desktop.md`](../plans/phase-10-ai-mcp-a11y-desktop.md)
-> §10.3) *before* the VPAT, because a VPAT cannot be published over an untested
-> tree. The polite live region now carries errors, quota notifications, offline
-> status, and mode changes, while save state remains in `SaveStatusIndicator` so
-> the two do not double-announce.
+> **Status note (Phase 10 §10.3a complete).** The Phase 2 and Phase 3 accessibility
+> foundation was completed and verified in Phase 10 (§10.3a): `role="application"`
+> with `aria-roledescription="whiteboard"`, the parallel virtualised accessibility
+> tree (`AccessibilityTree`), roving `tabindex="0"`, `aria-posinset`/`aria-setsize`,
+> universal focus trapping (`useFocusTrap`) across all dialogs and palette, polite live
+> region announcements for errors/quota/offline/mode changes, measured canvas contrast
+> (16.67:1 light / 18.73:1 dark), and 200% zoom verification in real Chromium.
+> Phase 10 §10.3b (audit and VPAT publication) follows over this verified foundation.
 
 | Phase | Accessibility requirement |
 | --- | --- |
