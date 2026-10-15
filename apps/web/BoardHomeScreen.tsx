@@ -1,4 +1,4 @@
-import { BoardHome } from "@firo/ui";
+import { BoardHome, CloseIcon } from "@firo/ui";
 import React from "react";
 
 import { createFiroDoc, putAsset } from "@firo/doc";
@@ -34,6 +34,8 @@ import {
 import { BOARD_TEMPLATES, templateById } from "./board/templates";
 import { boardUrl } from "./board/routes";
 import { importBoardFile, pickBinaryFile } from "./board/files";
+
+import type { MiroRtbArchive } from "./board/miro";
 
 import type { BoardFolder, BoardMeta } from "./board/library";
 
@@ -84,6 +86,8 @@ const toCard = (meta: BoardMeta, foldersList: BoardFolder[]): BoardCardData => {
   };
 };
 
+let cachedMiroRtbArchive: MiroRtbArchive | null = null;
+
 export const BoardHomeScreen: React.FC = () => {
   const [boards, setBoards] = React.useState<BoardMeta[] | null>(null);
   const [folders, setFolders] = React.useState<BoardFolder[]>([]);
@@ -92,6 +96,14 @@ export const BoardHomeScreen: React.FC = () => {
   const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = React.useState<"lastOpened" | "created" | "name">(
     "lastOpened",
+  );
+
+  const [miroModalArchive, setMiroModalArchive] =
+    React.useState<MiroRtbArchive | null>(null);
+  const [miroPastedText, setMiroPastedText] = React.useState<string>("");
+  const [copiedCmd, setCopiedCmd] = React.useState<boolean>(false);
+  const [miroImportError, setMiroImportError] = React.useState<string | null>(
+    null,
   );
 
   const refresh = React.useCallback(async () => {
@@ -117,6 +129,82 @@ export const BoardHomeScreen: React.FC = () => {
     open((await createBlankBoard()).id);
   };
 
+  const handleFinishMiroImport = async (jsonText: string) => {
+    try {
+      setMiroImportError(null);
+      const { id, mutation } = mintBoardId();
+      const doc = createFiroDoc();
+      doc.commit([mutation]);
+
+      const archiveToUse =
+        miroModalArchive ?? cachedMiroRtbArchive ?? undefined;
+      const result = await importBoardFile(doc, jsonText, {
+        putAsset: async (hash, data) => {
+          await putAsset(hash, data as never, undefined);
+        },
+        miroRtbArchive: archiveToUse,
+        force: true,
+      });
+
+      if (!result.ok) {
+        setMiroImportError(`Import failed: ${result.detail}`);
+        return;
+      }
+
+      const read = doc.read();
+      const metaName = read.meta?.name;
+      const boardName =
+        typeof metaName === "string" &&
+        metaName.trim() &&
+        metaName !== "Untitled board"
+          ? metaName
+          : archiveToUse?.board?.name || "Imported Miro Board";
+
+      const payload = JSON.stringify(serializeBoard(read));
+      await createBoard({
+        id,
+        name: boardName,
+        payload,
+      });
+
+      cachedMiroRtbArchive = null;
+      setMiroModalArchive(null);
+      open(id);
+    } catch (err) {
+      setMiroImportError(
+        `Error processing Miro JSON: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  };
+
+  const handlePasteMiroFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard?.readText?.();
+      if (!text || !text.trim().startsWith("[")) {
+        setMiroImportError(
+          "Clipboard does not contain Miro items JSON. Please run the command in your Miro console and copy the result first.",
+        );
+        return;
+      }
+      await handleFinishMiroImport(text);
+    } catch {
+      setMiroImportError(
+        "Clipboard read was blocked by your browser. Please paste the JSON into the box below and click Import.",
+      );
+    }
+  };
+
+  const handlePickMiroJsonFile = async () => {
+    const picked = await pickBinaryFile(".json,application/json");
+    if (!picked) {
+      return;
+    }
+    const text = new TextDecoder().decode(picked.bytes);
+    await handleFinishMiroImport(text);
+  };
+
   const handleImportBoard = async () => {
     const picked = await pickBinaryFile(
       ".firo,.rtb,.json,.zip,application/json,application/zip,application/octet-stream",
@@ -133,10 +221,12 @@ export const BoardHomeScreen: React.FC = () => {
       putAsset: async (hash, data) => {
         await putAsset(hash, data as never, undefined);
       },
+      miroRtbArchive: cachedMiroRtbArchive ?? undefined,
       force: true,
     });
 
     if (result.ok) {
+      cachedMiroRtbArchive = null;
       const read = doc.read();
       const metaName = read.meta?.name;
       const boardName =
@@ -156,12 +246,9 @@ export const BoardHomeScreen: React.FC = () => {
     }
 
     if (result.reason === "miro-rtb-canvas-encrypted") {
-      alert(
-        `Miro backup canvas is encrypted by Miro KMS. Extracted ${
-          result.rtbArchive?.mediaFiles.size ?? 0
-        } media assets!\n\n` +
-          `To complete the import:\n1. Open this board in Miro\n2. Open DevTools Console and run:\n   copy(JSON.stringify(await miro.board.get()))\n3. Save as items.json and import it.`,
-      );
+      const archive = result.rtbArchive ?? null;
+      cachedMiroRtbArchive = archive;
+      setMiroModalArchive(archive);
       return;
     }
 
@@ -260,35 +347,243 @@ export const BoardHomeScreen: React.FC = () => {
   }
 
   return (
-    <BoardHome
-      boards={displayedBoards.map((b) => toCard(b, folders))}
-      templates={activeSection === "trash" ? [] : templateCards}
-      folders={folders}
-      activeSection={activeSection}
-      viewMode={viewMode}
-      sortBy={sortBy}
-      onCreateBlank={handleCreateBlank}
-      onImportBoard={handleImportBoard}
-      onOpenBoard={open}
-      onRenameBoard={handleRename}
-      onTrashBoard={handleTrash}
-      onRestoreBoard={handleRestore}
-      onDeleteBoard={handleDelete}
-      onCreateFromTemplate={handleCreateFromTemplate}
-      onSelectSection={setActiveSection}
-      onToggleStarBoard={handleToggleStar}
-      onDuplicateBoard={handleDuplicate}
-      onMoveBoardToFolder={handleMoveToFolder}
-      onCreateFolder={handleCreateFolder}
-      onRenameFolder={handleRenameFolder}
-      onDeleteFolder={handleDeleteFolder}
-      onChangeViewMode={setViewMode}
-      onChangeSortBy={setSortBy}
-      activities={activities}
-      onClearActivity={async () => {
-        await clearActivity();
-        setActivities([]);
-      }}
-    />
+    <>
+      <BoardHome
+        boards={displayedBoards.map((b) => toCard(b, folders))}
+        templates={activeSection === "trash" ? [] : templateCards}
+        folders={folders}
+        activeSection={activeSection}
+        viewMode={viewMode}
+        sortBy={sortBy}
+        onCreateBlank={handleCreateBlank}
+        onImportBoard={handleImportBoard}
+        onOpenBoard={open}
+        onRenameBoard={handleRename}
+        onTrashBoard={handleTrash}
+        onRestoreBoard={handleRestore}
+        onDeleteBoard={handleDelete}
+        onCreateFromTemplate={handleCreateFromTemplate}
+        onSelectSection={setActiveSection}
+        onToggleStarBoard={handleToggleStar}
+        onDuplicateBoard={handleDuplicate}
+        onMoveBoardToFolder={handleMoveToFolder}
+        onCreateFolder={handleCreateFolder}
+        onRenameFolder={handleRenameFolder}
+        onDeleteFolder={handleDeleteFolder}
+        onChangeViewMode={setViewMode}
+        onChangeSortBy={setSortBy}
+        activities={activities}
+        onClearActivity={async () => {
+          await clearActivity();
+          setActivities([]);
+        }}
+      />
+
+      {miroModalArchive && (
+        <div
+          className="firo-board-modal-overlay"
+          onClick={() => setMiroModalArchive(null)}
+          style={{ zIndex: 1000 }}
+        >
+          <div
+            className="firo-board-modal"
+            role="dialog"
+            aria-label="Complete Miro Import"
+            onClick={(event) => event.stopPropagation()}
+            style={{ maxWidth: 560, width: "90%" }}
+          >
+            <div className="firo-board-modal__header">
+              <h3 className="firo-board-modal__title">
+                Complete Miro Import:{" "}
+                {miroModalArchive.board?.name || "Miro Board"}
+              </h3>
+              <button
+                type="button"
+                className="firo-board-modal__close"
+                aria-label="Close dialog"
+                onClick={() => setMiroModalArchive(null)}
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+            <div
+              className="firo-board-modal__body"
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            >
+              <div
+                style={{
+                  background: "rgba(0, 150, 0, 0.08)",
+                  border: "1px solid rgba(0, 150, 0, 0.2)",
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: "var(--firo-color-text)",
+                }}
+              >
+                <strong>
+                  ✓ Extracted {miroModalArchive.mediaFiles.size} media assets
+                </strong>{" "}
+                from backup.
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: "var(--firo-color-text-muted)",
+                }}
+              >
+                Miro encrypts canvas layouts inside <code>.rtb</code> backups
+                using KMS encryption. To place all notes, shapes, lines, frames,
+                and your {miroModalArchive.mediaFiles.size} images onto the
+                board:
+              </p>
+              <div
+                style={{
+                  background: "var(--firo-color-surface)",
+                  padding: "12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--firo-color-border)",
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ marginBottom: 6, fontWeight: 500 }}>
+                  1. In your open Miro board, press <code>Cmd+Option+I</code>{" "}
+                  (or <code>F12</code>) &rarr; Console, then run:
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <code
+                    style={{
+                      flex: 1,
+                      background: "var(--firo-color-panel)",
+                      padding: "6px 10px",
+                      borderRadius: 4,
+                      fontSize: 12,
+                      userSelect: "all",
+                    }}
+                  >
+                    copy(JSON.stringify(await miro.board.get()))
+                  </code>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      borderRadius: 4,
+                      background: "var(--firo-color-panel)",
+                      border: "1px solid var(--firo-color-border)",
+                    }}
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(
+                        "copy(JSON.stringify(await miro.board.get()))",
+                      );
+                      setCopiedCmd(true);
+                      setTimeout(() => setCopiedCmd(false), 2000);
+                    }}
+                  >
+                    {copiedCmd ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontWeight: 500,
+                    fontSize: 13,
+                    marginBottom: 6,
+                  }}
+                >
+                  2. Paste from clipboard or choose file:
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <button
+                    type="button"
+                    style={{
+                      flex: 1,
+                      padding: "8px 16px",
+                      background: "var(--firo-color-accent)",
+                      color: "var(--firo-color-on-accent)",
+                      border: "none",
+                      borderRadius: "var(--firo-radius-pill)",
+                      cursor: "pointer",
+                      fontWeight: 500,
+                      fontSize: 13,
+                    }}
+                    onClick={handlePasteMiroFromClipboard}
+                  >
+                    Paste from Clipboard & Finish
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "8px 16px",
+                      background: "var(--firo-color-panel)",
+                      border: "1px solid var(--firo-color-border)",
+                      borderRadius: "var(--firo-radius-pill)",
+                      cursor: "pointer",
+                      fontSize: 13,
+                    }}
+                    onClick={handlePickMiroJsonFile}
+                  >
+                    Choose items.json File
+                  </button>
+                </div>
+                <textarea
+                  placeholder="Or paste JSON here manually..."
+                  value={miroPastedText}
+                  onChange={(e) => setMiroPastedText(e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: 80,
+                    boxSizing: "border-box",
+                    padding: 8,
+                    borderRadius: 6,
+                    border: "1px solid var(--firo-color-border)",
+                    background: "var(--firo-color-surface)",
+                    color: "var(--firo-color-text)",
+                    fontSize: 12,
+                    fontFamily: "monospace",
+                    resize: "vertical",
+                  }}
+                />
+                {miroPastedText.trim() && (
+                  <button
+                    type="button"
+                    style={{
+                      marginTop: 8,
+                      width: "100%",
+                      padding: "8px 16px",
+                      background: "var(--firo-color-accent)",
+                      color: "var(--firo-color-on-accent)",
+                      border: "none",
+                      borderRadius: "var(--firo-radius-pill)",
+                      cursor: "pointer",
+                      fontWeight: 500,
+                      fontSize: 13,
+                    }}
+                    onClick={() => handleFinishMiroImport(miroPastedText)}
+                  >
+                    Import Pasted JSON
+                  </button>
+                )}
+              </div>
+
+              {miroImportError && (
+                <div
+                  style={{
+                    color: "var(--firo-color-danger, #d32f2f)",
+                    fontSize: 13,
+                  }}
+                >
+                  {miroImportError}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
