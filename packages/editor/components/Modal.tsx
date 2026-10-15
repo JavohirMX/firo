@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { KEYS } from "@firo/common";
 
 import { useCreatePortalContainer } from "../hooks/useCreatePortalContainer";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 import "./Modal.scss";
 
@@ -23,6 +24,13 @@ export const Modal: React.FC<{
   const modalRoot = useCreatePortalContainer({
     className: "excalidraw-modal-container",
   });
+
+  // A modal declares `aria-modal="true"`, so it has to actually hold focus:
+  // contained while it is open, and returned to the opener when it closes.
+  // `Dialog` handles tabbing between its own controls; this is what makes the
+  // claim true for the whole dialog, and what restores focus when the dialog is
+  // dismissed by state rather than through its own `onClose`.
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
 
   const animationsDisabled = useMemo(
     () =>
@@ -47,6 +55,7 @@ export const Modal: React.FC<{
 
   return createPortal(
     <div
+      ref={focusTrapRef}
       className={clsx("Modal", props.className, {
         "animations-disabled": animationsDisabled,
       })}

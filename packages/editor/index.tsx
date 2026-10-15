@@ -572,6 +572,15 @@ export { SelectedShapeActions } from "./components/Actions";
 
 export { useApp, useExcalidrawSetAppState } from "./components/App";
 
+/**
+ * Contain and restore focus for a dialog.
+ *
+ * Exported because the host app owns dialogs the editor does not — the command
+ * palette's host chrome, for one — and they need the same behaviour the
+ * editor's own `Modal` gets.
+ */
+export { useFocusTrap } from "./hooks/useFocusTrap";
+
 export {
   actionZoomIn,
   actionZoomOut,
