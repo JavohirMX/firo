@@ -1,0 +1,129 @@
+/*
+ * Collaboration Bar styling matching Miro clean aesthetics.
+ */
+
+.firo-collab-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--firo-space-sm, 8px);
+}
+
+.firo-connection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--firo-radius-pill, 9999px);
+  background-color: var(--firo-color-surface-subtle, #f3f4f6);
+  border: 1px solid var(--firo-color-border, #e5e7eb);
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  font-size: var(--firo-font-size-xs, 11px);
+  font-weight: var(--firo-font-weight-medium, 500);
+  color: var(--firo-color-text-secondary, #4b5563);
+  user-select: none;
+
+  &__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &--connected {
+      background-color: #30a46c;
+      box-shadow: 0 0 0 2px rgba(48, 164, 108, 0.2);
+    }
+
+    &--connecting {
+      background-color: #e57b00;
+      box-shadow: 0 0 0 2px rgba(229, 123, 0, 0.2);
+      animation: firo-connecting-pulse 1.2s infinite ease-in-out;
+    }
+
+    &--offline {
+      background-color: #e5484d;
+      box-shadow: 0 0 0 2px rgba(229, 72, 77, 0.2);
+    }
+  }
+
+  &__label {
+    line-height: 1;
+  }
+}
+
+@keyframes firo-connecting-pulse {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+.firo-collab-avatars {
+  display: flex;
+  align-items: center;
+  margin-left: 2px;
+  margin-right: 2px;
+
+  &__avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-family: var(--firo-font-ui, system-ui, sans-serif);
+    font-size: 11px;
+    font-weight: var(--firo-font-weight-semibold, 600);
+    border: 2px solid var(--firo-color-panel, #ffffff);
+    margin-left: -6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    user-select: none;
+    cursor: default;
+    transition: transform var(--firo-motion-fast, 150ms) ease;
+
+    &:first-child {
+      margin-left: 0;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      z-index: 5;
+    }
+
+    &--more {
+      background-color: var(--firo-color-text-muted, #9ca3af);
+      font-size: 10px;
+    }
+  }
+}
+
+.firo-share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  background-color: var(--firo-color-accent, #0090ff);
+  color: var(--firo-color-on-accent, #ffffff);
+  border: none;
+  border-radius: var(--firo-radius-pill, 9999px);
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  font-size: var(--firo-font-size-xs, 12px);
+  font-weight: var(--firo-font-weight-semibold, 600);
+  cursor: pointer;
+  transition: background-color var(--firo-motion-fast, 150ms) ease;
+  user-select: none;
+
+  &:hover {
+    background-color: var(--firo-color-accent-hover, #0077d4);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}

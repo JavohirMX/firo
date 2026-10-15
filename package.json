@@ -3,7 +3,7 @@
   "name": "firo-monorepo",
   "packageManager": "yarn@1.22.22",
   "workspaces": [
-    "apps/web",
+    "apps/*",
     "packages/*",
     "examples/*"
   ],

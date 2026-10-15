@@ -47,6 +47,6 @@
       "@firo/ui/*": ["./packages/ui/src/*"]
     }
   },
-  "include": ["packages", "apps/web"],
+  "include": ["packages", "apps/web", "apps/server"],
   "exclude": ["examples", "dist", "types", "tests"]
 }

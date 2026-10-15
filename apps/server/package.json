@@ -1,0 +1,25 @@
+{
+  "name": "@firo/server",
+  "version": "0.1.0",
+  "description": "Firo sync server: WebSocket relay, SQLite persistence, and authentication",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "ws": "8.18.1",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.33"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/ws": "^8.5.14"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest"
+  }
+}

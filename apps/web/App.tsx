@@ -20,7 +20,6 @@ import {
   CreationRail,
   NavToolbar,
   BoardMenu,
-  CollabBar,
   Inspector,
   SelectionToolbar,
   RAIL_TOOL_ICONS,
@@ -115,6 +114,9 @@ import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer } from "./components/CommentLayer";
 import { TagLayer } from "./components/TagLayer";
+import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
+import { CollabBar } from "./components/CollabBar";
+import { ShareModal } from "./components/ShareModal";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
 import { Minimap } from "./components/Minimap";
@@ -805,6 +807,7 @@ const ExcalidrawWrapper = () => {
   const [commentTarget, setCommentTarget] = useState<string | null>(null);
   const [minimapVisible, setMinimapVisible] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
 
   const refreshActivity = useCallback(async () => {
@@ -1304,7 +1307,16 @@ const ExcalidrawWrapper = () => {
           />
         )}
         renderTopRightUI={() => (
-          <CollabBar>
+          <CollabBar
+            connectionStatus={
+              isOffline
+                ? "offline"
+                : isCollaborating
+                ? "connected"
+                : "connected"
+            }
+            onOpenShare={() => setShareModalOpen(true)}
+          >
             <button
               type="button"
               className="firo-collab-bar__btn"
@@ -1383,6 +1395,11 @@ const ExcalidrawWrapper = () => {
           excalidrawAPI={excalidrawAPI}
           composerTarget={commentTarget}
           onCloseComposer={() => setCommentTarget(null)}
+        />
+        <RemoteCursorLayer excalidrawAPI={excalidrawAPI} />
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
         />
         <ActivityFeed
           isOpen={activityFeedOpen}

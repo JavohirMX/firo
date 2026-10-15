@@ -1,0 +1,293 @@
+/*
+ * ShareModal styles matching @firo/ui Miro-style design system.
+ */
+
+.firo-share-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: var(--firo-color-scrim, rgba(0, 0, 0, 0.45));
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--firo-space-md, 16px);
+  animation: firo-fade-in var(--firo-motion-fast, 150ms) ease-out;
+}
+
+@keyframes firo-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.firo-share-modal {
+  background: var(--firo-color-panel, #ffffff);
+  border: 1px solid var(--firo-color-border, #e5e7eb);
+  border-radius: var(--firo-radius-lg, 12px);
+  box-shadow: var(
+    --firo-elevation-popover,
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1)
+  );
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  color: var(--firo-color-text, #111827);
+  box-sizing: border-box;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--firo-space-md, 16px) var(--firo-space-lg, 24px);
+    border-bottom: 1px solid var(--firo-color-border, #e5e7eb);
+
+    h2 {
+      margin: 0;
+      font-size: var(--firo-font-size-lg, 18px);
+      font-weight: var(--firo-font-weight-semibold, 600);
+      line-height: 1.3;
+    }
+  }
+
+  &__close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: var(--firo-space-xs, 4px);
+    border-radius: var(--firo-radius-sm, 4px);
+    color: var(--firo-color-text-muted, #6b7280);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color var(--firo-motion-fast, 150ms) ease,
+      color var(--firo-motion-fast, 150ms) ease;
+
+    &:hover {
+      background-color: var(--firo-color-panel-hover, #f3f4f6);
+      color: var(--firo-color-text, #111827);
+    }
+  }
+
+  &__content {
+    padding: var(--firo-space-lg, 24px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-lg, 20px);
+  }
+
+  &__notice {
+    background-color: var(--firo-color-surface-subtle, #f8fafc);
+    border: 1px solid var(--firo-color-border, #e2e8f0);
+    border-radius: var(--firo-radius-md, 8px);
+    padding: var(--firo-space-sm, 12px) var(--firo-space-md, 16px);
+    font-size: var(--firo-font-size-sm, 13px);
+    color: var(--firo-color-text-secondary, #4b5563);
+    line-height: 1.45;
+
+    strong {
+      color: var(--firo-color-text, #1e293b);
+    }
+  }
+
+  &__creation-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-sm, 12px);
+  }
+
+  &__section-title {
+    font-size: var(--firo-font-size-sm, 13px);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--firo-color-text-muted, #64748b);
+    margin: 0;
+  }
+
+  &__row {
+    display: flex;
+    gap: var(--firo-space-sm, 10px);
+    align-items: center;
+  }
+
+  &__role-select {
+    flex: 1;
+    height: 38px;
+    padding: 0 var(--firo-space-sm, 12px);
+    border: 1px solid var(--firo-color-border, #d1d5db);
+    border-radius: var(--firo-radius-md, 6px);
+    background-color: var(--firo-color-panel, #ffffff);
+    color: var(--firo-color-text, #111827);
+    font-family: inherit;
+    font-size: var(--firo-font-size-sm, 14px);
+    outline: none;
+    cursor: pointer;
+    transition: border-color var(--firo-motion-fast, 150ms) ease;
+
+    &:focus {
+      border-color: var(--firo-color-accent, #0090ff);
+      box-shadow: 0 0 0 2px var(--firo-color-focus-ring, rgba(0, 144, 255, 0.2));
+    }
+  }
+
+  &__create-btn {
+    height: 38px;
+    padding: 0 var(--firo-space-md, 16px);
+    background-color: var(--firo-color-accent, #0090ff);
+    color: var(--firo-color-on-accent, #ffffff);
+    border: none;
+    border-radius: var(--firo-radius-md, 6px);
+    font-family: inherit;
+    font-size: var(--firo-font-size-sm, 14px);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--firo-space-xs, 6px);
+    white-space: nowrap;
+    transition: background-color var(--firo-motion-fast, 150ms) ease;
+
+    &:hover {
+      background-color: var(--firo-color-accent-hover, #0077d4);
+    }
+  }
+
+  &__links-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-sm, 10px);
+  }
+
+  &__links-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-xs, 8px);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  &__link-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--firo-space-sm, 10px);
+    padding: var(--firo-space-sm, 10px) var(--firo-space-md, 12px);
+    border: 1px solid var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 6px);
+    background-color: var(--firo-color-surface-subtle, #f9fafb);
+  }
+
+  &__link-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-sm, 8px);
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__role-badge {
+    padding: 2px 8px;
+    border-radius: var(--firo-radius-pill, 9999px);
+    font-size: var(--firo-font-size-xs, 11px);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    text-transform: capitalize;
+    flex-shrink: 0;
+
+    &--editor {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+
+    &--commenter {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    &--viewer {
+      background-color: #f3f4f6;
+      color: #374151;
+    }
+  }
+
+  &__link-url {
+    font-size: var(--firo-font-size-xs, 12px);
+    color: var(--firo-color-text-secondary, #4b5563);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: monospace;
+  }
+
+  &__link-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-xs, 6px);
+    flex-shrink: 0;
+  }
+
+  &__copy-btn {
+    height: 30px;
+    padding: 0 var(--firo-space-sm, 10px);
+    background-color: var(--firo-color-panel, #ffffff);
+    border: 1px solid var(--firo-color-border, #d1d5db);
+    border-radius: var(--firo-radius-sm, 4px);
+    color: var(--firo-color-text, #111827);
+    font-size: var(--firo-font-size-xs, 12px);
+    font-weight: var(--firo-font-weight-medium, 500);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all var(--firo-motion-fast, 150ms) ease;
+
+    &:hover {
+      background-color: var(--firo-color-panel-hover, #f3f4f6);
+    }
+
+    &.is-copied {
+      background-color: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+  }
+
+  &__revoke-btn {
+    height: 30px;
+    padding: 0 var(--firo-space-sm, 10px);
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--firo-radius-sm, 4px);
+    color: var(--firo-color-danger, #ef4444);
+    font-size: var(--firo-font-size-xs, 12px);
+    font-weight: var(--firo-font-weight-medium, 500);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all var(--firo-motion-fast, 150ms) ease;
+
+    &:hover {
+      background-color: #fee2e2;
+      border-color: #fecaca;
+    }
+  }
+
+  &__empty {
+    font-size: var(--firo-font-size-sm, 13px);
+    color: var(--firo-color-text-muted, #9ca3af);
+    text-align: center;
+    padding: var(--firo-space-md, 16px);
+    border: 1px dashed var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 6px);
+  }
+}

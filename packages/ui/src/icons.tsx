@@ -1009,3 +1009,72 @@ export const ActivityIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     />
   </svg>
 );
+
+export const ShareIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="15" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.75" />
+    <circle cx="5" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.75" />
+    <circle cx="15" cy="15" r="2.5" stroke="currentColor" strokeWidth="1.75" />
+    <path
+      d="M7.3 8.85L12.7 6.15M7.3 11.15L12.7 13.85"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const CopyIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <rect
+      x="6.5"
+      y="6.5"
+      width="9.5"
+      height="9.5"
+      rx="1.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    />
+    <path
+      d="M4 13.5H3.5C2.67157 13.5 2 12.8284 2 12V3.5C2 2.67157 2.67157 2 3.5 2H12C12.8284 2 13.5 2.67157 13.5 3.5V4"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const LinkIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M8.5 11.5L11.5 8.5M7 13L5.5 14.5C4.11929 15.8807 4.11929 18.1193 5.5 19.5C6.88071 20.8807 9.11929 20.8807 10.5 19.5L12 18M8 2L9.5 3.5C10.8807 4.88071 10.8807 7.11929 9.5 8.5L8 10"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
