@@ -121,26 +121,120 @@ Consequences worth recording, because they are design decisions Firo can borrow:
    creation flow. Firo's `CREATION_TOOLS` / `locked` mechanism is the local
    analogue of the one-time-versus-latched distinction.
 
-Scale observed: **~220 command descriptors**, **12 categories**, **~22
+Scale observed: **295 command descriptors**, **12 categories**, **~22
 single-character bindings**, plus a per-widget shortcut layer used inside editors
 (emoji picker, kanban, and so on).
 
-### Categories **[bundle]**
+### The composition: the registry by category **[bundle]**
 
-The rail groups tools under these category ids:
+Miro's toolbars are **not hand-assembled**. Every command declares a `category`,
+and the left creation rail and the *Tools, Media and Integrations* panel are
+rendered from that declaration. The toolbar's composition is therefore **data,
+not layout** — which is the precondition for pinning, unpinning and reordering
+it per user (§Creation rail).
 
-`BASICS` · `ESSENTIALS` · `DIAGRAMMING` · `FORMATS` · `PLANNING` ·
-`ACTIVITIES` · `MEDIA` · `COLLABORATION` · `CUSTOMIZABLE_WIDGETS` ·
-`FROM_MARKETPLACE` · `ASSISTIVE_TECHNOLOGY` · `OTHER`
+**295 command descriptors** were observed across these categories. Entries under
+`OTHER` are largely Miro's integration catalogue; the ~120 with **no** category
+are the menu and panel actions described under §The surfaces. (`FROM_MARKETPLACE`
+is a declared category with no core member — marketplace apps sit outside this
+registry.)
 
-Plus the tools panel's own pseudo-sections: `pinned`, `libraries`, `plugins`.
+**`BASICS`** — freehand: `ERASER` `HIGHLIGHTER` `LASSO` `PEN` `PRECISION_ERASER`
+`SMART_DRAWING`
+
+**`ESSENTIALS`** — `CHART` `COMMENTS` `COUNTDOWN` `COUNTDOWN_TRIGGER` `FLIP_CARD`
+`FLOW_CONNECTOR_COMMAND_PALETTE` `FRAMES` `GRID` `MIND_MAP`
+`MULTI_STEP_ACTION_COMMAND_PALETTE` `NOTES` `PEOPLE` `PROTOTYPE_LIBRARY`
+`SEMANTIC_POSITIONING_COMMAND_PALETTE` `STICKERS` `STICKY_STACK` `STRUCTDOC`
+`TEMPLATES` `TEMPLATES_PANEL` `TEMPLATES_VISITORS` `TEXT` `USER_CARD`
+
+**`DIAGRAMMING`** — `AWS_CC_WRAPPER_APP` `CLOUDVIEW_FILTERS`
+`DIAGRAMMING_CONTAINERS` `DIAGRAMMING_TEMPLATES` `DIAGRAM_LAYOUT` `DRAW_IO`
+`IMPORT_DIAGRAM_APP` `LAYERS` `LINES` `OPEN_IN_DESKTOP` `ORGCHART`
+`SHAPES_AND_LINES` `SHAPE_LIBRARY` `WIREFRAMES`
+
+**`FORMATS`** — `ACTION_BUTTON` `ACTIVITIES` `CUSTOMER_JOURNEY_MAP` `DATA_TABLE`
+`DIAGRAM` `KANBAN_V2` `MATRIX` `PROTOTYPING_CONTAINER` `SLIDES_FORMAT`
+`TALKTRACK_MEDIA` `TIMELINE` `TREE`
+
+**`PLANNING`** — `ASANA_TICKETING` `CLICK_UP_TICKETING` `DEPENDENCY_MAPPER`
+`ESTIMATION` `ESTIMATION_TRIGGER` `GITHUB_ISSUES_TICKETING` `KANBAN`
+`LINEAR_TICKETING` `RALLY_TICKETING` `SERVICE_NOW_TICKETING` `STORY_POINTS`
+`TRELLO_TICKETING` `TSHIRT_SIZING` `USM` `WRIKE_TICKETING`
+
+**`ACTIVITIES`** — `COMPANION_QR` `MATRIX_2X2` `MULTIPLE_CHOICE` `OPEN_ENDED`
+`QUIZ_SELECT_ANSWER` `RANKING` `SCALE` `WORD_CLOUD`
+
+**`MEDIA`** — `ADOBE_EXPRESS` `IMAGE_LIBRARY` `MEDIA_LIBRARY`
+`RECORDING_LIBRARY_MEDIA` `TALKTRACK_LEGACY_MEDIA` `UPLOAD` `VIDEO`
+
+**`COLLABORATION`** — `ALIGNMENT_SCALE` `ASYNC_INSIGHTS_UI` `DOT_VOTING` `MEET`
+`POLLING` `PRESENTATION_MODE` `PRIVATE_MODE` `SPINNER` `VOTING` `VOTING_TRIGGER`
+
+**`CUSTOMIZABLE_WIDGETS`** — `ANYTHING_STACK` `CUSTOM_WIDGET` `WORKFLOW_BUTTON`
+
+**`ASSISTIVE_TECHNOLOGY`** — `ACCESSIBILITY_COMMAND_PALETTE`
+
+**`OTHER`** — `A11Y_CHECKER` `AGENT_MENTION_REPLY` `APP_LIBRARY`
+`AUTO_LAYOUT_CONTAINER` `CANVAS_DEV_TOOLS` `CUSTOM_MCP_CONNECTOR` `CUSTOM_TRIVIA`
+`CUSTOM_WIDGET_GALLERY` `D20` `DATA_TABLE_CONNECTIONS` `DEMO_1D_LAYOUT`
+`DESIGN_SYSTEM_DEMO` `DIVIDER` `EVALS_WIDGET_TOOL` `EXPERIMENTAL_WIDGETS_GALLERY`
+`FEEDBACK_LOOP_CARD` `FEEDBACK_LOOP_MENTION` `FLOW_TEMPLATES` `GENAI_PANEL`
+`HTML_TO_FORMAT` `HTML_WIDGET_COMMENTS` `HTML_WIDGET_EXPORT` `HTML_WIDGET_PREVIEW`
+`LEADERBOARD` `LOCAL_AGENTS` `MEDIA_PLAYER` `MINDMAP` `MIRO_LITE_TEMPLATES`
+`OMNIBAR` `PHOTOBOOTH_CAMERA` `PORTAL` `PROTOTYPE_CONNECTORS_TOGGLE`
+`PROTOTYPE_IMPORT_STYLES` `PROTOTYPING_CONNECTOR_COMMAND_PALETTE` `RED`
+`SHAREABLE_PRESENTATION` `STICKERS_BULK` `STICKERS_RECOGNITION` `SURFACE`
+`TEMPLATE_MANAGER` `VALIDATION_REPORT` `WORKFLOW_HTTP_REQUEST` — plus roughly
+thirty-five further connectors (`ASANA_CONNECTOR`, `ATLASSIAN_CONNECTOR`,
+`SLACK_CONNECTOR`, `NOTION_CONNECTOR`, `GITHUB_CONNECTOR`, `GITLAB_CONNECTOR`,
+`LINEAR_CONNECTOR`, `GOOGLE_DRIVE_CONNECTOR`, `GMAIL_CONNECTOR`,
+`GOOGLE_CALENDAR_CONNECTOR`, `GOOGLE_CHAT_CONNECTOR`, `AIRTABLE_CONNECTOR`,
+`AMPLITUDE_CONNECTOR`, `CANVA_CONNECTOR`, `CODA_CONNECTOR`,
+`DATABRICKS_GENIE_ONE_CONNECTOR`, `DATABRICKS_SQL_CONNECTOR`,
+`DEEPWIKI_CONNECTOR`, `DROPBOX_CONNECTOR`, `GLEAN_CONNECTOR`, `GRANOLA_CONNECTOR`,
+`INCIDENT_IO_CONNECTOR`, `LOOKER_CONNECTOR`, `LOVABLE_CONNECTOR`,
+`MIXPANEL_CONNECTOR`, `PENDO_CONNECTOR`, `SALESFORCE_CONNECTOR`,
+`SNOWFLAKE_CONNECTOR`, `TRELLO_CONNECTOR`, `WRIKE_CONNECTOR`, `ZOOM_CONNECTOR`
+and the ticketing set).
+
+**Uncategorised (menu and panel actions, ~120)** — `ACC_SETTINGS` `ACTIVITY_LIST`
+`ACTIVITY_PANEL` `ADD_LINK_TO_OBJECT` `AI_CANVAS_FORMATS_AND_FLOWS_MENU`
+`AI_DIAGRAM` `AI_DIAGRAM_COMPANION` `AI_HELP_CENTER` `AI_LAYOUT_TOGGLE`
+`ALIGN_OBJECTS` `BACKGROUND_MENU` `BOARD_DETAILS` `BOARD_EXPORT_BACKUP`
+`BOARD_EXPORT_EMBED` `BOARD_EXPORT_IMAGE` `BOARD_EXPORT_PDF`
+`BOARD_EXPORT_SPREADSHEET` `BOARD_RECORDING` `BOARD_TRANSLATOR` `BREAKOUT_ROOMS`
+`CLUSTERING` `CODE_WIDGET` `COLLAB_CURSORS` `COLLABORATION_SOUNDS`
+`COMMAND_PALETTE_TOGGLE` `COMMENTS_ON_BOARD` `CREATE_NEW_BOARD`
+`CREATION_BAR_VISIBILITY` `CURSOR` `CURSOR_TEXT` `DARK_MODE` `DELETE`
+`DO_NOT_DISTURB` `DUPLICATE` `FEED` `FIND` `FOLLOW_THREADS` `FORMAT_SHARE`
+`FROM_CHROME_EXTENSION` `FRAMES_LIST` `FRAMES_NAVIGATION` `FULL_SCREEN`
+`GOOGLE_DRIVE` `GRID_MENU` `HELP_CENTER` `LANGUAGE_MENU` `LEARNING_CENTER`
+`LOCK_DEFAULT_VIEW` `LOGOUT` `MANAGE_ANNOTATIONS` `MINIMAP` `NAVIGATION_MENU`
+`ONE_DRIVE` `OPEN_BOARD_SOURCE` `OTHER_PROJECT` `OTHER_TEAM` `PASTE_IFRAME`
+`PERFORMANCE_MODE` `PERFORMANT_NAVIGATION` `PIPMATRIX` `PROTOTYPING`
+`PROTOTYPING_PREVIEW` `PSEUDO_LOCALIZATION` `REACTION` `REDO` `REDUCE_MOTION`
+`SAVE_BOARD_AS_TEMPLATE` `SAVE_TO_GOOGLE_DRIVE` `SCROLL_BARS` `SEND_FEEDBACK`
+`SEND_TO_DISPLAY` `SET_START_VIEW` `SHARE_BOARD` `SHORTCUTS`
+`SHOW_OBJECT_DIMENSIONS` `SINGLE_CHARACTER_SHORTCUTS` `STAR_BOARD`
+`SWITCH_TOOL_BY_INPUT_TYPE` `TABLES_AND_CHARTS` `TITLE_BOARD` `UNDO`
+`UNDO_REDO_CONTROLS` `UNSPLASH` `WHAT_IS_NEW` `WORKFLOW` `ZOOM_CONTROLS` — plus
+the embed family (`BOX`, `BOX_EMBED`, `CONFLUENCE_EMBED`, `FIGMA_EMBED`,
+`GOOGLEDOCS_EMBED`, `GOOGLESHEETS_EMBED`, `GOOGLESLIDES_EMBED`, `LOOKER_EMBED`,
+`MSEXCEL_EMBED`, `MSPOWERPOINT_EMBED`, `MSWORD_EMBED`, `POWERBI_EMBED`) and the
+ticketing family (`AHA_TICKETING`, `AZURE_CARDS`, `JIRA`, `RALLY`,
+`SALESFORCE_TICKETING`, `ZENDESK_TICKETING`).
+
+On top of the twelve categories the panel adds three **pseudo-sections**:
+`pinned`, `libraries` and `plugins`.
 
 ## The command catalogue
 
-The command descriptors observed in the build, grouped by the surface that hosts
-them. **[bundle]** Roughly 130 carry a named icon slot (reproduced here); a
-further ~90 carry no icon and are pure actions (menu commands, exports, panel
-toggles). Third-party marketplace apps are omitted.
+A **selection** of descriptors, grouped by the surface that hosts them, with the
+icon slot each declares. **[bundle]** The exhaustive list is the by-category
+composition above — this is the subset worth naming individually, including the
+icon slots (which Miro resolves from a separate icon set; the drawings were never
+retrieved and would not be copied in any case).
 
 ### Tools and creation rail
 
@@ -525,6 +619,12 @@ interaction-level reconciliation, and it is what 7.5.8 and 7.5.9 act on.
 
 ## Gaps
 
+- **The rail's *default* composition** — the registry gives every command's
+  category (so the *panel* is exhaustive), and the live accessibility tree gives
+  the rail's order as rendered for this account. What is **not** separated is
+  which commands are on the rail *by default* versus only in the *Tools, Media and
+  Integrations* panel once a user has personalised it — the live board was already
+  someone's arrangement. Miro's own default is documented, not observed.
 - **Geometry and motion** — as in [`miro-ui.md`](miro-ui.md). Unchanged by the
   bundle work: minified CSS-in-JS was not read for values.
 - **The rendered grammar of the unopened surfaces** — submenus and flyouts were
