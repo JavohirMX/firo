@@ -24,7 +24,8 @@ import type { AccessibilityTreeItem } from "@firo/ui";
 export const AccessibilityLayer: React.FC<{
   items: readonly AccessibilityTreeItem[];
   boardLabel?: string;
-}> = ({ items, boardLabel }) => {
+  liveMessage?: string;
+}> = ({ items, boardLabel, liveMessage }) => {
   const excalidrawAPI = useExcalidrawAPI();
   const selectedElementIds =
     useExcalidrawStateValue((state) => state.selectedElementIds) ?? {};
@@ -65,6 +66,7 @@ export const AccessibilityLayer: React.FC<{
     <AccessibilityTree
       items={items}
       boardLabel={boardLabel}
+      liveMessage={liveMessage}
       selectedId={selectedId}
       onActivate={select}
       onFocusElement={select}

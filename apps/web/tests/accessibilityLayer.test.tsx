@@ -85,4 +85,17 @@ describe("AccessibilityLayer", () => {
       appState: { selectedElementIds: {} },
     });
   });
+
+  it("announces a message in the tree's polite live region", () => {
+    render(
+      <AccessibilityLayer
+        items={items}
+        liveMessage="Could not save: storage is full"
+      />,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.textContent).toBe("Could not save: storage is full");
+  });
 });

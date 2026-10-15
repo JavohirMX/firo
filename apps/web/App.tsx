@@ -997,6 +997,32 @@ const ExcalidrawWrapper = () => {
   const localStorageQuotaExceeded = useAtomValue(localStorageQuotaExceededAtom);
 
   const isOffline = useIsOffline();
+  const viewModeEnabled = useExcalidrawStateValue(
+    (state) => state.viewModeEnabled,
+  );
+
+  const liveMessage = useMemo(() => {
+    if (errorMessage) {
+      return errorMessage;
+    }
+    if (localStorageQuotaExceeded) {
+      return t("alerts.localStorageQuotaExceeded");
+    }
+    if (isCollaborating && isOffline) {
+      return t("alerts.collabOfflineWarning");
+    }
+    if (viewModeEnabled) {
+      return "View mode active";
+    }
+    return undefined;
+  }, [
+    errorMessage,
+    localStorageQuotaExceeded,
+    isCollaborating,
+    isOffline,
+    viewModeEnabled,
+    t,
+  ]);
 
   useHandleLibrary({
     excalidrawAPI,
@@ -1501,6 +1527,7 @@ const ExcalidrawWrapper = () => {
         <AccessibilityLayer
           items={accessibilityItems}
           boardLabel={getActiveBoard()?.name}
+          liveMessage={liveMessage}
         />
         <ProjectionView excalidrawAPI={excalidrawAPI} />
         <TagLayer

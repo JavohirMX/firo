@@ -132,7 +132,9 @@ Excalidraw's accessibility position is not strong, and the fork gives us room:
 > keyboard model are therefore built in Phase 10
 > ([`../plans/phase-10-ai-mcp-a11y-desktop.md`](../plans/phase-10-ai-mcp-a11y-desktop.md)
 > §10.3) *before* the VPAT, because a VPAT cannot be published over an untested
-> tree.
+> tree. The polite live region now carries errors, quota notifications, offline
+> status, and mode changes, while save state remains in `SaveStatusIndicator` so
+> the two do not double-announce.
 
 | Phase | Accessibility requirement |
 | --- | --- |
