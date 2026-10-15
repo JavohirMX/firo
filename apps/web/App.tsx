@@ -1021,7 +1021,6 @@ const ExcalidrawWrapper = () => {
     isCollaborating,
     isOffline,
     viewModeEnabled,
-    t,
   ]);
 
   useHandleLibrary({

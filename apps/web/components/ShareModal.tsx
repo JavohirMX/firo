@@ -147,6 +147,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         aria-modal="true"
         aria-labelledby="share-modal-title"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
         data-testid="share-modal"
       >
         <div className="firo-share-modal__header">
