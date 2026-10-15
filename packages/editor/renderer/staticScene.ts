@@ -56,23 +56,23 @@ import type { StaticCanvasAppState, Zoom, GridType } from "../types";
 
 const GridLineColor = {
   [THEME.LIGHT]: {
-    bold: "#dddddd",
+    bold: "#cccccc",
     regular: "#e5e5e5",
   },
   [THEME.DARK]: {
-    bold: applyDarkModeFilter("#dddddd"),
+    bold: applyDarkModeFilter("#cccccc"),
     regular: applyDarkModeFilter("#e5e5e5"),
   },
 } as const;
 
 const GridDotColor = {
-  [THEME.LIGHT]: "#b8b8b8",
-  [THEME.DARK]: applyDarkModeFilter("#b8b8b8"),
+  [THEME.LIGHT]: "#a8a8a8",
+  [THEME.DARK]: applyDarkModeFilter("#a8a8a8"),
 } as const;
 
 const GridCrossColor = {
-  [THEME.LIGHT]: "#cccccc",
-  [THEME.DARK]: applyDarkModeFilter("#cccccc"),
+  [THEME.LIGHT]: "#b8b8b8",
+  [THEME.DARK]: applyDarkModeFilter("#b8b8b8"),
 } as const;
 
 export interface AdaptiveGridParameters {
@@ -108,14 +108,17 @@ export const getAdaptiveGridParameters = (
   const minorScreen = minorGridSize * zoomValue;
   const majorScreen = majorGridSize * zoomValue;
 
-  const fadeStart = 12;
+  const fadeStart = 10;
   const fadeEnd = 30;
 
   const t = Math.max(
     0,
     Math.min(1, (minorScreen - fadeStart) / (fadeEnd - fadeStart)),
   );
-  const minorAlpha = t * t * (3 - 2 * t);
+  // Quadratic ease-out: reaches 0 at fadeStart for pop-free tier transitions,
+  // maintains healthy visibility through intermediate zooms (e.g. at <20% zoom),
+  // and smoothly levels off to 1.0 at fadeEnd with zero derivative.
+  const minorAlpha = t * (2 - t);
 
   return {
     majorGridSize,
@@ -132,7 +135,7 @@ export const calculateEffectiveGridSize = (
   zoomValue: number,
 ): number => {
   const params = getAdaptiveGridParameters(gridSize, zoomValue);
-  return params.minorAlpha > 0.35 ? params.minorGridSize : params.majorGridSize;
+  return params.minorAlpha > 0.45 ? params.minorGridSize : params.majorGridSize;
 };
 
 export const strokeGrid = (
@@ -164,7 +167,8 @@ export const strokeGrid = (
   context.save();
 
   if (gridType === "dots") {
-    const dotRadius = 1.5 / zoom.value;
+    const majorDotRadius = 1.75 / zoom.value;
+    const minorDotRadius = 1.25 / zoom.value;
     context.fillStyle = GridDotColor[theme];
 
     // 1. Major dots
@@ -180,8 +184,8 @@ export const strokeGrid = (
         y < offsetMajorY + height + majorGridSize * 2;
         y += majorGridSize
       ) {
-        context.moveTo(x + dotRadius, y);
-        context.arc(x, y, dotRadius, 0, Math.PI * 2);
+        context.moveTo(x + majorDotRadius, y);
+        context.arc(x, y, majorDotRadius, 0, Math.PI * 2);
       }
     }
     context.fill();
@@ -207,8 +211,8 @@ export const strokeGrid = (
           if (isMajorX && isMajorY) {
             continue;
           }
-          context.moveTo(x + dotRadius, y);
-          context.arc(x, y, dotRadius, 0, Math.PI * 2);
+          context.moveTo(x + minorDotRadius, y);
+          context.arc(x, y, minorDotRadius, 0, Math.PI * 2);
         }
       }
       context.fill();
@@ -219,7 +223,8 @@ export const strokeGrid = (
   }
 
   if (gridType === "crosses") {
-    const arm = 3.5 / zoom.value;
+    const majorArm = 4 / zoom.value;
+    const minorArm = 3 / zoom.value;
     context.lineWidth = 1 / zoom.value;
     context.strokeStyle = GridCrossColor[theme];
 
@@ -236,10 +241,10 @@ export const strokeGrid = (
         y < offsetMajorY + height + majorGridSize * 2;
         y += majorGridSize
       ) {
-        context.moveTo(x - arm, y);
-        context.lineTo(x + arm, y);
-        context.moveTo(x, y - arm);
-        context.lineTo(x, y + arm);
+        context.moveTo(x - majorArm, y);
+        context.lineTo(x + majorArm, y);
+        context.moveTo(x, y - majorArm);
+        context.lineTo(x, y + majorArm);
       }
     }
     context.stroke();
@@ -265,10 +270,10 @@ export const strokeGrid = (
           if (isMajorX && isMajorY) {
             continue;
           }
-          context.moveTo(x - arm, y);
-          context.lineTo(x + arm, y);
-          context.moveTo(x, y - arm);
-          context.lineTo(x, y + arm);
+          context.moveTo(x - minorArm, y);
+          context.lineTo(x + minorArm, y);
+          context.moveTo(x, y - minorArm);
+          context.lineTo(x, y + minorArm);
         }
       }
       context.stroke();
@@ -366,19 +371,15 @@ export const strokeGrid = (
   const devicePixels = zoom.value * scale;
 
   const snap = (position: number, maxWidthInCssPixels: number) => {
-    const widthInDevicePixels = Math.min(
-      scale,
-      maxWidthInCssPixels * devicePixels,
+    const widthInDevicePixels = Math.max(
+      1,
+      Math.min(scale, Math.round(maxWidthInCssPixels * devicePixels)),
     );
-    if (widthInDevicePixels < 1) {
-      return { position, lineWidth: widthInDevicePixels / devicePixels };
-    }
-    const wholeWidth = Math.round(widthInDevicePixels);
-    const center = wholeWidth % 2 ? 0.5 : 0;
+    const center = widthInDevicePixels % 2 ? 0.5 : 0;
     return {
       position:
         (Math.round(position * devicePixels - center) + center) / devicePixels,
-      lineWidth: wholeWidth / devicePixels,
+      lineWidth: widthInDevicePixels / devicePixels,
     };
   };
 
@@ -393,7 +394,7 @@ export const strokeGrid = (
     x < offsetMajorX + width + majorGridSize * 2;
     x += majorGridSize
   ) {
-    const { position, lineWidth } = snap(x, 1);
+    const { position, lineWidth } = snap(x, 1.5);
     context.lineWidth = lineWidth;
     context.beginPath();
     context.moveTo(position, offsetMajorY - majorGridSize);
@@ -410,7 +411,7 @@ export const strokeGrid = (
     y < offsetMajorY + height + majorGridSize * 2;
     y += majorGridSize
   ) {
-    const { position, lineWidth } = snap(y, 1);
+    const { position, lineWidth } = snap(y, 1.5);
     context.lineWidth = lineWidth;
     context.beginPath();
     context.moveTo(offsetMajorX - majorGridSize, position);

@@ -253,6 +253,74 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       expect(arcCallCount).toBeGreaterThan(0);
       expect(arcCallCount).toBeLessThan(5000); // without adaptive grid it would be > 200,000,000!
     });
+
+    it("maintains visible alpha and avoids transparency collapse below 20% zoom", () => {
+      // Zoom levels around and below 20%
+      const zoom20 = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, 0.2);
+      expect(zoom20.minorAlpha).toBeGreaterThanOrEqual(0.15);
+
+      const zoom15 = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, 0.15);
+      expect(zoom15.minorAlpha).toBeGreaterThanOrEqual(0.8);
+
+      const zoom10 = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, 0.1);
+      expect(zoom10.minorAlpha).toBeGreaterThanOrEqual(0.5);
+
+      const zoom05 = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, 0.05);
+      expect(zoom05.minorAlpha).toBeGreaterThanOrEqual(0.8);
+    });
+
+    it("guarantees lines have a floor of at least 1 device pixel at zoom < 20%", () => {
+      const ctx = createMockContext();
+      const lowZoom: Zoom = { value: 0.1 as NormalizedZoomValue };
+      const scale = 2; // Retina
+
+      strokeGrid(
+        ctx,
+        DEFAULT_GRID_SIZE,
+        DEFAULT_GRID_STEP,
+        0,
+        0,
+        lowZoom,
+        THEME.LIGHT,
+        2000,
+        2000,
+        scale,
+        "lines",
+      );
+
+      // Device pixel width = lineWidth * zoom * scale.
+      // Must be at least 1 device pixel to prevent sub-pixel hairline transparency.
+      const devicePixels = lowZoom.value * scale;
+      const lineWidths = (ctx.moveTo as any).mock.calls.map(
+        () => ctx.lineWidth,
+      );
+      for (const lw of lineWidths) {
+        expect(lw * devicePixels).toBeGreaterThanOrEqual(1.0);
+      }
+    });
+
+    it("renders major dots larger than minor dots for distinct landmarks", () => {
+      const ctx = createMockContext();
+      strokeGrid(
+        ctx,
+        DEFAULT_GRID_SIZE,
+        DEFAULT_GRID_STEP,
+        0,
+        0,
+        baseZoom,
+        THEME.LIGHT,
+        100,
+        100,
+        1,
+        "dots",
+      );
+
+      const radii = (ctx.arc as any).mock.calls.map((call: any[]) => call[2]);
+      const uniqueRadii = Array.from(new Set(radii)) as number[];
+      expect(uniqueRadii.length).toBe(2);
+      expect(Math.max(...uniqueRadii)).toBe(1.75); // Major dot radius
+      expect(Math.min(...uniqueRadii)).toBe(1.25); // Minor dot radius
+    });
   });
 
   describe("actionToggleGridMode cycling", () => {
