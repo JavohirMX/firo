@@ -79,4 +79,20 @@ describe("ActivityFeed component", () => {
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("attaches dialogRef to the dialog container element", () => {
+    const ref = React.createRef<HTMLDivElement>();
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        dialogRef={ref}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(ref.current).toBe(dialog);
+    expect(dialog.classList.contains("firo-activity-feed")).toBe(true);
+  });
 });

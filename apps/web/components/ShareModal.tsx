@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useFocusTrap } from "@firo/editor";
 import { CheckIcon, CloseIcon, CopyIcon, TrashIcon } from "@firo/ui";
 
 import "./ShareModal.scss";
@@ -127,6 +128,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     [onRevokeLink],
   );
 
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen);
+
   if (!isOpen) {
     return null;
   }
@@ -138,6 +141,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       data-testid="share-modal-backdrop"
     >
       <div
+        ref={focusTrapRef}
         className="firo-share-modal"
         role="dialog"
         aria-modal="true"

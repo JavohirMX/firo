@@ -15,6 +15,7 @@ import {
   actionResetZoom,
   actionZoomToFit,
   actionToggleGridMode,
+  useFocusTrap,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -825,6 +826,7 @@ const ExcalidrawWrapper = () => {
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
+  const activityFeedDialogRef = useFocusTrap<HTMLDivElement>(activityFeedOpen);
 
   /*
    * The accessibility tree's contents.
@@ -1536,6 +1538,7 @@ const ExcalidrawWrapper = () => {
         <ActivityFeed
           isOpen={activityFeedOpen}
           onClose={() => setActivityFeedOpen(false)}
+          dialogRef={activityFeedDialogRef}
           entries={activities}
           onClear={async () => {
             const metaId = boardDoc().read().meta?.id;

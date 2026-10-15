@@ -74,6 +74,26 @@ export const useFocusTrap = <T extends HTMLElement = HTMLDivElement>(
   active: boolean,
 ): React.RefCallback<T> => {
   const [node, setNode] = React.useState<T | null>(null);
+  const openerRef = React.useRef<HTMLElement | null>(null);
+
+  /*
+   * Capture the opener as early as possible (during render when becoming active),
+   * before children mount, autofocus, or run layout effects (like TextField's
+   * selectOnRender). If we wait until useEffect, an autofocused input inside the
+   * dialog has already taken activeElement and the true opener is forgotten.
+   */
+  if (active && !openerRef.current) {
+    const doc =
+      node?.ownerDocument ??
+      (typeof document !== "undefined" ? document : null);
+    const currentActive = doc?.activeElement as HTMLElement | null;
+    if (currentActive && (!node || !node.contains(currentActive))) {
+      openerRef.current = currentActive;
+    }
+  }
+  if (!active) {
+    openerRef.current = null;
+  }
 
   React.useEffect(() => {
     if (!active || !node) {
@@ -81,7 +101,13 @@ export const useFocusTrap = <T extends HTMLElement = HTMLDivElement>(
     }
 
     const ownerDocument = node.ownerDocument;
-    const previouslyFocused = ownerDocument.activeElement as HTMLElement | null;
+    if (!openerRef.current) {
+      const candidate = ownerDocument.activeElement as HTMLElement | null;
+      if (candidate && !node.contains(candidate)) {
+        openerRef.current = candidate;
+      }
+    }
+    const previouslyFocused = openerRef.current;
 
     const focusables = () =>
       Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(

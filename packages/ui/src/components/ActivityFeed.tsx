@@ -37,6 +37,7 @@ export interface ActivityFeedProps {
   onSelectBoard?: (boardId: string) => void;
   onClear?: () => void;
   title?: string;
+  dialogRef?: React.Ref<HTMLDivElement>;
 }
 
 const formatRelativeTime = (timestamp: number): string => {
@@ -81,6 +82,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   onSelectBoard,
   onClear,
   title = "Activity History",
+  dialogRef,
 }) => {
   if (!isOpen) {
     return null;
@@ -108,6 +110,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
   return (
     <div
+      ref={dialogRef}
       className="firo-activity-feed"
       role="dialog"
       aria-label="Activity Feed"
