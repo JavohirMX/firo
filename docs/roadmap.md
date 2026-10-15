@@ -19,6 +19,11 @@ Each phase has an **exit criterion**. A phase is done when its criterion is met 
 | 9 | [Sync server](plans/phase-9-sync-server.md) | **AC-12 passes.** One container, local accounts, roles, presence |
 | 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | Local-model AI, MCP server, VPAT published, Tauri shell |
 
+Phases 0–7.5 are complete. **Phase 8 is in progress:** the board index — folders,
+starring, duplication (§8.1) — and cross-board content search (§8.2) shipped
+([`ADR-0028`](adr/0028-project-layer-folders-and-content-search.md)); element
+tags (§8.3), the activity feed (§8.4) and the timeline projection (§8.5) remain.
+
 ## Version boundaries
 
 **Version 1 = Phases 0–7.** A team can run a full workshop on one machine, offline, with no account, and walk away with a file they own.
@@ -70,8 +75,8 @@ Phases 4 and 6 are the two largest by feature volume. Phase 6 is the larger arch
 | Yjs is the bottleneck at scale | 9 | Measure in Phase 9; Loro's API is compatible for a bounded swap ([`ADR-0002`](adr/0002-yjs-as-concurrency-engine.md)) |
 | Records and projections ship half-built | 6 | **Closed.** Three projections (Board, Table, Grid) built and tested in `@firo/records`; AC-3 verified end-to-end in `projectionView.test.tsx` |
 | A `.firo` cannot carry its images, or cannot be read as text | 7 | **Closed.** Directory format with `board.json` and content-addressed `assets/` implemented ([`ADR-0018`](adr/0018-a-firo-is-a-directory.md)); tested with 50 images |
-| **Excalidraw's tunnel API cannot express a left rail** | 7.5 | The shell needs a *placement*, not injected content. Timebox the tunnel route, then take the bounded `@firo/editor` edits named in [`ADR-0022`](adr/0022-ui-package-owns-the-chrome.md). Do not fork the overlay wholesale |
-| **The clean default changes reference-image snapshots** | 7.5 | `roughness` is stored per element, so existing boards are unchanged and only *new* elements move; re-baseline with `yarn test:update` and read every diff |
+| **Excalidraw's tunnel API cannot express a left rail** | 7.5 | **Closed.** The five tunnels plus bounded `@firo/editor` edits render the rail, nav toolbar, board menu, inspector and selection toolbar ([`ADR-0022`](adr/0022-ui-package-owns-the-chrome.md)) |
+| **The clean default changes reference-image snapshots** | 7.5 | **Closed.** `roughness` is stored per element, so existing boards were unchanged and only *new* elements moved; re-baselined with `yarn test:update` and every diff read |
 | ProseMirror overlay alignment is subtly wrong at some zooms | 3, 4 | Explicit multi-zoom test matrix ([`trd/05-rich-text.md`](trd/05-rich-text.md)) |
 | **`FiroDoc.read()` is a full O(elements) walk on the keystroke path** | 3, 6 | **Fixed for the repeats; the remaining walk is Option C's job.** `read()` is now memoised against a document revision, every field is a memoised getter, and snapshots are shallow-frozen. `yarn bench:read` at 10,000 elements: `read().collections` 19.7 → **0.44 ms**, `read().meta` 15.3 → **0.35 ms**, `read().elementOrder` 16.3 → **0.48 ms**; per keystroke **32.0 → 17.4 ms**. The freeze costs 1.6 ms, measured over three runs each. Only deltas ([ADR-0020](adr/0020-stop-walking-the-whole-document-to-read-it.md) option C) remove it |
 | **A value imported from a package barrel costs minutes of `tsc`** | any | Measured: subpaths used instead of package barrels (`@firo/element/bounds`, etc.) to keep typecheck fast |

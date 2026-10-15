@@ -6,7 +6,7 @@ Miro is an excellent tool with a business model that prices out small teams: thr
 
 Firo is the third thing: Miro's object vocabulary, facilitation loop and board layout, on a canvas that is clean by default and sketchable when you want it, stored on your own machine, under the MIT licence, forever.
 
-> **Status: Version 1 & Phase 7.5 complete.** The local-first single-player application is built, tested, and operational. Phases 0 through 7.5 are complete — offline workshop canvas, Miro-style shell and clean aesthetic ([Phase 7.5](docs/plans/phase-7-5-miro-ui.md)), Miro object vocabulary, board home, local-first comments, facilitation tools (voting, timer, presentation, private mode), structured records with switchable projections (Table, Board, Grid), and lossless `.firo` directory format persistence. See [`docs/roadmap.md`](docs/roadmap.md) for what follows (Phases 8 & 9).
+> **Status: Version 1 & Phase 7.5 complete; Phase 8 in progress.** The local-first single-player application is built, tested, and operational. Phases 0 through 7.5 are complete — offline workshop canvas, Miro-style shell and clean aesthetic ([Phase 7.5](docs/plans/phase-7-5-miro-ui.md)), Miro object vocabulary, board home, local-first comments, facilitation tools (voting, timer, presentation, private mode), structured records with switchable projections (Table, Board, Grid), and lossless `.firo` directory format persistence. Phase 8 has begun: the board index (folders, starring, duplication) and cross-board content search shipped ([ADR-0028](docs/adr/0028-project-layer-folders-and-content-search.md)). See [`docs/roadmap.md`](docs/roadmap.md) for what follows.
 
 ---
 

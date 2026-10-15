@@ -4,7 +4,8 @@
 Firo keeps its data model — Miro's object vocabulary, the facilitation loop, the
 record store, local-first storage — and stops *looking* like a sketch pad.
 
-**Status: complete.** Documentation landed first (ADRs
+**Status: shell and features complete; the live-inspection closure is open.**
+Documentation landed first (ADRs
 [0021](../adr/0021-miro-style-shell-and-clean-aesthetic.md),
 [0022](../adr/0022-ui-package-owns-the-chrome.md),
 [0023](../adr/0023-open-icons-and-ui-typeface.md),
@@ -15,9 +16,12 @@ record store, local-first storage — and stops *looking* like a sketch pad.
 tokens, the theme and the chrome typeface; the canvas is clean by default; the
 shell is built — the creation rail, navigation toolbar, board menu, collaboration
 bar, right-side inspector and floating selection toolbar all render, with
-Excalidraw's default chrome off (7.5.1–7.5.4) — the board home and template
-gallery shipped (7.5.5), and local-first comments landed (7.5.6). Polish,
-accessibility, and documentation are complete (7.5.7).
+Excalidraw's default chrome off (7.5.1–7.5.4); one-time tools and the minimap
+followed in the phase's second pass (commit `76e5059`); the board home and
+template gallery shipped (7.5.5), and local-first comments landed (7.5.6). Polish,
+accessibility, and documentation are complete (7.5.7). What remains is the live
+Miro inspection (7.5.0) and the two tasks it unblocks — a customisable rail
+(7.5.8) and the keyboard map remap (7.5.9).
 
 This phase sits between v1 (Phases 0–7) and v2 (Phases 8–9). It is numbered
 `7.5` rather than renumbering 8–10 so that every existing phase reference,
@@ -56,6 +60,8 @@ audio, presentation-deck authoring.
 - [x] 10,000 elements still hold the AC-5 frame budget with the new chrome.
 - [x] No `.firo` format change without a migration and a previous-version
       fixture test.
+- [ ] Tools can be hidden and reordered, and the arrangement persists (7.5.8).
+- [ ] Miro key bindings are adopted where they do not break AC-8 (7.5.9).
 
 ## Tasks
 
@@ -70,22 +76,24 @@ building it.
       **navigation toolbar** (zoom, frames, layers, minimap, grid, fit), the
       top-left board menu, and the top-right collaboration tools.
 - [ ] Live inspection with **REA (`morluto/rea`)** and its **Chrome DevTools**
-      provider against a scratch board: DOM structure, computed styles and CSS
-      custom properties, icon *sizing rhythm* (not the assets), interaction
-      timings, tool-revert behaviour, and the keyboard map. Recorded in
+      provider against a Miro board: DOM structure, icon *sizing rhythm* (not the
+      assets), interaction timings, tool-revert behaviour, the keyboard map and
+      the rail's customisation rules. Recorded in
       [`../research/miro-ui.md`](../research/miro-ui.md).
-      **Not done, and not blocking.** Live inspection needs an authenticated Miro
-      board; the maintainer chose the documented-behaviour fallback (2026-10-14)
-      rather than stall the phase on access. Every claim that rests on the
-      documentation alone stays flagged in the research document.
+      **Reopened (2026-10-15).** The maintainer first chose the
+      documented-behaviour fallback (2026-10-14) rather than stall the phase on
+      access; REA is now installed and an authenticated board is available, so the
+      inspection is being carried out and the research document is being moved
+      from "partially verified" to "observed". Computed styles are not returned by
+      REA's passive page inspection — geometry comes from screenshots and CSS/JS
+      resources — and that limitation is recorded in the document.
 - [x] A **clean-room guardrail** stated in that document: layout and interaction
       patterns are emulated; no Miro code, asset, icon file, typeface or mark is
       used.
 
-REA is **not installed** in the environment this plan was written in, and
-neither is Ghidra/Hopper/IDA. For a web app only the Chrome DevTools provider is
-relevant — no binary engine is needed — but its setup is a prerequisite, not a
-step that can be assumed.
+REA **is installed** as of 2026-10-15, and an authenticated Miro board is
+available. For a web app only the Chrome DevTools provider is relevant — no
+binary engine is needed.
 
 **Exit:** `docs/research/miro-ui.md` exists with citations, unverified claims
 flagged, and the guardrail recorded.
@@ -157,21 +165,25 @@ load at all.
       list, labels or shortcuts.
 - [x] `BoardMenu`, `CollabBar` (wraps today's `FacilitatorBar`), `NavToolbar`
       (zoom, zoom %, fit, grid).
-- [ ] **Minimap** — Miro's navigation toolbar includes one, and `NavToolbar` has
-      the glyph and an `onToggleMinimap` prop, but Firo's editor has no minimap
-      feature to drive it, so the host supplies no handler and the control does
-      not render. Building a minimap is its own feature, not a shell placement,
-      and is out of scope here (as the Frames-and-Layers panel is).
+- [x] **Minimap** — built after the phase's first pass (commit `76e5059`).
+      `apps/web/components/Minimap.tsx` computes the scene's bounding box, draws
+      it on a `<canvas>`, and translates the viewport on drag without touching the
+      Yjs CRDT; `WebNavToolbar` in `apps/web/App.tsx` owns `minimapVisible` and
+      passes `isMinimapOpen`/`onToggleMinimap` through `NavToolbar`. Covered by
+      `apps/web/tests/minimap.test.tsx`. It is a host feature rather than a shell
+      placement, which is why it landed here and not in the tunnel work above.
 - [x] Drag-from-rail onto the board: the rail is a drag source, not only a mode
       switch (`onPointerDownTool` → `app.toolDrag.handleButtonPointerDown`).
-- [ ] **One-time tools** — a creation tool reverts to Select after it is used
+- [x] **One-time tools** — a creation tool reverts to Select after it is used
       ([ADR-0021](../adr/0021-miro-style-shell-and-clean-aesthetic.md) clause 1;
-      [`../research/miro-ui.md`](../research/miro-ui.md), item 1).
-      **Not done.** The rail selects the tool and Excalidraw keeps it active —
-      Excalidraw's model, not Miro's. This is a change to the editor's tool
-      lifecycle rather than to the chrome, so it is deliberately left out of the
-      chrome slice and is not claimed as built. It is not part of this task's
-      exit criterion below.
+      [`../research/miro-ui.md`](../research/miro-ui.md), item 1). Built after the
+      phase's first pass (commit `76e5059`): `WebCreationRail` in
+      `apps/web/App.tsx` selects every tool in `CREATION_TOOLS` (sticky note,
+      rectangle, diamond, ellipse, arrow, line, text, frame) with `locked: false`,
+      so a single click stamps once and reverts; a double-click or shift-click
+      passes `locked: true` for continuous placement. `CreationRail` forwards the
+      mouse event so the host can read `shiftKey`. Covered by
+      `apps/web/tests/creationRail.test.tsx`.
 - [x] `components/App.tsx` untouched.
 
 **Exit:** the Miro layout renders, Excalidraw's default chrome is off, and a
@@ -193,14 +205,13 @@ host with no custom chrome still gets the old editor.
       **not** gate it — `isDefaultUIEnabled()` does, and that is a different flag —
       so it keeps working unchanged. It is Excalidraw-styled, not chrome-styled;
       restyling it is deferred to 7.5.7.
-- [ ] **Keyboard map** aligned to Miro's, with AC-8 preserved.
-      **Partly done.** The rail and its tooltips read the editor's single keyboard
-      registry (`TOOLS` + `getToolShortcut`), so the shortcut shown and the
-      shortcut handled cannot drift, and no AC-8 path regressed (the rails add no
-      shortcut of their own). A full remap to Miro's exact letter map is **not
-      done**: it collides with Firo's existing bindings, and AC-8 requires the
-      whole workshop to stay keyboard-drivable, so it is a reconciliation task of
-      its own rather than a rename.
+- [ ] **Keyboard map** aligned to Miro's, with AC-8 preserved. The rail and its
+      tooltips read the editor's single keyboard registry (`TOOLS` +
+      `getToolShortcut`), so the shortcut shown and the shortcut handled cannot
+      drift, and no AC-8 path regressed (the rails add no shortcut of their own).
+      A full remap to Miro's exact letter map is deferred to
+      [7.5.9](#759--keyboard-map-remap), where it is a reconciliation against
+      Firo's existing bindings rather than a rename.
 
 **Exit:** properties are edited on the right; the selection toolbar tracks the
 selection at every zoom. Both hold.
@@ -276,6 +287,45 @@ loads through the migration. Met.
 
 **Exit:** the shell is usable without a pointer. Met.
 
+### 7.5.8 — Customisable creation rail
+
+Miro's rail is customisable: Select and Hand are fixed, every other tool can be
+hidden and reordered, and the arrangement persists. Firo's rail is fixed today
+(`RAIL_TOOL_ORDER` in `apps/web/App.tsx`). This is the closure work §7.5.0's live
+inspection informs.
+
+- [ ] Select and Hand are non-removable; every other tool can be hidden/shown and
+      reordered.
+- [ ] The arrangement persists locally, per user. v1 is single-player, so this is
+      a local preference — not a document field and not a board property.
+- [ ] The ordering UI stays in `@firo/ui`; the storage seam stays in `apps/web`
+      ([ADR-0022](../adr/0022-ui-package-owns-the-chrome.md),
+      [ADR-0026](../adr/0026-board-home-and-its-index.md)).
+- [ ] Because it changes the rail's contract, it carries its own ADR (the next
+      free number).
+
+**Exit:** a user can hide and reorder tools, the arrangement survives a reload,
+and Select/Hand cannot be removed.
+
+### 7.5.9 — Keyboard map remap
+
+Align Firo's keyboard map with Miro's where the two differ, without losing AC-8.
+Miro-first on collisions; the standard editing keys are the exception.
+
+- [ ] Conflicting bindings are re-mapped in favour of Miro's, **except** the
+      standard editing keys (copy, cut, paste, select-all, undo, redo) and
+      browser/OS-reserved keys, which stay as the platform expects.
+- [ ] The remap lives in the editor's single registry (`TOOLS` +
+      `getToolShortcut`); no second shortcut table is introduced.
+- [ ] AC-8 is re-proven end to end: a full workshop runs on the keyboard alone,
+      including the remapped tools.
+- [ ] Shortcut tests and snapshots (`packages/editor/tests/shortcuts.test.tsx`
+      and any `.snap`) are re-baselined with every diff read.
+- [ ] An ADR records the remap and the keys deliberately left alone.
+
+**Exit:** someone who knows Miro's shortcuts can use Firo without relearning, and
+AC-8 still holds.
+
 ## The comments schema change, in detail
 
 Comments are the one part of this phase that touches the document, so they get
@@ -325,11 +375,12 @@ the full treatment.
 
 | Risk | Mitigation |
 | --- | --- |
-| REA cannot be installed, or its Chrome DevTools provider cannot reach an authenticated board | Fall back to documented behaviour and screenshots; flag every unverified item in `miro-ui.md` rather than asserting it |
-| A tunnel cannot express a left rail | Timebox the tunnel route; take the bounded `@firo/editor` edits named in ADR-0022; do not fork the overlay |
-| The clean default changes snapshot output | Only new elements move; `yarn test:update` with reviewed diffs |
-| The dashboard balloons into Phase 8 | Ship the minimum; hand depth to Phase 8 explicitly |
-| Scope creep generally | Each task has its own exit criterion; a task that needs a sixth tunnel or a schema field outside comments stops and gets an ADR |
+| REA cannot be installed, or its Chrome DevTools provider cannot reach an authenticated board | Fall back to documented behaviour and screenshots; flag every unverified item in `miro-ui.md` rather than asserting it. **Superseded (2026-10-15):** REA is installed and a board is available, so the fallback is no longer needed (7.5.0, 7.5.8, 7.5.9) |
+| A tunnel cannot express a left rail | **Closed.** The five tunnels plus bounded `@firo/editor` edits render the rail ([ADR-0022](../adr/0022-ui-package-owns-the-chrome.md)) |
+| The clean default changes snapshot output | **Closed.** Only new elements moved; `yarn test:update` re-baselined and every diff was read |
+| The dashboard balloons into Phase 8 | **Closed.** 7.5.5 shipped the minimum; depth went to Phase 8 ([ADR-0028](../adr/0028-project-layer-folders-and-content-search.md)) |
+| The Miro keyboard remap breaks AC-8 | Keep the standard editing keys; centralise in `TOOLS`/`getToolShortcut`; re-prove AC-8 end to end and read every snapshot diff (7.5.9) |
+| Scope creep generally | Each task has its own exit criterion; 7.5.8 and 7.5.9 each carry an ADR because they change editor behaviour rather than chrome |
 | Font licence bookkeeping | Binary, OFL text, `FONT-LICENSES.md` row and the test all land in one commit |
 
 ## More Information
