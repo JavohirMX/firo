@@ -95,13 +95,24 @@ building it.
 - [x] A **clean-room guardrail** stated in that document: layout and interaction
       patterns are emulated; no Miro code, asset, icon file, typeface or mark is
       used.
+- [x] The **interaction inventory** — every surface, what it does, and the
+      mechanism behind it — recorded in
+      [`../research/miro-interactions.md`](../research/miro-interactions.md).
+      Beyond the live enumeration, the *how* came from Miro's own JS bundles
+      (420 files, ~54 MB, **structure only**, never copied): a shared command
+      registry with one descriptor per control (`main`/`active`/`inactive`
+      states, `actionType`, `aliases`, keyboard bindings, icon slots), the
+      categories the rail groups by, the two context-menu lanes, and the
+      shortcut machinery. This is what 7.5.8 (rail customisation) and 7.5.9
+      (keyboard) act on.
 
 REA **is installed** as of 2026-10-15, and an authenticated Miro board is
 available. For a web app only the Chrome DevTools provider is relevant — no
 binary engine is needed.
 
 **Exit:** `docs/research/miro-ui.md` exists with citations, unverified claims
-flagged, and the guardrail recorded.
+flagged, and the guardrail recorded; `docs/research/miro-interactions.md`
+catalogues the interactions and the mechanism behind them.
 
 ### 7.5.1 — Design tokens and theme
 
@@ -452,6 +463,8 @@ the full treatment.
   the inspector reuses the editor's property controls, and the two exports that
   required
 - [`../research/miro-ui.md`](../research/miro-ui.md) — the observed shell
+- [`../research/miro-interactions.md`](../research/miro-interactions.md) — the
+  interaction inventory and the mechanism behind it
 - [`../prd/04-acceptance-criteria.md`](../prd/04-acceptance-criteria.md) —
   AC-5, AC-8
 - [`../../AGENTS.md`](../../AGENTS.md) — rules 2 and 4, which §7.5.6 follows

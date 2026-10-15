@@ -11,6 +11,11 @@ task 7.5.0.
 
 Researched **13 October 2026**. Live observation **15 October 2026**.
 
+The **interaction** inventory behind this shell — the command catalogue, the
+menus, the context menus, the panels and the keyboard, each with the mechanism
+Miro builds it from — is in the companion document
+[`miro-interactions.md`](miro-interactions.md).
+
 ## Clean-room guardrail
 
 This document exists so the shell can be re-implemented from **behaviour and
@@ -198,4 +203,5 @@ Not asserted anywhere in code or ADRs until observed:
 | [Miro Help — Board access rights](https://help.miro.com/hc/en-us/articles/360017572194-Board-access-rights) | The permission matrix (commenter/edit/viewer) that Firo's comments lane defers to v2 |
 
 Contrast, licences and the API surface for Miro as a product are catalogued
-separately in [`sources.md`](sources.md).
+separately in [`sources.md`](sources.md). The interactions and the build
+mechanism behind them are in [`miro-interactions.md`](miro-interactions.md).
