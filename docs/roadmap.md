@@ -17,12 +17,13 @@ Each phase has an **exit criterion**. A phase is done when its criterion is met 
 | 7.5 | [Miro UI shell](plans/phase-7-5-miro-ui.md) | The board reads as Miro, not Excalidraw: Miro's shell (left creation rail, bottom-right navigation, board menu, right inspector, floating selection toolbar), a clean-default canvas, a board home with a template gallery, and object-anchored comments |
 | 8 | [Project layer](plans/phase-8-pm-layer.md) | **Complete.** Board index, folders, tags, content search, activity feed, timeline projection ([`ADR-0028`](adr/0028-project-layer-folders-and-content-search.md)) |
 | 9 | [Sync server](plans/phase-9-sync-server.md) | **Complete. AC-12 passes in full.** Single container on port 8080, SQLite persistence, snapshot compaction, WebSocket relay, comment lane enforcement ([`ADR-0027`](adr/0027-comments-are-their-own-lane.md)), presence, share capability links |
-| 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | **In progress (Wave 1 complete).** Local AI engine (`@firo/ai`), MCP server (`@firo/mcp`), VPAT published, Tauri shell |
+| 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | **In progress (Wave 1 & §10.3a complete).** Local AI engine (`@firo/ai`), MCP server (`@firo/mcp`), accessibility foundation (`@firo/ui`), VPAT, Tauri shell |
 
 Phases 0–9 are complete (Version 1 and Version 2 shipped). **Phase 10 is in progress:**
 Wave 1 shipped local-model AI (§10.1, `@firo/ai`) with zero cloud telemetry and
 undoable mutations, and the Model Context Protocol stdio server (§10.2, `@firo/mcp`)
-with declarative diffable board serialization; accessibility completion (§10.3),
+with declarative diffable board serialization; accessibility foundation (§10.3a) is
+complete and verified in real browser at 200% zoom; VPAT audit (§10.3b),
 the Tauri desktop shell (§10.4), and doc blocks (§10.5) follow in Wave 2.
 
 ## Version boundaries

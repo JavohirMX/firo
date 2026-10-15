@@ -83,9 +83,9 @@ in [`phase-3-interaction.md`](phase-3-interaction.md) and
 [`../trd/09-accessibility.md`](../trd/09-accessibility.md). A VPAT cannot be
 published over an untested tree, so the foundation is built first.
 
-### 10.3a — The foundation (in progress)
+### 10.3a — The foundation (COMPLETE)
 
-**Delivered:**
+**Delivered (completed and verified in `docs/plans/phase-10-a11y-completion.md`):**
 
 - **The parallel accessibility tree** — `AccessibilityTree` in `@firo/ui`, driven
   by the host's element→item mapping in `apps/web/board/accessibility.ts`. A
@@ -106,16 +106,22 @@ published over an untested tree, so the foundation is built first.
   `selectedElementIds`, which would otherwise read as "nothing selected".
 - **Reduced motion as a per-session setting**, not only the media query
   (`apps/web/board/reducedMotion.ts`, toggled from the command palette).
-- **Tests** for the naming rules, the component's keyboard model, the element
-  mapping, and the layer wiring; plus an end-to-end pass in a real browser.
-
-**Still to do in 10.3a:**
-
-- Virtualise the tree for very large boards (the TRD's "large tree" requirement).
-- Audit every dialog and the command palette for focus trapping and restore.
-- Measure rendered contrast for the hand-drawn stroke at the default width.
-- A live region for errors and mode changes beyond the existing save status.
-- Verify at 200% browser zoom and with OS text scaling.
+- **Virtualised rendering for large boards (`015b32c`).** `treeWindowStart` computes
+  a window (default 100 items) keeping the active element centred, with `pendingFocusRef`
+  re-focusing items across window shifts. 500-item virtualisation tested and verified.
+- **Universal focus trapping for dialogs and command palette (`c8bd644`, `7e0de96`).**
+  `useFocusTrap` callback hook in `@firo/editor`, adopted by `Modal`, `ShareModal`,
+  `ActivityFeed` (via host `dialogRef`), and the command palette. Focus containment,
+  initial focus on mount, and opener restoration on dismissal tested and verified.
+- **Announcements live region for errors and mode changes (`ff8491e`).** Polite `aria-live`
+  region in `AccessibilityLayer` prioritizing error > quota > offline > viewMode changes.
+- **Measured rendered contrast (`306d90a`).** `scripts/verify/contrast.mjs` measures
+  real canvas pixels: default stroke 16.67:1 (light) / 18.73:1 (dark) vs WCAG 3:1/7:1 target;
+  sticky note text 11.24:1 vs 4.5:1 target. Recorded in `docs/trd/09-accessibility.md`.
+- **E2E browser verification at 200% and 150% zoom (`7ef9d82`).** `scripts/verify/a11y.mjs`
+  verifies 12/12 checks pass across 100%, 150%, and 200% zoom with 0 page errors.
+- **Tests** across the stack: unit tests for mapping, roving tabindex, windowing,
+  dialog trapping, and live messages; plus real-browser E2E script.
 
 ### 10.3b — Audit and VPAT
 
