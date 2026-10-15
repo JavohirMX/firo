@@ -58,7 +58,7 @@ import {
   isDevEnv,
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
 
@@ -81,7 +81,7 @@ import {
   useHandleLibrary,
 } from "@firo/editor/data/library";
 
-import type { ActivityFeedItem } from "@firo/ui";
+import type { AccessibilityTreeItem, ActivityFeedItem } from "@firo/ui";
 
 import type { RailToolItem, RailToolType } from "@firo/ui";
 
@@ -106,7 +106,11 @@ import { clearActivity, listActivity } from "./board/activity";
 
 import CustomStats from "./CustomStats";
 import { Provider, useAtomValue, appJotaiStore } from "./app-jotai";
-import { STORAGE_KEYS, SYNC_BROWSER_TABS_TIMEOUT } from "./app_constants";
+import {
+  ACCESSIBILITY_TREE_DEBOUNCE_MS,
+  STORAGE_KEYS,
+  SYNC_BROWSER_TABS_TIMEOUT,
+} from "./app_constants";
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
@@ -125,6 +129,7 @@ import {
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
 import { Minimap } from "./components/Minimap";
+import { AccessibilityLayer } from "./components/AccessibilityLayer";
 
 import { importFromBackend } from "./data";
 
@@ -170,6 +175,12 @@ import {
   writeRailLayout,
 } from "./board/railLayout";
 import { homeUrl } from "./board/routes";
+import { toAccessibilityItems, toElementsMap } from "./board/accessibility";
+import {
+  applyReducedMotion,
+  readReducedMotion,
+  writeReducedMotion,
+} from "./board/reducedMotion";
 
 import "./index.scss";
 
@@ -815,6 +826,37 @@ const ExcalidrawWrapper = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
 
+  /*
+   * The accessibility tree's contents.
+   *
+   * Rebuilt from the scene on document change, debounced to 200 ms, never per
+   * frame ([`docs/trd/09-accessibility.md`](../../docs/trd/09-accessibility.md)).
+   * Held as state rather than derived on every render because the rebuild walks
+   * every element, and this component re-renders on selection, theme and
+   * collaboration changes.
+   */
+  const [accessibilityItems, setAccessibilityItems] = useState<
+    AccessibilityTreeItem[]
+  >([]);
+
+  const refreshAccessibilityItems = useMemo(
+    () =>
+      debounce((elements: readonly OrderedExcalidrawElement[]) => {
+        const live = elements.filter((element) => !element.isDeleted);
+        setAccessibilityItems(toAccessibilityItems(live, toElementsMap(live)));
+      }, ACCESSIBILITY_TREE_DEBOUNCE_MS),
+    [],
+  );
+
+  /*
+   * Reduced motion is a per-session setting, so it is applied on mount from
+   * storage rather than only reacting to the OS preference. See
+   * `board/reducedMotion.ts`.
+   */
+  useEffect(() => {
+    applyReducedMotion(readReducedMotion());
+  }, []);
+
   const refreshActivity = useCallback(async () => {
     const metaId = boardDoc().read().meta?.id;
     const currentBoardId = typeof metaId === "string" ? metaId : "default";
@@ -1213,6 +1255,14 @@ const ExcalidrawWrapper = () => {
      */
     commitBoard();
 
+    /*
+     * The accessibility tree mirrors the document, debounced. Refreshed here
+     * rather than derived from `app.scene` on every render because the rebuild
+     * is O(elements), and this is the point at which the scene actually
+     * changed.
+     */
+    refreshAccessibilityItems(elements);
+
     if (appState.activeTool?.type) {
       collabProviderRef.current?.setLocalTool(appState.activeTool.type);
     }
@@ -1446,6 +1496,10 @@ const ExcalidrawWrapper = () => {
           }
         }}
       >
+        <AccessibilityLayer
+          items={accessibilityItems}
+          boardLabel={getActiveBoard()?.name}
+        />
         <ProjectionView excalidrawAPI={excalidrawAPI} />
         <TagLayer
           excalidrawAPI={excalidrawAPI}
@@ -1543,6 +1597,26 @@ const ExcalidrawWrapper = () => {
                     pwaEvent = null;
                   });
                 }
+              },
+            },
+            /*
+             * Reduced motion, toggled from the palette.
+             *
+             * The palette is "the accessibility backstop"
+             * (trd/09): any function without a key of its own must be reachable
+             * from it, and this one has none. The label states which way the
+             * toggle will go rather than showing a checkmark the palette cannot
+             * render.
+             */
+            {
+              label: readReducedMotion()
+                ? "Reduce motion: off"
+                : "Reduce motion: on",
+              category: DEFAULT_CATEGORIES.app,
+              perform: () => {
+                const next = !readReducedMotion();
+                writeReducedMotion(next);
+                applyReducedMotion(next);
               },
             },
             /*

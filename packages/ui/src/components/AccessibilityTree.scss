@@ -1,0 +1,36 @@
+/* The board's parallel accessibility tree.
+ *
+ * Clipped, not hidden. `display: none` and `visibility: hidden` both remove a
+ * subtree from the accessibility tree, which would defeat the entire component;
+ * clipping to a single off-screen pixel keeps it present to assistive
+ * technology and to the keyboard while it stays invisible to sighted users.
+ *
+ * `position: absolute` keeps it out of layout so it cannot shift the chrome.
+ */
+.firo-a11y {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The tree is clipped, so focus here is signalled by the canvas selection the
+ * host paints in response to `onFocusElement`. This outline only matters if the
+ * tree is ever rendered visibly — for debugging it, for instance — and it must
+ * never be removed (trd/09: "Never removed"). */
+.firo-a11y__item:focus-visible {
+  outline: 2px solid var(--firo-color-accent, #4263eb);
+  outline-offset: 2px;
+}
+
+.firo-a11y__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -125,6 +125,15 @@ Excalidraw's accessibility position is not strong, and the fork gives us room:
 
 ## Definition of done per phase
 
+> **Status note (Phase 10).** The Phase 2 and Phase 3 rows below were **not met**
+> when those phases closed; this table states the target, not what shipped. As of
+> Phase 10 the canvas still has no `role="application"`, no parallel
+> accessibility tree and no `aria-posinset`/`aria-setsize`. The tree and the
+> keyboard model are therefore built in Phase 10
+> ([`../plans/phase-10-ai-mcp-a11y-desktop.md`](../plans/phase-10-ai-mcp-a11y-desktop.md)
+> §10.3) *before* the VPAT, because a VPAT cannot be published over an untested
+> tree.
+
 | Phase | Accessibility requirement |
 | --- | --- |
 | 2 | Canvas has `role`, a label, and a focusable element list |

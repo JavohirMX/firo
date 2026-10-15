@@ -128,3 +128,19 @@
     --firo-motion-slow: 0ms;
   }
 }
+
+/**
+ * The per-session setting, not only the OS preference.
+ *
+ * [`trd/09`](../../../docs/trd/09-accessibility.md) asks for a setting rather
+ * than the media query alone: "Users need it per-session, not per-OS." A user
+ * may want the chrome still in one session without changing an operating-system
+ * preference that follows them everywhere. The host adds `firo-reduced-motion`
+ * to the document element when they ask for it; `<html>` matches both `:root`
+ * and this class, and this rule comes later, so it wins.
+ */
+.firo-reduced-motion {
+  --firo-motion-fast: 0ms;
+  --firo-motion-base: 0ms;
+  --firo-motion-slow: 0ms;
+}

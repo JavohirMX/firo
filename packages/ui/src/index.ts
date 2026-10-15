@@ -19,6 +19,7 @@
 export * from "./fonts";
 export * from "./tokens";
 export * from "./icons";
+export * from "./accessibility";
 export * from "./components/CreationRail";
 export * from "./components/NavToolbar";
 export * from "./components/BoardMenu";
@@ -27,3 +28,4 @@ export * from "./components/Inspector";
 export * from "./components/SelectionToolbar";
 export * from "./components/BoardHome";
 export * from "./components/ActivityFeed";
+export * from "./components/AccessibilityTree";

@@ -73,6 +73,7 @@ Phases 4 and 6 are the two largest by feature volume. Phase 6 is the larger arch
 | Risk | Phase | Mitigation |
 | --- | --- | --- |
 | The renderer rewrite does not achieve the budget | 2 | **Closed.** The gate measured it and the inherited renderer passes; no rewrite. [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md) |
+| **The accessibility foundation was recorded as complete but was never built** | 3, 10 | **Caught in Phase 10.** `role="application"`, the parallel accessibility tree and `aria-posinset` are absent from `packages/editor`; the Phase 3 status and [`trd/09`](trd/09-accessibility.md) now say so. Built in §10.3 before the VPAT, which must not be published over an untested tree |
 | Yjs is the bottleneck at scale | 9 | **Closed.** Phase 9 sync server and AC-12 verified Yjs WebSocket relay, SQLite persistence, and snapshot compaction (`apps/server/tests/ac12.test.ts`) |
 | Records and projections ship half-built | 6 | **Closed.** Three projections (Board, Table, Grid) built and tested in `@firo/records`; AC-3 verified end-to-end in `projectionView.test.tsx` |
 | A `.firo` cannot carry its images, or cannot be read as text | 7 | **Closed.** Directory format with `board.json` and content-addressed `assets/` implemented ([`ADR-0018`](adr/0018-a-firo-is-a-directory.md)); tested with 50 images |

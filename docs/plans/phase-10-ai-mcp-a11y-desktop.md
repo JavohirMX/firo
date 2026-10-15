@@ -77,9 +77,50 @@ that learned an API should not break.
 when it is true, not before. Claiming conformance we have not tested is worse than
 claiming none.
 
+**Before the VPAT comes the thing it certifies.** Phase 3's §3.7 accessibility
+foundation was recorded as complete but was never built, and the correction is now
+in [`phase-3-interaction.md`](phase-3-interaction.md) and
+[`../trd/09-accessibility.md`](../trd/09-accessibility.md). A VPAT cannot be
+published over an untested tree, so the foundation is built first.
+
+### 10.3a — The foundation (in progress)
+
+**Delivered:**
+
+- **The parallel accessibility tree** — `AccessibilityTree` in `@firo/ui`, driven
+  by the host's element→item mapping in `apps/web/board/accessibility.ts`. A
+  `role="application"` region with a labelled list; each element is a `role="button"`
+  named from its type, text and named colour ("Sticky note: Write the RFC. Yellow."),
+  with `aria-posinset`/`aria-setsize` on the list item. Clipped, not hidden.
+- **Reading through bound labels.** A container's text lives on its bound text
+  element, so the mapper reads it from there and skips the bound label itself —
+  otherwise every sticky note would announce as empty and then appear twice.
+- **The keyboard model** — one tab stop moved by roving `tabindex` (so 10,000
+  elements are not 10,000 tab stops). `Tab`/`Shift+Tab` and `ArrowUp`/`ArrowDown`
+  move between elements, `Home`/`End` jump to the ends, `Enter`/`Space` activate,
+  `Escape` deselects. `Tab` is not consumed at the ends, so the user can leave.
+- **Focus is visible** by selecting the focused element, so the canvas draws the
+  focus indicator the clipped tree cannot.
+- **The tree stays truthful while editing**, by reading the editor's
+  `editingTextElement` and mapping its container id — opening the text editor clears
+  `selectedElementIds`, which would otherwise read as "nothing selected".
+- **Reduced motion as a per-session setting**, not only the media query
+  (`apps/web/board/reducedMotion.ts`, toggled from the command palette).
+- **Tests** for the naming rules, the component's keyboard model, the element
+  mapping, and the layer wiring; plus an end-to-end pass in a real browser.
+
+**Still to do in 10.3a:**
+
+- Virtualise the tree for very large boards (the TRD's "large tree" requirement).
+- Audit every dialog and the command palette for focus trapping and restore.
+- Measure rendered contrast for the hand-drawn stroke at the default width.
+- A live region for errors and mode changes beyond the existing save status.
+- Verify at 200% browser zoom and with OS text scaling.
+
+### 10.3b — Audit and VPAT
+
 - Third-party accessibility audit
 - Verified with VoiceOver, NVDA, and JAWS
-- Tested at 200% browser zoom and with OS text scaling
 - All Phase 9 features keyboard-operable: accounts, roles, share links, comments
 
 This is wedge 7 in

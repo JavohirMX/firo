@@ -9,6 +9,16 @@ export const DELETED_ELEMENT_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 export const SYNC_BROWSER_TABS_TIMEOUT = 50;
 
 // should be aligned with MAX_ALLOWED_FILE_BYTES
+/**
+ * How long the accessibility tree waits before rebuilding.
+ *
+ * [`docs/trd/09-accessibility.md`](../../docs/trd/09-accessibility.md) says the
+ * tree is "rebuilt on document change, debounced to ~200 ms. Not per frame." A
+ * 10,000-element board re-announced on every drag frame would be unusable with
+ * a screen reader, so this is a correctness parameter, not a tuning knob.
+ */
+export const ACCESSIBILITY_TREE_DEBOUNCE_MS = 200;
+
 export const FILE_UPLOAD_MAX_BYTES = 4 * 1024 * 1024; // 4 MiB
 // 1 year (https://stackoverflow.com/a/25201898/927631)
 export const FILE_CACHE_MAX_AGE_SEC = 31536000;
@@ -35,6 +45,10 @@ export const STORAGE_KEYS = {
   // rejected `localStorage` for *board payloads* on size and sync cost; a few
   // dozen tool ids are neither large nor on a hot path).
   LOCAL_STORAGE_RAIL_LAYOUT: "firo-rail-layout",
+  // Reduced motion, per session. Deliberately *session* storage, not local:
+  // trd/09 asks for a setting that does not follow the user between sessions
+  // the way an OS preference would.
+  SESSION_REDUCED_MOTION: "firo-reduced-motion",
   VERSION_DATA_STATE: "version-dataState",
   VERSION_FILES: "version-files",
 

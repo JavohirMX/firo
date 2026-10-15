@@ -1,6 +1,16 @@
 # Phase 3 — Interaction
 
-**Status: Complete and demonstrated.**
+**Status: Complete and demonstrated, except §3.7.**
+
+> **Correction (Phase 10, Wave 2).** Tools, selection, transforms, binding, undo
+> and keyboard operation are complete. **§3.7 was not built.** There is no
+> `role="application"`, no parallel accessibility tree, and no
+> `aria-posinset`/`aria-setsize` anywhere in `packages/editor` — the canvas
+> wrappers carry no role or label. This phase was recorded as complete on the
+> strength of the work above the line; the accessibility foundation below it
+> never landed. Rather than quietly drop the claim, it is corrected here and the
+> work moves to [`phase-10`](phase-10-ai-mcp-a11y-desktop.md) §10.3, where the
+> VPAT depends on it.
 
 **Goal:** a canvas you can actually work on — tools, selection, transforms, binding, undo, and full keyboard operation.
 
@@ -136,6 +146,11 @@ Every function reachable by keyboard. This is a hard requirement ([AC-8](../prd/
 **Single-key shortcuts must be individually disableable.** Voice-control and screen-reader users need single keys to do other things. Follow Miro's pattern.
 
 ### 3.7 — Accessibility foundation
+
+> **Status: NOT SHIPPED.** This section is a specification, not a record of work
+> done. None of the bullets below exist in the code today; verified by search in
+> Phase 10 (see the correction at the top of this file). The work is delivered in
+> [`phase-10`](phase-10-ai-mcp-a11y-desktop.md) §10.3.
 
 - Canvas gets `role="application"` and a label
 - The accessibility tree: a parallel DOM tree mirroring the scene, **clipped and not hidden** — `display:none` and `visibility:hidden` both remove it from the accessibility tree
