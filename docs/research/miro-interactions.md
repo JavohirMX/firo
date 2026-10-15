@@ -550,12 +550,26 @@ shown.
 | `⌘K` | command palette | bundle + docs |
 | `⇧C` | show / hide comments on the board | docs |
 
+**What Firo bound.** Two rows in this table describe a Miro key whose Firo
+feature already existed with no shortcut: `M` and `G`. Both are now bound —
+`G` to the grid toggle and `M` to the minimap toggle
+([ADR-0030](../adr/0030-keyboard-parity-with-miro.md)) — while the rows with no
+Firo counterpart (`S`, `C`) stayed unbound on purpose, and the Firo-only extras
+were kept.
+
 **On `G`.** The live *Zoom and navigation* menu renders `(M)` against *Show
 minimap* but shows **no key against Grid**, and the bundle scan found no `KeyG`
 binding either. `G` for grid therefore rests on Miro's **published hotkey list**
-alone — the weakest evidence in this table — and is labelled as such. It remains
-the right binding for Firo (the 7.5.9 decision), but the confidence is
-`[docs]`, not `[bundle]`.
+alone — the weaker of the two sources this document uses, and the only binding
+here that a single source carries. It was bound anyway
+([ADR-0030](../adr/0030-keyboard-parity-with-miro.md)), for a reason worth stating
+rather than glossing over: the evidence is thin, but the *cost* of following it is
+near-zero, because plain `G` was unbound in Firo and the comment above the binding
+in `actionToggleGridMode` records that `Ctrl`/`⌘`+`G` still groups. If the
+published list is ever corrected, the binding is a one-line change and nothing
+else depends on it. This is a deliberate exception to the rule that a
+`[docs]`-only row is not enough to bind, and it is recorded here so that it is not
+later mistaken for a `[bundle]`-grade finding.
 
 ### Editing, navigation and modifiers
 
@@ -598,19 +612,21 @@ single registry).
 ## What Firo adopts, and what it does not
 
 [`miro-ui.md`](miro-ui.md) already tabulates geometry and placement. This is the
-interaction-level reconciliation, and it is what 7.5.8 and 7.5.9 act on.
+interaction-level reconciliation, and it is what 7.5.8 and 7.5.9 acted on. The
+"Firo today" column records the state **after** both, so the table is a record of
+what was decided rather than a worklist.
 
 | Interaction | Miro | Firo today | Decision |
 | --- | --- | --- | --- |
-| Select / Hand | one toggling command, `V` / `H`, unremovable | two rail entries | **adopt** — 7.5.8 |
-| Rail reorder / unpin | drag to reorder; context menu Pin / Unpin; per user | fixed `RAIL_TOOL_ORDER` | **adopt** — 7.5.8 |
+| Select / Hand | one toggling command, `V` / `H`, unremovable | one pinned toggling entry ([ADR-0029](../adr/0029-the-rail-is-a-per-user-arrangement.md)) | **adopted** — 7.5.8 |
+| Rail reorder / unpin | drag to reorder; context menu Pin / Unpin; per user | drag to reorder, right-click to Unpin, restore from the unpinned list; per user, in `localStorage` ([ADR-0029](../adr/0029-the-rail-is-a-per-user-arrangement.md)) | **adopted** — 7.5.8 |
 | Flyout groups | Shapes and lines is one entry with sub-actions; Pen likewise | five flat shape entries | **deferred** — composition, not customisability (recorded in 7.5.8) |
-| `M` minimap | inside the zoom menu, key `M` | minimap exists, unbound | **adopt** — bind `M`, 7.5.9 |
-| `G` grid | documented hotkey | grid toggle exists, unbound | **adopt** — bind `G`, 7.5.9 (weakest evidence) |
+| `M` minimap | inside the zoom menu, key `M` | **bound** to the minimap toggle ([ADR-0030](../adr/0030-keyboard-parity-with-miro.md)) | **adopted** — 7.5.9 |
+| `G` grid | documented hotkey | **bound** to the grid toggle, which cycles Firo's four grid types ([ADR-0030](../adr/0030-keyboard-parity-with-miro.md)) | **adopted** — 7.5.9 |
 | `S` shapes group | opens a group | no group tool | **document** — no target |
 | `C` comment tool | a tool mode | comments are threads, not a mode | **document** — no target |
 | `D` card | card | diamond | **document** — not a conflict |
-| `1`–`9` | toolbar slots, positional, not remappable | type-based tool selection | **document** — deliberate divergence, 7.5.9 |
+| `1`–`9` | toolbar slots, positional, not remappable | type-based tool selection | **document** — deliberate divergence, stated in [ADR-0030](../adr/0030-keyboard-parity-with-miro.md) |
 | One-time tools | all but pen / eraser / lasso / comment | `CREATION_TOOLS` matches | **none** |
 | Command palette | `⌘K` over one registry | none | **deferred** — recorded in 7.5.9 |
 | Toolbar keyboard navigation | Tab between toolbars, arrows within, `B` to board | none | **deferred** — recorded in 7.5.9 |

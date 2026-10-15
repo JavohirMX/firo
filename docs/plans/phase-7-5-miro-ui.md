@@ -4,7 +4,7 @@
 Firo keeps its data model — Miro's object vocabulary, the facilitation loop, the
 record store, local-first storage — and stops *looking* like a sketch pad.
 
-**Status: shell and features complete; the live-inspection closure is open.**
+**Status: complete, except one verification §7.5.9 flags rather than assumes.**
 Documentation landed first (ADRs
 [0021](../adr/0021-miro-style-shell-and-clean-aesthetic.md),
 [0022](../adr/0022-ui-package-owns-the-chrome.md),
@@ -20,10 +20,13 @@ Excalidraw's default chrome off (7.5.1–7.5.4); one-time tools and the minimap
 followed in the phase's second pass (commit `76e5059`); the board home and
 template gallery shipped (7.5.5), and local-first comments landed (7.5.6). Polish,
 accessibility, and documentation are complete (7.5.7). The live Miro inspection
-(7.5.0) is now **done** — carried out on an authenticated board on 2026-10-15 and
-written up in [`../research/miro-ui.md`](../research/miro-ui.md). What remains is
-the two tasks it unblocks: a customisable rail (7.5.8) and the keyboard map remap
-(7.5.9).
+(7.5.0) is **done** — carried out on an authenticated board on 2026-10-15 and
+written up in [`../research/miro-ui.md`](../research/miro-ui.md) and
+[`../research/miro-interactions.md`](../research/miro-interactions.md). The two
+tasks it unblocked have landed: the rail is customisable (7.5.8,
+[ADR-0029](../adr/0029-the-rail-is-a-per-user-arrangement.md)) and the keyboard
+map is aligned with Miro (7.5.9,
+[ADR-0030](../adr/0030-keyboard-parity-with-miro.md)).
 
 This phase sits between v1 (Phases 0–7) and v2 (Phases 8–9). It is numbered
 `7.5` rather than renumbering 8–10 so that every existing phase reference,
@@ -62,9 +65,9 @@ audio, presentation-deck authoring.
 - [x] 10,000 elements still hold the AC-5 frame budget with the new chrome.
 - [x] No `.firo` format change without a migration and a previous-version
       fixture test.
-- [ ] Tools can be unpinned and reordered by Miro's gestures, and the arrangement
+- [x] Tools can be unpinned and reordered by Miro's gestures, and the arrangement
       persists per user (7.5.8).
-- [ ] Miro key bindings are adopted where they do not break AC-8 (7.5.9).
+- [x] Miro key bindings are adopted where they do not break AC-8 (7.5.9).
 
 ## Tasks
 
@@ -221,13 +224,14 @@ host with no custom chrome still gets the old editor.
       **not** gate it — `isDefaultUIEnabled()` does, and that is a different flag —
       so it keeps working unchanged. It is Excalidraw-styled, not chrome-styled;
       restyling it is deferred to 7.5.7.
-- [ ] **Keyboard map** aligned to Miro's, with AC-8 preserved. The rail and its
+- [x] **Keyboard map** aligned to Miro's, with AC-8 preserved. The rail and its
       tooltips read the editor's single keyboard registry (`TOOLS` +
       `getToolShortcut`), so the shortcut shown and the shortcut handled cannot
       drift, and no AC-8 path regressed (the rails add no shortcut of their own).
-      A full remap to Miro's exact letter map is deferred to
-      [7.5.9](#759--keyboard-map-remap), where it is a reconciliation against
-      Firo's existing bindings rather than a rename.
+      The full remap to Miro's letter map landed in
+      [7.5.9](#759--keyboard-map-remap), where it was a reconciliation against
+      Firo's existing bindings rather than a rename:
+      [ADR-0030](../adr/0030-keyboard-parity-with-miro.md).
 
 **Exit:** properties are edited on the right; the selection toolbar tracks the
 selection at every zoom. Both hold.
@@ -314,17 +318,17 @@ Miro it is *one* toggling control (`V`/`H`), not two entries. Firo's rail is fix
 today (`RAIL_TOOL_ORDER` in `apps/web/App.tsx`) and renders `selection` and `hand`
 separately.
 
-- [ ] Select/Hand is a single non-removable entry that toggles between Select and
+- [x] Select/Hand is a single non-removable entry that toggles between Select and
       Hand; every other tool can be hidden (unpinned) and reordered.
-- [ ] Reorder by drag and remove by context menu, matching Miro's two gestures.
-- [ ] The arrangement persists locally, per user — a local preference, not a
+- [x] Reorder by drag and remove by context menu, matching Miro's two gestures.
+- [x] The arrangement persists locally, per user — a local preference, not a
       document field and not a board property. v1 is single-player, so "per user"
       means "this installation".
-- [ ] The ordering UI stays in `@firo/ui`; the storage seam stays in `apps/web`
+- [x] The ordering UI stays in `@firo/ui`; the storage seam stays in `apps/web`
       ([ADR-0022](../adr/0022-ui-package-owns-the-chrome.md),
       [ADR-0026](../adr/0026-board-home-and-its-index.md)).
-- [ ] Because it changes the rail's contract, it carries its own ADR (the next
-      free number).
+- [x] Because it changes the rail's contract, it carries its own ADR
+      ([ADR-0029](../adr/0029-the-rail-is-a-per-user-arrangement.md)).
 
 **Exit:** a user can unpin and reorder tools by the same gestures Miro uses, the
 arrangement survives a reload, and Select/Hand cannot be removed.
@@ -359,28 +363,37 @@ should be documented, not forced.
 | `A` | unbound | arrow | harmless extra; keep |
 | `X` / `Shift+X`, `B`, `K` | unbound | autoshape, bucket fill, laser | Firo-only extras; record |
 
-- [ ] `M` (minimap) and `G` (grid) are bound — the only two Miro keys whose Firo
+- [x] `M` (minimap) and `G` (grid) are bound — the only two Miro keys whose Firo
       features already exist but have no shortcut — and neither collides with an
       existing binding or a browser/OS-reserved key.
-- [ ] The divergences with no Firo counterpart are recorded, not forced: `S`
+- [x] The divergences with no Firo counterpart are recorded, not forced: `S`
       (shapes group) and `C` (comment tool) have no matching tool here, and `D` is
       diamond where Miro has card.
-- [ ] Firo's own extras (`X`/`Shift+X`, `B`, `K`) are listed as deliberate.
-- [ ] The `1`–`9` collision is decided and documented. Miro's numbers are
+- [x] Firo's own extras (`X`/`Shift+X`, `B`, `K`) are listed as deliberate.
+- [x] The `1`–`9` collision is decided and documented. Miro's numbers are
       positional and unremappable (`2` is always Templates), which our inherited
       Excalidraw numbering cannot satisfy while also meaning "tool type"; if we
       keep numeric tool keys, that divergence is stated in the ADR as deliberate.
-- [ ] The standard editing keys (copy, cut, paste, select-all, undo, redo) and
+      **Kept type-based, and stated as deliberate.**
+- [x] The standard editing keys (copy, cut, paste, select-all, undo, redo) and
       browser/OS-reserved keys (`⌘K`, `⌘0`, `⌘+`/`⌘-` and friends) stay as the
       platform expects, and are listed in the ADR as the exception.
-- [ ] The remap lives in the editor's single registry (`TOOLS` +
-      `getToolShortcut`); no second shortcut table is introduced.
+- [x] The remap lives in the editor's single registry (`TOOLS` +
+      `getToolShortcut`); no second shortcut table is introduced. The two new keys
+      add no parallel *tool* table: `G` is an action in the registry, and `M` is
+      the host's own chrome shortcut, owned beside the chrome it drives.
 - [ ] AC-8 is re-proven end to end: a full workshop runs on the keyboard alone,
-      including the remapped tools.
-- [ ] Shortcut tests and snapshots (`packages/editor/tests/shortcuts.test.tsx`
+      including the remapped tools. **Not re-run for this change.** The new keys
+      are covered by tests — `shortcuts.test.tsx` proves plain `G` cycles the
+      grid and that `Ctrl`/`⌘`+`G` still groups, and
+      `apps/web/board/tests/chromeShortcuts.test.ts` pins the `M` predicate — but
+      the end-to-end keyboard-only pass is a manual step, and it has not been
+      performed since the remap. It is the one open item in this phase.
+- [x] Shortcut tests and snapshots (`packages/editor/tests/shortcuts.test.tsx`
       and any `.snap`) are re-baselined with every diff read.
-- [ ] An ADR records the remap, the positional-vs-type decision, and the keys
-      deliberately left alone.
+- [x] An ADR records the remap, the positional-vs-type decision, and the keys
+      deliberately left alone:
+      [ADR-0030](../adr/0030-keyboard-parity-with-miro.md).
 
 **Exit:** someone who knows Miro's shortcuts can use Firo without relearning, and
 AC-8 still holds.
@@ -447,7 +460,7 @@ the full treatment.
 | A tunnel cannot express a left rail | **Closed.** The five tunnels plus bounded `@firo/editor` edits render the rail ([ADR-0022](../adr/0022-ui-package-owns-the-chrome.md)) |
 | The clean default changes snapshot output | **Closed.** Only new elements moved; `yarn test:update` re-baselined and every diff was read |
 | The dashboard balloons into Phase 8 | **Closed.** 7.5.5 shipped the minimum; depth went to Phase 8 ([ADR-0028](../adr/0028-project-layer-folders-and-content-search.md)) |
-| The Miro keyboard remap breaks AC-8 | Keep the standard editing keys; centralise in `TOOLS`/`getToolShortcut`; re-prove AC-8 end to end and read every snapshot diff (7.5.9) |
+| The Miro keyboard remap breaks AC-8 | **Partially closed.** The standard editing keys were kept and the map stayed centralised in `TOOLS`/`getToolShortcut` (with `M` owned by the host beside the chrome it drives); no snapshot moved. The end-to-end keyboard-only re-run is still owed — §7.5.9 records it as the phase's one open item rather than ticking it |
 | Scope creep generally | Each task has its own exit criterion; 7.5.8 and 7.5.9 each carry an ADR because they change editor behaviour rather than chrome |
 | Font licence bookkeeping | Binary, OFL text, `FONT-LICENSES.md` row and the test all land in one commit |
 
