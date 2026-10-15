@@ -198,13 +198,32 @@ export const LoadFromFiroFile = () => {
       icon={LoadIcon}
       data-testid="firo-import-button"
       onSelect={() => actionManager.executeAction(action)}
-      aria-label="Import board from .firo file"
+      aria-label="Import board (.firo, .rtb, .json)"
     >
-      {"Import board from .firo file..."}
+      {"Import board (.firo, .rtb, .json)..."}
     </DropdownMenuItem>
   );
 };
 LoadFromFiroFile.displayName = "LoadFromFiroFile";
+
+export const ExportMiroScript = () => {
+  const actionManager = useExcalidrawActionManager();
+  const action = actionManager.actions.exportMiroScript;
+  if (!action) {
+    return null;
+  }
+  return (
+    <DropdownMenuItem
+      icon={ExportIcon}
+      data-testid="firo-export-miro-button"
+      onSelect={() => actionManager.executeAction(action)}
+      aria-label="Export board to Miro script"
+    >
+      {"Export board to Miro script..."}
+    </DropdownMenuItem>
+  );
+};
+ExportMiroScript.displayName = "ExportMiroScript";
 
 export const CommandPalette = (opts?: { className?: string }) => {
   const setAppState = useExcalidrawSetAppState();

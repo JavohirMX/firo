@@ -86,6 +86,14 @@ describe("@firo/ui BoardHome", () => {
     expect(onCreateBlank).toHaveBeenCalledTimes(1);
   });
 
+  it("triggers import board when import button is clicked", () => {
+    const onImportBoard = vi.fn();
+    render(<BoardHome boards={[]} onImportBoard={onImportBoard} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Import board" }));
+    expect(onImportBoard).toHaveBeenCalledTimes(1);
+  });
+
   it("starts a board from a template", () => {
     const onCreateFromTemplate = vi.fn();
     render(

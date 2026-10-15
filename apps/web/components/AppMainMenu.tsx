@@ -54,6 +54,7 @@ export const AppMainMenu: React.FC<{
        */}
       <MainMenu.DefaultItems.SaveAsFiroFile />
       <MainMenu.DefaultItems.LoadFromFiroFile />
+      <MainMenu.DefaultItems.ExportMiroScript />
       <MainMenu.DefaultItems.ClearCanvas />
       {isDevEnv() && (
         <MainMenu.Item

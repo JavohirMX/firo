@@ -79,23 +79,57 @@ import {
   type ReadableDirectory,
   type WriteOutcome,
 } from "./firoDownload";
+import { isZip, unzipFiles, zipFiles } from "./zip";
+import {
+  convertMiroItemsToFiro,
+  type MiroBoardMeta,
+  type MiroItem,
+  type MiroResourceMeta,
+  type MiroRtbArchive,
+} from "./miro";
 
-/** What an export produced. */
+/** What a single-file JSON export produced. */
 export type ExportResult =
   | { ok: true; filename: string; bytes: string }
   | {
       ok: false;
-      reason: "failed" | "assets-not-carried";
+      reason:
+        | "failed"
+        | "assets-not-carried"
+        | "assets-missing-bytes"
+        | "assets-missing-reference"
+        | "assets-pending";
+      detail: string;
+    };
+
+/** What a packaged ZIP export produced. */
+export type PackagedExportResult =
+  | { ok: true; filename: string; bytes: Uint8Array; isZip: true }
+  | {
+      ok: false;
+      reason:
+        | "failed"
+        | "assets-not-carried"
+        | "assets-missing-bytes"
+        | "assets-missing-reference"
+        | "assets-pending";
       detail: string;
     };
 
 /** What an import did. Nothing is applied to the document unless this says `ok`. */
 export type ImportResult =
-  | { ok: true; elements: number }
+  | { ok: true; elements: number; format?: "firo-v1" | "firo-v2" | "miro" }
   | {
       ok: false;
-      reason: "unreadable" | "newer-version" | "empty" | "not-empty";
+      reason:
+        | "unreadable"
+        | "newer-version"
+        | "empty"
+        | "not-empty"
+        | "miro-rtb-canvas-encrypted"
+        | "failed";
       detail: string;
+      rtbArchive?: MiroRtbArchive;
     };
 
 /**
@@ -251,11 +285,16 @@ export const exportBoard = (doc: FiroDoc, now?: Date): ExportResult => {
 
 /** Offer the bytes to the browser as a download. */
 export const downloadBoard = (
-  result: Extract<ExportResult, { ok: true }>,
+  result: Extract<ExportResult | PackagedExportResult, { ok: true }>,
 ): void => {
   // A Blob rather than a data URL: a large board as a data URL is held as one string
   // in memory and then decoded, and boards get large.
-  const blob = new Blob([result.bytes], { type: MIME_TYPE });
+  const isZipFile = "isZip" in result && Boolean(result.isZip);
+  const mimeType = isZipFile ? "application/zip" : MIME_TYPE;
+  const blob =
+    typeof result.bytes === "string"
+      ? new Blob([result.bytes], { type: mimeType })
+      : new Blob([result.bytes.buffer as ArrayBuffer], { type: mimeType });
   const url = URL.createObjectURL(blob);
 
   const anchor = document.createElement("a");
@@ -270,6 +309,67 @@ export const downloadBoard = (
    * download as it starts. There is no event to hang this off.
    */
   setTimeout(() => URL.revokeObjectURL(url), 0);
+};
+
+/**
+ * A file picker that returns binary Uint8Array bytes and filename.
+ */
+export const pickBinaryFile = (
+  accept: string,
+): Promise<{ bytes: Uint8Array; name: string } | null> =>
+  new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+    input.style.display = "none";
+
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      input.remove();
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      void file.arrayBuffer().then(
+        (buf) => resolve({ bytes: new Uint8Array(buf), name: file.name }),
+        () => resolve(null),
+      );
+    });
+
+    document.body.appendChild(input);
+    input.click();
+  });
+
+/**
+ * Export a board as a single packaged `.firo` ZIP archive.
+ *
+ * Implements ADR-0018 §7: packs `manifest.json`, `board.json`, and all content-addressed
+ * `assets/` into a single, downloadable, diffable archive. Carries all images without loss
+ * across all browsers without requiring `showDirectoryPicker`.
+ */
+export const exportPackagedBoard = async (
+  doc: FiroDoc,
+  deps: {
+    now?: Date;
+    readAsset: AssetReader;
+  },
+): Promise<PackagedExportResult> => {
+  const built = await buildFiroDirectory(doc, {
+    now: deps.now,
+    readAsset: deps.readAsset,
+  });
+
+  if (!built.ok) {
+    return built;
+  }
+
+  const zipBytes = zipFiles(built.files);
+  return {
+    ok: true,
+    filename: exportFilename(deps.now),
+    bytes: zipBytes,
+    isZip: true,
+  };
 };
 
 /* -------------------------------------------------------------------------- */
@@ -428,4 +528,253 @@ export const importBoard = (doc: FiroDoc, text: string): ImportResult => {
   });
 
   return parsed;
+};
+
+/**
+ * Universal importer for board files:
+ * - `.firo` single JSON files (Format v1)
+ * - `.firo` packaged ZIP archives (Format v2)
+ * - Miro `.rtb` archives
+ * - Miro items JSON exports
+ */
+export const importBoardFile = async (
+  doc: FiroDoc,
+  data: string | Uint8Array,
+  deps?: {
+    putAsset?: AssetWriter;
+    miroItems?: readonly MiroItem[];
+    miroRtbArchive?: MiroRtbArchive;
+    force?: boolean;
+  },
+): Promise<ImportResult> => {
+  const bytes = typeof data === "string" ? null : data;
+
+  // 1. Binary ZIP container handling
+  if (bytes && isZip(bytes)) {
+    const files = unzipFiles(bytes);
+
+    // 1A. Packaged .firo archive (v2)
+    if (files.has("manifest.json") && files.has("board.json")) {
+      if (doc.read().elements.length > 0 && !deps?.force) {
+        return {
+          ok: false,
+          reason: "not-empty",
+          detail:
+            "this board already has content, and importing into it would mean " +
+            "resolving the autosaved copy against the file. Export the current board, " +
+            "start a new one, then import.",
+        };
+      }
+      const imported = await importFiroDirectory(doc, files, {
+        putAsset: deps?.putAsset ?? (async () => {}),
+      });
+      if (imported.ok) {
+        return { ok: true, elements: imported.elements, format: "firo-v2" };
+      }
+      return { ok: false, reason: "unreadable", detail: imported.detail };
+    }
+
+    // 1B. Miro .rtb archive
+    if (
+      files.has("resources.json") ||
+      (files.has("board.json") && files.has("meta.json"))
+    ) {
+      let boardMeta: MiroBoardMeta | undefined;
+      let resources: MiroResourceMeta[] | undefined;
+      let isEncrypted = false;
+      let encryptionVersion: string | undefined;
+
+      if (files.has("meta.json")) {
+        try {
+          const meta = JSON.parse(
+            new TextDecoder().decode(files.get("meta.json")!),
+          );
+          if (meta.encryptionVersion) {
+            isEncrypted = true;
+            encryptionVersion = String(meta.encryptionVersion);
+          }
+        } catch {}
+      }
+      if (files.has("board.json")) {
+        try {
+          boardMeta = JSON.parse(
+            new TextDecoder().decode(files.get("board.json")!),
+          );
+        } catch {}
+      }
+      if (files.has("resources.json")) {
+        try {
+          const r = JSON.parse(
+            new TextDecoder().decode(files.get("resources.json")!),
+          );
+          resources = r.resources;
+        } catch {}
+      }
+
+      const mediaFiles = new Map<string, Uint8Array>();
+      for (const [name, fileBytes] of files) {
+        if (
+          name.endsWith(".png") ||
+          name.endsWith(".jpg") ||
+          name.endsWith(".jpeg") ||
+          name.endsWith(".svg") ||
+          name.endsWith(".heic") ||
+          name.endsWith(".pdf")
+        ) {
+          mediaFiles.set(name, fileBytes);
+        }
+      }
+
+      // If Miro items are supplied (e.g. from companion JSON or callback)
+      if (deps?.miroItems && deps.miroItems.length > 0) {
+        if (doc.read().elements.length > 0 && !deps?.force) {
+          return {
+            ok: false,
+            reason: "not-empty",
+            detail: "Clear or export the current board before importing.",
+          };
+        }
+        const converted = await convertMiroItemsToFiro(deps.miroItems, {
+          boardMeta,
+          resources,
+          mediaFiles,
+        });
+        if (deps?.putAsset) {
+          for (const asset of converted.assetsToPut.values()) {
+            await deps.putAsset(asset.hash, asset.bytes, asset.mimeType);
+          }
+        }
+        const loaded = loadBoard(converted.board);
+        doc.load({
+          elements: loaded.elements,
+          collections: loaded.collections,
+          records: loaded.records,
+          elementOrder: loaded.elementOrder,
+          meta: loaded.meta,
+        });
+        return { ok: true, elements: loaded.elements.length, format: "miro" };
+      }
+
+      // Check canvas.json
+      if (files.has("canvas.json")) {
+        const canvasBytes = files.get("canvas.json")!;
+        try {
+          const canvasText = new TextDecoder().decode(canvasBytes);
+          const canvasJson = JSON.parse(canvasText);
+          const items = Array.isArray(canvasJson)
+            ? canvasJson
+            : canvasJson.items || canvasJson.widgets;
+          if (Array.isArray(items)) {
+            if (doc.read().elements.length > 0 && !deps?.force) {
+              return {
+                ok: false,
+                reason: "not-empty",
+                detail: "Clear or export the current board before importing.",
+              };
+            }
+            const converted = await convertMiroItemsToFiro(items, {
+              boardMeta,
+              resources,
+              mediaFiles,
+            });
+            if (deps?.putAsset) {
+              for (const asset of converted.assetsToPut.values()) {
+                await deps.putAsset(asset.hash, asset.bytes, asset.mimeType);
+              }
+            }
+            const loaded = loadBoard(converted.board);
+            doc.load({
+              elements: loaded.elements,
+              collections: loaded.collections,
+              records: loaded.records,
+              elementOrder: loaded.elementOrder,
+              meta: loaded.meta,
+            });
+            return {
+              ok: true,
+              elements: loaded.elements.length,
+              format: "miro",
+            };
+          }
+        } catch {
+          isEncrypted = true;
+        }
+      }
+
+      if (isEncrypted) {
+        return {
+          ok: false,
+          reason: "miro-rtb-canvas-encrypted",
+          detail: `Miro backup canvas.json is encrypted (version ${
+            encryptionVersion ?? "1.1"
+          }). Extracted ${
+            mediaFiles.size
+          } media assets. Run \`copy(JSON.stringify(await miro.board.get()))\` on your Miro board to provide the items.`,
+          rtbArchive: {
+            board: boardMeta,
+            resources,
+            mediaFiles,
+            isEncrypted: true,
+            encryptionVersion,
+          },
+        };
+      }
+    }
+  }
+
+  // 2. Text or JSON handling
+  const text = typeof data === "string" ? data : new TextDecoder().decode(data);
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      reason: "unreadable",
+      detail: "The file could not be parsed as JSON or a valid ZIP archive.",
+    };
+  }
+
+  // Check if it is a Miro items export
+  const miroItems = Array.isArray(parsedJson)
+    ? parsedJson
+    : (parsedJson as { items?: unknown[] })?.items;
+
+  if (
+    Array.isArray(miroItems) &&
+    miroItems.length > 0 &&
+    typeof miroItems[0] === "object" &&
+    miroItems[0] !== null &&
+    ("type" in miroItems[0] || "widgetType" in miroItems[0]) &&
+    !("elementSchemaVersion" in (parsedJson as object))
+  ) {
+    if (doc.read().elements.length > 0 && !deps?.force) {
+      return {
+        ok: false,
+        reason: "not-empty",
+        detail: "Clear or export the current board before importing.",
+      };
+    }
+    const converted = await convertMiroItemsToFiro(
+      miroItems as MiroItem[],
+      deps?.miroRtbArchive,
+    );
+    if (deps?.putAsset) {
+      for (const asset of converted.assetsToPut.values()) {
+        await deps.putAsset(asset.hash, asset.bytes, asset.mimeType);
+      }
+    }
+    const loaded = loadBoard(converted.board);
+    doc.load({
+      elements: loaded.elements,
+      collections: loaded.collections,
+      records: loaded.records,
+      elementOrder: loaded.elementOrder,
+      meta: loaded.meta,
+    });
+    return { ok: true, elements: loaded.elements.length, format: "miro" };
+  }
+
+  // Standard Firo JSON
+  return importBoard(doc, text);
 };

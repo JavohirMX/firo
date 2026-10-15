@@ -152,6 +152,8 @@ export type ActionName =
    * there are two: getting a board out of the browser as a file, and putting one back.
    */
   | "exportFiroFile"
+  | "exportFiroDirectory"
+  | "exportMiroScript"
   | "importFiroFile"
   /*
    * The facilitator's commands, from `apps/web/board/facilitatorActions.ts`.

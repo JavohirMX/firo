@@ -951,3 +951,22 @@ export const MoreVerticalIcon: React.FC<IconProps> = ({
     <circle cx="10" cy="15.5" r="1.25" fill="currentColor" />
   </svg>
 );
+
+export const UploadIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3.5 13.5V15C3.5 15.83 4.17 16.5 5 16.5H15C15.83 16.5 16.5 15.83 16.5 15V13.5M10 3.5V12.5M10 3.5L6.5 7M10 3.5L13.5 7"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);

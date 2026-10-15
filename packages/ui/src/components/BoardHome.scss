@@ -139,6 +139,32 @@
     }
   }
 
+  &__import {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--firo-space-sm);
+    height: 40px;
+    padding: 0 var(--firo-space-md);
+    background-color: var(--firo-color-panel);
+    border: 1px solid var(--firo-color-border-strong);
+    border-radius: var(--firo-radius-pill);
+    color: var(--firo-color-text);
+    font: inherit;
+    font-size: var(--firo-font-size-sm);
+    font-weight: var(--firo-font-weight-medium);
+    cursor: pointer;
+    transition: background-color var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover {
+      background-color: var(--firo-color-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
   &__new {
     display: inline-flex;
     align-items: center;

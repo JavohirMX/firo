@@ -16,6 +16,7 @@ import {
   SortIcon,
   StarIcon,
   TrashIcon,
+  UploadIcon,
 } from "../icons";
 
 import "./BoardHome.scss";
@@ -81,6 +82,7 @@ export interface BoardHomeProps {
   viewMode?: "grid" | "list";
   sortBy?: "lastOpened" | "created" | "name";
   onCreateBlank?: () => void;
+  onImportBoard?: () => void;
   onOpenBoard?: (id: string) => void;
   onRenameBoard?: (id: string, name: string) => void;
   onTrashBoard?: (id: string) => void;
@@ -447,6 +449,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   viewMode,
   sortBy,
   onCreateBlank,
+  onImportBoard,
   onOpenBoard,
   onRenameBoard,
   onTrashBoard,
@@ -890,6 +893,17 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 <option value="name">Name (A-Z)</option>
               </select>
             </div>
+            {onImportBoard && (
+              <button
+                type="button"
+                className="firo-board-home__import"
+                onClick={onImportBoard}
+                aria-label="Import board"
+              >
+                <UploadIcon size={18} />
+                Import
+              </button>
+            )}
             {onCreateBlank && (
               <button
                 type="button"

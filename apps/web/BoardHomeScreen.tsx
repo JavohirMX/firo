@@ -1,10 +1,15 @@
 import { BoardHome } from "@firo/ui";
 import React from "react";
 
+import { createFiroDoc, putAsset } from "@firo/doc";
+import { mintBoardId } from "@firo/board";
+import { serializeBoard } from "@firo/schema";
+
 import type { BoardCardData, TemplateCardData } from "@firo/ui";
 
 import {
   createBlankBoard,
+  createBoard,
   createBoardFromTemplate,
   createFolder,
   deleteBoardForever,
@@ -22,6 +27,7 @@ import {
 } from "./board/library";
 import { BOARD_TEMPLATES, templateById } from "./board/templates";
 import { boardUrl } from "./board/routes";
+import { importBoardFile, pickBinaryFile } from "./board/files";
 
 import type { BoardFolder, BoardMeta } from "./board/library";
 
@@ -100,6 +106,57 @@ export const BoardHomeScreen: React.FC = () => {
 
   const handleCreateBlank = async () => {
     open((await createBlankBoard()).id);
+  };
+
+  const handleImportBoard = async () => {
+    const picked = await pickBinaryFile(
+      ".firo,.rtb,.json,.zip,application/json,application/zip,application/octet-stream",
+    );
+    if (!picked) {
+      return;
+    }
+
+    const { id, mutation } = mintBoardId();
+    const doc = createFiroDoc();
+    doc.commit([mutation]);
+
+    const result = await importBoardFile(doc, picked.bytes, {
+      putAsset: async (hash, data) => {
+        await putAsset(hash, data as never, undefined);
+      },
+      force: true,
+    });
+
+    if (result.ok) {
+      const read = doc.read();
+      const metaName = read.meta?.name;
+      const boardName =
+        typeof metaName === "string" &&
+        metaName.trim() &&
+        metaName !== "Untitled board"
+          ? metaName
+          : picked.name.replace(/\.[^/.]+$/, "");
+      const payload = JSON.stringify(serializeBoard(read));
+      await createBoard({
+        id,
+        name: boardName,
+        payload,
+      });
+      open(id);
+      return;
+    }
+
+    if (result.reason === "miro-rtb-canvas-encrypted") {
+      alert(
+        `Miro backup canvas is encrypted by Miro KMS. Extracted ${
+          result.rtbArchive?.mediaFiles.size ?? 0
+        } media assets!\n\n` +
+          `To complete the import:\n1. Open this board in Miro\n2. Open DevTools Console and run:\n   copy(JSON.stringify(await miro.board.get()))\n3. Save as items.json and import it.`,
+      );
+      return;
+    }
+
+    alert(`That file could not be imported: ${result.detail}`);
   };
 
   const handleCreateFromTemplate = async (templateId: string) => {
@@ -202,6 +259,7 @@ export const BoardHomeScreen: React.FC = () => {
       viewMode={viewMode}
       sortBy={sortBy}
       onCreateBlank={handleCreateBlank}
+      onImportBoard={handleImportBoard}
       onOpenBoard={open}
       onRenameBoard={handleRename}
       onTrashBoard={handleTrash}

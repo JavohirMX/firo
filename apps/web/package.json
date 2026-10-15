@@ -33,6 +33,7 @@
     "jotai": "2.11.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "pako": "2.0.3",
     "uqr": "0.1.2",
     "vite-plugin-html": "3.2.2"
   },
@@ -49,6 +50,7 @@
     "build:preview": "yarn build && vite preview --port 5000"
   },
   "devDependencies": {
+    "@types/pako": "2.0.3",
     "fake-indexeddb": "3.1.7"
   },
   "description": "Firo — the local-first, self-hostable whiteboard web app",
