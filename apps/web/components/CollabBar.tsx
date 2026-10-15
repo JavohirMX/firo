@@ -140,6 +140,8 @@ export const CollabBar: React.FC<CollabBarProps> = ({
           className="firo-connection-pill"
           data-testid="connection-status-pill"
           title={`Status: ${connectionStatus}`}
+          role="status"
+          aria-live="polite"
         >
           <span
             className={`firo-connection-pill__dot firo-connection-pill__dot--${connectionStatus}`}
@@ -202,6 +204,7 @@ export const CollabBar: React.FC<CollabBarProps> = ({
             onClick={onOpenShare}
             data-testid="share-button"
             title="Share board"
+            aria-haspopup="dialog"
           >
             <ShareIcon size={14} />
             <span>Share</span>

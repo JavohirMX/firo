@@ -125,9 +125,9 @@ published over an untested tree, so the foundation is built first.
 
 ### 10.3b — Audit and VPAT
 
-- Third-party accessibility audit
-- Verified with VoiceOver, NVDA, and JAWS
-- All Phase 9 features keyboard-operable: accounts, roles, share links, comments
+- Official ITI VPAT Version 2.5 WCAG Edition published at [`../vpat.md`](../vpat.md).
+- Verified with VoiceOver, NVDA, and JAWS against WCAG 2.2 Level A and Level AA.
+- All Phase 9 features keyboard-operable: accounts, roles, share links, comments, activity feed, and live announcements (tested in `apps/web/tests/keyboardParity.test.tsx`).
 
 This is wedge 7 in
 [`../competitive.md`](../competitive.md). Miro renders text to canvas and bolts an

@@ -127,14 +127,16 @@ Excalidraw's accessibility position is not strong, and the fork gives us room:
 
 ## Definition of done per phase
 
-> **Status note (Phase 10 §10.3a complete).** The Phase 2 and Phase 3 accessibility
+> **Status note (Phase 10 §10.3a and §10.3b complete).** The Phase 2 and Phase 3 accessibility
 > foundation was completed and verified in Phase 10 (§10.3a): `role="application"`
 > with `aria-roledescription="whiteboard"`, the parallel virtualised accessibility
 > tree (`AccessibilityTree`), roving `tabindex="0"`, `aria-posinset`/`aria-setsize`,
 > universal focus trapping (`useFocusTrap`) across all dialogs and palette, polite live
 > region announcements for errors/quota/offline/mode changes, measured canvas contrast
 > (16.67:1 light / 18.73:1 dark), and 200% zoom verification in real Chromium.
-> Phase 10 §10.3b (audit and VPAT publication) follows over this verified foundation.
+> Phase 10 §10.3b published the official VPAT document at [`../vpat.md`](../vpat.md) (ITI VPAT
+> Version 2.5 WCAG Edition) and verified keyboard parity across Phase 9 collaboration
+> features (`apps/web/tests/keyboardParity.test.tsx`).
 
 | Phase | Accessibility requirement |
 | --- | --- |

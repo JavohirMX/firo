@@ -84,6 +84,21 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   title = "Activity History",
   dialogRef,
 }) => {
+  React.useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
   }
@@ -113,8 +128,15 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
       ref={dialogRef}
       className="firo-activity-feed"
       role="dialog"
+      aria-modal="true"
       aria-label="Activity Feed"
       data-testid="firo-activity-feed"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <div className="firo-activity-feed__header">
         <h3>

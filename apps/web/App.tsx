@@ -1463,6 +1463,8 @@ const ExcalidrawWrapper = () => {
               title="Activity history"
               aria-label="Activity history"
               data-testid="activity-feed-toggle"
+              aria-expanded={activityFeedOpen}
+              aria-haspopup="dialog"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
