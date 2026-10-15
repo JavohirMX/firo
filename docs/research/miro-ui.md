@@ -2,20 +2,14 @@
 
 What Firo's Phase 7.5 shell is modelled on, and where each claim comes from.
 
-**Status: partially verified.** The layout below is taken from Miro's own
-documentation. Live inspection of a running board — DOM structure, computed
-styles, CSS custom properties, interaction timings and the full keyboard map —
-is **not yet done**; it is task 7.5.0 and it needs REA plus its Chrome DevTools
-provider, which are not installed here. Every claim that rests on documentation
-alone is marked, and §"Unverified" lists what still has to be looked at directly.
+**Status: observed.** The layout below was first taken from Miro's own
+documentation and has now been checked against a **live, authenticated board**
+(2026-10-15, Chrome 155) with REA's Chrome DevTools provider. Documentation-only
+claims have been replaced by observations wherever the live board could settle
+them, and the ones it could not are listed under §"Still unverified". This closes
+task 7.5.0.
 
-**Decision (2026-10-14).** Live inspection also needs an *authenticated Miro
-board*, which the maintainer chose not to supply: the phase proceeds on the
-documented-behaviour fallback and every documentation-only claim stays flagged
-rather than asserted. The clean-room guardrail below is unaffected — it is a
-constraint on what may be used, not on what may be observed.
-
-Researched **13 October 2026**.
+Researched **13 October 2026**. Live observation **15 October 2026**.
 
 ## Clean-room guardrail
 
@@ -33,39 +27,117 @@ layout**. It is a specification, not a source of assets.
 The icons are authored in-repo and the chrome typeface is Plus Jakarta Sans for
 exactly this reason.
 
-## The shell, as documented
+Live observation does not weaken this guardrail. What was inspected is
+**structure and behaviour** — element roles, accessible names, event wiring,
+persistence keys and stated rules. No Miro asset, stylesheet or source was copied
+into this repository, and none is committed.
 
-Miro's board screen is four regions plus a selection behaviour. This is the shape
-Firo adopts ([ADR-0021](../adr/0021-miro-style-shell-and-clean-aesthetic.md)).
+## How this was observed
 
-| Region | Contents | Source |
+REA driving the Chrome DevTools provider against a signed-in board. Tools used:
+`list_browser_targets`, `inspect_web_page` (DOM node tree, accessibility tree,
+storage keys, resource list), `inspect_web_event_listeners` and
+`capture_web_screenshot`. The raw evidence bundle was kept in a temporary
+directory and is **not committed** — only this summary is.
+
+What the method gave, and what it could not:
+
+- **Gave:** the DOM node tree, the accessibility tree (roles, names, states),
+  element attribute **names**, event-listener wiring, and storage **key** names.
+- **Did not give:** computed styles, CSS custom properties, attribute **values**
+  (so no class names or `aria-label` values), storage values, or source-map
+  contents (source maps are reported as URLs and deliberately not fetched).
+- **Screenshots** capture the visible viewport; REA does not scroll or evaluate
+  script. The agent that read this report cannot view images, so geometry was
+  **not** measured from the screenshot — the PNG is retained only as temporary
+  evidence. See §"Still unverified".
+
+## The shell, as observed
+
+Five regions, one of which is the creation rail. Region membership below is the
+accessibility-tree order, not necessarily the painted order.
+
+| Region | Observed contents | Orientation |
 | --- | --- | --- |
-| **Top-left** | Board menu: hamburger, dashboard button, board name, classification, three-dot main menu | Miro Help — *Toolbars* |
-| **Top-right** | Collaboration tools (Reactions, Voting, Timer, Private mode, Notes) and People (activity feed, talktrack, users, presentation mode, Share) | Miro Help — *Toolbars* |
-| **Left, vertical** | **Creation toolbar**: Select/Hand, sticky note, shapes, text, connector, pen, frame, more. Customisable. **Undo/Redo sit directly beneath it.** | Miro Help — *Toolbars* |
-| **Bottom-right** | **Navigation toolbar**: zoom in/out, zoom percentage, fit-to-screen, minimap, grid, Frames, Layers | Miro Help — *Toolbars* |
-| **On selection** | A **context menu appears near the object**, not in a fixed side panel | Miro Help — *Toolbars* |
+| **Top-left** | `toolbar` "Board": `Open Sidebar`, `Home`, `Main menu` | horizontal |
+| **Top bar** | `toolbar` "People": `Change thumbnail`, `Facilitation tools and reactions`, `Activity`, `Record and watch Talktracks`, avatar, `Present`, `Share`; plus a board-title button (`Click to rename`) and a board icon | horizontal |
+| **Left** | `toolbar` "Creation": `Select`, `Sticky note`, `Templates`, `Text`, `Shapes and lines`, `Pen`, `Frame`, `Stickers, Emoji and GIFs`, `Comment`, `Diagramming shapes`, `Tools, Media and Integrations` | **vertical** |
+| **Under the rail** | `Undo`, `Redo` (exposed as buttons; `disabled` when there is no history) | — |
+| **Bottom-right** | `toolbar` "Controls": `Zoom out`, `Zoom and navigation`, `Zoom in`, `Help and resources`, `Frames`; plus the zoom-percentage readout | horizontal |
+
+An accessibility layer is present and is part of the shell, not an add-on: a
+`Skip to first object on the board` button, an `Explore board content` button
+(accessible board overview), an `Accessibility help` link, and guidance text
+naming the `⌘ + K` command palette and the `⌥ + O` board-overview key.
 
 Documented, and each has a consequence for us:
 
-1. **Tools are one-time.** A creation tool reverts to Select after it is used.
-   The current Excalidraw behaviour keeps the active tool until it is changed
-   again, so this is a real behavioural change and not a CSS move.
-2. **Tools can be dragged onto the board.** The rail is a source, not only a
-   mode switch.
-3. **Select and Hand cannot be removed** from the rail; the rest can. The rail is
-   customisable, which means the rail has an ordering/persistence question that
-   the current fixed toolbar does not.
-4. **Undo/Redo are part of the rail region, not a footer.** In Firo today they
-   live in the bottom-left footer.
-5. **Zoom lives bottom-right.** In Firo today it also lives bottom-left.
+1. **Tools are one-time — but not all of them.** Miro's rule is that every tool is
+   one-time *except* **pen, eraser, lasso and comments**; a one-time tool reverts
+   to Select after use. Firo's `CREATION_TOOLS` already encodes exactly this —
+   `freedraw` (pen) and `eraser` are deliberately outside it, so they stay
+   active. **No change needed.**
+2. **Tools can be dragged onto the board.** The rail is a source, not only a mode
+   switch.
+3. **Select and Hand are a single control.** One pointer button, toggling between
+   Select and Hand (hotkeys `V` and `H`), and it cannot be removed. It is
+   therefore *one* rail entry, not two.
+4. **Shapes and lines are one rail entry**, opening a flyout — not one entry per
+   shape as Firo currently renders.
+5. **Undo/Redo default to just under the creation rail** and can be moved to the
+   bottom-left from the board menu (View → Undo/Redo controls toggle).
+6. **Zoom lives bottom-right**, and the **minimap is a submenu of the zoom
+   percentage** (with full screen, grid, object dimensions and fit-to-screen) —
+   not a top-level button.
+
+## The rail is customisable
+
+Documented, and consistent with what the live board showed (a Radix-family
+`toolbar` with roving focus, whose container handles `contextmenu` and drag
+through React's delegated listeners):
+
+- **Reorder:** click and drag a tool to change its order.
+- **Remove:** right-click a tool to **Unpin** it; adding it back is the same
+  menu.
+- **Scope: per profile, per user.** Order and visible tools are saved to your own
+  profile only — you cannot change another collaborator's rail.
+- **Not supported on touchscreen devices.**
+- Select/Hand cannot be unpinned.
+
+This answers the ordering-and-persistence question the earlier revision left
+open: **per user, locally, not per board.**
+
+## The keyboard, as observed
+
+Miro's tool keys, from *Shortcuts and hotkeys*: `V`/`H` select/hand, `T` text,
+`N` sticky note, `S` shapes, `R` rectangle, `O` oval, `L` connection line/arrow,
+`D` card, `P` pen, `E` eraser, `C` comment, `F` frame, `M` minimap, `G` grid,
+and `⌘K` for the command palette.
+
+Two rules that matter for Firo:
+
+1. **Numbered hotkeys are positional and not remappable.** `1`–`9` switch between
+   tools *in their toolbar order*; concretely, `2` always opens the Templates
+   modal. This **conflicts** with Firo's inherited Excalidraw scheme, where
+   `1`–`9` (`0`) select a specific tool type.
+2. **Keyboard navigation is part of the shell.** `Tab`/`Shift-Tab` move between
+   toolbars and panels, arrow keys move within a toolbar (up/down inside the
+   creation rail), `B` moves focus to the board, `Tab`/`Shift-Tab` then walk
+   objects in reading order, `⌘`+arrows walk them spatially, `⌘ + Enter` opens an
+   object's context menu, and `Escape` returns to the toolbars. Single-character
+   shortcuts can be toggled off (Main menu → Accessibility) so they do not fight
+   a screen reader.
+
+The live board corroborates item 2 mechanically: the rail's `[role=toolbar]`
+carries a `rovingFocusGroup.onEntryFocus` listener, which is the arrow-key roving
+focus Radix toolbars provide.
 
 ## Firo mapping
 
-How the documented structure maps onto this repository. The right column is the
+How the observed structure maps onto this repository. The right column is the
 tunnel that hosts it ([ADR-0022](../adr/0022-ui-package-owns-the-chrome.md)).
 
-| Miro region | Firo component (new) | Hosted by | Today |
+| Miro region | Firo component | Hosted by | Today |
 | --- | --- | --- | --- |
 | Top-left board menu | `BoardMenu` | `renderBoardMenuUI` | Excalidraw main menu (top-left hamburger) |
 | Top-right collaboration | `CollabBar` | existing top-right tunnel | `FacilitatorBar` (custom, in `apps/web`) |
@@ -79,34 +151,50 @@ Two of these — the creation rail and the navigation toolbar — are *placement
 that Excalidraw's toolbar CSS does not express. That is the specific reason
 ADR-0022 permits bounded edits inside `@firo/editor`.
 
-## Unverified — inspect live before building
+### Where Firo and Miro differ, concretely
 
-These are the claims the documentation does not settle, and the reason the live
-inspection step exists. None of them should be asserted in code comments or in
-the ADRs until they are observed.
+Recorded so the differences are decisions rather than accidents:
 
-- **Geometry.** Rail width, icon size and stroke weight, control hit-target
-  sizes, the gap between the rail and undo/redo, toolbar corner radii and
-  offsets. Needed for the icon grid and the tokens.
-- **The exact one-time-tool rule.** Does *every* creation tool revert, or only
-  some? What happens for a drag-created object versus a click?
-- **Rail customisation.** Ordering rules, persistence, and whether Hide/Show is
-  per-board or per-user.
-- **Selection context menu.** Exact actions, and whether it is always near the
-  object or sometimes docks.
-- **The keyboard map.** Miro's full shortcuts, including conflicts with any Firo
-  already binds. AC-8 requires the whole workshop to be keyboard-drivable, so
-  this must be reconciled rather than copied.
-- **Zoom bounds and the zoom-percentage control's behaviour.**
-- **Colour and motion tokens.** Durations and easings for tool switches and
-  panel transitions.
+| Thing | Miro (observed) | Firo today | Consequence |
+| --- | --- | --- | --- |
+| Select / Hand | one toggling button | two rail entries (`selection`, `hand`) | rail shape; see 7.5.8 |
+| Shapes / lines | one entry with a flyout | five flat entries (`rectangle`, `diamond`, `ellipse`, `arrow`, `line`) | rail shape |
+| Templates, Stickers, Diagramming, "+" | rail entries | not on the rail | rail composition |
+| Minimap | inside the zoom-% submenu | its own `NavToolbar` toggle | placement |
+| `D` | card | diamond | divergence, not a conflict — Firo has no card tool; see 7.5.9 |
+| `S`, `C` | shapes group, comment tool | no counterpart tool | no target in Firo today; see 7.5.9 |
+| `M`, `G` | minimap, grid | both exist, unbound | bind in 7.5.9 |
+| `A`, `X`, `Shift+X`, `B`, `K` | unbound | arrow, freedraw alt, autoshape, bucket fill, laser | Firo-only extras |
+| `1`–`9` | toolbar slots (positional) | tool types | real conflict; see 7.5.9 |
+| One-time tools | all but pen/eraser/lasso/comment | `CREATION_TOOLS` matches | none |
+
+## Still unverified
+
+Not asserted anywhere in code or ADRs until observed:
+
+- **Geometry.** Rail width, icon size and stroke weight, hit-target sizes, the
+  gap between the rail and undo/redo, corner radii and offsets. Computed styles
+  are unavailable through REA's passive inspection, and the screenshot could not
+  be measured (see above). Pixel-level geometry remains a gap.
+- **The rail's visual order versus the accessibility-tree order.** The list above
+  is DOM/accessibility order, which is not guaranteed to be the painted order.
+  Miro does have a stable positional order — its numbered hotkeys switch tools by
+  toolbar position, and `2` is always Templates — so a painted order exists; this
+  inspection captured the accessible order, not the painted one.
+- **Colour and motion tokens.** Durations and easings for tool switches and panel
+  transitions. (Colour values would not be copied verbatim in any case.)
+- **The selection context menu.** Exact actions, and whether it always floats near
+  the object or sometimes docks.
+- **Zoom bounds** and the precise behaviour of the zoom-percentage control.
 
 ## Sources
 
 | Source | What it establishes |
 | --- | --- |
-| [Miro Help — Toolbars](https://help.miro.com/hc/en-us/articles/360017730553-Toolbars) | The four regions, undo/redo under the creation toolbar, the navigation toolbar's contents, one-time tools, drag-to-board, and Select/Hand being non-removable |
-| [Miro Help — Board interface](https://help.miro.com/hc/en-us/sections/360001412314-Board-interface) | The board screen's sections |
+| Live board via REA + Chrome DevTools (2026-10-15) | The five regions and their accessible names, the vertical Creation rail and its members, undo/redo and the navigation toolbar, the accessibility layer, storage keys and event wiring |
+| [Miro Help — Toolbars](https://help.miro.com/hc/en-us/articles/360017730553-Toolbars) | Region contents, the one-time rule and its exceptions, drag-to-board, Select/Hand being non-removable, rail customisation (drag to reorder, right-click to Unpin, per-profile), undo/redo placement |
+| [Miro Help — Shortcuts and hotkeys](https://help.miro.com/hc/en-us/articles/360017731033) | The full key map, positional numbered hotkeys, toolbar navigation keys, the `F1` shortcut list |
+| [Miro Help — Keyboard navigation](https://help.miro.com/hc/en-us/articles/11997028019858) | The keyboard model for the shell: Tab/arrow navigation, `B` to the board, `⌘K` palette, toggleable single-key shortcuts |
 | [Miro Help — Board access rights](https://help.miro.com/hc/en-us/articles/360017572194-Board-access-rights) | The permission matrix (commenter/edit/viewer) that Firo's comments lane defers to v2 |
 
 Contrast, licences and the API surface for Miro as a product are catalogued
