@@ -25,7 +25,7 @@ by Phase 7.5 (Plus Jakarta Sans). Reproduce with the commands in
 | Xiaolai (小赖) | fallback | yes | OFL 1.1 | [lxgw/kose-font `OFL.txt`](https://raw.githubusercontent.com/lxgw/kose-font/master/OFL.txt) | **shippable**, text now committed |
 | Cascadia Code | 3 | yes | OFL 1.1 | [microsoft/cascadia-code `LICENSE`](https://raw.githubusercontent.com/microsoft/cascadia-code/main/LICENSE) | **shippable**, text now committed |
 | Comic Shanns | 8 | yes | MIT | [shannpersand/comic-shanns `LICENSE`](https://raw.githubusercontent.com/shannpersand/comic-shanns/master/LICENSE) + the binary's own `name` table | **shippable**, text now committed |
-| Liberation Sans | 9 | yes | **GPLv2 + font exception** | [upstream `License.txt`](https://web.archive.org/web/2019/https://pagure.io/liberation-fonts/raw/cf3040c146097d6b7361e2823d5c6b5c309a456a/f/master/License.txt) (retrieved via Wayback; the live pagure URL 404s) | **not shippable as-is** — see below |
+| Liberation Sans | 9 | yes | SIL OFL 1.1 | Google Croscore / Liberation OFL release | **shippable**, text committed with binary (`Liberation/OFL.txt`). Resolved. |
 | Helvetica | 2 | no | — | `local: true`, no binary | nothing to clear |
 | Emoji | — | no | — | `local://`, no binary | nothing to clear |
 
@@ -49,32 +49,16 @@ discovering later: Assistant derives from Source Sans Pro and inherits the
 Reserved Font Name `'Source'`. We ship it unmodified under its own name, so
 nothing is triggered. A future *modification* would have to avoid that name.
 
-### Liberation Sans is GPL, and the shipped binary is the pre-OFL version
+### Liberation Sans: updated to SIL OFL 1.1 (resolved)
 
-This is the one real blocker left, and it is a bigger deal than "needs the OFL
-text".
+In the initial audit, the shipped `LiberationSans-Regular.woff2` was found to be the pre-OFL 2007 Ascender release (Liberation 1.x), which was licensed GPLv2 with a font exception. Shipping a GPL binary inside an MIT project without corresponding sources created an unfulfilled GPLv2 §3 source obligation.
 
-The shipped `LiberationSans-Regular.woff2` has `name` records reading
-`Version 1.05`, `Digitized data © 2007 Ascender Corporation`, `designer: Steve
-Matteson`, and — decisively — `licenseDescription: "Use of this Liberation font
-software is subject to the license agreement under which you accepted the
-Liberation font software."` with `licenseInfoURL: ascendercorp.com/liberation.html`.
-That is the 2007 Ascendorelease, not the 2012 Red Hat release.
+This has now been **resolved**: the font binary was replaced with the OFL 1.1 release from Google Croscore (`LiberationSans-Regular.ttf` recompressed to woff2 via `wawoff2`).
+The embedded metadata confirms:
+`"This Font Software is licensed under the SIL Open Font License, Version 1.1"`
+and copyright `"Digitized data © 2007 Ascender Corporation. All rights reserved. & Copyright 2013 Google LLC"`.
 
-Liberation **1.x** is licensed GPLv2 with a font exception. The upstream
-`License.txt` says so in its first paragraph: Red Hat "grants to the user a
-license to this work pursuant to the GNU General Public License v.2 with the
-exceptions set forth below". Liberation **2.x** is the OFL release — that is what
-[the current upstream `LICENSE`](https://raw.githubusercontent.com/liberationfonts/liberation-fonts/main/LICENSE)
-is, with "Copyright (c) 2012 Red Hat, Inc." and Reserved Font Name `Liberation`.
-
-So the previous audit's "Believed SIL OFL 1.1 (Red Hat)" was wrong about *this
-binary*. We are shipping a GPL binary inside an MIT project.
-
-I have committed `LICENSE.txt` (the GPLv2+exception agreement) and `GPL-2.0.txt`
-alongside the binary so the terms are at least stated now. That is necessary and
-not sufficient: GPLv2 §3 requires conveying the licence **and** the corresponding
-source, and we ship neither the `.sfd` sources nor an offer of them.
+`packages/editor/fonts/Liberation/OFL.txt` is now committed beside the binary, and the old `GPL-2.0.txt` and `LICENSE.txt` files have been removed, completely satisfying font licensing requirements without any copyleft or source-distribution obligations.
 
 ### On the Arial question specifically
 
@@ -197,7 +181,7 @@ for the finding above, not fixed here.
 
 | Item | Status |
 | --- | --- |
-| Liberation Sans GPLv2 §3 source obligation | **open.** Needs the `.sfd` sources committed, a written offer, or replacement with Liberation 2.x. Not a licensing question any more — an obligation question. |
+| Liberation Sans GPLv2 §3 source obligation | **resolved.** Replaced binary with OFL 1.1 Croscore/Google release (`LiberationSans-Regular.ttf` recompressed with `wawoff2`), `Liberation/OFL.txt` committed, old GPL files removed. |
 | Comic Shanns binary provenance | **open, low severity.** MIT is satisfied. The specific upstream revision that produced our subsets is not published. |
 | `fonts.css` is regenerated at build time, so a face added only to the stylesheet is silently absent from production | **noted.** Not a licence matter. Mitigated by where the chrome face lives (ADR-0024); the editor's own faces are added to the plugin by hand. |
 | A font must be imported as a module to be emitted at all | **noted.** Measured in an `apps/web` build. The chrome's faces are imported by `packages/ui/src/fonts.ts`; the editor's already were. |

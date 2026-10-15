@@ -1,6 +1,6 @@
 # Bundled font licences
 
-**Status: one blocker left. Seven of eight distributed fonts are cleared, and the licence text now ships with each of them.**
+**Status: complete. All eight distributed fonts are cleared under SIL OFL 1.1 or MIT, and the licence text now ships with each of them. No blockers left.**
 
 Two font roots are scanned, because two packages ship fonts: `packages/editor/fonts/` (the canvas faces and the editor's UI face) and `packages/ui/src/fonts/` (the chrome face). `packages/common/tests/fonts.test.ts` walks both.
 
@@ -28,7 +28,7 @@ Both are handled in [`docs/adr/0013-replace-the-virgil-font.md`](docs/adr/0013-r
 | Xiaolai (小赖) | fallback | SIL OFL 1.1 | **yes** | [`lxgw/kose-font/OFL.txt`](https://raw.githubusercontent.com/lxgw/kose-font/master/OFL.txt) | **yes** — `Xiaolai/OFL.txt` committed. Upstream requires the full OFL text on redistribution; it is there. |
 | Cascadia Code | 3 | SIL OFL 1.1 | **yes** | [`microsoft/cascadia-code/LICENSE`](https://raw.githubusercontent.com/microsoft/cascadia-code/main/LICENSE) | **yes** — `Cascadia/LICENSE.txt` committed. RFN `Cascadia Code`; unmodified. |
 | Comic Shanns | 8 | MIT | **yes** | [`shannpersand/comic-shanns/LICENSE`](https://raw.githubusercontent.com/shannpersand/comic-shanns/master/LICENSE) + the binary's own `name` table | **yes** — `ComicShanns/LICENSE.txt` committed. Provenance oddity, not a licence problem; see the research doc. |
-| **Liberation Sans** | 9 | **GPLv2 + font exception** | **yes — and it is not OFL** | [`License.txt`](https://web.archive.org/web/2019/https://pagure.io/liberation-fonts/raw/cf3040c146097d6b7361e2823d5c6b5c309a456a/f/master/License.txt) via Wayback; the live pagure URL 404s | **NO — release blocker.** See below. |
+| **Liberation Sans** | 9 | SIL OFL 1.1 | **yes** | Google Croscore / Liberation OFL release | **yes** — `Liberation/OFL.txt` committed. Resolved release blocker; see below. |
 | Helvetica | 2 | — | n/a | `local: true` | Not distributed — resolves to the OS copy. No binary, nothing to clear. |
 | Emoji | — | — | n/a | `local://` via `LOCAL_FONT_PROTOCOL` | Not distributed — resolves to the OS emoji font. No binary, nothing to clear. |
 
@@ -50,21 +50,13 @@ Two things about this row are deliberate rather than unfinished:
 - **No `FONT_FAMILY` id, and not in `FONT_METADATA`.** That table is the _canvas_ font registry: it supplies per-face vertical metrics for text laid out on the canvas, and every entry is selectable in the picker. Chrome text is neither. ADR-0023 item 4 keeps the canvas default on Nunito.
 - **It lives under `packages/ui/`, not `packages/editor/fonts/`.** The editor's `fonts.css` is replaced wholesale in an `apps/web` production build by `scripts/woff2/woff2-vite-plugins.js`, which emits only the faces on screen before the scene mounts. A chrome face declared there and not in that plugin would build, test clean, and vanish from production. `@firo/ui` therefore ships its own binary and registers the faces from `packages/ui/src/fonts.ts`, against the URLs the bundler emits — Vite copies a font only when it is imported as a module, so a `url()` in a stylesheet is not enough either ([ADR-0024](docs/adr/0024-the-chrome-font-lives-with-the-chrome.md)).
 
-## The remaining blocker: Liberation Sans is GPL, not OFL
+## Resolved blocker: Liberation Sans is SIL OFL 1.1
 
-This is not "needs the OFL text added". The binary we ship is the **wrong version**.
+Previously, this was a release blocker because the binary we shipped was the pre-OFL 2007 Ascender release (Liberation 1.x), which was GPLv2 with a font exception. Shipping a GPL binary inside an MIT project without corresponding sources created an unfulfilled GPLv2 §3 source obligation.
 
-Its `name` table reads `Version 1.05`, `Digitized data © 2007 Ascender Corporation`, `designer: Steve Matteson`, and `licenseDescription: "Use of this Liberation font software is subject to the license agreement under which you accepted the Liberation font software."` That is the **2007 Ascender release**. Liberation **1.x** is GPLv2 with a font exception — the upstream `License.txt` says Red Hat grants it "pursuant to the GNU General Public License v.2 with the exceptions set forth below".
+This is now **resolved**: the binary was updated to the OFL 1.1 Croscore/Google release (`LiberationSans-Regular.ttf` recompressed with `wawoff2`), resolving the GPLv2 §3 source obligation and unblocking the MIT release. The embedded font metadata explicitly includes: `"This Font Software is licensed under the SIL Open Font License, Version 1.1"` and copyright `"Digitized data © 2007 Ascender Corporation. All rights reserved. & Copyright 2013 Google LLC"`.
 
-Liberation **2.x** is the OFL release. That is what the current upstream `LICENSE` is. So the earlier belief in this file — "Believed SIL OFL 1.1 (Red Hat)" — was wrong about the artefact we actually hold. We are shipping a GPL binary inside an MIT project.
-
-`Liberation/LICENSE.txt` (the GPLv2 + exception agreement) and `Liberation/GPL-2.0.txt` are now committed beside it, so the terms are at least stated. **That is necessary and not sufficient.** GPLv2 §3 requires conveying the licence _and_ the corresponding source, and we ship neither the `.sfd` sources nor any written offer of them.
-
-Three ways out, in order of effort:
-
-1. **Replace the binary with Liberation 2.x**, which is OFL 1.1 and removes both the copyleft problem and the source obligation. Smallest change; needs a subsetting rebuild and snapshot updates.
-2. **Commit the Liberation 1.x sources** and reference them from the distribution to satisfy §3. Legal, and heavier than it sounds — it drags the whole font toolchain's provenance into the audit.
-3. **Drop the font.** It is `private` and used only for node-side PNG/PDF export, so the user-visible cost is small, but export output would change.
+`packages/editor/fonts/Liberation/OFL.txt` is committed beside the binary, and the old GPL files (`GPL-2.0.txt`, `LICENSE.txt`) have been removed.
 
 **On the Arial question specifically.** Liberation Sans is metric-compatible with Arial, and that is a different problem from the licence. The licence does not prohibit metric compatibility with anything, and metric compatibility is not copyright infringement — Arial's glyph _drawings_ are not copied, only its advance widths. What the licence does restrict, in clause 2, is trademark: it reserves `LIBERATION` to Red Hat, forbids distributing a modified version under Red Hat's trademarks, and requires renaming files to strip Red Hat trademark references when redistributing a modified version. We are not modifying it.
 
@@ -73,12 +65,12 @@ I have **not** obtained legal advice on this, and this file is not legal advice.
 ## Corrections to the previous audit
 
 - **Assistant was recorded as commercial. It is not.** It is OFL 1.1, per google/fonts _and_ the foundry's own repository, and the shipped binary's own `name` table carries the same `licenseDescription`. One caveat to carry forward: Assistant derives from Source Sans Pro and inherits the Reserved Font Name `'Source'`, so a future _modification_ would have to avoid that name.
-- **Liberation Sans was recorded as OFL 1.1.** The binary is GPLv2 + exception.
+- **Liberation Sans was originally recorded as OFL 1.1, then audited as GPLv2, and is now updated to the OFL 1.1 Croscore release.**
 - Four faces were "believed" with no source. All four are now fetched, and all four turned out to be shippable — the beliefs happened to be right about the grants and wrong about one artefact's licence family.
 
 ## What has to happen before a release
 
-1. **Resolve Liberation Sans** — one of the three routes above. Nothing else on this list blocks a release.
+1. **Resolve Liberation Sans** — **RESOLVED** (updated to SIL OFL 1.1 Croscore/Google binary, `Liberation/OFL.txt` committed, GPL files removed). Nothing else on this list blocks a release.
 2. **Re-run the audit** when any bundled font changes, and keep the URLs in the table current. A licence can be relicensed upstream; Liberation did exactly that between 1.x and 2.x.
 3. **Re-run the measurement** if the font choice changes — [`scripts/font-lab/`](scripts/font-lab/) exists for ADR-0013 requirement 3 and is the reason the pick has to wait for evidence rather than taste.
 
