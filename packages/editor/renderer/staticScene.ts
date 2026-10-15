@@ -84,11 +84,6 @@ export interface AdaptiveGridParameters {
   minorScreenSpacing: number;
 }
 
-const GRID_LADDER_MULTIPLIERS = [
-  1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5,
-  10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000,
-] as const;
-
 export const getAdaptiveGridParameters = (
   gridSize: number,
   zoomValue: number,
@@ -104,23 +99,17 @@ export const getAdaptiveGridParameters = (
     };
   }
 
-  const ladder = GRID_LADDER_MULTIPLIERS.map((m) => m * gridSize);
-  let fineIdx = ladder.findIndex((g) => g * zoomValue >= 25);
-  if (fineIdx <= 0) {
-    fineIdx = 1;
-  } else {
-    fineIdx = fineIdx - 1;
-  }
-
-  const minorGridSize = ladder[fineIdx];
-  const majorGridSize = ladder[fineIdx + 1];
-  const ratio = Math.round(majorGridSize / minorGridSize);
+  // 3x3 grid tiering: each major cell divides into 3x3 sub-cells (ratio = 3)
+  const ratio = 3;
+  const k = Math.floor(Math.log(30 / (gridSize * zoomValue)) / Math.log(3));
+  const minorGridSize = gridSize * Math.pow(3, k);
+  const majorGridSize = minorGridSize * 3;
 
   const minorScreen = minorGridSize * zoomValue;
   const majorScreen = majorGridSize * zoomValue;
 
-  const fadeStart = ratio === 2 ? 12 : 10;
-  const fadeEnd = 25;
+  const fadeStart = 12;
+  const fadeEnd = 30;
 
   const t = Math.max(
     0,
@@ -143,7 +132,7 @@ export const calculateEffectiveGridSize = (
   zoomValue: number,
 ): number => {
   const params = getAdaptiveGridParameters(gridSize, zoomValue);
-  return params.minorAlpha > 0.5 ? params.minorGridSize : params.majorGridSize;
+  return params.minorAlpha > 0.35 ? params.minorGridSize : params.majorGridSize;
 };
 
 export const strokeGrid = (

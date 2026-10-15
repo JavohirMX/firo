@@ -27,25 +27,27 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
   });
 
   describe("getAdaptiveGridParameters and smooth multi-scale tiering", () => {
-    it("provides clean major and minor tiers with continuous alpha at zoom = 1", () => {
+    it("provides clean 3x3 major and minor tiers with continuous alpha at zoom = 1", () => {
       const params = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, 1);
-      expect(params.majorGridSize).toBe(100);
+      expect(params.majorGridSize).toBe(60);
       expect(params.minorGridSize).toBe(20);
-      expect(params.ratio).toBe(5);
-      expect(params.minorAlpha).toBeGreaterThan(0.5);
+      expect(params.ratio).toBe(3);
+      expect(params.minorAlpha).toBeGreaterThan(0.3);
       expect(params.minorScreenSpacing).toBe(20);
-      expect(params.majorScreenSpacing).toBe(100);
+      expect(params.majorScreenSpacing).toBe(60);
     });
 
-    it("keeps visible screen spacing bounded between 15px and 100px across 0.005 to 30", () => {
+    it("divides each major grid cell into a 3x3 subgrid across all zoom levels", () => {
       const testZooms = [
         0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 5,
         10, 20, 30,
       ];
       for (const zoom of testZooms) {
         const params = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, zoom);
+        expect(params.ratio).toBe(3);
+        expect(params.majorGridSize / params.minorGridSize).toBeCloseTo(3, 5);
         expect(params.majorScreenSpacing).toBeGreaterThanOrEqual(25);
-        expect(params.majorScreenSpacing).toBeLessThanOrEqual(105);
+        expect(params.majorScreenSpacing).toBeLessThanOrEqual(95);
         expect(params.minorAlpha).toBeGreaterThanOrEqual(0);
         expect(params.minorAlpha).toBeLessThanOrEqual(1);
       }
@@ -249,7 +251,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       // Total dots should be bounded to visible screen (~30-60 in X, ~20-40 in Y)
       const arcCallCount = (ctx.arc as any).mock.calls.length;
       expect(arcCallCount).toBeGreaterThan(0);
-      expect(arcCallCount).toBeLessThan(3000); // without adaptive grid it would be > 200,000,000!
+      expect(arcCallCount).toBeLessThan(5000); // without adaptive grid it would be > 200,000,000!
     });
   });
 
