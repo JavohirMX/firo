@@ -433,7 +433,8 @@ describe("content search (Task 8.2)", () => {
             x: 0,
             y: 0,
             text: "Urgent fix for database connection pool",
-          }),
+            tags: ["infra", "sre"],
+          } as any),
           {
             ...createStickyNote({ id: "txt-1", x: 10, y: 10 }),
             type: "text",
@@ -527,6 +528,16 @@ describe("content search (Task 8.2)", () => {
         boardId: board.id,
         matchType: "comment",
         snippet: expect.stringContaining("Security audit"),
+      }),
+    ]);
+
+    // 5B. Element tag match
+    const tagResults = await searchBoardsContent("sre");
+    expect(tagResults).toEqual([
+      expect.objectContaining({
+        boardId: board.id,
+        matchType: "tag",
+        snippet: "Tag: #sre",
       }),
     ]);
 

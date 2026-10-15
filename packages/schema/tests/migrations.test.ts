@@ -23,12 +23,14 @@ import {
   requireElementSpec,
   registeredElementTypes,
   V1_TO_V2_FACILITATION_FLAGS,
+  V2_TO_V3_ELEMENT_TAGS,
   roundTripFixture,
   serializeBoard,
 } from "@firo/schema";
 
 import boardV1 from "./fixtures/v1/board.json";
 import boardV2 from "./fixtures/v2/board.json";
+import boardV3 from "./fixtures/v3/board.json";
 
 describe("the committed fixture set", () => {
   test("covers every released element version, with no gaps", () => {
@@ -48,6 +50,11 @@ describe("the committed fixture set", () => {
     const inCodeV2 = fixtures().find((f) => f.version === 2);
     expect(inCodeV2).toBeDefined();
     expect(inCodeV2?.board).toEqual(boardV2);
+
+    // And the same for v3, which is the fixture for element tags.
+    const inCodeV3 = fixtures().find((f) => f.version === 3);
+    expect(inCodeV3).toBeDefined();
+    expect(inCodeV3?.board).toEqual(boardV3);
   });
 
   test("every fixture loads without repair", () => {
@@ -374,6 +381,9 @@ describe("every registered type carries a contiguous migration chain", () => {
       expect(requireElementSpec(type).migrations).toContain(
         V1_TO_V2_FACILITATION_FLAGS,
       );
+      expect(requireElementSpec(type).migrations).toContain(
+        V2_TO_V3_ELEMENT_TAGS,
+      );
     }
   });
 });
@@ -430,8 +440,45 @@ describe("the v1 -> v2 step", () => {
     // The control, so a spy that counted nothing could not pass the test above.
     const spy = vi.spyOn(V1_TO_V2_FACILITATION_FLAGS, "migrate");
     try {
-      loadBoard(boardV2);
+      loadBoard(boardV3);
       expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("the v2 -> v3 step", () => {
+  const step = V2_TO_V3_ELEMENT_TAGS;
+
+  test("returns a new object rather than mutating in place", () => {
+    const raw = { id: "el-1", type: "stickynote", text: "t" };
+    const out = step.migrate(raw, new RepairLog());
+    expect(out).not.toBe(raw);
+    expect(out).toEqual(raw);
+  });
+
+  test("keeps unknown fields untouched", () => {
+    const out = step.migrate(
+      { id: "el-1", type: "stickynote", futureProp: 123 },
+      new RepairLog(),
+    );
+    expect(out).toHaveProperty("futureProp", 123);
+  });
+
+  test("leaves untagged elements untouched without materializing empty tags", () => {
+    const out = step.migrate(
+      { id: "el-1", type: "stickynote" },
+      new RepairLog(),
+    );
+    expect(out).not.toHaveProperty("tags");
+  });
+
+  test("it actually runs for a board stamped v2", () => {
+    const spy = vi.spyOn(V2_TO_V3_ELEMENT_TAGS, "migrate");
+    try {
+      loadBoard(boardV2);
+      expect(spy).toHaveBeenCalledTimes(boardV2.elements.length);
     } finally {
       spy.mockRestore();
     }

@@ -420,8 +420,9 @@ const repairBinding = <T extends ExcalidrawArrowElement>(
 };
 
 const restoreElementWithProperties = <
-  T extends Required<Omit<ExcalidrawElement, "customData">> & {
+  T extends Required<Omit<ExcalidrawElement, "customData" | "tags">> & {
     customData?: ExcalidrawElement["customData"];
+    tags?: ExcalidrawElement["tags"];
     /** @deprecated */
     boundElementIds?: readonly ExcalidrawElement["id"][];
     /** @deprecated */
@@ -483,6 +484,10 @@ const restoreElementWithProperties = <
     link: element.link ? normalizeLink(element.link) : null,
     locked: element.locked ?? false,
   };
+
+  if (element.tags !== undefined) {
+    base.tags = element.tags;
+  }
 
   if ("customData" in element || "customData" in extra) {
     base.customData =

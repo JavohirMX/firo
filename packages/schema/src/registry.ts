@@ -188,6 +188,7 @@ const BASE_FIELDS = [
   "link",
   "locked",
   "customData",
+  "tags",
   "isDeleted",
   "x",
   "y",

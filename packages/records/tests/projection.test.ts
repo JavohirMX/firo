@@ -30,13 +30,19 @@ import {
   PROJECTIONS,
   projectionFor,
   tableProjection,
+  timelineProjection,
 } from "../src/index.js";
 
 import { record, snapshot, tasks, textColumn, withStatus } from "./fixtures.js";
 
 import type { Projection } from "../src/types.js";
 
-const all = [tableProjection, boardProjection, gridProjection];
+const all = [
+  tableProjection,
+  boardProjection,
+  gridProjection,
+  timelineProjection,
+];
 
 const sample = (): readonly FiroRecord[] => [
   withStatus("rec-1", "Interview five teams", "Todo", "a0"),
@@ -170,8 +176,13 @@ describe("property 3: interpret asks, it does not write", () => {
 });
 
 describe("every registered projection honours the contract", () => {
-  it("PROJECTIONS contains the three the package documents", () => {
-    expect(Object.keys(PROJECTIONS).sort()).toEqual(["board", "grid", "table"]);
+  it("PROJECTIONS contains the four the package documents", () => {
+    expect(Object.keys(PROJECTIONS).sort()).toEqual([
+      "board",
+      "grid",
+      "table",
+      "timeline",
+    ]);
   });
 
   it("each projection's id is the key it is registered under", () => {
@@ -193,7 +204,7 @@ describe("every registered projection honours the contract", () => {
   it("an unknown id falls back to the table rather than to nothing", () => {
     // A stored projection id from a newer version of Firo must not leave the board
     // with nothing to draw.
-    expect(projectionFor("timeline").id).toBe("table");
+    expect(projectionFor("unknown-view").id).toBe("table");
     expect(projectionFor("").id).toBe("table");
   });
 

@@ -1,6 +1,7 @@
 import React from "react";
 
 import {
+  ActivityIcon,
   BoardsIcon,
   ClockIcon,
   CloseIcon,
@@ -19,6 +20,7 @@ import {
   UploadIcon,
 } from "../icons";
 
+import { ActivityFeed, type ActivityFeedItem } from "./ActivityFeed";
 import "./BoardHome.scss";
 
 /**
@@ -78,7 +80,15 @@ export interface BoardHomeProps {
   boards: BoardCardData[];
   templates?: TemplateCardData[];
   folders?: BoardFolderData[];
-  activeSection?: "all" | "recent" | "starred" | "trash" | (string & {});
+  activities?: readonly ActivityFeedItem[];
+  onClearActivity?: () => void;
+  activeSection?:
+    | "all"
+    | "recent"
+    | "starred"
+    | "trash"
+    | "activity"
+    | (string & {});
   viewMode?: "grid" | "list";
   sortBy?: "lastOpened" | "created" | "name";
   onCreateBlank?: () => void;
@@ -465,6 +475,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   onDeleteFolder,
   onChangeViewMode,
   onChangeSortBy,
+  activities,
+  onClearActivity,
 }) => {
   const [internalSection, setInternalSection] = React.useState<string>("all");
   const [internalViewMode, setInternalViewMode] = React.useState<
@@ -604,6 +616,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
       ? "Starred"
       : currentSection === "trash"
       ? "Trash"
+      : currentSection === "activity"
+      ? "Activity"
       : activeFolder?.name ?? "Folder";
 
   const emptyText = () => {
@@ -667,6 +681,18 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
             >
               <BoardsIcon size={18} />
               <span>All Boards</span>
+            </button>
+            <button
+              type="button"
+              className={`firo-board-sidebar__item ${
+                currentSection === "activity"
+                  ? "firo-board-sidebar__item--active"
+                  : ""
+              }`}
+              onClick={() => handleSelectSection("activity")}
+            >
+              <ActivityIcon size={18} />
+              <span>Activity</span>
             </button>
           </div>
 
@@ -934,7 +960,16 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
 
         <section className="firo-board-home__section" aria-label={sectionTitle}>
           <h2 className="firo-board-home__section-title">{sectionTitle}</h2>
-          {sortedBoards.length > 0 ? (
+          {currentSection === "activity" ? (
+            <ActivityFeed
+              isOpen={true}
+              entries={activities ?? []}
+              onClose={() => handleSelectSection("all")}
+              onSelectBoard={onOpenBoard}
+              onClear={onClearActivity}
+              title="Workspace Activity"
+            />
+          ) : sortedBoards.length > 0 ? (
             currentViewMode === "list" ? (
               <div className="firo-board-table-container">
                 <table className="firo-board-table" aria-label="Boards">

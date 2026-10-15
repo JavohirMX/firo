@@ -380,6 +380,7 @@ export const EDITOR_OWNED_FIELDS = [
   "status",
   "scale",
   "crop",
+  "tags",
 ] as const;
 
 /**
@@ -491,6 +492,7 @@ const sharedBaseFor = (element: FiroElement) => ({
   link: element.link,
   locked: element.locked,
   boundElements: toBoundElements(element),
+  ...(element.tags ? { tags: element.tags } : {}),
   ...customDataFor(element),
 });
 
@@ -907,6 +909,7 @@ const sharedDocumentFields = (element: ExcalidrawElement) => {
     isDeleted: element.isDeleted,
     groupIds: element.groupIds,
     frameId: element.frameId,
+    ...(element.tags ? { tags: element.tags } : {}),
     /*
      * A shape's bindings are a *marker*, not a copy of the geometry.
      *

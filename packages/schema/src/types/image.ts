@@ -19,6 +19,7 @@ import {
   facilitationFlags,
   V1_TO_V2_FACILITATION_FLAGS,
 } from "../facilitation.js";
+import { elementTags, V2_TO_V3_ELEMENT_TAGS } from "../tags.js";
 
 import {
   array,
@@ -207,6 +208,7 @@ const validateImage = (
     locked: raw.locked === true,
     ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
     ...facilitationFlags(raw, log),
+    ...elementTags(raw, log),
 
     /*
      * `null` is preserved rather than defaulted to a hash. An image element with no
@@ -226,7 +228,7 @@ export const IMAGE_SPEC: ElementSpec<ImageElement> = {
   type: "image",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [V1_TO_V2_FACILITATION_FLAGS],
+  migrations: [V1_TO_V2_FACILITATION_FLAGS, V2_TO_V3_ELEMENT_TAGS],
   validate: validateImage,
 };
 

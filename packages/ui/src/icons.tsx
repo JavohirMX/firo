@@ -970,3 +970,42 @@ export const UploadIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     />
   </svg>
 );
+
+export const TagIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3.5 10.5V4.5C3.5 3.95 3.95 3.5 4.5 3.5H10.5L16.5 9.5C17.1 10.1 17.1 11.1 16.5 11.7L11.7 16.5C11.1 17.1 10.1 17.1 9.5 16.5L3.5 10.5Z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="7.5" cy="7.5" r="1.25" fill="currentColor" />
+  </svg>
+);
+
+export const ActivityIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M2.5 10.5H5.5L8 4.5L12 15.5L14.5 10.5H17.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);

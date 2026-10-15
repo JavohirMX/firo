@@ -30,6 +30,9 @@ import {
   BringToFrontIcon,
   TrashIcon,
   CommentIcon,
+  TagIcon,
+  ActivityIcon,
+  ActivityFeed,
 } from "@firo/ui";
 
 import { trackEvent } from "@firo/editor/analytics";
@@ -79,6 +82,8 @@ import {
   useHandleLibrary,
 } from "@firo/editor/data/library";
 
+import type { ActivityFeedItem } from "@firo/ui";
+
 import type { RailToolItem, RailToolType } from "@firo/ui";
 
 import type { RestoredDataState } from "@firo/editor/data/restore";
@@ -98,6 +103,8 @@ import type {
 import type { ResolutionType } from "@firo/common/utility-types";
 import type { ResolvablePromise } from "@firo/common/utils";
 
+import { clearActivity, listActivity } from "./board/activity";
+
 import CustomStats from "./CustomStats";
 import { Provider, useAtomValue, appJotaiStore } from "./app-jotai";
 import { STORAGE_KEYS, SYNC_BROWSER_TABS_TIMEOUT } from "./app_constants";
@@ -107,6 +114,7 @@ import { FacilitatorBar } from "./components/FacilitatorBar";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer } from "./components/CommentLayer";
+import { TagLayer } from "./components/TagLayer";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
 import { Minimap } from "./components/Minimap";
@@ -612,6 +620,8 @@ const WebSelectionToolbar = ({
 }) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [tagDraft, setTagDraft] = useState("");
 
   const selected = getSelectedElements(
     app.scene.getNonDeletedElements(),
@@ -641,6 +651,35 @@ const WebSelectionToolbar = ({
     }
   };
 
+  const currentTags = Array.from(
+    new Set(selected.flatMap((el) => el.tags || [])),
+  );
+
+  const handleAddTag = (raw: string) => {
+    const tag = raw.trim().replace(/^#/, "");
+    if (!tag) {
+      return;
+    }
+    for (const el of selected) {
+      const existing = el.tags || [];
+      if (!existing.includes(tag)) {
+        app.scene.mutateElement(el, { tags: [...existing, tag] });
+      }
+    }
+    setTagDraft("");
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    for (const el of selected) {
+      const existing = el.tags || [];
+      if (existing.includes(tag)) {
+        app.scene.mutateElement(el, {
+          tags: existing.filter((t) => t !== tag),
+        });
+      }
+    }
+  };
+
   return (
     <SelectionToolbar
       x={x}
@@ -665,6 +704,13 @@ const WebSelectionToolbar = ({
               },
             ]
           : []),
+        {
+          id: "tags",
+          label: "Tags",
+          icon: <TagIcon />,
+          pressed: tagEditorOpen,
+          onClick: () => setTagEditorOpen((open) => !open),
+        },
         {
           id: "duplicate",
           label: "Duplicate",
@@ -691,7 +737,56 @@ const WebSelectionToolbar = ({
           onClick: () => run(actionManager.actions.deleteSelectedElements),
         },
       ]}
-    />
+    >
+      {tagEditorOpen && (
+        <div
+          className="firo-tag-popover"
+          data-testid="tag-editor-popover"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {currentTags.length > 0 && (
+            <div className="firo-tag-popover__chips">
+              {currentTags.map((tag) => (
+                <span key={tag} className="firo-tag-popover__chip">
+                  #{tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    title={`Remove tag #${tag}`}
+                    data-testid={`remove-tag-${tag}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <form
+            className="firo-tag-popover__form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddTag(tagDraft);
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Add a tag…"
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              autoFocus
+              data-testid="tag-input"
+            />
+            <button
+              type="submit"
+              disabled={!tagDraft.trim()}
+              data-testid="tag-submit"
+            >
+              Add
+            </button>
+          </form>
+        </div>
+      )}
+    </SelectionToolbar>
   );
 };
 
@@ -709,6 +804,21 @@ const ExcalidrawWrapper = () => {
    */
   const [commentTarget, setCommentTarget] = useState<string | null>(null);
   const [minimapVisible, setMinimapVisible] = useState(false);
+  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
+  const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
+
+  const refreshActivity = useCallback(async () => {
+    const metaId = boardDoc().read().meta?.id;
+    const currentBoardId = typeof metaId === "string" ? metaId : "default";
+    const list = await listActivity({ boardId: currentBoardId });
+    setActivities(list);
+  }, []);
+
+  useEffect(() => {
+    if (activityFeedOpen) {
+      void refreshActivity();
+    }
+  }, [activityFeedOpen, refreshActivity]);
 
   /**
    * `M` toggles the minimap — Miro's binding, and one of the two keys Miro has
@@ -1195,6 +1305,28 @@ const ExcalidrawWrapper = () => {
         )}
         renderTopRightUI={() => (
           <CollabBar>
+            <button
+              type="button"
+              className="firo-collab-bar__btn"
+              onClick={() => setActivityFeedOpen((open) => !open)}
+              title="Activity history"
+              aria-label="Activity history"
+              data-testid="activity-feed-toggle"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                color: activityFeedOpen
+                  ? "var(--firo-color-accent)"
+                  : "inherit",
+              }}
+            >
+              <ActivityIcon size={18} />
+            </button>
             <SaveStatusIndicator />
             <FacilitatorBar />
           </CollabBar>
@@ -1228,10 +1360,42 @@ const ExcalidrawWrapper = () => {
         }}
       >
         <ProjectionView excalidrawAPI={excalidrawAPI} />
+        <TagLayer
+          excalidrawAPI={excalidrawAPI}
+          onSelectTag={(tag) => {
+            if (!excalidrawAPI) {
+              return;
+            }
+            const elements = excalidrawAPI.getSceneElements();
+            const matching = elements.filter(
+              (el) => !el.isDeleted && el.tags?.includes(tag),
+            );
+            const selectedElementIds: Record<string, true> = {};
+            for (const el of matching) {
+              selectedElementIds[el.id] = true;
+            }
+            excalidrawAPI.updateScene({
+              appState: { selectedElementIds },
+            });
+          }}
+        />
         <CommentLayer
           excalidrawAPI={excalidrawAPI}
           composerTarget={commentTarget}
           onCloseComposer={() => setCommentTarget(null)}
+        />
+        <ActivityFeed
+          isOpen={activityFeedOpen}
+          onClose={() => setActivityFeedOpen(false)}
+          entries={activities}
+          onClear={async () => {
+            const metaId = boardDoc().read().meta?.id;
+            const currentBoardId =
+              typeof metaId === "string" ? metaId : "default";
+            await clearActivity(currentBoardId);
+            setActivities([]);
+          }}
+          title="Board Activity"
         />
         <AppMainMenu
           isCollaborating={isCollaborating}

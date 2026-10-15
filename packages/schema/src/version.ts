@@ -29,13 +29,12 @@
  * Current element schema version. Bump with a migration + fixture.
  *
  * **v2 adds `hiddenUntilRevealed` and `hideInPresentation`** -- the durable half
- * of Phase 5 facilitation -- on `ElementBase`. Both are optional and both treat
- * absence as the default, so a v1 board needs no data moved and no file changes;
- * the `1 -> 2` step in [`./facilitation.ts`](./facilitation.ts) is deliberately
- * inert, and [`tests/fixtures/v2/board.json`](../../tests/fixtures/v2/board.json)
- * is the committed promise that v2 files load.
+ * of Phase 5 facilitation -- on `ElementBase`.
+ *
+ * **v3 adds `tags`** -- optional colourable/filterable labels on `ElementBase`
+ * for Phase 8.3 element tags.
  */
-export const CURRENT_ELEMENT_VERSION = 2;
+export const CURRENT_ELEMENT_VERSION = 3;
 
 /**
  * Current record/collection schema version. Bump with a migration + fixture.

@@ -5,7 +5,13 @@ import { createFiroDoc, putAsset } from "@firo/doc";
 import { mintBoardId } from "@firo/board";
 import { serializeBoard } from "@firo/schema";
 
-import type { BoardCardData, TemplateCardData } from "@firo/ui";
+import type {
+  ActivityFeedItem,
+  BoardCardData,
+  TemplateCardData,
+} from "@firo/ui";
+
+import { clearActivity, listActivity } from "./board/activity";
 
 import {
   createBlankBoard,
@@ -81,6 +87,7 @@ const toCard = (meta: BoardMeta, foldersList: BoardFolder[]): BoardCardData => {
 export const BoardHomeScreen: React.FC = () => {
   const [boards, setBoards] = React.useState<BoardMeta[] | null>(null);
   const [folders, setFolders] = React.useState<BoardFolder[]>([]);
+  const [activities, setActivities] = React.useState<ActivityFeedItem[]>([]);
   const [activeSection, setActiveSection] = React.useState<string>("all");
   const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = React.useState<"lastOpened" | "created" | "name">(
@@ -88,12 +95,14 @@ export const BoardHomeScreen: React.FC = () => {
   );
 
   const refresh = React.useCallback(async () => {
-    const [allBoards, allFolders] = await Promise.all([
+    const [allBoards, allFolders, allActivities] = await Promise.all([
       listBoards(),
       listFolders(),
+      listActivity({ limit: 50 }),
     ]);
     setBoards(allBoards);
     setFolders(allFolders);
+    setActivities(allActivities);
   }, []);
 
   React.useEffect(() => {
@@ -275,6 +284,11 @@ export const BoardHomeScreen: React.FC = () => {
       onDeleteFolder={handleDeleteFolder}
       onChangeViewMode={setViewMode}
       onChangeSortBy={setSortBy}
+      activities={activities}
+      onClearActivity={async () => {
+        await clearActivity();
+        setActivities([]);
+      }}
     />
   );
 };

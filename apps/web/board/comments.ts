@@ -32,6 +32,8 @@ import { randomId } from "@firo/common";
 import type { FiroDoc } from "@firo/doc";
 import type { CommentAnchor, CommentEntry, CommentThread } from "@firo/schema";
 
+import { recordActivity } from "./activity";
+
 /**
  * Who a comment is attributed to.
  *
@@ -121,6 +123,12 @@ export const createCommentThread = (
   };
 
   doc.commit([{ kind: "createCommentThread", thread }]);
+  const boardId = (doc.read().meta as { id?: string })?.id ?? "default";
+  void recordActivity({
+    boardId,
+    kind: "comment",
+    summary: `Commented: "${text.slice(0, 40)}${text.length > 40 ? "…" : ""}"`,
+  });
   return id;
 };
 
@@ -170,6 +178,12 @@ export const resolveCommentThread = (
   doc.commit([
     { kind: "updateCommentThread", id: threadId, changes: { resolved: true } },
   ]);
+  const boardId = (doc.read().meta as { id?: string })?.id ?? "default";
+  void recordActivity({
+    boardId,
+    kind: "comment",
+    summary: "Resolved comment thread",
+  });
   return true;
 };
 

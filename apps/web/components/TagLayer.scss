@@ -1,0 +1,153 @@
+/*
+ * The element tags layer, drawn over the canvas.
+ *
+ * Like CommentLayer, this is an HTML overlay rather than canvas rendering:
+ * tags are interactive chrome for finding and filtering things, not exported scene
+ * elements.
+ */
+
+.firo-tags-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.firo-element-tags-container {
+  position: absolute;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 280px;
+  pointer-events: auto;
+  user-select: none;
+  transform: translateY(4px);
+}
+
+.firo-element-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--firo-color-text-subtle, #595959);
+  background: var(--firo-color-panel, #ffffff);
+  border: 1px solid var(--firo-color-border, #e0e0e0);
+  border-radius: var(--firo-radius-pill, 9999px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all 120ms ease;
+
+  &:hover {
+    color: var(--firo-color-accent, #0052cc);
+    border-color: var(--firo-color-accent, #0052cc);
+    background: var(--firo-color-accent-subtle, #f0f5ff);
+    transform: scale(1.04);
+  }
+}
+
+.firo-tag-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 10px;
+  background-color: var(--firo-color-panel-raised, #ffffff);
+  border: 1px solid var(--firo-color-border, #e0e0e0);
+  border-radius: var(--firo-radius-md, 8px);
+  box-shadow: var(--firo-elevation-floating, 0 4px 16px rgba(0, 0, 0, 0.12));
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  font-size: 13px;
+  pointer-events: auto;
+  z-index: 10;
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--firo-color-text, #171717);
+    background: var(--firo-color-surface, #f4f5f7);
+    border-radius: var(--firo-radius-pill, 9999px);
+    border: 1px solid var(--firo-color-border, #e0e0e0);
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--firo-color-text-subtle, #888888);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+
+      &:hover {
+        color: var(--firo-color-danger, #e53e3e);
+      }
+    }
+  }
+
+  &__form {
+    display: flex;
+    gap: 6px;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid var(--firo-color-border, #e0e0e0);
+      border-radius: var(--firo-radius-sm, 4px);
+      background: var(--firo-color-surface, #f4f5f7);
+      color: var(--firo-color-text, #171717);
+      outline: none;
+
+      &:focus {
+        border-color: var(--firo-color-accent, #0052cc);
+        box-shadow: 0 0 0 1px var(--firo-color-accent, #0052cc);
+      }
+    }
+
+    button {
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--firo-radius-sm, 4px);
+      background: var(--firo-color-accent, #0052cc);
+      color: var(--firo-color-on-accent, #ffffff);
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        opacity: 0.9;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+  }
+}

@@ -35,6 +35,7 @@
 import { boardProjection } from "./board.js";
 import { gridProjection } from "./grid.js";
 import { tableProjection } from "./table.js";
+import { timelineProjection } from "./timeline.js";
 
 import type { Projection } from "./types.js";
 
@@ -51,6 +52,18 @@ export {
   tableProjection,
   titleColumnKeyFor,
 } from "./table.js";
+export {
+  dateColumnFor,
+  durationColumnFor,
+  formatDateIso,
+  getTimelineBaseDate,
+  parseDateValue,
+  timelineProjection,
+  DAY_WIDTH,
+  HEADER_HEIGHT,
+  ROW_HEIGHT,
+  SIDEBAR_WIDTH,
+} from "./timeline.js";
 export {
   displayValue,
   groupingColumnFor,
@@ -76,6 +89,7 @@ export const PROJECTIONS: Readonly<Record<string, Projection>> = {
   board: boardProjection,
   grid: gridProjection,
   table: tableProjection,
+  timeline: timelineProjection,
 };
 
 /**

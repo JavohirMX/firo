@@ -38,6 +38,7 @@ import {
   facilitationFlags,
   V1_TO_V2_FACILITATION_FLAGS,
 } from "../facilitation.js";
+import { elementTags, V2_TO_V3_ELEMENT_TAGS } from "../tags.js";
 
 import {
   array,
@@ -257,6 +258,7 @@ const makeValidator =
       locked: raw.locked === true,
       ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
       ...facilitationFlags(raw, log),
+      ...elementTags(raw, log),
       /*
        * `lastCommittedPoint` is deliberately absent.
        *
@@ -275,7 +277,7 @@ export const LINEAR_SPECS: readonly ElementSpec<LinearElement>[] =
       type,
       knownFields: KNOWN_FIELDS,
       introducedAt: 1,
-      migrations: [V1_TO_V2_FACILITATION_FLAGS],
+      migrations: [V1_TO_V2_FACILITATION_FLAGS, V2_TO_V3_ELEMENT_TAGS],
       validate: makeValidator(type),
     };
     registerElementType(spec);

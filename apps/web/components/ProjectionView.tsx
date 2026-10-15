@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { VOTE_COLLECTION_ID } from "@firo/facilitation";
 import {
+  DAY_WIDTH,
   displayValue,
   groupingColumnFor,
   groupsOf,
   projectionFor,
+  SIDEBAR_WIDTH,
+  timelineProjection,
   valueOf,
 } from "@firo/records";
 
@@ -21,7 +24,7 @@ interface ProjectionViewProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
 }
 
-type ProjectionMode = "board" | "table" | "grid";
+type ProjectionMode = "board" | "table" | "grid" | "timeline";
 
 interface EditingCell {
   recordId: string;
@@ -214,6 +217,18 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
                 >
                   Grid
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`firo-projection-switcher__tab ${
+                    mode === "timeline" ? "is-active" : ""
+                  }`}
+                  aria-selected={mode === "timeline"}
+                  data-testid="switch-projection-timeline"
+                  onClick={() => setMode("timeline")}
+                >
+                  Timeline
+                </button>
               </div>
 
               <button
@@ -251,6 +266,26 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
 
               {mode === "grid" && (
                 <GridView collection={collection} records={records} />
+              )}
+
+              {mode === "timeline" && (
+                <TimelineView
+                  collection={collection}
+                  records={records}
+                  onMoveBar={(recordId, newX) => {
+                    const projection = projectionFor("timeline");
+                    const mutation = projection.interpret(collection, records, {
+                      kind: "move",
+                      recordId,
+                      x: newX,
+                      y: 0,
+                    });
+                    if (mutation) {
+                      applyRecordMutation(doc, collection.id, mutation);
+                      refreshBoard();
+                    }
+                  }}
+                />
               )}
             </div>
           </div>
@@ -550,6 +585,107 @@ const GridView: React.FC<GridViewProps> = ({ collection, records }) => {
           </div>
         );
       })}
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Timeline (Gantt) View Component                                            */
+/* -------------------------------------------------------------------------- */
+
+interface TimelineViewProps {
+  collection: Collection;
+  records: readonly FiroRecord[];
+  onMoveBar: (recordId: string, newX: number) => void;
+}
+
+const TimelineView: React.FC<TimelineViewProps> = ({
+  collection,
+  records,
+  onMoveBar,
+}) => {
+  const elements = timelineProjection.layout(collection, records);
+  const headers = elements.filter((e) => e.type === "header");
+  const labels = elements.filter((e) => e.type === "cell");
+  const bars = elements.filter((e) => e.type === "card");
+
+  return (
+    <div className="firo-timeline-view" data-testid="firo-timeline-view">
+      <div className="firo-timeline-table">
+        <div className="firo-timeline-header-row">
+          <div className="firo-timeline-header-cell firo-timeline-header-cell--label">
+            Item
+          </div>
+          <div className="firo-timeline-header-cells">
+            {headers.map((hdr) => (
+              <div
+                key={hdr.id}
+                className="firo-timeline-day-header"
+                style={{ width: hdr.width, minWidth: hdr.width }}
+              >
+                {hdr.text}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="firo-timeline-body">
+          {labels.map((lbl) => {
+            const bar = bars.find((b) => b.recordId === lbl.recordId);
+            return (
+              <div
+                key={lbl.recordId}
+                className="firo-timeline-row"
+                data-testid={`timeline-row-${lbl.recordId}`}
+              >
+                <div className="firo-timeline-row-label">{lbl.text}</div>
+                <div className="firo-timeline-row-track">
+                  {bar && (
+                    <div
+                      className="firo-timeline-bar"
+                      data-testid={`timeline-bar-${bar.recordId}`}
+                      style={{
+                        left: Math.max(0, bar.x - SIDEBAR_WIDTH),
+                        width: bar.width,
+                      }}
+                    >
+                      <span className="firo-timeline-bar__title">
+                        {bar.text}
+                      </span>
+                      <div className="firo-timeline-bar__controls">
+                        <button
+                          type="button"
+                          className="firo-timeline-bar__btn"
+                          data-testid={`shift-earlier-${bar.recordId}`}
+                          title="Shift earlier"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveBar(bar.recordId, bar.x - DAY_WIDTH);
+                          }}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          className="firo-timeline-bar__btn"
+                          data-testid={`shift-later-${bar.recordId}`}
+                          title="Shift later"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveBar(bar.recordId, bar.x + DAY_WIDTH);
+                          }}
+                        >
+                          ›
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

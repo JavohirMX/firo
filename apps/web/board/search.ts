@@ -15,7 +15,7 @@ export interface SearchMatch {
   boardId: string;
   boardName: string;
   snippet: string;
-  matchType: "title" | "stickynote" | "card" | "text" | "comment";
+  matchType: "title" | "stickynote" | "card" | "text" | "comment" | "tag";
 }
 
 /** Recursively extracts plain text from a ProseMirror doc. */
@@ -103,6 +103,21 @@ export const searchBoardsContent = async (
       });
     }
 
+    // 1B. Board Tag match
+    if (board.tags && Array.isArray(board.tags)) {
+      for (const tag of board.tags) {
+        if (tag.toLowerCase().includes(needle)) {
+          matches.push({
+            boardId: board.id,
+            boardName: board.name,
+            snippet: `Board tag: #${tag}`,
+            matchType: "tag",
+          });
+          break;
+        }
+      }
+    }
+
     // 2. Content matches from payload
     const rawPayload = await readBoardPayload(board.id);
     if (!rawPayload) {
@@ -116,8 +131,23 @@ export const searchBoardsContent = async (
       continue;
     }
 
-    // Elements: sticky notes and text elements
+    // Elements: sticky notes, text elements, and element tags
     for (const element of loaded.elements) {
+      // Check element tags
+      if (element.tags && Array.isArray(element.tags)) {
+        for (const tag of element.tags) {
+          if (tag.toLowerCase().includes(needle)) {
+            matches.push({
+              boardId: board.id,
+              boardName: board.name,
+              snippet: `Tag: #${tag}`,
+              matchType: "tag",
+            });
+            break;
+          }
+        }
+      }
+
       if (element.type === "stickynote") {
         const text = (element as { text?: string }).text ?? "";
         if (text && text.toLowerCase().includes(needle)) {

@@ -303,3 +303,132 @@
     }
   }
 }
+
+/* Timeline (Gantt) View */
+.firo-timeline-view {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.firo-timeline-table {
+  min-width: 680px;
+}
+
+.firo-timeline-header-row {
+  display: flex;
+  background: var(--color-surface, #f8f9fa);
+  border-bottom: 2px solid var(--default-border-color, #dee2e6);
+}
+
+.firo-timeline-header-cell--label {
+  width: 200px;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #495057);
+  border-right: 1px solid var(--default-border-color, #dee2e6);
+}
+
+.firo-timeline-header-cells {
+  display: flex;
+}
+
+.firo-timeline-day-header {
+  padding: 0.5rem 0.25rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--color-text-secondary, #6c757d);
+  border-right: 1px dashed var(--default-border-color, #e9ecef);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firo-timeline-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.firo-timeline-row {
+  display: flex;
+  height: 44px;
+  border-bottom: 1px solid var(--default-border-color, #e9ecef);
+  align-items: center;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.02);
+  }
+}
+
+.firo-timeline-row-label {
+  width: 200px;
+  min-width: 200px;
+  padding: 0 0.75rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid var(--default-border-color, #dee2e6);
+}
+
+.firo-timeline-row-track {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent 47px,
+    var(--default-border-color, #f1f3f5) 47px,
+    var(--default-border-color, #f1f3f5) 48px
+  );
+}
+
+.firo-timeline-bar {
+  position: absolute;
+  top: 6px;
+  height: 32px;
+  background: var(--color-primary, #1971c2);
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: grab;
+  user-select: none;
+  overflow: hidden;
+
+  &__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 0.25rem;
+  }
+
+  &__controls {
+    display: flex;
+    gap: 2px;
+  }
+
+  &__btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    border-radius: 2px;
+    padding: 0 4px;
+    font-size: 0.75rem;
+    line-height: 16px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.45);
+    }
+  }
+}

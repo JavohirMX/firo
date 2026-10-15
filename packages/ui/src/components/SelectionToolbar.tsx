@@ -22,6 +22,7 @@ export interface SelectionToolbarProps {
   x: number;
   y: number;
   items: SelectionToolbarItem[];
+  children?: React.ReactNode;
 }
 
 /**
@@ -37,8 +38,9 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   x,
   y,
   items,
+  children,
 }) => {
-  if (!items.length) {
+  if (!items.length && !children) {
     return null;
   }
 
@@ -63,6 +65,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
           {item.icon}
         </button>
       ))}
+      {children}
     </div>
   );
 };

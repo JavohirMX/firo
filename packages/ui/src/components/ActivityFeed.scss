@@ -1,0 +1,209 @@
+/*
+ * Activity Feed Drawer styles.
+ *
+ * Sits as a drawer on the right or slide-over panel.
+ */
+
+.firo-activity-feed {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  bottom: 16px;
+  width: 340px;
+  background-color: var(--firo-color-panel-raised, #ffffff);
+  border: 1px solid var(--firo-color-border, #e0e0e0);
+  border-radius: var(--firo-radius-lg, 12px);
+  box-shadow: var(--firo-elevation-floating, 0 8px 30px rgba(0, 0, 0, 0.12));
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  color: var(--firo-color-text, #171717);
+  overflow: hidden;
+  animation: firo-slide-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  .firo-board-home & {
+    position: relative;
+    top: 0;
+    right: 0;
+    bottom: auto;
+    width: 100%;
+    max-width: 640px;
+    min-height: 380px;
+    animation: none;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--firo-color-border, #e0e0e0);
+
+    h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__clear {
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    color: var(--firo-color-text-subtle, #737373);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--firo-radius-sm, 4px);
+
+    &:hover {
+      color: var(--firo-color-danger, #e53e3e);
+      background-color: var(--firo-color-surface, #f5f5f5);
+    }
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--firo-radius-sm, 4px);
+    background: transparent;
+    color: var(--firo-color-text-subtle, #737373);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--firo-color-surface, #f5f5f5);
+      color: var(--firo-color-text, #171717);
+    }
+  }
+
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__group-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--firo-color-text-subtle, #737373);
+  }
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--firo-radius-md, 8px);
+    background: var(--firo-color-surface, #f9fafb);
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: var(--firo-color-surface-hover, #f3f4f6);
+    }
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: var(--firo-color-panel, #ffffff);
+    color: var(--firo-color-accent, #0052cc);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
+  }
+
+  &__item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__summary {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--firo-color-text-subtle, #737373);
+  }
+
+  &__board-badge {
+    padding: 1px 6px;
+    background: var(--firo-color-panel, #ffffff);
+    border: 1px solid var(--firo-color-border, #e0e0e0);
+    border-radius: var(--firo-radius-pill, 9999px);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--firo-color-text, #171717);
+
+    &:hover {
+      border-color: var(--firo-color-accent, #0052cc);
+      color: var(--firo-color-accent, #0052cc);
+    }
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--firo-color-text-subtle, #737373);
+    gap: 8px;
+
+    p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+  }
+}
+
+@keyframes firo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

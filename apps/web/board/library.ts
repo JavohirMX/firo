@@ -44,6 +44,7 @@ import {
   setActiveBoardId,
   writeBoardPayload,
 } from "./storage";
+import { recordActivity } from "./activity";
 
 import type { BoardTemplate } from "./templates";
 
@@ -183,12 +184,26 @@ export const renameBoard = async (
   if (!trimmed) {
     return getBoardMeta(id);
   }
-  return putBoardMeta({ id, name: trimmed });
+  const result = await putBoardMeta({ id, name: trimmed });
+  void recordActivity({
+    boardId: id,
+    boardName: trimmed,
+    kind: "board",
+    summary: `Renamed board to "${trimmed}"`,
+  });
+  return result;
 };
 
 /** Move a board to the trash. Reversible; the bytes are untouched. */
 export const trashBoard = async (id: string): Promise<void> => {
+  const meta = await getBoardMeta(id);
   await putBoardMeta({ id, trashedAt: Date.now() });
+  void recordActivity({
+    boardId: id,
+    boardName: meta?.name,
+    kind: "delete",
+    summary: `Moved board "${meta?.name ?? id}" to trash`,
+  });
 };
 
 /** Bring a board back out of the trash. */
@@ -201,6 +216,12 @@ export const restoreTrashedBoard = async (id: string): Promise<void> => {
   delete meta.trashedAt;
   index[id] = meta;
   await writeIndex(index);
+  void recordActivity({
+    boardId: id,
+    boardName: meta.name,
+    kind: "board",
+    summary: `Restored board "${meta.name}" from trash`,
+  });
 };
 
 export const toggleStarBoard = async (
@@ -350,7 +371,14 @@ export const createBoard = async ({
   if (payload !== undefined) {
     await writeBoardPayload(id, payload);
   }
-  return putBoardMeta({ id, name, tags, color });
+  const meta = await putBoardMeta({ id, name, tags, color });
+  void recordActivity({
+    boardId: id,
+    boardName: name,
+    kind: "create",
+    summary: `Created board "${name}"`,
+  });
+  return meta;
 };
 
 /**
@@ -425,7 +453,7 @@ export const duplicateBoard = async (boardId: string): Promise<BoardMeta> => {
   }
 
   const now = Date.now();
-  return putBoardMeta({
+  const meta = await putBoardMeta({
     id: newBoard.id,
     name: copyName,
     tags: [...(original.tags ?? [])],
@@ -433,6 +461,13 @@ export const duplicateBoard = async (boardId: string): Promise<BoardMeta> => {
     color: original.color,
     lastOpened: now,
   });
+  void recordActivity({
+    boardId: newBoard.id,
+    boardName: copyName,
+    kind: "board",
+    summary: `Duplicated board "${original.name}"`,
+  });
+  return meta;
 };
 
 /**

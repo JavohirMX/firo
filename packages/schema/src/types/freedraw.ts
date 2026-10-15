@@ -27,6 +27,7 @@ import {
   facilitationFlags,
   V1_TO_V2_FACILITATION_FLAGS,
 } from "../facilitation.js";
+import { elementTags, V2_TO_V3_ELEMENT_TAGS } from "../tags.js";
 
 import {
   array,
@@ -197,7 +198,7 @@ export const FREEDRAW_SPEC: ElementSpec<FreedrawElement> = {
   type: "freedraw",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [V1_TO_V2_FACILITATION_FLAGS],
+  migrations: [V1_TO_V2_FACILITATION_FLAGS, V2_TO_V3_ELEMENT_TAGS],
   validate: (raw: Record<string, unknown>, log: RepairLog): FreedrawElement => {
     /*
      * Migration rule 1: carry anything unrecognised through untouched, then
@@ -307,6 +308,7 @@ export const FREEDRAW_SPEC: ElementSpec<FreedrawElement> = {
       locked: raw.locked === true,
       ...(plainObject(raw.customData) ? { customData: raw.customData } : {}),
       ...facilitationFlags(raw, log),
+      ...elementTags(raw, log),
     } as FreedrawElement;
   },
 };

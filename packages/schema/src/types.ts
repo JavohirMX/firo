@@ -348,6 +348,10 @@ export type ElementBase = Readonly<
        * exists: an older Firo must not destroy a newer one's custom data.
        */
       customData?: Record<string, unknown>;
+      /**
+       * Optional free-form labels for filtering and search (Phase 8.3).
+       */
+      tags?: readonly string[];
     }
 >;
 

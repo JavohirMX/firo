@@ -64,6 +64,8 @@ import { loadBoard, serializeBoard } from "@firo/schema";
 
 import type { FiroDoc } from "@firo/doc";
 
+import { recordActivity } from "./activity";
+
 /**
  * Where the board is stored.
  *
@@ -187,6 +189,7 @@ export type RestoreResult =
  * still in storage) for an unrecoverable one.
  */
 let restoreFailed = false;
+let lastSaveActivityTime = 0;
 
 /** Write the document out. Never rejects; a failed save is reported, not thrown. */
 export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
@@ -252,6 +255,16 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
   }
 
   notifySaveStatus("saved");
+  const now = Date.now();
+  if (now - lastSaveActivityTime > 15000) {
+    lastSaveActivityTime = now;
+    void recordActivity({
+      boardId: activeBoardId,
+      boardName: (doc.read().meta as { name?: string })?.name,
+      kind: "update",
+      summary: "Saved changes to board",
+    });
+  }
   return { ok: true, bytes: payload.length };
 };
 

@@ -27,6 +27,7 @@ import {
   facilitationFlags,
   V1_TO_V2_FACILITATION_FLAGS,
 } from "../facilitation.js";
+import { elementTags, V2_TO_V3_ELEMENT_TAGS } from "../tags.js";
 
 import {
   array,
@@ -224,6 +225,7 @@ const validate = (
       ? { customData: raw.customData as Record<string, unknown> }
       : {}),
     ...facilitationFlags(raw, log),
+    ...elementTags(raw, log),
 
     text: string(raw.text, "", log, "text"),
     fontSize: oneOf(
@@ -249,7 +251,7 @@ export const STICKY_NOTE_SPEC: ElementSpec<StickyNoteElement> = {
   type: "stickynote",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [V1_TO_V2_FACILITATION_FLAGS],
+  migrations: [V1_TO_V2_FACILITATION_FLAGS, V2_TO_V3_ELEMENT_TAGS],
   validate,
 };
 

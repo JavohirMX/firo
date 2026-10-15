@@ -278,7 +278,12 @@ describe("the committed v2 fixture", () => {
     // is worth having committed: a fixture is a thing a future contributor can
     // read rather than infer.
     const written = serializeBoard(loaded);
-    expect(canonicalJson(written)).toBe(canonicalJson(boardV2));
+    expect(canonicalJson(written)).toBe(
+      canonicalJson({
+        ...boardV2,
+        elementSchemaVersion: CURRENT_ELEMENT_VERSION,
+      }),
+    );
     expect(written.elements[2]).toHaveProperty("someFutureField", {
       keptBy: "migration rule 1",
     });

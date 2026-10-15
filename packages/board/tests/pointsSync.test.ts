@@ -421,7 +421,11 @@ describe("EDITOR_OWNED_FIELDS covers what the editor owns", () => {
     const fixtures = [
       editorPath("freedraw", { id: "x" }),
       editorPath("line", { id: "x" }),
-      { ...editorPath("freedraw", { id: "x" }), type: "rectangle" },
+      {
+        ...editorPath("freedraw", { id: "x" }),
+        type: "rectangle",
+        tags: ["sample"],
+      },
       // A note's label is the only thing carrying the text fields.
       {
         type: "text",
@@ -576,5 +580,22 @@ describe("the other editor-owned fields reach the document", () => {
     const before = doc.revision;
     expect(sync.push()).toEqual([]);
     expect(doc.revision).toBe(before);
+  });
+
+  it("commits an element's tags being set, modified and cleared", () => {
+    const { doc, editor, sync } = startWithShape("r1");
+
+    editInEditor(editor, "r1", { tags: ["planning", "urgent"] });
+    expect(sync.push().find((m) => m.kind === "updateElements")).toBeDefined();
+    expect(docElement(doc, "r1").tags).toEqual(["planning", "urgent"]);
+
+    // Unchanged tags is an echo
+    editInEditor(editor, "r1", { tags: ["planning", "urgent"] });
+    expect(sync.push()).toEqual([]);
+
+    // Cleared tags
+    editInEditor(editor, "r1", { tags: [] });
+    expect(sync.push().find((m) => m.kind === "updateElements")).toBeDefined();
+    expect(docElement(doc, "r1").tags ?? []).toEqual([]);
   });
 });

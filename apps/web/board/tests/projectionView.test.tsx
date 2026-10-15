@@ -81,7 +81,30 @@ describe("ProjectionView & AC-3 Verification", () => {
     expect(getByTestId("firo-grid-view")).toBeDefined();
     expect(getByTestId(`grid-card-${rfcRecord!.id}`)).toBeDefined();
 
-    // 6. Verify that state survives serialization (reload / export cycle)
+    // 6. Switch to Timeline view (Gantt)
+    const timelineTab = getByTestId("switch-projection-timeline");
+    act(() => {
+      fireEvent.click(timelineTab);
+    });
+    expect(getByTestId("firo-timeline-view")).toBeDefined();
+    expect(getByTestId(`timeline-bar-${rfcRecord!.id}`)).toBeDefined();
+
+    // Shift RFC card date later on timeline
+    const shiftBtn = getByTestId(`shift-later-${rfcRecord!.id}`);
+    act(() => {
+      fireEvent.click(shiftBtn);
+    });
+
+    const recordsAfterTimelineShift = recordsIn(doc, collectionId);
+    const shiftedRfc = recordsAfterTimelineShift.find(
+      (r) => r.id === rfcRecord!.id,
+    );
+    expect(shiftedRfc?.values.due).toEqual({
+      type: "date",
+      value: "2026-10-16",
+    });
+
+    // 7. Verify that state survives serialization (reload / export cycle)
     const serialized = serializeBoard(doc.read());
     const reloaded = loadBoard(serialized);
     const restoredDoc = new FiroDoc(new Y.Doc());

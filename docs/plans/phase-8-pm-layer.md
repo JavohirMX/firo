@@ -45,26 +45,31 @@ Search reaches text inside sticky notes, cards, and comment threads. Implemented
 hundred boards, SQLite-in-the-browser becomes the right answer
 ([ADR-0005](../adr/0005-indexeddb-via-idb-keyval.md)).
 
-### 8.3 — Tags
+### 8.3 — Tags (Completed)
 
 Colourable labels on elements, filterable. **Not a category system.** Tags are for
 finding things, not for organising everything, and the moment they become a taxonomy
-we are rebuilding Miro's Spaces.
+we are rebuilding Miro's Spaces. Shipped schema v3 migration (`V2_TO_V3_ELEMENT_TAGS`),
+element overlay badges (`TagLayer`), and tag-aware board content search.
 
-### 8.4 — Activity feed
+### 8.4 — Activity feed (Completed)
 
 Recent changes, per board and across boards. In v1 this is local history; with
-presence in v2 it shows collaborators.
+presence in v2 it shows collaborators. Shipped presentational feed in `@firo/ui`,
+IndexedDB activity log in `apps/web/board/activity.ts`, and activity tracking
+on library, comments, and storage changes.
 
-### 8.5 — Timeline projection
+### 8.5 — Timeline projection (Completed)
 
 The fourth projection
 ([ADR-0003](../adr/0003-records-with-switchable-projections.md)). A Gantt-style view
 from a date column and an optional duration column.
 
-**This is the test of whether the projection interface was right.** If adding a fourth
-projection requires touching the record store or the renderer, the interface in Phase
-6 was wrong and the fix is more valuable than the timeline.
+**This is the test of whether the projection interface was right.** Adding the timeline
+projection touched only `packages/records/src/timeline.ts` and exports in `index.ts` — zero
+modifications to `@firo/records` core abstractions and zero modifications to `@firo/render`.
+Integrated into `ProjectionView` with day-interval time headers, row labels, duration bars,
+and interactive date adjustments.
 
 ## Verification
 
