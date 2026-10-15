@@ -216,6 +216,7 @@ export class FiroDoc {
 
   private readonly listeners = new Set<(snapshot: BoardSnapshot) => void>();
   private readonly updateListeners = new Set<() => void>();
+  private readonly defaultUndoManager: Y.UndoManager;
 
   /** @internal Use `openBoard` / `openBoardMemory`. */
   constructor(ydoc: Y.Doc) {
@@ -227,6 +228,7 @@ export class FiroDoc {
     // hand out the raw document by accident.
     this.ydoc = guardedDoc(ydoc, this.guard);
 
+    this.defaultUndoManager = this.createUndoManager({ captureTimeout: 0 });
     this.observeDurableUpdates();
   }
 
@@ -846,6 +848,22 @@ export class FiroDoc {
     });
     this.guard.authoriseOrigin(undoManager);
     return undoManager;
+  }
+
+  /**
+   * Undo the most recent local transaction.
+   *
+   * A direct convenience method backed by a client-scoped Y.UndoManager.
+   */
+  undo(): boolean {
+    return this.defaultUndoManager.undo() !== null;
+  }
+
+  /**
+   * Redo the most recently undone local transaction.
+   */
+  redo(): boolean {
+    return this.defaultUndoManager.redo() !== null;
   }
 
   /** Destroy the document and its awareness. Call before dropping the reference. */

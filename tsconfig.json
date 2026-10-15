@@ -44,7 +44,11 @@
       "@firo/utils": ["./packages/utils/src/index.ts"],
       "@firo/utils/*": ["./packages/utils/src/*"],
       "@firo/ui": ["./packages/ui/src/index.ts"],
-      "@firo/ui/*": ["./packages/ui/src/*"]
+      "@firo/ui/*": ["./packages/ui/src/*"],
+      "@firo/mcp": ["./packages/mcp/src/index.ts"],
+      "@firo/mcp/*": ["./packages/mcp/src/*"],
+      "@firo/ai": ["./packages/ai/src/index.ts"],
+      "@firo/ai/*": ["./packages/ai/src/*"]
     }
   },
   "include": ["packages", "apps/web", "apps/server"],

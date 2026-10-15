@@ -155,6 +155,22 @@ export default defineConfig({
         find: /^@firo\/ui\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/ui/src/$1"),
       },
+      {
+        find: /^@firo\/mcp$/,
+        replacement: path.resolve(__dirname, "./packages/mcp/src/index.ts"),
+      },
+      {
+        find: /^@firo\/mcp\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/mcp/src/$1"),
+      },
+      {
+        find: /^@firo\/ai$/,
+        replacement: path.resolve(__dirname, "./packages/ai/src/index.ts"),
+      },
+      {
+        find: /^@firo\/ai\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/ai/src/$1"),
+      },
     ],
   },
   //@ts-ignore

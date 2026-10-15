@@ -16,7 +16,7 @@ in parallel.
 
 ---
 
-## 10.1 — AI
+## 10.1 — AI (COMPLETE)
 
 Deferred deliberately from v1
 ([ADR-0012](../adr/0012-no-ai-in-v1.md)). The ordering is the point: **AI is only
@@ -43,7 +43,7 @@ advantage over an OCR-over-canvas system, not a feature we have to keep winning.
 **Guard rails:** every AI action is a normal undoable operation. No AI write bypasses
 the document. The user can always see what was changed.
 
-## 10.2 — MCP server
+## 10.2 — MCP server (COMPLETE)
 
 Miro converged on a design worth copying
 ([Miro MCP tools](https://developers.miro.com/docs/miro-mcp-tools)):

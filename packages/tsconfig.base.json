@@ -30,7 +30,13 @@
       "@firo/doc": ["./doc/src/index.ts"],
       "@firo/doc/*": ["./doc/src/*"],
       "@firo/ui": ["./ui/src/index.ts"],
-      "@firo/ui/*": ["./ui/src/*"]
+      "@firo/ui/*": ["./ui/src/*"],
+      "@firo/records": ["./records/src/index.ts"],
+      "@firo/records/*": ["./records/src/*"],
+      "@firo/mcp": ["./mcp/src/index.ts"],
+      "@firo/mcp/*": ["./mcp/src/*"],
+      "@firo/ai": ["./ai/src/index.ts"],
+      "@firo/ai/*": ["./ai/src/*"]
     }
   }
 }

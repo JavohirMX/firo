@@ -1,0 +1,50 @@
+{
+  "name": "@firo/ai",
+  "version": "0.1.0",
+  "type": "module",
+  "types": "./dist/types/ai/src/index.d.ts",
+  "main": "./dist/prod/index.js",
+  "module": "./dist/prod/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/types/ai/src/index.d.ts",
+      "development": "./dist/dev/index.js",
+      "production": "./dist/prod/index.js",
+      "default": "./dist/prod/index.js"
+    },
+    "./*": {
+      "types": "./dist/types/ai/src/*.d.ts",
+      "development": "./dist/dev/*.js",
+      "production": "./dist/prod/*.js",
+      "default": "./dist/prod/*.js"
+    }
+  },
+  "files": [
+    "dist/*"
+  ],
+  "description": "Local-first AI engine for Firo whiteboard and record store",
+  "license": "MIT",
+  "keywords": [
+    "firo",
+    "ai",
+    "local-first",
+    "llm",
+    "whiteboard",
+    "records"
+  ],
+  "scripts": {
+    "gen:types": "rimraf types && tsc",
+    "build:esm": "rimraf dist && node ../../scripts/buildBase.js && yarn gen:types",
+    "build": "yarn build:esm",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@firo/common": "0.1.0",
+    "@firo/doc": "0.1.0",
+    "@firo/fractional-indexing": "0.1.0",
+    "@firo/math": "0.1.0",
+    "@firo/records": "0.1.0",
+    "@firo/schema": "0.1.0"
+  },
+  "devDependencies": {}
+}
