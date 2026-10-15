@@ -39,7 +39,9 @@ describe("@firo/ui shell components", () => {
       expect(rectBtn.getAttribute("aria-pressed")).toBe("false");
 
       fireEvent.click(rectBtn);
-      expect(onSelectTool).toHaveBeenCalledWith("rectangle");
+      // The click event travels with the tool: the host reads `shiftKey` off it
+      // to decide one-time versus locked placement.
+      expect(onSelectTool).toHaveBeenCalledWith("rectangle", expect.anything());
     });
 
     it("triggers undo and redo callbacks", () => {
@@ -63,6 +65,130 @@ describe("@firo/ui shell components", () => {
 
       fireEvent.click(redoBtn);
       expect(onRedo).toHaveBeenCalledTimes(1);
+    });
+
+    describe("customisation", () => {
+      // A pinned pointer entry followed by two movable tools, which is the
+      // arrangement the host actually builds.
+      const configurableTools: RailToolItem[] = [
+        {
+          id: "selection",
+          label: "Select / Hand",
+          icon: RAIL_TOOL_ICONS.selection,
+          pinned: true,
+          activeOn: ["selection", "hand"],
+        },
+        {
+          id: "rectangle",
+          label: "Rectangle",
+          icon: RAIL_TOOL_ICONS.rectangle,
+        },
+        { id: "laser", label: "Laser", icon: RAIL_TOOL_ICONS.laser },
+      ];
+
+      it("reports a reorder when one tool is dropped on another", () => {
+        const onReorder = vi.fn();
+        render(
+          <CreationRail
+            activeTool="selection"
+            onSelectTool={vi.fn()}
+            tools={configurableTools}
+            onReorder={onReorder}
+          />,
+        );
+
+        // Drag the last tool onto the first movable slot.
+        fireEvent.dragStart(screen.getByRole("button", { name: "Laser" }));
+        fireEvent.dragOver(screen.getByRole("button", { name: "Rectangle" }));
+        fireEvent.drop(screen.getByRole("button", { name: "Rectangle" }));
+
+        expect(onReorder).toHaveBeenCalledWith([
+          "selection",
+          "laser",
+          "rectangle",
+        ]);
+      });
+
+      it("never lets a drop push the pinned pointer out of first place", () => {
+        const onReorder = vi.fn();
+        render(
+          <CreationRail
+            activeTool="selection"
+            onSelectTool={vi.fn()}
+            tools={configurableTools}
+            onReorder={onReorder}
+          />,
+        );
+
+        fireEvent.dragStart(screen.getByRole("button", { name: "Laser" }));
+        fireEvent.dragOver(
+          screen.getByRole("button", { name: "Select / Hand" }),
+        );
+        fireEvent.drop(screen.getByRole("button", { name: "Select / Hand" }));
+
+        expect(onReorder).toHaveBeenCalledWith([
+          "selection",
+          "laser",
+          "rectangle",
+        ]);
+      });
+
+      it("offers Unpin on a right-click, and not on the pinned pointer", () => {
+        const onUnpin = vi.fn();
+        render(
+          <CreationRail
+            activeTool="selection"
+            onSelectTool={vi.fn()}
+            tools={configurableTools}
+            onUnpin={onUnpin}
+          />,
+        );
+
+        const pointer = screen.getByRole("button", { name: "Select / Hand" });
+        expect(pointer.getAttribute("aria-haspopup")).toBeNull();
+        fireEvent.contextMenu(pointer);
+        expect(screen.queryByRole("menuitem", { name: "Unpin" })).toBeNull();
+
+        fireEvent.contextMenu(screen.getByRole("button", { name: "Laser" }));
+        fireEvent.click(screen.getByRole("menuitem", { name: "Unpin" }));
+        expect(onUnpin).toHaveBeenCalledWith("laser");
+      });
+
+      it("offers every unpinned tool a way back", () => {
+        const onRestore = vi.fn();
+        render(
+          <CreationRail
+            activeTool="selection"
+            onSelectTool={vi.fn()}
+            tools={configurableTools}
+            hiddenTools={[
+              { id: "eraser", label: "Eraser", icon: RAIL_TOOL_ICONS.eraser },
+            ]}
+            onRestore={onRestore}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Unpinned tools" }));
+        fireEvent.click(screen.getByRole("menuitem", { name: "Eraser" }));
+
+        expect(onRestore).toHaveBeenCalledWith("eraser");
+      });
+
+      it("lights the pointer entry for either of the two tools it stands for", () => {
+        render(
+          <CreationRail
+            activeTool="hand"
+            onSelectTool={vi.fn()}
+            tools={configurableTools}
+          />,
+        );
+
+        expect(
+          screen
+            .getByRole("button", { name: "Select / Hand" })
+            .getAttribute("aria-pressed"),
+        ).toBe("true");
+      });
     });
   });
 
@@ -118,11 +244,14 @@ describe("@firo/ui shell components", () => {
 
       const gridBtn = screen.getByRole("button", { name: "Toggle Grid" });
       expect(gridBtn.getAttribute("aria-pressed")).toBe("true");
+      // Miro parity: `G`. Advertised so the toolbar teaches the key.
+      expect(gridBtn.getAttribute("aria-keyshortcuts")).toBe("G");
       fireEvent.click(gridBtn);
       expect(onToggleGrid).toHaveBeenCalledTimes(1);
 
       const minimapBtn = screen.getByRole("button", { name: "Toggle Minimap" });
       expect(minimapBtn.getAttribute("aria-pressed")).toBe("false");
+      expect(minimapBtn.getAttribute("aria-keyshortcuts")).toBe("M");
       fireEvent.click(minimapBtn);
       expect(onToggleMinimap).toHaveBeenCalledTimes(1);
     });

@@ -232,6 +232,9 @@ describe("Canvas Minimap Overlay", () => {
 
     const minimapBtn = screen.getByRole("button", { name: "Toggle Minimap" });
     expect(minimapBtn.getAttribute("aria-pressed")).toBe("false");
+    // The key is advertised where the command lives, so the toolbar is the
+    // place a user discovers it (Miro parity: `M`).
+    expect(minimapBtn.getAttribute("aria-keyshortcuts")).toBe("M");
     expect(
       minimapBtn.classList.contains("firo-nav-toolbar__button--active"),
     ).toBe(false);

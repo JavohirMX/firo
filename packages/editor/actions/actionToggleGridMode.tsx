@@ -69,5 +69,13 @@ export const actionToggleGridMode = register({
   predicate: (element, appState, props) => {
     return props.gridModeEnabled === undefined;
   },
-  keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.code === CODES.QUOTE,
+  // Miro parity: plain `G` toggles the grid (Firo previously used `Ctrl+'`,
+  // which Miro does not). Modifiers stay clear so `Ctrl+G` (group) still wins —
+  // see `actionGroup`. Miro-first on collision; the standard editing keys
+  // (copy/cut/paste/select-all/undo/redo) are the exception.
+  keyTest: (event) =>
+    !event[KEYS.CTRL_OR_CMD] &&
+    !event.shiftKey &&
+    !event.altKey &&
+    event.code === CODES.G,
 });

@@ -146,9 +146,19 @@ import {
 import { facilitatorCommandPaletteItems } from "./board/facilitatorActions";
 import { recordCommandPaletteItems } from "./board/recordActions";
 import { getActiveBoard } from "./board/library";
+import { isMinimapShortcut } from "./board/chromeShortcuts";
+import {
+  readRailLayout,
+  reorderRailTools,
+  restoreRailTool,
+  unpinRailTool,
+  writeRailLayout,
+} from "./board/railLayout";
 import { homeUrl } from "./board/routes";
 
 import "./index.scss";
+
+import type { RailLayout } from "./board/railLayout";
 
 polyfill();
 
@@ -368,28 +378,6 @@ const initializeScene = async (opts: {
 };
 
 /**
- * The rail's order. Presentation only — a tool's label, shortcut and icon come
- * from the editor's `TOOLS` registry and `@firo/ui`'s glyph set, so `@firo/ui`
- * owns no second copy of the tool list
- * ([ADR-0022](../../docs/adr/0022-ui-package-owns-the-chrome.md), clause 4).
- */
-const RAIL_TOOL_ORDER: RailToolType[] = [
-  "selection",
-  "hand",
-  "stickynote",
-  "rectangle",
-  "diamond",
-  "ellipse",
-  "arrow",
-  "line",
-  "text",
-  "freedraw",
-  "frame",
-  "eraser",
-  "laser",
-];
-
-/**
  * Shape and note creation tools that default to Miro-style one-time placement:
  * selecting the tool places it in one-time mode (`locked: false`), so stamping or
  * drawing on the canvas automatically reverts to Select mode upon element completion
@@ -416,23 +404,85 @@ export const WebCreationRail = ({ appState }: { appState: UIAppState }) => {
   );
   const isShiftPressedRef = useRef(false);
 
-  const tools: RailToolItem[] = RAIL_TOOL_ORDER.filter((id) => id in TOOLS).map(
-    (id) => {
-      const label = capitalizeString(t(`toolBar.${id}`));
-      const shortcut = getToolShortcut(id);
-      return {
-        id,
-        icon: RAIL_TOOL_ICONS[id],
-        label: shortcut ? `${label} (${shortcut})` : label,
-      };
-    },
-  );
+  // The arrangement is a per-user preference, so the host owns it and the rail
+  // only renders what it is handed
+  // ([ADR-0029](../../docs/adr/0029-the-rail-is-a-per-user-arrangement.md)). Read synchronously
+  // on mount, so the first paint is already the user's order, not the default.
+  const [layout, setLayout] = useState<RailLayout>(readRailLayout);
+
+  useEffect(() => {
+    writeRailLayout(layout);
+  }, [layout]);
+
+  /**
+   * Select and Hand are one entry — Miro's cursor, two tools.
+   *
+   * The glyph follows the active mode, both ids light the entry up, and it is
+   * pinned: it cannot be dragged and it offers no Unpin. Clicking it while it is
+   * *active* switches to the other mode, which is the toggle Miro's single
+   * control performs; from any other tool it simply selects.
+   */
+  const pointerTool: RailToolType =
+    activeToolType === "hand" ? "hand" : "selection";
+  const pointerItem: RailToolItem = {
+    id: "selection",
+    label: `${capitalizeString(t("toolBar.selection"))} (${getToolShortcut(
+      "selection",
+    )}) / ${capitalizeString(t("toolBar.hand"))} (${getToolShortcut("hand")})`,
+    icon: RAIL_TOOL_ICONS[pointerTool],
+    pinned: true,
+    activeOn: ["selection", "hand"],
+  };
+
+  const buildRailTool = (id: RailToolType): RailToolItem => {
+    const label = capitalizeString(t(`toolBar.${id}`));
+    const shortcut = getToolShortcut(id);
+    return {
+      id,
+      icon: RAIL_TOOL_ICONS[id],
+      label: shortcut ? `${label} (${shortcut})` : label,
+    };
+  };
+
+  const tools: RailToolItem[] = [
+    pointerItem,
+    ...layout.order.filter((id) => id in TOOLS).map(buildRailTool),
+  ];
+  const hiddenTools: RailToolItem[] = layout.unpinned
+    .filter((id) => id in TOOLS)
+    .map(buildRailTool);
 
   return (
     <CreationRail
       tools={tools}
+      hiddenTools={hiddenTools}
       activeTool={activeToolType}
+      onReorder={(order) =>
+        setLayout((current) => reorderRailTools(current, order))
+      }
+      onUnpin={(tool) => setLayout((current) => unpinRailTool(current, tool))}
+      onRestore={(tool) =>
+        setLayout((current) => restoreRailTool(current, tool))
+      }
       onSelectTool={(tool, event) => {
+        if (tool === "selection" || tool === "hand") {
+          /*
+           * One control, two modes. The *live* tool decides which way to
+           * toggle: clicking the cursor while it is already the cursor moves to
+           * the other half of it, and clicking it from any other tool selects.
+           * That is Miro's cursor behaviour, and it is why Select and Hand are
+           * one rail entry rather than two
+           * ([ADR-0029](../../docs/adr/0029-the-rail-is-a-per-user-arrangement.md)).
+           */
+          const live = app.state.activeTool.type;
+          const pointerActive = live === "selection" || live === "hand";
+          const next: RailToolType =
+            pointerActive && live === "selection" ? "hand" : "selection";
+          trackEvent("toolbar", next, "ui");
+          app.setActiveTool({ type: next as any });
+          return;
+        }
+
         const now = Date.now();
         const lastClick = lastClickRef.current;
         const isDoubleClick =
@@ -659,6 +709,30 @@ const ExcalidrawWrapper = () => {
    */
   const [commentTarget, setCommentTarget] = useState<string | null>(null);
   const [minimapVisible, setMinimapVisible] = useState(false);
+
+  /**
+   * `M` toggles the minimap — Miro's binding, and one of the two keys Miro has
+   * for a feature Firo already had but never bound (the other is `G` for the
+   * grid, which lives on the editor's action because the editor draws the grid).
+   *
+   * The minimap is host chrome, so its key is owned here rather than in the
+   * editor's registry; `board/chromeShortcuts.ts` carries the predicate and the
+   * reasoning. The listener mirrors `CommentLayer`'s Escape handler — `window`,
+   * because the same key should work whether or not the canvas has focus.
+   */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isMinimapShortcut(event)) {
+        return;
+      }
+      event.preventDefault();
+      setMinimapVisible((visible) => !visible);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
 

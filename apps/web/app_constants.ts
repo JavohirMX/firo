@@ -30,6 +30,11 @@ export const STORAGE_KEYS = {
   LOCAL_STORAGE_COLLAB: "firo-collab",
   LOCAL_STORAGE_THEME: "firo-theme",
   LOCAL_STORAGE_DEBUG: "firo-debug",
+  // The rail's arrangement. A per-user UI preference like the theme, so it
+  // belongs here rather than in the IndexedDB store that holds boards (ADR-0005
+  // rejected `localStorage` for *board payloads* on size and sync cost; a few
+  // dozen tool ids are neither large nor on a hot path).
+  LOCAL_STORAGE_RAIL_LAYOUT: "firo-rail-layout",
   VERSION_DATA_STATE: "version-dataState",
   VERSION_FILES: "version-files",
 

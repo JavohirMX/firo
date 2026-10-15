@@ -98,10 +98,11 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
           onClick={onToggleGrid}
           title={
             gridEnabled && gridType
-              ? `Toggle Grid (${gridType}) (Ctrl+')`
-              : "Toggle Grid (Ctrl+')"
+              ? `Toggle Grid (${gridType}) (G)`
+              : "Toggle Grid (G)"
           }
           aria-label="Toggle Grid"
+          aria-keyshortcuts="G"
           data-grid-type={gridType}
           aria-pressed={gridEnabled}
         >
@@ -116,8 +117,9 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
             isMinimapActive ? "firo-nav-toolbar__button--active" : ""
           }`}
           onClick={onToggleMinimap}
-          title="Toggle Minimap"
+          title="Toggle Minimap (M)"
           aria-label="Toggle Minimap"
+          aria-keyshortcuts="M"
           aria-pressed={isMinimapActive}
         >
           <MinimapIcon size={18} />
