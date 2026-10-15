@@ -60,7 +60,6 @@ export const actionToggleGridMode = register({
         ...appState,
         gridModeEnabled: nextGridModeEnabled,
         gridType: nextGridType,
-        objectsSnapModeEnabled: false,
       },
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };

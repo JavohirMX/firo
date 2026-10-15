@@ -75,26 +75,75 @@ const GridCrossColor = {
   [THEME.DARK]: applyDarkModeFilter("#cccccc"),
 } as const;
 
+export interface AdaptiveGridParameters {
+  majorGridSize: number;
+  minorGridSize: number;
+  ratio: number;
+  minorAlpha: number;
+  majorScreenSpacing: number;
+  minorScreenSpacing: number;
+}
+
+const GRID_LADDER_MULTIPLIERS = [
+  1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5,
+  10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000,
+] as const;
+
+export const getAdaptiveGridParameters = (
+  gridSize: number,
+  zoomValue: number,
+): AdaptiveGridParameters => {
+  if (!Number.isFinite(zoomValue) || zoomValue <= 0 || gridSize <= 0) {
+    return {
+      majorGridSize: gridSize,
+      minorGridSize: gridSize,
+      ratio: 1,
+      minorAlpha: 0,
+      majorScreenSpacing: gridSize,
+      minorScreenSpacing: gridSize,
+    };
+  }
+
+  const ladder = GRID_LADDER_MULTIPLIERS.map((m) => m * gridSize);
+  let fineIdx = ladder.findIndex((g) => g * zoomValue >= 25);
+  if (fineIdx <= 0) {
+    fineIdx = 1;
+  } else {
+    fineIdx = fineIdx - 1;
+  }
+
+  const minorGridSize = ladder[fineIdx];
+  const majorGridSize = ladder[fineIdx + 1];
+  const ratio = Math.round(majorGridSize / minorGridSize);
+
+  const minorScreen = minorGridSize * zoomValue;
+  const majorScreen = majorGridSize * zoomValue;
+
+  const fadeStart = ratio === 2 ? 12 : 10;
+  const fadeEnd = 25;
+
+  const t = Math.max(
+    0,
+    Math.min(1, (minorScreen - fadeStart) / (fadeEnd - fadeStart)),
+  );
+  const minorAlpha = t * t * (3 - 2 * t);
+
+  return {
+    majorGridSize,
+    minorGridSize,
+    ratio,
+    minorAlpha,
+    majorScreenSpacing: majorScreen,
+    minorScreenSpacing: minorScreen,
+  };
+};
+
 export const calculateEffectiveGridSize = (
   gridSize: number,
   zoomValue: number,
 ): number => {
-  let scaleMultiplier = 1;
-  if (Number.isFinite(zoomValue) && zoomValue > 0 && gridSize > 0) {
-    while (
-      gridSize * scaleMultiplier * zoomValue < 15 &&
-      scaleMultiplier < 1e8
-    ) {
-      scaleMultiplier *= 5;
-    }
-    while (
-      gridSize * scaleMultiplier * zoomValue > 80 &&
-      scaleMultiplier > 1e-8
-    ) {
-      scaleMultiplier /= 5;
-    }
-  }
-  return gridSize * scaleMultiplier;
+  const params = getAdaptiveGridParameters(gridSize, zoomValue);
+  return params.minorAlpha > 0.5 ? params.minorGridSize : params.majorGridSize;
 };
 
 export const strokeGrid = (
@@ -112,31 +161,70 @@ export const strokeGrid = (
   scale: number,
   gridType: GridType = "dots",
 ) => {
-  const effectiveGridSize = calculateEffectiveGridSize(gridSize, zoom.value);
-  const offsetX = (scrollX % effectiveGridSize) - effectiveGridSize;
-  const offsetY = (scrollY % effectiveGridSize) - effectiveGridSize;
+  const { majorGridSize, minorGridSize, ratio, minorAlpha } =
+    getAdaptiveGridParameters(gridSize, zoom.value);
+
+  const getOffset = (scroll: number, size: number) =>
+    (((scroll % size) + size) % size) - size;
+
+  const offsetMajorX = getOffset(scrollX, majorGridSize);
+  const offsetMajorY = getOffset(scrollY, majorGridSize);
+  const offsetMinorX = getOffset(scrollX, minorGridSize);
+  const offsetMinorY = getOffset(scrollY, minorGridSize);
 
   context.save();
 
   if (gridType === "dots") {
     const dotRadius = 1.5 / zoom.value;
     context.fillStyle = GridDotColor[theme];
+
+    // 1. Major dots
+    context.globalAlpha = 1;
     context.beginPath();
     for (
-      let x = offsetX;
-      x < offsetX + width + effectiveGridSize * 2;
-      x += effectiveGridSize
+      let x = offsetMajorX;
+      x < offsetMajorX + width + majorGridSize * 2;
+      x += majorGridSize
     ) {
       for (
-        let y = offsetY;
-        y < offsetY + height + effectiveGridSize * 2;
-        y += effectiveGridSize
+        let y = offsetMajorY;
+        y < offsetMajorY + height + majorGridSize * 2;
+        y += majorGridSize
       ) {
         context.moveTo(x + dotRadius, y);
         context.arc(x, y, dotRadius, 0, Math.PI * 2);
       }
     }
     context.fill();
+
+    // 2. Minor dots with smooth alpha fade
+    if (minorAlpha > 0.01) {
+      context.globalAlpha = minorAlpha;
+      context.beginPath();
+      for (
+        let x = offsetMinorX;
+        x < offsetMinorX + width + minorGridSize * 2;
+        x += minorGridSize
+      ) {
+        const isMajorX =
+          Math.abs(Math.round((x - scrollX) / minorGridSize)) % ratio === 0;
+        for (
+          let y = offsetMinorY;
+          y < offsetMinorY + height + minorGridSize * 2;
+          y += minorGridSize
+        ) {
+          const isMajorY =
+            Math.abs(Math.round((y - scrollY) / minorGridSize)) % ratio === 0;
+          if (isMajorX && isMajorY) {
+            continue;
+          }
+          context.moveTo(x + dotRadius, y);
+          context.arc(x, y, dotRadius, 0, Math.PI * 2);
+        }
+      }
+      context.fill();
+    }
+
     context.restore();
     return;
   }
@@ -145,16 +233,19 @@ export const strokeGrid = (
     const arm = 3.5 / zoom.value;
     context.lineWidth = 1 / zoom.value;
     context.strokeStyle = GridCrossColor[theme];
+
+    // Major crosses
+    context.globalAlpha = 1;
     context.beginPath();
     for (
-      let x = offsetX;
-      x < offsetX + width + effectiveGridSize * 2;
-      x += effectiveGridSize
+      let x = offsetMajorX;
+      x < offsetMajorX + width + majorGridSize * 2;
+      x += majorGridSize
     ) {
       for (
-        let y = offsetY;
-        y < offsetY + height + effectiveGridSize * 2;
-        y += effectiveGridSize
+        let y = offsetMajorY;
+        y < offsetMajorY + height + majorGridSize * 2;
+        y += majorGridSize
       ) {
         context.moveTo(x - arm, y);
         context.lineTo(x + arm, y);
@@ -163,52 +254,120 @@ export const strokeGrid = (
       }
     }
     context.stroke();
+
+    // Minor crosses
+    if (minorAlpha > 0.01) {
+      context.globalAlpha = minorAlpha;
+      context.beginPath();
+      for (
+        let x = offsetMinorX;
+        x < offsetMinorX + width + minorGridSize * 2;
+        x += minorGridSize
+      ) {
+        const isMajorX =
+          Math.abs(Math.round((x - scrollX) / minorGridSize)) % ratio === 0;
+        for (
+          let y = offsetMinorY;
+          y < offsetMinorY + height + minorGridSize * 2;
+          y += minorGridSize
+        ) {
+          const isMajorY =
+            Math.abs(Math.round((y - scrollY) / minorGridSize)) % ratio === 0;
+          if (isMajorX && isMajorY) {
+            continue;
+          }
+          context.moveTo(x - arm, y);
+          context.lineTo(x + arm, y);
+          context.moveTo(x, y - arm);
+          context.lineTo(x, y + arm);
+        }
+      }
+      context.stroke();
+    }
+
     context.restore();
     return;
   }
 
   if (gridType === "isometric") {
-    const minX = offsetX - effectiveGridSize;
-    const maxX = offsetX + width + effectiveGridSize * 2;
-    const minY = offsetY - effectiveGridSize;
-    const maxY = offsetY + height + effectiveGridSize * 2;
-
     const s = 1 / Math.sqrt(3);
-    const stepY = (2 * effectiveGridSize) / Math.sqrt(3);
-
     context.lineWidth = 1 / zoom.value;
     context.strokeStyle = GridLineColor[theme].regular;
-    context.beginPath();
 
-    // 1. Vertical lines
-    for (let x = offsetX; x <= maxX; x += effectiveGridSize) {
-      context.moveTo(x, minY);
-      context.lineTo(x, maxY);
-    }
+    const renderIsometricPass = (
+      step: number,
+      alpha: number,
+      skipMultiplesOf?: number,
+    ) => {
+      if (alpha <= 0.01) {
+        return;
+      }
+      context.globalAlpha = alpha;
+      const stepY = (2 * step) / Math.sqrt(3);
+      const minX = offsetMinorX - step;
+      const maxX = offsetMinorX + width + step * 2;
+      const minY = offsetMinorY - step;
+      const maxY = offsetMinorY + height + step * 2;
 
-    // 2. Diagonal lines at +30 degrees (slope s)
-    const cMin1 = minY - scrollY - s * (maxX - scrollX);
-    const cMax1 = maxY - scrollY - s * (minX - scrollX);
-    const startC1 = Math.floor(cMin1 / stepY) * stepY;
-    for (let c = startC1; c <= cMax1; c += stepY) {
-      const y1 = scrollY + s * (minX - scrollX) + c;
-      const y2 = scrollY + s * (maxX - scrollX) + c;
-      context.moveTo(minX, y1);
-      context.lineTo(maxX, y2);
-    }
+      context.beginPath();
 
-    // 3. Diagonal lines at -30 degrees (slope -s)
-    const cMin2 = minY - scrollY + s * (minX - scrollX);
-    const cMax2 = maxY - scrollY + s * (maxX - scrollX);
-    const startC2 = Math.floor(cMin2 / stepY) * stepY;
-    for (let c = startC2; c <= cMax2; c += stepY) {
-      const y1 = scrollY - s * (minX - scrollX) + c;
-      const y2 = scrollY - s * (maxX - scrollX) + c;
-      context.moveTo(minX, y1);
-      context.lineTo(maxX, y2);
-    }
+      // 1. Vertical lines
+      const startX = getOffset(scrollX, step);
+      for (let x = startX; x <= maxX; x += step) {
+        if (
+          skipMultiplesOf &&
+          Math.abs(Math.round((x - scrollX) / step)) %
+            (skipMultiplesOf / step) ===
+            0
+        ) {
+          continue;
+        }
+        context.moveTo(x, minY);
+        context.lineTo(x, maxY);
+      }
 
-    context.stroke();
+      // 2. Diagonal lines at +30 degrees (slope s)
+      const cMin1 = minY - scrollY - s * (maxX - scrollX);
+      const cMax1 = maxY - scrollY - s * (minX - scrollX);
+      const startC1 = Math.floor(cMin1 / stepY) * stepY;
+      for (let c = startC1; c <= cMax1; c += stepY) {
+        if (
+          skipMultiplesOf &&
+          Math.abs(Math.round(c / stepY)) % (skipMultiplesOf / step) === 0
+        ) {
+          continue;
+        }
+        const y1 = scrollY + s * (minX - scrollX) + c;
+        const y2 = scrollY + s * (maxX - scrollX) + c;
+        context.moveTo(minX, y1);
+        context.lineTo(maxX, y2);
+      }
+
+      // 3. Diagonal lines at -30 degrees (slope -s)
+      const cMin2 = minY - scrollY + s * (minX - scrollX);
+      const cMax2 = maxY - scrollY + s * (maxX - scrollX);
+      const startC2 = Math.floor(cMin2 / stepY) * stepY;
+      for (let c = startC2; c <= cMax2; c += stepY) {
+        if (
+          skipMultiplesOf &&
+          Math.abs(Math.round(c / stepY)) % (skipMultiplesOf / step) === 0
+        ) {
+          continue;
+        }
+        const y1 = scrollY - s * (minX - scrollX) + c;
+        const y2 = scrollY - s * (maxX - scrollX) + c;
+        context.moveTo(minX, y1);
+        context.lineTo(maxX, y2);
+      }
+
+      context.stroke();
+    };
+
+    // Major isometric pass
+    renderIsometricPass(majorGridSize, 1.0);
+    // Minor isometric pass
+    renderIsometricPass(minorGridSize, minorAlpha, majorGridSize);
+
     context.restore();
     return;
   }
@@ -234,56 +393,99 @@ export const strokeGrid = (
     };
   };
 
-  // vertical lines
+  // 1. Major grid lines (solid)
+  context.globalAlpha = 1.0;
+  context.setLineDash([]);
+  context.strokeStyle = GridLineColor[theme].bold;
+
+  // Major vertical lines
   for (
-    let x = offsetX;
-    x < offsetX + width + effectiveGridSize * 2;
-    x += effectiveGridSize
+    let x = offsetMajorX;
+    x < offsetMajorX + width + majorGridSize * 2;
+    x += majorGridSize
   ) {
-    const gridIndex = Math.round((x - scrollX) / effectiveGridSize);
-    const isBold = gridStep > 1 && Math.abs(gridIndex) % gridStep === 0;
-
-    const { position, lineWidth } = snap(x, isBold ? 4 : 1);
+    const { position, lineWidth } = snap(x, 1);
     context.lineWidth = lineWidth;
-    const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
-
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
-    context.moveTo(position, offsetY - effectiveGridSize);
+    context.moveTo(position, offsetMajorY - majorGridSize);
     context.lineTo(
       position,
-      Math.ceil(offsetY + height + effectiveGridSize * 2),
+      Math.ceil(offsetMajorY + height + majorGridSize * 2),
     );
     context.stroke();
   }
 
-  // horizontal lines
+  // Major horizontal lines
   for (
-    let y = offsetY;
-    y < offsetY + height + effectiveGridSize * 2;
-    y += effectiveGridSize
+    let y = offsetMajorY;
+    y < offsetMajorY + height + majorGridSize * 2;
+    y += majorGridSize
   ) {
-    const gridIndex = Math.round((y - scrollY) / effectiveGridSize);
-    const isBold = gridStep > 1 && Math.abs(gridIndex) % gridStep === 0;
-
-    const { position, lineWidth } = snap(y, isBold ? 4 : 1);
+    const { position, lineWidth } = snap(y, 1);
     context.lineWidth = lineWidth;
-    const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
-
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
-    context.moveTo(offsetX - effectiveGridSize, position);
+    context.moveTo(offsetMajorX - majorGridSize, position);
     context.lineTo(
-      Math.ceil(offsetX + width + effectiveGridSize * 2),
+      Math.ceil(offsetMajorX + width + majorGridSize * 2),
       position,
     );
     context.stroke();
+  }
+
+  // 2. Minor grid lines (dashed, with continuous alpha)
+  if (minorAlpha > 0.01) {
+    context.globalAlpha = minorAlpha;
+    context.strokeStyle = GridLineColor[theme].regular;
+
+    // Minor vertical lines
+    for (
+      let x = offsetMinorX;
+      x < offsetMinorX + width + minorGridSize * 2;
+      x += minorGridSize
+    ) {
+      const isMajor =
+        Math.abs(Math.round((x - scrollX) / minorGridSize)) % ratio === 0;
+      if (isMajor) {
+        continue;
+      }
+
+      const { position, lineWidth } = snap(x, 1);
+      context.lineWidth = lineWidth;
+      const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
+      context.setLineDash(lineDash);
+      context.beginPath();
+      context.moveTo(position, offsetMinorY - minorGridSize);
+      context.lineTo(
+        position,
+        Math.ceil(offsetMinorY + height + minorGridSize * 2),
+      );
+      context.stroke();
+    }
+
+    // Minor horizontal lines
+    for (
+      let y = offsetMinorY;
+      y < offsetMinorY + height + minorGridSize * 2;
+      y += minorGridSize
+    ) {
+      const isMajor =
+        Math.abs(Math.round((y - scrollY) / minorGridSize)) % ratio === 0;
+      if (isMajor) {
+        continue;
+      }
+
+      const { position, lineWidth } = snap(y, 1);
+      context.lineWidth = lineWidth;
+      const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
+      context.setLineDash(lineDash);
+      context.beginPath();
+      context.moveTo(offsetMinorX - minorGridSize, position);
+      context.lineTo(
+        Math.ceil(offsetMinorX + width + minorGridSize * 2),
+        position,
+      );
+      context.stroke();
+    }
   }
 
   context.restore();

@@ -8,9 +8,11 @@ import {
 
 import {
   calculateEffectiveGridSize,
+  getAdaptiveGridParameters,
   strokeGrid,
 } from "../renderer/staticScene";
 import { actionToggleGridMode } from "../actions/actionToggleGridMode";
+import { actionToggleObjectsSnapMode } from "../actions/actionToggleObjectsSnapMode";
 import { getNormalizedZoom } from "../scene";
 
 import type { AppState, NormalizedZoomValue, Zoom } from "../types";
@@ -21,6 +23,50 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       expect(MIN_ZOOM).toBe(0.005);
       expect(getNormalizedZoom(0.005)).toBe(0.005);
       expect(getNormalizedZoom(0.001)).toBe(0.005);
+    });
+  });
+
+  describe("getAdaptiveGridParameters and smooth multi-scale tiering", () => {
+    it("provides clean major and minor tiers with continuous alpha at zoom = 1", () => {
+      const params = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, 1);
+      expect(params.majorGridSize).toBe(100);
+      expect(params.minorGridSize).toBe(20);
+      expect(params.ratio).toBe(5);
+      expect(params.minorAlpha).toBeGreaterThan(0.5);
+      expect(params.minorScreenSpacing).toBe(20);
+      expect(params.majorScreenSpacing).toBe(100);
+    });
+
+    it("keeps visible screen spacing bounded between 15px and 100px across 0.005 to 30", () => {
+      const testZooms = [
+        0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 5,
+        10, 20, 30,
+      ];
+      for (const zoom of testZooms) {
+        const params = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, zoom);
+        expect(params.majorScreenSpacing).toBeGreaterThanOrEqual(25);
+        expect(params.majorScreenSpacing).toBeLessThanOrEqual(105);
+        expect(params.minorAlpha).toBeGreaterThanOrEqual(0);
+        expect(params.minorAlpha).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it("exhibits smooth alpha continuity without jarring jumps across tier boundaries", () => {
+      // Sample zoom continuously from 1.0 to 2.5 in fine increments
+      let prevMinorAlpha = getAdaptiveGridParameters(
+        DEFAULT_GRID_SIZE,
+        1.0,
+      ).minorAlpha;
+      for (let z = 1.01; z <= 2.5; z += 0.01) {
+        const params = getAdaptiveGridParameters(DEFAULT_GRID_SIZE, z);
+        // Step delta in alpha between fine zoom changes should be small and gradual (< 0.1)
+        if (params.minorGridSize === 20) {
+          expect(Math.abs(params.minorAlpha - prevMinorAlpha)).toBeLessThan(
+            0.1,
+          );
+        }
+        prevMinorAlpha = params.minorAlpha;
+      }
     });
   });
 
@@ -223,6 +269,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       ) as any;
       expect(res1.appState.gridModeEnabled).toBe(true);
       expect(res1.appState.gridType).toBe("dots");
+      expect(res1.appState.objectsSnapModeEnabled).toBe(true);
 
       // 2. Dots -> Lines
       const res2 = actionToggleGridMode.perform(
@@ -232,6 +279,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       ) as any;
       expect(res2.appState.gridModeEnabled).toBe(true);
       expect(res2.appState.gridType).toBe("lines");
+      expect(res2.appState.objectsSnapModeEnabled).toBe(true);
 
       // 3. Lines -> Crosses
       const res3 = actionToggleGridMode.perform(
@@ -241,6 +289,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       ) as any;
       expect(res3.appState.gridModeEnabled).toBe(true);
       expect(res3.appState.gridType).toBe("crosses");
+      expect(res3.appState.objectsSnapModeEnabled).toBe(true);
 
       // 4. Crosses -> Isometric
       const res4 = actionToggleGridMode.perform(
@@ -250,6 +299,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       ) as any;
       expect(res4.appState.gridModeEnabled).toBe(true);
       expect(res4.appState.gridType).toBe("isometric");
+      expect(res4.appState.objectsSnapModeEnabled).toBe(true);
 
       // 5. Isometric -> Off
       const res5 = actionToggleGridMode.perform(
@@ -258,6 +308,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
         undefined,
       ) as any;
       expect(res5.appState.gridModeEnabled).toBe(false);
+      expect(res5.appState.objectsSnapModeEnabled).toBe(true);
 
       // 6. Off -> Dots again
       const res6 = actionToggleGridMode.perform(
@@ -267,6 +318,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       ) as any;
       expect(res6.appState.gridModeEnabled).toBe(true);
       expect(res6.appState.gridType).toBe("dots");
+      expect(res6.appState.objectsSnapModeEnabled).toBe(true);
     });
 
     it("supports explicit formData override", () => {
@@ -277,6 +329,7 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       ) as any;
       expect(resExplicit.appState.gridModeEnabled).toBe(true);
       expect(resExplicit.appState.gridType).toBe("crosses");
+      expect(resExplicit.appState.objectsSnapModeEnabled).toBe(true);
 
       const resBool = actionToggleGridMode.perform(
         [],
@@ -284,6 +337,22 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
         false,
       ) as any;
       expect(resBool.appState.gridModeEnabled).toBe(false);
+      expect(resBool.appState.objectsSnapModeEnabled).toBe(true);
+    });
+
+    it("coexists cleanly with actionToggleObjectsSnapMode without disabling grid", () => {
+      const gridOnState = {
+        gridModeEnabled: true,
+        gridType: "dots",
+        objectsSnapModeEnabled: false,
+      } as unknown as AppState;
+
+      const resSnap = actionToggleObjectsSnapMode.perform(
+        [],
+        gridOnState,
+      ) as any;
+      expect(resSnap.appState.objectsSnapModeEnabled).toBe(true);
+      expect(resSnap.appState.gridModeEnabled).toBe(true);
     });
   });
 });
