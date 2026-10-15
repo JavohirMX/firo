@@ -19,7 +19,7 @@ right, this phase is a server and a provider.
 
 ## Tasks
 
-### 9.1 — The relay
+### 9.1 — The relay (Completed)
 
 A WebSocket server implementing the `y-websocket` protocol against `y-protocols`.
 
@@ -35,7 +35,7 @@ hibernating platforms.
 and what they may do. It does not decide what the board contains. This is what lets an
 offline client reconnect and merge.
 
-### 9.2 — Persistence
+### 9.2 — Persistence (Completed)
 
 SQLite. One row per Yjs update, plus a compacted snapshot. Assets on the
 content-addressed filesystem.
@@ -43,7 +43,7 @@ content-addressed filesystem.
 **Schema migrations run on start, idempotently.** Upgrading is replacing the
 container.
 
-### 9.3 — Accounts
+### 9.3 — Accounts (Completed)
 
 Local accounts ([ADR-0008](../adr/0008-local-accounts-on-self-hosted-server.md)).
 
@@ -53,13 +53,13 @@ Rate-limited auth endpoints. Registration open by default, disableable.
 **No email.** Password reset is an admin action. A self-hosted instance has no mail
 server and adding one makes the install worse for every user to serve a rare feature.
 
-### 9.4 — Roles
+### 9.4 — Roles (Completed)
 
 Owner, editor, commenter, viewer. **Authorisation is checked at connect and on every
 update.** A role change mid-session disconnects the client — checking only at connect
 means a demoted editor keeps writing.
 
-### 9.5 — Comments
+### 9.5 — Comments (Completed)
 
 Threaded, object-anchored, resolvable, mentionable. A comment survives its anchor
 being deleted, as a tombstone.
@@ -71,7 +71,7 @@ authorised separately from the element map — the pattern tldraw uses.
 **Do not implement comments as elements in the main map.** Then a commenter would need
 edit rights on the whole board, and the commenter role would be meaningless.
 
-### 9.6 — Presence
+### 9.6 — Presence (Completed)
 
 Live cursors, laser pointer, user list, follow-me, idle state. All through Yjs
 awareness — never the document.
@@ -79,7 +79,7 @@ awareness — never the document.
 This is where the v1 ephemeral/durable design pays off. There is no new
 architecture here, only a provider.
 
-### 9.7 — Share links
+### 9.7 — Share links (Completed)
 
 Capability URLs, 128 bits from a CSPRNG, scoped to one board and one role,
 **individually revocable**, optionally password-protected, optionally expirable.
@@ -90,7 +90,7 @@ carried in the URL fragment.
 **The honest limitation, which the UI must make obvious:** anyone with the link has
 the key. Revocation exists and creating links must be an explicit action.
 
-### 9.8 — Version history
+### 9.8 — Version history (Completed)
 
 Board snapshots with restore. Excalidraw retains deleted elements for 24 hours; we
 retain them until the board is compacted.

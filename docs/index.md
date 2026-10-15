@@ -63,6 +63,9 @@ The decisions that shaped everything else:
 | [0023](adr/0023-open-icons-and-ui-typeface.md) | Author our own icon set; adopt Plus Jakarta Sans for the chrome |
 | [0026](adr/0026-board-home-and-its-index.md) | The board home reads its index from the autosave store, beside the boards it names |
 | [0027](adr/0027-comments-are-their-own-lane.md) | Comments are their own durable lane, not elements or records |
+| [0028](adr/0028-project-layer-folders-and-content-search.md) | Folders, starring, and content search in the project layer |
+| [0029](adr/0029-the-rail-is-a-per-user-arrangement.md) | The creation rail is a per-user arrangement, and Select/Hand is one control |
+| [0030](adr/0030-keyboard-parity-with-miro.md) | Bind `G` and `M`, keep the numeric tool keys, and let the host own its own chrome keys |
 
 ## Document conventions
 

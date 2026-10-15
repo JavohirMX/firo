@@ -15,14 +15,15 @@ Each phase has an **exit criterion**. A phase is done when its criterion is met 
 | 6 | [Records and projections](plans/phase-6-records-and-projections.md) | One record store; table and board projections; **AC-3 passes in full.** Canvas projection renderer, switchable Board/Table/Grid views with zero reload, card drag-and-drop, inline cell editing, and document round-trip verified end-to-end |
 | 7 | [Persistence and formats](plans/phase-7-persistence-and-formats.md) | **AC-6 and AC-7 pass.** `.firo` round-trips losslessly; offline works fully. The container is now a directory, per [`ADR-0018`](adr/0018-a-firo-is-a-directory.md), so the 50 images AC-6 names are carried — including a test for exactly that board |
 | 7.5 | [Miro UI shell](plans/phase-7-5-miro-ui.md) | The board reads as Miro, not Excalidraw: Miro's shell (left creation rail, bottom-right navigation, board menu, right inspector, floating selection toolbar), a clean-default canvas, a board home with a template gallery, and object-anchored comments |
-| 8 | [Project layer](plans/phase-8-pm-layer.md) | Board index, folders, tags, search, activity |
-| 9 | [Sync server](plans/phase-9-sync-server.md) | **AC-12 passes.** One container, local accounts, roles, presence |
-| 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | Local-model AI, MCP server, VPAT published, Tauri shell |
+| 8 | [Project layer](plans/phase-8-pm-layer.md) | **Complete.** Board index, folders, tags, content search, activity feed, timeline projection ([`ADR-0028`](adr/0028-project-layer-folders-and-content-search.md)) |
+| 9 | [Sync server](plans/phase-9-sync-server.md) | **Complete. AC-12 passes in full.** Single container on port 8080, SQLite persistence, snapshot compaction, WebSocket relay, comment lane enforcement ([`ADR-0027`](adr/0027-comments-are-their-own-lane.md)), presence, share capability links |
+| 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | **In progress (Wave 1 complete).** Local AI engine (`@firo/ai`), MCP server (`@firo/mcp`), VPAT published, Tauri shell |
 
-Phases 0–7.5 are complete. **Phase 8 is in progress:** the board index — folders,
-starring, duplication (§8.1) — and cross-board content search (§8.2) shipped
-([`ADR-0028`](adr/0028-project-layer-folders-and-content-search.md)); element
-tags (§8.3), the activity feed (§8.4) and the timeline projection (§8.5) remain.
+Phases 0–9 are complete (Version 1 and Version 2 shipped). **Phase 10 is in progress:**
+Wave 1 shipped local-model AI (§10.1, `@firo/ai`) with zero cloud telemetry and
+undoable mutations, and the Model Context Protocol stdio server (§10.2, `@firo/mcp`)
+with declarative diffable board serialization; accessibility completion (§10.3),
+the Tauri desktop shell (§10.4), and doc blocks (§10.5) follow in Wave 2.
 
 ## Version boundaries
 
@@ -72,7 +73,7 @@ Phases 4 and 6 are the two largest by feature volume. Phase 6 is the larger arch
 | Risk | Phase | Mitigation |
 | --- | --- | --- |
 | The renderer rewrite does not achieve the budget | 2 | **Closed.** The gate measured it and the inherited renderer passes; no rewrite. [`ADR-0017`](adr/0017-do-not-rewrite-the-renderer.md) |
-| Yjs is the bottleneck at scale | 9 | Measure in Phase 9; Loro's API is compatible for a bounded swap ([`ADR-0002`](adr/0002-yjs-as-concurrency-engine.md)) |
+| Yjs is the bottleneck at scale | 9 | **Closed.** Phase 9 sync server and AC-12 verified Yjs WebSocket relay, SQLite persistence, and snapshot compaction (`apps/server/tests/ac12.test.ts`) |
 | Records and projections ship half-built | 6 | **Closed.** Three projections (Board, Table, Grid) built and tested in `@firo/records`; AC-3 verified end-to-end in `projectionView.test.tsx` |
 | A `.firo` cannot carry its images, or cannot be read as text | 7 | **Closed.** Directory format with `board.json` and content-addressed `assets/` implemented ([`ADR-0018`](adr/0018-a-firo-is-a-directory.md)); tested with 50 images |
 | **Excalidraw's tunnel API cannot express a left rail** | 7.5 | **Closed.** The five tunnels plus bounded `@firo/editor` edits render the rail, nav toolbar, board menu, inspector and selection toolbar ([`ADR-0022`](adr/0022-ui-package-owns-the-chrome.md)) |

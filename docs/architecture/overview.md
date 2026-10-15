@@ -10,14 +10,27 @@ Descriptive documentation of how the system fits together. For _why_ each choice
 ┌─────────────────────────────────────────────────────────┐
 │  apps/web            the PWA, menu, FacilitatorBar,      │
 │                      ProjectionView, SaveStatusIndicator │
-│                      storage.ts, .firo directory I/O     │
+│                      storage.ts, .firo directory I/O,    │
+│                      CollabProvider (WebSocket relay)    │
+├─────────────────────────────────────────────────────────┤
+│  apps/server         single container on port 8080,      │
+│                      SQLite storage, snapshot compaction,│
+│                      WebSocket relay, comment lane gate  │
+├─────────────────────────────────────────────────────────┤
+│  @firo/ui            Miro-style shell: creation rail,    │
+│                      board menu, inspector, nav bar,     │
+│                      selection toolbar, dialogs, icons   │
 ├─────────────────────────────────────────────────────────┤
 │  @firo/editor        the inherited Excalidraw editor:    │
-│                      App, renderer, interaction, chrome  │
+│                      App, renderer, interaction, canvas  │
 ├──────────────────────────┬──────────────────────────────┤
 │  @firo/facilitation      │  @firo/records               │
-│  voting, timer, private  │  pure projections: Board,    │
-│  mode, presentation      │  Table, Grid, ordering       │
+│  voting, timer, private  │  projections: Board, Table,  │
+│  mode, presentation      │  Grid, Timeline, ordering    │
+├──────────────────────────┼──────────────────────────────┤
+│  @firo/ai                │  @firo/mcp                   │
+│  local AI engine, Ollama │  Model Context Protocol stdio│
+│  adapter, zero telemetry │  server, declarative diffs   │
 ├──────────────────────────┴──────────────────────────────┤
 │  @firo/board         the seam. Projects the document     │
 │                      onto the editor's vocabulary, echo  │
@@ -49,19 +62,20 @@ This is the same shape as the single write path ([ADR-0016](../adr/0016-enforce-
 
 ## The target layering, for reference
 
-The status of the planned architecture across Version 1 and Version 2:
+The status of the planned architecture across Version 1, Version 2, and Version 3:
 
 | Package | Purpose | State |
 | --- | --- | --- |
-| `@firo/ui` | panels, dialogs, chrome, palette | planned — chrome is currently `@firo/editor`'s `LayerUI` |
+| `@firo/ui` | panels, dialogs, chrome, palette | **built and tested** (`packages/ui`) — Miro-style shell, creation rail, board menu, inspector, floating toolbar, Miro icons ([ADR-0021](../adr/0021-miro-style-shell-and-clean-aesthetic.md), [ADR-0022](../adr/0022-ui-package-owns-the-chrome.md), [ADR-0023](../adr/0023-open-icons-and-ui-typeface.md)) |
 | `@firo/interact` | input state machine, selection, transforms | planned — currently inside `components/App.tsx` |
 | `@firo/render` | canvas, level of detail, culling | **cancelled** — [`ADR-0017`](../adr/0017-do-not-rewrite-the-renderer.md) |
 | `@firo/facilitation` | voting, timer, private mode, presentation | **built and tested** (`packages/facilitation`) |
-| `@firo/records` | collections, columns, projections | **built and tested** (`packages/records`) — Phase 6 |
+| `@firo/records` | collections, columns, projections | **built and tested** (`packages/records`) — Board, Table, Grid, Timeline |
 | `@firo/text` | ProseMirror on canvas | planned — rich text editing embedded in app |
 | `@firo/storage` | IndexedDB, `.firo` directory format, I/O | **built in `apps/web/board/`** (`storage.ts`, `firoDirectory.ts`) |
-| `@firo/sync` | providers, and only providers | planned — Phase 9 (v2) |
-| `apps/server` | the relay | planned — Phase 9 (v2) |
+| `apps/server` | multiplayer sync server, SQLite, auth, relay | **built and tested** (`apps/server`) — single container, SQLite persistence, snapshot compaction, WebSocket relay with commenter permission boundary ([ADR-0027](../adr/0027-comments-are-their-own-lane.md)), AC-12 verified |
+| `@firo/mcp` | Model Context Protocol stdio server | **built and tested** (`packages/mcp`) — Phase 10.2 |
+| `@firo/ai` | local-first AI engine, local model client | **built and tested** (`packages/ai`) — Phase 10.1 |
 
 ## The four invariants
 

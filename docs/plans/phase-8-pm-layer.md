@@ -1,4 +1,6 @@
 # Phase 8 — Project layer
+> **Status: 100% COMPLETE & VERIFIED (Version 2)**
+> Shipped board index with folders, starring, duplication, content search across sticky notes, cards, comments, element tags, activity feed, and timeline projection.
 
 **Goal:** the board becomes an artefact that outlives the meeting.
 
