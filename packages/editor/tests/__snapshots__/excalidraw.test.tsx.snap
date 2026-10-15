@@ -2,7 +2,7 @@
 
 exports[`<Excalidraw/> > <MainMenu/> > should render main menu with host menu items if passed from host 1`] = `
 <div
-  aria-labelledby="radix-:r6r:"
+  aria-labelledby="radix-:r9l:"
   aria-orientation="vertical"
   class="dropdown-menu main-menu"
   data-align="start"
@@ -12,7 +12,7 @@ exports[`<Excalidraw/> > <MainMenu/> > should render main menu with host menu it
   data-state="open"
   data-testid="dropdown-menu"
   dir="ltr"
-  id="radix-:r6s:"
+  id="radix-:r9m:"
   role="menu"
   style="outline: none; --radix-dropdown-menu-content-transform-origin: var(--radix-popper-transform-origin); --radix-dropdown-menu-content-available-width: var(--radix-popper-available-width); --radix-dropdown-menu-content-available-height: var(--radix-popper-available-height); --radix-dropdown-menu-trigger-width: var(--radix-popper-anchor-width); --radix-dropdown-menu-trigger-height: var(--radix-popper-anchor-height); animation: none;"
   tabindex="-1"
@@ -157,15 +157,18 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
     class="Island dropdown-menu-container"
     style="--padding: 2;"
   >
-    <button
-      aria-label="Open"
-      class="radix-menu-item dropdown-menu-item dropdown-menu-item-base"
+    <div
+      aria-controls="radix-:rs:"
+      aria-expanded="false"
+      aria-haspopup="menu"
+      class="dropdown-menu-item dropdown-menu-item-base dropdown-menu__submenu-trigger"
       data-orientation="vertical"
       data-radix-collection-item=""
-      data-testid="load-button"
+      data-state="closed"
+      data-testid="import-submenu-trigger"
+      id="radix-:rt:"
       role="menuitem"
       tabindex="-1"
-      title="Open"
     >
       <div
         class="dropdown-menu-item__icon"
@@ -193,24 +196,51 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
         <span
           style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
         >
-          Open
+          Import
         </span>
       </div>
       <div
-        class="dropdown-menu-item__shortcut"
+        class="dropdown-menu__submenu-trigger-icon"
       >
-        Ctrl+O
+        <svg
+          aria-hidden="true"
+          class=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+        >
+          <g
+            stroke-width="1.5"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <polyline
+              points="9 6 15 12 9 18"
+            />
+          </g>
+        </svg>
       </div>
-    </button>
-    <button
-      aria-label="Save to..."
-      class="radix-menu-item dropdown-menu-item dropdown-menu-item-base"
+    </div>
+    <div
+      aria-controls="radix-:rv:"
+      aria-expanded="false"
+      aria-haspopup="menu"
+      class="dropdown-menu-item dropdown-menu-item-base dropdown-menu__submenu-trigger"
       data-orientation="vertical"
       data-radix-collection-item=""
-      data-testid="json-export-button"
+      data-state="closed"
+      data-testid="export-submenu-trigger"
+      id="radix-:r10:"
       role="menuitem"
       tabindex="-1"
-      title="Save to..."
     >
       <div
         class="dropdown-menu-item__icon"
@@ -238,22 +268,11 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
         <span
           style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
         >
-          Save to...
+          Export
         </span>
       </div>
-    </button>
-    <button
-      aria-label="Export image..."
-      class="radix-menu-item dropdown-menu-item dropdown-menu-item-base"
-      data-orientation="vertical"
-      data-radix-collection-item=""
-      data-testid="image-export-button"
-      role="menuitem"
-      tabindex="-1"
-      title="Export image..."
-    >
       <div
-        class="dropdown-menu-item__icon"
+        class="dropdown-menu__submenu-trigger-icon"
       >
         <svg
           aria-hidden="true"
@@ -268,49 +287,20 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
           viewBox="0 0 24 24"
         >
           <g
-            stroke-width="1.25"
+            stroke-width="1.5"
           >
             <path
               d="M0 0h24v24H0z"
               fill="none"
               stroke="none"
             />
-            <path
-              d="M15 8h.01"
-            />
-            <path
-              d="M12 20h-5a3 3 0 0 1 -3 -3v-10a3 3 0 0 1 3 -3h10a3 3 0 0 1 3 3v5"
-            />
-            <path
-              d="M4 15l4 -4c.928 -.893 2.072 -.893 3 0l4 4"
-            />
-            <path
-              d="M14 14l1 -1c.617 -.593 1.328 -.793 2.009 -.598"
-            />
-            <path
-              d="M19 16v6"
-            />
-            <path
-              d="M22 19l-3 3l-3 -3"
+            <polyline
+              points="9 6 15 12 9 18"
             />
           </g>
         </svg>
       </div>
-      <div
-        class="dropdown-menu-item__text"
-      >
-        <span
-          style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
-        >
-          Export image...
-        </span>
-      </div>
-      <div
-        class="dropdown-menu-item__shortcut"
-      >
-        Ctrl+Shift+E
-      </div>
-    </button>
+    </div>
     <button
       aria-label="Find on canvas"
       class="radix-menu-item dropdown-menu-item dropdown-menu-item-base"
@@ -474,8 +464,113 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
       </div>
     </button>
     <div
+      class="dropdown-menu-separator"
       style="height: 1px; margin: 6px 0px; flex: 0 0 auto;"
     />
+    <div
+      aria-controls="radix-:r15:"
+      aria-expanded="false"
+      aria-haspopup="menu"
+      class="dropdown-menu-item dropdown-menu-item-base dropdown-menu__submenu-trigger"
+      data-orientation="vertical"
+      data-radix-collection-item=""
+      data-state="closed"
+      id="radix-:r16:"
+      role="menuitem"
+      tabindex="-1"
+    >
+      <div
+        class="dropdown-menu-item__icon"
+      >
+        <svg
+          aria-hidden="true"
+          class=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+        >
+          <g
+            stroke-width="1.25"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"
+            />
+            <path
+              d="M4 6l8 0"
+            />
+            <path
+              d="M16 6l4 0"
+            />
+            <path
+              d="M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"
+            />
+            <path
+              d="M4 12l2 0"
+            />
+            <path
+              d="M10 12l10 0"
+            />
+            <path
+              d="M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"
+            />
+            <path
+              d="M4 18l11 0"
+            />
+            <path
+              d="M19 18l1 0"
+            />
+          </g>
+        </svg>
+      </div>
+      <div
+        class="dropdown-menu-item__text"
+      >
+        <span
+          style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
+        >
+          Preferences
+        </span>
+      </div>
+      <div
+        class="dropdown-menu__submenu-trigger-icon"
+      >
+        <svg
+          aria-hidden="true"
+          class=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+        >
+          <g
+            stroke-width="1.5"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <polyline
+              points="9 6 15 12 9 18"
+            />
+          </g>
+        </svg>
+      </div>
+    </div>
     <button
       aria-label="Dark mode"
       class="radix-menu-item dropdown-menu-item dropdown-menu-item-base"
@@ -607,7 +702,7 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
             style="width: 1px; height: 1rem; margin: 0px auto;"
           />
           <button
-            aria-controls="radix-:r13:"
+            aria-controls="radix-:r19:"
             aria-expanded="false"
             aria-haspopup="dialog"
             aria-label="Canvas background"

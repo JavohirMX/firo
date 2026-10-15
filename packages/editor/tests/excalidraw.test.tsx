@@ -362,6 +362,9 @@ describe("<Excalidraw/>", () => {
       const { container } = await render(<Excalidraw />);
       //open menu
       toggleMenu(container);
+      fireEvent.keyDown(queryByTestId(container, "export-submenu-trigger")!, {
+        key: "ArrowRight",
+      });
       fireEvent.click(queryByTestId(container, "image-export-button")!);
       const textInput: HTMLInputElement | null = document.querySelector(
         ".ImageExportModal .ImageExportModal__preview__filename .TextInput",
@@ -375,6 +378,9 @@ describe("<Excalidraw/>", () => {
       const { container } = await render(<Excalidraw name={name} />);
       //open menu
       toggleMenu(container);
+      fireEvent.keyDown(queryByTestId(container, "export-submenu-trigger")!, {
+        key: "ArrowRight",
+      });
       await fireEvent.click(queryByTestId(container, "image-export-button")!);
       const textInput = document.querySelector(
         ".ImageExportModal .ImageExportModal__preview__filename .TextInput",

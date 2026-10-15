@@ -110,17 +110,12 @@ interface LayerUIProps {
 
 const DefaultMainMenu: React.FC<{
   UIOptions: AppProps["UIOptions"];
-}> = ({ UIOptions }) => {
+}> = ({ UIOptions: _UIOptions }) => {
   return (
     <MainMenu __fallback>
-      <MainMenu.DefaultItems.LoadScene />
+      <MainMenu.DefaultItems.ImportSubMenu />
+      <MainMenu.DefaultItems.ExportSubMenu />
       <MainMenu.DefaultItems.SaveToActiveFile />
-      {/* FIXME we should to test for this inside the item itself */}
-      {UIOptions.canvasActions.export && <MainMenu.DefaultItems.Export />}
-      {/* FIXME we should to test for this inside the item itself */}
-      {UIOptions.canvasActions.saveAsImage && (
-        <MainMenu.DefaultItems.SaveAsImage />
-      )}
       <MainMenu.DefaultItems.SearchMenu />
       <MainMenu.DefaultItems.Help />
       <MainMenu.DefaultItems.ClearCanvas />
@@ -130,6 +125,7 @@ const DefaultMainMenu: React.FC<{
         GitHub repo, X account and Discord server, which are not Firo's. Add a
         group here when Firo has somewhere of its own to point.
       */}
+      <MainMenu.DefaultItems.Preferences />
       <MainMenu.DefaultItems.ToggleTheme allowSystemTheme={false} />
       <MainMenu.DefaultItems.ChangeCanvasBackground />
     </MainMenu>

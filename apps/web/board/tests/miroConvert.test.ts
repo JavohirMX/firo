@@ -155,6 +155,82 @@ describe("Miro conversion", () => {
       expect(bindings[0].elementId).toBe("n1");
       expect(bindings[1].elementId).toBe("n2");
     });
+
+    it("translates frame-relative coordinates to absolute canvas positions", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "frame_parent",
+          type: "frame",
+          data: { title: "Section" },
+          position: { x: 1000, y: 1000, origin: "center" }, // top-left is 600, 700
+          geometry: { width: 800, height: 600 },
+        },
+        {
+          id: "child_note",
+          type: "sticky_note",
+          parentId: "frame_parent",
+          data: { content: "Child Note" },
+          position: { x: 100, y: 150, origin: "top-left" },
+          geometry: { width: 100, height: 100 },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const child = board.elements.find((e) => e.id === "child_note");
+
+      expect(child).toBeDefined();
+      // Frame top-left is 1000 - 400 = 600, 1000 - 300 = 700.
+      // Relative child top-left 100, 150 -> absolute canvas 700, 850.
+      expect(child?.x).toBe(700);
+      expect(child?.y).toBe(850);
+      expect(child?.frameId).toBe("frame_parent");
+    });
+
+    it("resolves images using URL resource ID and maps to assets", async () => {
+      const fakePng = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      const mediaFiles = new Map<string, Uint8Array>([["88888", fakePng]]);
+
+      const miroItems: MiroItem[] = [
+        {
+          id: "img_1",
+          type: "image",
+          data: {
+            url: "https://miro.com/api/v1/boards/uXjVO123/resources/88888/download",
+          },
+          position: { x: 200, y: 200 },
+          geometry: { width: 400, height: 300 },
+        },
+      ];
+
+      const { board, assetsToPut } = await convertMiroItemsToFiro(miroItems, {
+        mediaFiles,
+      });
+
+      expect(board.elements.length).toBe(1);
+      const img = board.elements[0];
+      expect(img.type).toBe("image");
+      expect(img.fileId).toBeTruthy();
+      expect(assetsToPut.size).toBe(1);
+      const firstAsset = Array.from(assetsToPut.values())[0];
+      expect(firstAsset.mimeType).toBe("image/png");
+    });
+
+    it("picks high-contrast white text for dark sticky note backgrounds", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "dark_note",
+          type: "sticky_note",
+          data: { content: "Dark Note" },
+          style: { fillColor: "black" },
+          position: { x: 0, y: 0 },
+          geometry: { width: 100, height: 100 },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const note = board.elements[0];
+      expect(note.strokeColor).toBe("#ffffff");
+    });
   });
 
   describe("Firo to Miro export", () => {

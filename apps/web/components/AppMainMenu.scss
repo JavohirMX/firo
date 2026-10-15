@@ -1,0 +1,28 @@
+.main-menu-language-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 2rem;
+  padding: 0 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.875rem;
+  color: var(--color-on-surface);
+
+  .main-menu-language-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--color-on-surface);
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .dropdown-select__language {
+    max-width: 9.5rem;
+    height: 1.75rem;
+    cursor: pointer;
+  }
+}

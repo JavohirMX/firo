@@ -8,6 +8,7 @@ export interface MiroPosition {
   x: number;
   y: number;
   origin?: "center" | "top-left";
+  relativeTo?: "canvas_center" | "parent_top_left" | string;
 }
 
 export interface MiroGeometry {
@@ -31,6 +32,11 @@ export interface MiroStyle {
   strokeStyle?: string;
   strokeWidth?: number | string;
   cardTheme?: string;
+  startCap?: string;
+  startStrokeCap?: string;
+  endCap?: string;
+  endStrokeCap?: string;
+  [key: string]: unknown;
 }
 
 export interface MiroItemData {

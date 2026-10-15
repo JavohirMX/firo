@@ -40,6 +40,7 @@ import Trans from "../Trans";
 import DropdownMenuItem from "../dropdownMenu/DropdownMenuItem";
 import DropdownMenuItemCheckbox from "../dropdownMenu/DropdownMenuItemCheckbox";
 import DropdownMenuItemContentRadio from "../dropdownMenu/DropdownMenuItemContentRadio";
+import DropdownMenuSeparator from "../dropdownMenu/DropdownMenuSeparator";
 import DropdownMenuSub from "../dropdownMenu/DropdownMenuSub";
 import { settingsIcon, emptyIcon } from "../icons";
 import {
@@ -431,8 +432,13 @@ export const ChangeCanvasBackground = () => {
 ChangeCanvasBackground.displayName = "ChangeCanvasBackground";
 
 export const Export = () => {
-  const { t } = useI18n();
   const setAppState = useExcalidrawSetAppState();
+  const appProps = useAppProps();
+
+  if (!appProps.UIOptions.canvasActions.export) {
+    return null;
+  }
+
   return (
     <DropdownMenuItem
       icon={ExportIcon}
@@ -440,13 +446,112 @@ export const Export = () => {
         setAppState({ openDialog: { name: "jsonExport" } });
       }}
       data-testid="json-export-button"
-      aria-label={t("buttons.export")}
+      aria-label="Export Excalidraw scene (.json)"
     >
-      {t("buttons.export")}
+      {"Export Excalidraw scene (.json)..."}
     </DropdownMenuItem>
   );
 };
 Export.displayName = "Export";
+
+export const ExportSubMenu = ({
+  children,
+  additionalItems,
+}: {
+  children?: React.ReactNode;
+  additionalItems?: React.ReactNode;
+} = {}) => {
+  const appProps = useAppProps();
+  const actionManager = useExcalidrawActionManager();
+
+  if (!children) {
+    const hasFiroExport = Boolean(actionManager.actions.exportFiroFile);
+    const hasMiroExport = Boolean(actionManager.actions.exportMiroScript);
+    const hasImageExport = Boolean(
+      appProps.UIOptions.canvasActions.saveAsImage,
+    );
+    const hasJsonExport = Boolean(appProps.UIOptions.canvasActions.export);
+
+    if (
+      !hasFiroExport &&
+      !hasMiroExport &&
+      !hasImageExport &&
+      !hasJsonExport &&
+      !additionalItems
+    ) {
+      return null;
+    }
+  }
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSub.Trigger
+        icon={ExportIcon}
+        data-testid="export-submenu-trigger"
+      >
+        {"Export"}
+      </DropdownMenuSub.Trigger>
+      <DropdownMenuSub.Content className="excalidraw-main-menu-export-submenu">
+        {children || (
+          <>
+            <SaveAsFiroFile />
+            <SaveAsImage />
+            <ExportMiroScript />
+            <Export />
+          </>
+        )}
+        {additionalItems}
+      </DropdownMenuSub.Content>
+    </DropdownMenuSub>
+  );
+};
+ExportSubMenu.displayName = "ExportSubMenu";
+ExportSubMenu.SaveAsFiroFile = SaveAsFiroFile;
+ExportSubMenu.SaveAsImage = SaveAsImage;
+ExportSubMenu.ExportMiroScript = ExportMiroScript;
+ExportSubMenu.Export = Export;
+
+export const ImportSubMenu = ({
+  children,
+  additionalItems,
+}: {
+  children?: React.ReactNode;
+  additionalItems?: React.ReactNode;
+} = {}) => {
+  const actionManager = useExcalidrawActionManager();
+
+  if (!children) {
+    const hasFiroImport = Boolean(actionManager.actions.importFiroFile);
+    const hasSceneLoad = actionManager.isActionEnabled(actionLoadScene);
+
+    if (!hasFiroImport && !hasSceneLoad && !additionalItems) {
+      return null;
+    }
+  }
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSub.Trigger
+        icon={LoadIcon}
+        data-testid="import-submenu-trigger"
+      >
+        {"Import"}
+      </DropdownMenuSub.Trigger>
+      <DropdownMenuSub.Content className="excalidraw-main-menu-import-submenu">
+        {children || (
+          <>
+            <LoadFromFiroFile />
+            <LoadScene />
+          </>
+        )}
+        {additionalItems}
+      </DropdownMenuSub.Content>
+    </DropdownMenuSub>
+  );
+};
+ImportSubMenu.displayName = "ImportSubMenu";
+ImportSubMenu.LoadFromFiroFile = LoadFromFiroFile;
+ImportSubMenu.LoadScene = LoadScene;
 
 export const LiveCollaborationTrigger = ({
   onSelect,
@@ -472,7 +577,7 @@ export const LiveCollaborationTrigger = ({
 
 LiveCollaborationTrigger.displayName = "LiveCollaborationTrigger";
 
-const PreferencesToggleToolLockItem = () => {
+export const PreferencesToggleToolLockItem = () => {
   const { t } = useI18n();
   const app = useApp();
   const appState = useUIAppState();
@@ -490,8 +595,9 @@ const PreferencesToggleToolLockItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleToolLockItem.displayName = "PreferencesToggleToolLockItem";
 
-const PreferencesBoxSelectionModeItem = () => {
+export const PreferencesBoxSelectionModeItem = () => {
   const { t } = useI18n();
   const appState = useUIAppState();
   const setAppState = useExcalidrawSetAppState();
@@ -523,8 +629,9 @@ const PreferencesBoxSelectionModeItem = () => {
     </DropdownMenuItemContentRadio>
   );
 };
+PreferencesBoxSelectionModeItem.displayName = "PreferencesBoxSelectionModeItem";
 
-const PreferencesInputDeviceItem = () => {
+export const PreferencesInputDeviceItem = () => {
   const { t } = useI18n();
   const appState = useUIAppState();
   const setAppState = useExcalidrawSetAppState();
@@ -557,8 +664,9 @@ const PreferencesInputDeviceItem = () => {
     </DropdownMenuItemContentRadio>
   );
 };
+PreferencesInputDeviceItem.displayName = "PreferencesInputDeviceItem";
 
-const PreferencesToggleSnapModeItem = () => {
+export const PreferencesToggleSnapModeItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
@@ -575,8 +683,9 @@ const PreferencesToggleSnapModeItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleSnapModeItem.displayName = "PreferencesToggleSnapModeItem";
 
-const PreferencesToggleArrowBindingItem = () => {
+export const PreferencesToggleArrowBindingItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
@@ -592,8 +701,10 @@ const PreferencesToggleArrowBindingItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleArrowBindingItem.displayName =
+  "PreferencesToggleArrowBindingItem";
 
-const PreferencesToggleMidpointSnappingItem = () => {
+export const PreferencesToggleMidpointSnappingItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
@@ -609,8 +720,10 @@ const PreferencesToggleMidpointSnappingItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleMidpointSnappingItem.displayName =
+  "PreferencesToggleMidpointSnappingItem";
 
-const PreferencesToggleShowHintsItem = () => {
+export const PreferencesToggleShowHintsItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
@@ -626,6 +739,7 @@ const PreferencesToggleShowHintsItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleShowHintsItem.displayName = "PreferencesToggleShowHintsItem";
 
 export const PreferencesToggleGridModeItem = () => {
   const { t } = useI18n();
@@ -645,6 +759,7 @@ export const PreferencesToggleGridModeItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleGridModeItem.displayName = "PreferencesToggleGridModeItem";
 
 export const PreferencesToggleZenModeItem = () => {
   const { t } = useI18n();
@@ -663,8 +778,9 @@ export const PreferencesToggleZenModeItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleZenModeItem.displayName = "PreferencesToggleZenModeItem";
 
-const PreferencesToggleViewModeItem = () => {
+export const PreferencesToggleViewModeItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
@@ -684,8 +800,9 @@ const PreferencesToggleViewModeItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleViewModeItem.displayName = "PreferencesToggleViewModeItem";
 
-const PreferencesToggleElementPropertiesItem = () => {
+export const PreferencesToggleElementPropertiesItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
@@ -702,6 +819,8 @@ const PreferencesToggleElementPropertiesItem = () => {
     </DropdownMenuItemCheckbox>
   );
 };
+PreferencesToggleElementPropertiesItem.displayName =
+  "PreferencesToggleElementPropertiesItem";
 
 export const Preferences = ({
   children,
@@ -719,17 +838,19 @@ export const Preferences = ({
       <DropdownMenuSub.Content className="excalidraw-main-menu-preferences-submenu">
         {children || (
           <>
-            <PreferencesBoxSelectionModeItem />
-            <PreferencesInputDeviceItem />
-            <PreferencesToggleToolLockItem />
             <PreferencesToggleSnapModeItem />
+            <PreferencesToggleMidpointSnappingItem />
+            <PreferencesToggleArrowBindingItem />
+            <PreferencesToggleToolLockItem />
+            <DropdownMenuSeparator />
             <PreferencesToggleGridModeItem />
             <PreferencesToggleZenModeItem />
             <PreferencesToggleViewModeItem />
-            <PreferencesToggleElementPropertiesItem />
-            <PreferencesToggleArrowBindingItem />
-            <PreferencesToggleMidpointSnappingItem />
             <PreferencesToggleShowHintsItem />
+            <PreferencesToggleElementPropertiesItem />
+            <DropdownMenuSeparator />
+            <PreferencesInputDeviceItem />
+            <PreferencesBoxSelectionModeItem />
           </>
         )}
         {additionalItems}

@@ -362,18 +362,26 @@ export const createBoard = async ({
   color,
   payload,
 }: {
-  id: string;
+  id?: string;
   name: string;
   tags?: string[];
   color?: string;
   payload?: string;
 }): Promise<BoardMeta> => {
-  if (payload !== undefined) {
-    await writeBoardPayload(id, payload);
+  const boardIdentity = id ? { id, mutation: null } : mintBoardId();
+  const boardId = boardIdentity.id;
+  let boardPayload = payload;
+  if (boardPayload === undefined && boardIdentity.mutation) {
+    const doc = createFiroDoc();
+    doc.commit([boardIdentity.mutation]);
+    boardPayload = JSON.stringify(serializeBoard(doc.read()));
   }
-  const meta = await putBoardMeta({ id, name, tags, color });
+  if (boardPayload !== undefined) {
+    await writeBoardPayload(boardId, boardPayload);
+  }
+  const meta = await putBoardMeta({ id: boardId, name, tags, color });
   void recordActivity({
-    boardId: id,
+    boardId,
     boardName: name,
     kind: "create",
     summary: `Created board "${name}"`,

@@ -2,6 +2,7 @@ import React from "react";
 
 const MenuSeparator = () => (
   <div
+    className="dropdown-menu-separator"
     style={{
       height: "1px",
       backgroundColor: "var(--default-border-color)",
