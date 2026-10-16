@@ -351,7 +351,12 @@ describe("grid pixel snap", () => {
 
   it("centers one-pixel grid lines on device pixels at any zoom", async () => {
     await render(<Excalidraw />);
-    API.setAppState({ width: 800, height: 600, gridModeEnabled: true });
+    API.setAppState({
+      width: 800,
+      height: 600,
+      gridModeEnabled: true,
+      gridType: "lines",
+    });
     // zooms at which a grid line is at least a device pixel wide — 1.9
     // included, where `(1 / zoom) × zoom` evaluates just under 1
     for (const zoom of [1, 1.5, 1.9, 2.2]) {

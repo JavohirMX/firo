@@ -5163,14 +5163,6 @@ class App extends React.Component<AppProps, AppState> {
         // Shape switching
         if (event.key === KEYS.ESCAPE) {
           this.updateEditorAtom(convertElementTypePopupAtom, null);
-          if (
-            this.state.activeTool.type !== "selection" &&
-            this.state.activeTool.type !== "hand"
-          ) {
-            this.setActiveTool({ type: "selection" });
-            this.cursor.reset();
-            return;
-          }
         } else if (
           event.key === KEYS.TAB &&
           (this.ownerDocument.activeElement ===

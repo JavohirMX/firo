@@ -480,9 +480,11 @@ describe("Test dragCreate", () => {
       expect(renderInteractiveScene.mock.calls.length).toMatchInlineSnapshot(
         `5`,
       );
-      expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`5`);
       expect(h.state.selectionElement).toBeNull();
-      expect(h.elements.length).toEqual(0);
+      expect(h.elements.length).toEqual(1);
+      expect(h.elements[0].type).toBe("rectangle");
+      expect(h.elements[0].width).toBe(100);
+      expect(h.elements[0].height).toBe(100);
     });
 
     it("ellipse", async () => {
@@ -504,7 +506,10 @@ describe("Test dragCreate", () => {
       );
       expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`5`);
       expect(h.state.selectionElement).toBeNull();
-      expect(h.elements.length).toEqual(0);
+      expect(h.elements.length).toEqual(1);
+      expect(h.elements[0].type).toBe("ellipse");
+      expect(h.elements[0].width).toBe(100);
+      expect(h.elements[0].height).toBe(100);
     });
 
     it("diamond", async () => {
@@ -526,7 +531,10 @@ describe("Test dragCreate", () => {
       );
       expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`5`);
       expect(h.state.selectionElement).toBeNull();
-      expect(h.elements.length).toEqual(0);
+      expect(h.elements.length).toEqual(1);
+      expect(h.elements[0].type).toBe("diamond");
+      expect(h.elements[0].width).toBe(100);
+      expect(h.elements[0].height).toBe(100);
     });
 
     it("arrow", async () => {

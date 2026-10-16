@@ -378,7 +378,7 @@ export const strokeGrid = (
     const center = widthInDevicePixels % 2 ? 0.5 : 0;
     return {
       position:
-        (Math.round(position * devicePixels - center) + center) / devicePixels,
+        (Math.round(position * devicePixels - 0.5) + 0.5) / devicePixels,
       lineWidth: widthInDevicePixels / devicePixels,
     };
   };

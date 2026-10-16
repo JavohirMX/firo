@@ -24,7 +24,12 @@ export class AppMiroSticky {
     if (container) {
       return false;
     }
-    if (this.app.text.getTextElementAtPosition(sceneX, sceneY)) {
+    if (
+      this.app.getElementAtPosition(sceneX, sceneY, {
+        includeLockedElements: true,
+        includeBoundTextElement: true,
+      })
+    ) {
       return false;
     }
     if (event.altKey) {
