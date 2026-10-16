@@ -88,7 +88,8 @@ const getTreeItems = async (page) =>
 console.log("Starting browser accessibility contract verification...");
 
 const pageErrors = [];
-const browser = await chromium.launch({ headless: false });
+const headless = process.env.HEADLESS !== "false";
+const browser = await chromium.launch({ headless });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
 

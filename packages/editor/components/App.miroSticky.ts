@@ -89,6 +89,15 @@ export class AppMiroSticky {
       return false;
     }
 
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest?.(
+        '[role="dialog"], [role="menu"], [aria-modal="true"], .modal, .firo-share-modal, .firo-activity-feed, .firo-template-modal',
+      )
+    ) {
+      return false;
+    }
+
     const note = selectedElements[0] as ExcalidrawStickyNoteElement;
 
     if (event.key === KEYS.TAB) {
