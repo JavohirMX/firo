@@ -58,6 +58,8 @@ export interface MiroConnectorEndpoint {
 export interface MiroCaption {
   content: string;
   position?: number;
+  title?: string;
+  [key: string]: unknown;
 }
 
 export interface MiroItem {

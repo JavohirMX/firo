@@ -268,6 +268,17 @@ export const renderConnectionDots = (
     return;
   }
 
+  // Do not render connection dots during active resizing, rotating, or dragging gestures
+  // to avoid interfering with resize handles or creating visual noise.
+  if (
+    (appState as any).isResizing ||
+    appState.isRotating ||
+    (appState as any).isDragging ||
+    Boolean((appState as any).hoveredTransformHandle)
+  ) {
+    return;
+  }
+
   let map = elementsMap;
   if (!map || !map.has(element.id)) {
     map = new Map(elementsMap);
@@ -275,10 +286,15 @@ export const renderConnectionDots = (
   }
 
   const midpoints = getAllMidpoints(element, map);
-  const dotRadius = 4.5 / appState.zoom.value;
-  const strokeWidth = 1.5 / appState.zoom.value;
-  const fill = appState.theme === THEME.DARK ? "#6988ff" : "#4262ff";
-  const stroke = "#ffffff";
+  const baseRadius = 4.5 / appState.zoom.value;
+  const baseStrokeWidth = 1.5 / appState.zoom.value;
+  const defaultFill = appState.theme === THEME.DARK ? "#6988ff" : "#4262ff";
+  const defaultStroke = "#ffffff";
+
+  // Miro magnetic snapping radius (8px in viewport pixels, scaled by zoom)
+  const SNAP_RADIUS = 8 / appState.zoom.value;
+  const pointerCoords =
+    (appState as any).pointerCoords || (appState as any).lastPointerMoveCoords;
 
   context.save();
   if (!translated) {
@@ -286,13 +302,37 @@ export const renderConnectionDots = (
   }
 
   for (const midpoint of midpoints) {
+    let dotRadius = baseRadius;
+    let strokeWidth = baseStrokeWidth;
+    let fill = defaultFill;
+
+    if (pointerCoords) {
+      const px =
+        typeof (pointerCoords as any).x === "number"
+          ? (pointerCoords as any).x
+          : (pointerCoords as any)[0];
+      const py =
+        typeof (pointerCoords as any).y === "number"
+          ? (pointerCoords as any).y
+          : (pointerCoords as any)[1];
+      if (typeof px === "number" && typeof py === "number") {
+        const dist = pointDistance(midpoint, pointFrom<GlobalPoint>(px, py));
+        if (dist <= SNAP_RADIUS) {
+          // Magnetically snap and emphasize dot responsiveness
+          dotRadius = 6 / appState.zoom.value;
+          strokeWidth = 2 / appState.zoom.value;
+          fill = appState.theme === THEME.DARK ? "#85a0ff" : "#2e51ff";
+        }
+      }
+    }
+
     context.save();
     context.beginPath();
     context.arc(midpoint[0], midpoint[1], dotRadius, 0, 2 * Math.PI);
     context.fillStyle = fill;
     context.fill();
     context.lineWidth = strokeWidth;
-    context.strokeStyle = stroke;
+    context.strokeStyle = defaultStroke;
     context.stroke();
     context.restore();
   }

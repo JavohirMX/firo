@@ -2,20 +2,27 @@
  * Converts Miro board items into valid Firo schema elements and boards.
  *
  * Handles:
- * - Frame hierarchy and frame-relative coordinate translation
+ * - Multi-level frame/section/card hierarchy and recursive coordinate cascades
  * - Sticky notes (square and rectangle, dynamic font scaling, contrast text color)
  * - Shapes (rectangles, rounded rectangles, ellipses, diamonds) with bound text
  * - Standalone text with auto-fitting width and alignment
- * - Frames and containment hierarchy
- * - Connectors and lines with real endpoint positions, item bindings, and arrowheads
+ * - Frames and sections with containment hierarchy
+ * - Connectors: orthogonal elbow routing, curves, line endings, and bound labels
+ * - Rich text conversion into ProseMirror format
  * - Multi-strategy image resolution from Miro .rtb backup archives
- * - Layer ordering (frames in background, shapes, images, stickies, text, connectors on top)
+ * - Stratified z-index layer ordering (outer frames, inner frames, shapes, images, stickies, text, connectors on top)
  */
 import { hashBytes } from "@firo/doc";
 
+import { miroHtmlToProseMirror } from "./htmlToProseMirror";
 import { miroHtmlToPlainText } from "./htmlToText";
 
-import type { MiroBoardMeta, MiroItem, MiroResourceMeta } from "./types";
+import type {
+  MiroBoardMeta,
+  MiroCaption,
+  MiroItem,
+  MiroResourceMeta,
+} from "./types";
 
 const MIRO_COLOR_MAP: Readonly<Record<string, string>> = {
   light_yellow: "#fff9b8",
@@ -72,6 +79,58 @@ export const getContrastingTextColor = (bgColor: string): string => {
   return "#1e1e1e";
 };
 
+/** Map Miro line endings / stroke caps to valid Firo Arrowheads. */
+export const mapMiroCapToArrowhead = (
+  cap: string | undefined | null,
+):
+  | "arrow"
+  | "triangle"
+  | "circle"
+  | "circle_outline"
+  | "diamond"
+  | "diamond_outline"
+  | "bar"
+  | "crowfoot_one"
+  | "crowfoot_many"
+  | null => {
+  if (!cap) {
+    return null;
+  }
+  const lower = cap.toLowerCase().trim();
+  switch (lower) {
+    case "arrow":
+    case "stealth":
+    case "open_arrow":
+    case "pointed_arrow":
+      return "arrow";
+    case "triangle":
+    case "filled_triangle":
+    case "filled_arrow":
+      return "triangle";
+    case "circle":
+    case "oval":
+    case "filled_circle":
+      return "circle";
+    case "circle_outline":
+      return "circle_outline";
+    case "diamond":
+    case "rhombus":
+    case "filled_diamond":
+      return "diamond";
+    case "diamond_outline":
+      return "diamond_outline";
+    case "bar":
+      return "bar";
+    case "crowfoot_one":
+      return "crowfoot_one";
+    case "crowfoot_many":
+      return "crowfoot_many";
+    case "none":
+    default:
+      return null;
+  }
+};
+
 export interface Bounds {
   x: number;
   y: number;
@@ -113,70 +172,74 @@ export const convertMiroItemsToFiro = async (
   options: ConvertMiroOptions = {},
 ): Promise<MiroConversionResult> => {
   const warnings: string[] = [];
-  const elements: Record<string, unknown>[] = [];
+  const elements: (Record<string, unknown> & { _miroIndex?: number })[] = [];
   const assetsToPut = new Map<string, ConvertedAsset>();
 
-  // Map Miro item ID to Firo element ID
-  const idMap = new Map<string, string>();
-  for (const item of items) {
-    if (item.id) {
-      idMap.set(String(item.id), String(item.id));
-    }
-  }
-
   // --------------------------------------------------------------------------
-  // Pass 1: Index frames and calculate their absolute top-left coordinates
+  // Pass 1: Index items by ID
   // --------------------------------------------------------------------------
-  interface FrameInfo {
-    id: string;
-    x: number; // top-left
-    y: number; // top-left
-    width: number;
-    height: number;
-  }
-  const framesById = new Map<string, FrameInfo>();
-
-  for (const item of items) {
-    if (item.type === "frame") {
-      const width = Math.max(10, item.geometry?.width ?? item.width ?? 800);
-      const height = Math.max(10, item.geometry?.height ?? item.height ?? 600);
-      const rawX = item.position?.x ?? item.x ?? 0;
-      const rawY = item.position?.y ?? item.y ?? 0;
-      const origin = item.position?.origin ?? "center";
-
-      // If origin is center, top-left is rawX - width / 2
-      const x = origin === "top-left" ? rawX : rawX - width / 2;
-      const y = origin === "top-left" ? rawY : rawY - height / 2;
-
-      framesById.set(String(item.id), {
-        id: String(item.id),
-        x,
-        y,
-        width,
-        height,
-      });
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // Pass 2: Calculate absolute canvas bounds for each item
-  // In Miro, child items inside a frame have coordinates relative to frame top-left!
-  // --------------------------------------------------------------------------
-  const itemBoundsMap = new Map<string, Bounds>();
-
+  const itemsById = new Map<string, MiroItem>();
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const id = String(item.id || `miro_${i}`);
+    itemsById.set(id, item);
+  }
+
+  // --------------------------------------------------------------------------
+  // Pass 2: Calculate absolute canvas bounds for each item with recursive cascade
+  // For arbitrarily nested elements (stickies inside cards inside frames inside sections).
+  // In Miro, child items inside a parent have coordinates measured from the parent's top-left.
+  // --------------------------------------------------------------------------
+  interface ComputedBounds {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    angle: number;
+  }
+  const itemBoundsMap = new Map<string, ComputedBounds>();
+  const visiting = new Set<string>();
+
+  const getAbsoluteBounds = (itemId: string): ComputedBounds => {
+    if (itemBoundsMap.has(itemId)) {
+      return itemBoundsMap.get(itemId)!;
+    }
+    const item = itemsById.get(itemId);
+    if (!item) {
+      return { x: 0, y: 0, width: 150, height: 150, angle: 0 };
+    }
+    if (visiting.has(itemId)) {
+      // Cycle detected, break cycle gracefully
+      return { x: 0, y: 0, width: 150, height: 150, angle: 0 };
+    }
+    visiting.add(itemId);
 
     let width = Math.max(10, item.geometry?.width ?? item.width ?? 150);
     let height = Math.max(10, item.geometry?.height ?? item.height ?? 150);
 
-    // Sticky note default dimensions in Miro if width/height not explicit
+    // Default dimensions for known Miro item types when geometry is omitted
     if (item.type === "sticky_note" && !item.geometry?.width && !item.width) {
       const isRect =
         item.shape === "rectangle" || item.data?.shape === "rectangle";
       width = isRect ? 240 : 200;
       height = isRect ? 160 : 200;
+    } else if (item.type === "frame" && !item.geometry?.width && !item.width) {
+      width = 800;
+      height = 600;
+    } else if (
+      item.type === "section" &&
+      !item.geometry?.width &&
+      !item.width
+    ) {
+      width = 1000;
+      height = 800;
+    } else if (
+      (item.type === "card" || item.type === "app_card") &&
+      !item.geometry?.width &&
+      !item.width
+    ) {
+      width = 300;
+      height = 180;
     }
 
     const rawX = item.position?.x ?? item.x ?? 0;
@@ -186,34 +249,56 @@ export const convertMiroItemsToFiro = async (
       (item.geometry?.rotation ?? item.rotation ?? 0) * (Math.PI / 180);
 
     const parentId = item.parentId ? String(item.parentId) : null;
-    const parentFrame = parentId ? framesById.get(parentId) : undefined;
-    const isRelativeToFrame =
-      Boolean(parentFrame) &&
+    const parentItem = parentId ? itemsById.get(parentId) : undefined;
+    const isRelativeToParent =
+      Boolean(parentItem) &&
       (item.position?.relativeTo === "parent_top_left" ||
         item.relativeTo === "parent_top_left" ||
-        item.parentId != null);
+        (item.position?.relativeTo !== "canvas_center" &&
+          item.relativeTo !== "canvas_center" &&
+          item.parentId != null));
 
     let x: number;
     let y: number;
 
-    if (parentFrame && isRelativeToFrame) {
-      // In Miro Web SDK, child (x, y) is measured from the parent frame's top-left
-      // and represents the child's center point.
-      const childCenterX = parentFrame.x + rawX;
-      const childCenterY = parentFrame.y + rawY;
-      x =
-        origin === "top-left" ? parentFrame.x + rawX : childCenterX - width / 2;
-      y =
-        origin === "top-left"
-          ? parentFrame.y + rawY
-          : childCenterY - height / 2;
+    if (parentId && parentItem && isRelativeToParent) {
+      const parentBounds = getAbsoluteBounds(parentId);
+      // In Miro, child coordinates are measured relative to parent top-left
+      const localX = origin === "top-left" ? rawX : rawX - width / 2;
+      const localY = origin === "top-left" ? rawY : rawY - height / 2;
+      x = parentBounds.x + localX;
+      y = parentBounds.y + localY;
     } else {
       x = origin === "top-left" ? rawX : rawX - width / 2;
       y = origin === "top-left" ? rawY : rawY - height / 2;
     }
 
-    itemBoundsMap.set(id, { x, y, width, height, angle });
+    const result: ComputedBounds = { x, y, width, height, angle };
+    visiting.delete(itemId);
+    itemBoundsMap.set(itemId, result);
+    return result;
+  };
+
+  for (const id of itemsById.keys()) {
+    getAbsoluteBounds(id);
   }
+
+  // Helper to compute container nesting depth (outer containers = 0)
+  const getContainerDepth = (id: string): number => {
+    let depth = 0;
+    let currentId = id;
+    const visited = new Set<string>();
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
+      const it = itemsById.get(currentId);
+      if (!it || !it.parentId) {
+        break;
+      }
+      currentId = String(it.parentId);
+      depth++;
+    }
+    return depth;
+  };
 
   // --------------------------------------------------------------------------
   // Pass 3: Pre-index media files from Miro .rtb backup
@@ -261,8 +346,27 @@ export const convertMiroItemsToFiro = async (
       height: 150,
       angle: 0,
     };
+
+    // Calculate containment hierarchy across arbitrary nesting levels
     const parentId = item.parentId ? String(item.parentId) : null;
-    const isInsideFrame = parentId && framesById.has(parentId);
+    let enclosingFrameId: string | null = null;
+    let currentParentId = parentId;
+    const visitedParents = new Set<string>();
+
+    while (currentParentId && !visitedParents.has(currentParentId)) {
+      visitedParents.add(currentParentId);
+      const parent = itemsById.get(currentParentId);
+      if (!parent) {
+        break;
+      }
+      if (parent.type === "frame" || parent.type === "section") {
+        enclosingFrameId = currentParentId;
+        break;
+      }
+      currentParentId = parent.parentId ? String(parent.parentId) : null;
+    }
+
+    const containerId = parentId && itemsById.has(parentId) ? parentId : null;
 
     const baseFields = {
       id,
@@ -271,8 +375,8 @@ export const convertMiroItemsToFiro = async (
       index: null,
       isDeleted: false,
       groupIds: [],
-      frameId: isInsideFrame ? parentId : null,
-      containerId: isInsideFrame ? parentId : null,
+      frameId: enclosingFrameId,
+      containerId: containerId ?? enclosingFrameId,
       boundElements: [],
       opacity: item.style?.fillOpacity
         ? Number(item.style.fillOpacity) * 100
@@ -288,11 +392,16 @@ export const convertMiroItemsToFiro = async (
       fillStyle: "solid",
       created: Date.now(),
       updated: Date.now(),
+      _miroIndex: i,
     };
 
     switch (item.type) {
+      case "section":
       case "frame": {
-        const title = item.data?.title ?? item.title ?? "Frame";
+        const title =
+          item.data?.title ??
+          item.title ??
+          (item.type === "section" ? "Section" : "Frame");
         elements.push({
           ...baseFields,
           ...bounds,
@@ -300,16 +409,18 @@ export const convertMiroItemsToFiro = async (
           name: title,
           backgroundColor: normalizeMiroColor(
             item.style?.fillColor,
-            "transparent",
+            item.type === "section" ? "#f5f5f5" : "transparent",
           ),
-          strokeColor: "#b8b8b8",
+          strokeColor: item.type === "section" ? "#9e9e9e" : "#b8b8b8",
           strokeWidth: 1,
         });
         break;
       }
 
       case "sticky_note": {
-        const text = miroHtmlToPlainText(item.data?.content ?? item.content);
+        const rawContent = item.data?.content ?? item.content;
+        const text = miroHtmlToPlainText(rawContent);
+        const richText = miroHtmlToProseMirror(rawContent);
         const bg = normalizeMiroColor(item.style?.fillColor, "#fff9b8");
         const textColor = getContrastingTextColor(bg);
 
@@ -328,6 +439,7 @@ export const convertMiroItemsToFiro = async (
           ...bounds,
           type: "stickynote",
           text,
+          richText,
           fontSize,
           fontFamily: 1,
           textAlign: item.style?.textAlign ?? "left",
@@ -355,14 +467,14 @@ export const convertMiroItemsToFiro = async (
           shapeType === "rounded_rectangle"
         ) {
           firoType = "rectangle";
-          roundness = { type: 3 }; // PROPORTIONAL_RADIUS
+          roundness = { type: 3 }; // ADAPTIVE_RADIUS
         }
 
         const bg = normalizeMiroColor(item.style?.fillColor, "transparent");
         const stroke = normalizeMiroColor(item.style?.borderColor, "#1e1e1e");
-        const contentText = miroHtmlToPlainText(
-          item.data?.content ?? item.content,
-        );
+        const rawContent = item.data?.content ?? item.content;
+        const contentText = miroHtmlToPlainText(rawContent);
+        const richText = miroHtmlToProseMirror(rawContent);
 
         const boundElements: { id: string; type: "text" }[] = [];
         const textId = `${id}_text`;
@@ -397,6 +509,7 @@ export const convertMiroItemsToFiro = async (
             angle: bounds.angle,
             type: "text",
             text: contentText,
+            richText,
             fontSize,
             fontFamily: 1,
             textAlign: item.style?.textAlign ?? "center",
@@ -410,7 +523,9 @@ export const convertMiroItemsToFiro = async (
       }
 
       case "text": {
-        const text = miroHtmlToPlainText(item.data?.content ?? item.content);
+        const rawContent = item.data?.content ?? item.content;
+        const text = miroHtmlToPlainText(rawContent);
+        const richText = miroHtmlToProseMirror(rawContent);
         const color = normalizeMiroColor(item.style?.color, "#1e1e1e");
         const fontSize = Number(item.style?.fontSize) || 20;
 
@@ -419,6 +534,7 @@ export const convertMiroItemsToFiro = async (
           ...bounds,
           type: "text",
           text,
+          richText,
           fontSize: isNaN(fontSize) ? 20 : fontSize,
           fontFamily: 1,
           textAlign: item.style?.textAlign ?? "left",
@@ -460,12 +576,67 @@ export const convertMiroItemsToFiro = async (
         const dx = endX - startX;
         const dy = endY - startY;
 
+        // Shape and routing: orthogonal elbow, curve, or straight
+        const shape = String(
+          item.shape ??
+            item.data?.shape ??
+            item.style?.connectorShape ??
+            item.style?.curveType ??
+            "",
+        ).toLowerCase();
+
+        const isElbow =
+          shape === "elbowed" || shape === "orthogonal" || shape === "elbow";
+
+        const isCurved = shape === "curved" || shape === "arc";
+
+        let points: [number, number][];
+        let elbowed = false;
+        let roundness: { type: number } | null = null;
+
+        if (isElbow) {
+          elbowed = true;
+          roundness = null;
+          // Generate orthogonal elbow waypoint
+          if (dx === 0 || dy === 0) {
+            points = [
+              [0, 0],
+              [dx, dy],
+            ];
+          } else {
+            points = [
+              [0, 0],
+              [dx / 2, 0],
+              [dx / 2, dy],
+              [dx, dy],
+            ];
+          }
+        } else if (isCurved) {
+          elbowed = false;
+          roundness = { type: 2 }; // PROPORTIONAL_RADIUS
+          points = [
+            [0, 0],
+            [dx / 2, dy / 2],
+            [dx, dy],
+          ];
+        } else {
+          elbowed = false;
+          roundness = null;
+          points = [
+            [0, 0],
+            [dx, dy],
+          ];
+        }
+
+        // Arrowheads and stroke caps
         const startCap = item.style?.startCap ?? item.style?.startStrokeCap;
         const endCap =
-          item.style?.endCap ?? item.style?.endStrokeCap ?? "arrow";
+          item.style?.endCap ??
+          item.style?.endStrokeCap ??
+          (item.type === "connector" ? "arrow" : undefined);
 
-        const startArrowhead = startCap && startCap !== "none" ? "arrow" : null;
-        const endArrowhead = endCap && endCap !== "none" ? "arrow" : null;
+        const startArrowhead = mapMiroCapToArrowhead(startCap);
+        const endArrowhead = mapMiroCapToArrowhead(endCap);
 
         const stroke = normalizeMiroColor(
           item.style?.strokeColor ?? item.style?.color,
@@ -479,6 +650,70 @@ export const convertMiroItemsToFiro = async (
             ? "dotted"
             : "solid";
 
+        // Labels / captions extraction
+        const captions =
+          item.captions ?? (item.data?.captions as MiroCaption[] | undefined);
+        let labelContent = "";
+        let labelPos = 0.5;
+
+        if (Array.isArray(captions) && captions.length > 0) {
+          const cap = captions[0];
+          labelContent = cap.content ?? (cap.title as string | undefined) ?? "";
+          if (typeof cap.position === "number") {
+            labelPos = cap.position;
+          }
+        } else if (item.caption) {
+          labelContent =
+            typeof item.caption === "string"
+              ? item.caption
+              : ((item.caption as Record<string, unknown>).content as string) ??
+                "";
+        } else if (item.data?.caption) {
+          labelContent =
+            typeof item.data.caption === "string"
+              ? item.data.caption
+              : ((item.data.caption as Record<string, unknown>)
+                  .content as string) ?? "";
+        } else if (item.data?.content && item.type === "connector") {
+          labelContent = String(item.data.content);
+        }
+
+        const labelText = miroHtmlToPlainText(labelContent);
+        const boundElements: { id: string; type: "text" }[] = [];
+
+        if (labelText) {
+          const labelId = `${id}_label`;
+          boundElements.push({ id: labelId, type: "text" });
+
+          const labelWidth = Math.max(
+            40,
+            Math.min(220, labelText.length * 8 + 16),
+          );
+          const labelHeight = 24;
+          const labelX = startX + dx * labelPos - labelWidth / 2;
+          const labelY = startY + dy * labelPos - labelHeight / 2;
+
+          elements.push({
+            ...baseFields,
+            id: labelId,
+            type: "text",
+            x: labelX,
+            y: labelY,
+            width: labelWidth,
+            height: labelHeight,
+            angle: 0,
+            text: labelText,
+            richText: miroHtmlToProseMirror(labelContent),
+            fontSize: 14,
+            fontFamily: 1,
+            textAlign: "center",
+            verticalAlign: "middle",
+            strokeColor: stroke,
+            backgroundColor: "transparent",
+            containerId: id,
+          });
+        }
+
         elements.push({
           ...baseFields,
           id,
@@ -487,16 +722,16 @@ export const convertMiroItemsToFiro = async (
           y: startY,
           width: Math.max(1, Math.abs(dx)),
           height: Math.max(1, Math.abs(dy)),
-          points: [
-            [0, 0],
-            [dx, dy],
-          ],
+          points,
+          elbowed,
+          roundness,
           strokeColor: stroke,
           strokeWidth,
           strokeStyle,
           backgroundColor: "transparent",
           startArrowhead,
           endArrowhead,
+          boundElements,
           startBinding: startItemId
             ? { elementId: String(startItemId), focus: 0, gap: 1 }
             : null,
@@ -530,18 +765,37 @@ export const convertMiroItemsToFiro = async (
           matchedMedia = mediaByResourceId.get(explicitResId);
         }
 
-        // 2. Check URL for /resources/<id> or /<19-digit-id>
-        const url = String(item.url ?? item.data?.url ?? "");
+        // 2. Check URL for /resources/<id> or /<15-22 digits> or filename
+        const url = String(
+          item.url ??
+            item.data?.url ??
+            item.data?.imageUrl ??
+            item.data?.previewUrl ??
+            "",
+        );
         if (!matchedMedia && url) {
           const resMatch =
-            url.match(/\/resources\/(\d+)/) || url.match(/\/(\d{15,22})/);
+            url.match(/\/resources\/([a-zA-Z0-9_-]+)/) ||
+            url.match(/\/(\d{15,22})/);
           if (resMatch && mediaByResourceId.has(resMatch[1])) {
             matchedMedia = mediaByResourceId.get(resMatch[1]);
           }
+          if (!matchedMedia) {
+            const urlFileName = url
+              .split("/")
+              .pop()
+              ?.split("?")[0]
+              ?.toLowerCase();
+            if (urlFileName && mediaByFilename.has(urlFileName)) {
+              matchedMedia = mediaByFilename.get(urlFileName);
+            }
+          }
         }
 
-        // 3. Check item title against resource names
-        const title = String(item.title ?? item.data?.title ?? "")
+        // 3. Check item title against resource names and media filenames
+        const title = String(
+          item.title ?? item.data?.title ?? item.data?.name ?? item.name ?? "",
+        )
           .toLowerCase()
           .trim();
         if (!matchedMedia && title) {
@@ -573,6 +827,10 @@ export const convertMiroItemsToFiro = async (
               ? "image/jpeg"
               : matchedMedia.ext === "svg"
               ? "image/svg+xml"
+              : matchedMedia.ext === "webp"
+              ? "image/webp"
+              : matchedMedia.ext === "gif"
+              ? "image/gif"
               : matchedMedia.ext === "heic"
               ? "image/heic"
               : matchedMedia.ext === "pdf"
@@ -610,11 +868,15 @@ export const convertMiroItemsToFiro = async (
           (typeof item.description === "string" ? item.description : undefined);
         const desc = miroHtmlToPlainText(rawDesc);
         const cardText = desc ? `${title}\n\n${desc}` : title;
+        const fullContent = rawDesc ? `${title}<br/><br/>${rawDesc}` : title;
+        const richText = miroHtmlToProseMirror(fullContent);
+
         elements.push({
           ...baseFields,
           ...bounds,
           type: "stickynote",
           text: cardText,
+          richText,
           fontSize: 15,
           fontFamily: 1,
           textAlign: "left",
@@ -633,16 +895,71 @@ export const convertMiroItemsToFiro = async (
 
   // --------------------------------------------------------------------------
   // Pass 5: Z-Order sorting
-  // Frames must be in the background (rank 0) so they don't obscure content.
-  // All other elements retain their natural relative order from the Miro export.
+  // Stratified rendering layers:
+  // - Outer frames / sections (background, depth 0)
+  // - Nested frames / sections (depth 1, 2, ...)
+  // - Shapes (layer 10)
+  // - Images (layer 20)
+  // - Stickies & cards (layer 30)
+  // - Standalone text (layer 40)
+  // - Connectors, lines, and their bound labels (layer 50)
+  // Elements on the same layer retain their natural relative order from the Miro export.
   // --------------------------------------------------------------------------
-  elements.sort((a, b) => {
-    const aFrame = a.type === "frame" ? 0 : 1;
-    const bFrame = b.type === "frame" ? 0 : 1;
-    return aFrame - bFrame;
-  });
-  const elementOrder = elements.map((e) => String(e.id));
+  const getLayerRank = (el: Record<string, unknown>): number => {
+    if (el.type === "frame") {
+      return 0;
+    }
+    if (
+      el.type === "rectangle" ||
+      el.type === "ellipse" ||
+      el.type === "diamond"
+    ) {
+      return 10;
+    }
+    if (el.type === "image") {
+      return 20;
+    }
+    if (el.type === "stickynote") {
+      return 30;
+    }
+    if (el.type === "text") {
+      return el.containerId ? 50 : 40;
+    }
+    if (el.type === "arrow" || el.type === "line") {
+      return 50;
+    }
+    return 35;
+  };
 
+  elements.sort((a, b) => {
+    const rankA = getLayerRank(a);
+    const rankB = getLayerRank(b);
+
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    // When both are frames, order by container nesting depth
+    if (a.type === "frame" && b.type === "frame") {
+      const depthA = getContainerDepth(String(a.id));
+      const depthB = getContainerDepth(String(b.id));
+      if (depthA !== depthB) {
+        return depthA - depthB;
+      }
+    }
+
+    // Preserve original Miro file index for stable ordering
+    const idxA = a._miroIndex ?? 0;
+    const idxB = b._miroIndex ?? 0;
+    return idxA - idxB;
+  });
+
+  // Clean up internal _miroIndex property
+  for (const el of elements) {
+    delete el._miroIndex;
+  }
+
+  const elementOrder = elements.map((e) => String(e.id));
   const boardName = options.boardMeta?.name ?? "Imported Miro Board";
 
   return {
