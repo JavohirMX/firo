@@ -239,7 +239,8 @@ const CHECKS = [
 ];
 
 console.log("Starting rendered contrast verification in Chromium...");
-const browser = await chromium.launch({ headless: false });
+const headless = process.env.HEADLESS !== "false";
+const browser = await chromium.launch({ headless });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
 

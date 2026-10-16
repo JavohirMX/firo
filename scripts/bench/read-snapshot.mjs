@@ -30,6 +30,7 @@
  * keystroke now cost.
  */
 
+import "fake-indexeddb/auto.js";
 import { openBoardMemory } from "@firo/doc";
 import {
   CURRENT_ELEMENT_VERSION,

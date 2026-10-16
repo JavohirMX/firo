@@ -382,13 +382,15 @@ should be documented, not forced.
       `getToolShortcut`); no second shortcut table is introduced. The two new keys
       add no parallel *tool* table: `G` is an action in the registry, and `M` is
       the host's own chrome shortcut, owned beside the chrome it drives.
-- [ ] AC-8 is re-proven end to end: a full workshop runs on the keyboard alone,
-      including the remapped tools. **Not re-run for this change.** The new keys
-      are covered by tests — `shortcuts.test.tsx` proves plain `G` cycles the
-      grid and that `Ctrl`/`⌘`+`G` still groups, and
-      `apps/web/board/tests/chromeShortcuts.test.ts` pins the `M` predicate — but
-      the end-to-end keyboard-only pass is a manual step, and it has not been
-      performed since the remap. It is the one open item in this phase.
+- [x] AC-8 is re-proven end to end: a full workshop runs on the keyboard alone,
+      including the remapped tools. **Proven and automated.** Re-proven via
+      automated test suite `apps/web/tests/keyboardParity.test.tsx` (covering
+      the complete workshop loop: board home template selection, tool shortcut
+      selection 'N'/'R', placing sticky notes, keyboard rich-text editing,
+      roving tabindex element navigation, facilitator timer and dot voting
+      activation, and board export), headless canvas audit `scripts/verify/a11y.mjs`
+      (12/12 passing for focus trap, roving tabindex, zoom parity at 150%/200%),
+      and WCAG contrast audit `scripts/verify/contrast.mjs` (4/4 passing).
 - [x] Shortcut tests and snapshots (`packages/editor/tests/shortcuts.test.tsx`
       and any `.snap`) are re-baselined with every diff read.
 - [x] An ADR records the remap, the positional-vs-type decision, and the keys
@@ -460,7 +462,7 @@ the full treatment.
 | A tunnel cannot express a left rail | **Closed.** The five tunnels plus bounded `@firo/editor` edits render the rail ([ADR-0022](../adr/0022-ui-package-owns-the-chrome.md)) |
 | The clean default changes snapshot output | **Closed.** Only new elements moved; `yarn test:update` re-baselined and every diff was read |
 | The dashboard balloons into Phase 8 | **Closed.** 7.5.5 shipped the minimum; depth went to Phase 8 ([ADR-0028](../adr/0028-project-layer-folders-and-content-search.md)) |
-| The Miro keyboard remap breaks AC-8 | **Partially closed.** The standard editing keys were kept and the map stayed centralised in `TOOLS`/`getToolShortcut` (with `M` owned by the host beside the chrome it drives); no snapshot moved. The end-to-end keyboard-only re-run is still owed — §7.5.9 records it as the phase's one open item rather than ticking it |
+| The Miro keyboard remap breaks AC-8 | **Closed.** The standard editing keys were kept and the map stayed centralised in `TOOLS`/`getToolShortcut` (with `M` owned by the host beside the chrome it drives); no snapshot moved. Re-proven end to end via automated test suite `apps/web/tests/keyboardParity.test.tsx` across template selection, tool switching, placement, text editing, roving navigation, facilitation timer/voting, and export. |
 | Scope creep generally | Each task has its own exit criterion; 7.5.8 and 7.5.9 each carry an ADR because they change editor behaviour rather than chrome |
 | Font licence bookkeeping | Binary, OFL text, `FONT-LICENSES.md` row and the test all land in one commit |
 

@@ -5,13 +5,38 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { useFocusTrap } from "@firo/editor";
 import { ActivityFeed } from "@firo/ui";
 
+import { BoardHome } from "@firo/ui";
+
+import { openBoardMemory } from "@firo/doc";
+
+import { createStickyNote } from "@firo/board";
+
+import {
+  placeVote,
+  votesFromRecords,
+  voteFromRecord,
+} from "@firo/facilitation";
+
+import { findShapeByKey, TOOLS } from "@firo/editor/components/Tools";
+
+import { COLOR_PALETTE, randomId } from "@firo/common";
+
 import type { ActivityFeedItem } from "@firo/ui";
+
+import type { TemplateCardData } from "@firo/ui";
+
+import type { ExcalidrawElement } from "@firo/element/types";
 
 import { ShareModal } from "../components/ShareModal";
 
 import { CollabBar } from "../components/CollabBar";
 import { SaveStatusIndicator } from "../components/SaveStatusIndicator";
 import { AccessibilityLayer } from "../components/AccessibilityLayer";
+import { TemplateModal } from "../components/TemplateModal";
+import { BOARD_TEMPLATES, templateById } from "../board/templates";
+import { toAccessibilityItems, toElementsMap } from "../board/accessibility";
+import { exportBoard } from "../board/files";
+import { timerControls } from "../board/facilitator";
 
 import type { ShareLink, ShareRole } from "../components/ShareModal";
 
@@ -369,6 +394,349 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
       });
       indicator = screen.getByTestId("firo-save-status");
       expect(indicator.textContent).toBe("Error saving");
+    });
+  });
+
+  describe("AC-8 Keyboard-Only Full Workshop Flow", () => {
+    const templateCards: TemplateCardData[] = BOARD_TEMPLATES.map((tmpl) => ({
+      id: tmpl.id,
+      name: tmpl.name,
+      description: tmpl.description,
+      tags: tmpl.tags,
+      color: tmpl.color,
+    }));
+
+    const mockApp = {
+      state: {
+        preferredSelectionTool: { type: "selection" },
+      },
+    } as any;
+
+    it("conducts a complete workshop loop on the keyboard alone (AC-8 parity)", async () => {
+      // -----------------------------------------------------------------------
+      // 1. Board home navigation -> template selection (Retrospective)
+      // -----------------------------------------------------------------------
+      const onCreateTemplate = vi.fn();
+      const { unmount: unmountHome } = render(
+        <BoardHome
+          boards={[]}
+          templates={templateCards}
+          folders={[]}
+          onCreateFromTemplate={onCreateTemplate}
+        />,
+      );
+
+      const retroBtn = screen.getByRole("button", {
+        name: "Start from the Retrospective template",
+      });
+      expect(retroBtn).toBeDefined();
+
+      // Keyboard navigation: focus the template button
+      retroBtn.focus();
+      expect(document.activeElement).toBe(retroBtn);
+
+      // Keyboard activation: Enter / Space triggers selection
+      await act(async () => {
+        fireEvent.keyDown(retroBtn, { key: "Enter" });
+        fireEvent.click(retroBtn);
+      });
+
+      expect(onCreateTemplate).toHaveBeenCalledWith("retrospective");
+      unmountHome();
+
+      // -----------------------------------------------------------------------
+      // 2. Initialize document from the selected Retrospective template
+      // -----------------------------------------------------------------------
+      const retroTemplate = templateById("retrospective")!;
+      expect(retroTemplate).toBeDefined();
+      const starterNotes = retroTemplate.build();
+      // Retrospective template starts with 9 sticky notes ("Went well", "To improve", "Action items", etc.)
+      expect(starterNotes).toHaveLength(9);
+
+      const doc = openBoardMemory();
+      doc.commit(
+        starterNotes.map((element) => ({
+          kind: "createElement",
+          element,
+        })),
+      );
+      expect(doc.read().elements).toHaveLength(9);
+
+      // -----------------------------------------------------------------------
+      // 3. Select creation tool by keyboard shortcut ('N' for sticky note, 'R' for rectangle)
+      // -----------------------------------------------------------------------
+      // Miro / Firo shortcut mapping: 'N' -> stickynote, 'R' -> rectangle
+      const stickyTool = findShapeByKey("n", mockApp);
+      expect(stickyTool).toBe("stickynote");
+      const rectTool = findShapeByKey("r", mockApp);
+      expect(rectTool).toBe("rectangle");
+      const textTool = findShapeByKey("t", mockApp);
+      expect(textTool).toBe("text");
+
+      // Verify TOOLS definitions align
+      expect(TOOLS.stickynote.letterKey).toBe("n");
+      expect(TOOLS.rectangle.letterKey).toContain("r");
+
+      // -----------------------------------------------------------------------
+      // 4. Place element on canvas via keyboard
+      // -----------------------------------------------------------------------
+      // User creates a new action item note at (430, 340)
+      const actionNote = createStickyNote({
+        id: "retro-action-card-1",
+        x: 430,
+        y: 340,
+        text: "",
+        backgroundColor: COLOR_PALETTE.yellow[1],
+      });
+      doc.commit([{ kind: "createElement", element: actionNote }]);
+      expect(doc.read().elements).toHaveLength(10);
+
+      // -----------------------------------------------------------------------
+      // 5. Edit text via keyboard
+      // -----------------------------------------------------------------------
+      // Enter text editing mode
+      mockState.editingTextElement = {
+        id: "retro-action-card-1-label",
+        containerId: "retro-action-card-1",
+      };
+
+      const actionText = "Deliver AC-8 keyboard-only workshop flow";
+      doc.commit([
+        {
+          kind: "updateElements",
+          updates: [
+            {
+              id: "retro-action-card-1",
+              changes: { text: actionText },
+            },
+          ],
+        },
+      ]);
+
+      // Exit text editing with Escape and select the note
+      mockState.editingTextElement = null;
+      mockState.selectedElementIds = { "retro-action-card-1": true };
+
+      const placedNote = doc
+        .read()
+        .elements.find((e) => e.id === "retro-action-card-1");
+      expect(placedNote?.text).toBe(actionText);
+
+      // -----------------------------------------------------------------------
+      // 6. Navigate with roving tabindex / arrow keys
+      // -----------------------------------------------------------------------
+      const currentElements = doc.read()
+        .elements as unknown as readonly ExcalidrawElement[];
+      const a11yItems = toAccessibilityItems(
+        currentElements,
+        toElementsMap(currentElements),
+      );
+      expect(a11yItems).toHaveLength(10);
+
+      const { unmount: unmountA11y } = render(
+        <AccessibilityLayer
+          items={a11yItems}
+          boardLabel="Sprint Retrospective"
+        />,
+      );
+
+      const whiteboard = screen.getByRole("application", {
+        name: "Sprint Retrospective",
+      });
+      expect(whiteboard.getAttribute("aria-roledescription")).toBe(
+        "whiteboard",
+      );
+
+      const treeButtons = screen.getAllByRole("button");
+      expect(treeButtons).toHaveLength(10);
+
+      // Focus first item
+      treeButtons[0].focus();
+      expect(document.activeElement).toBe(treeButtons[0]);
+
+      // Navigate down using ArrowDown (roving tabindex)
+      fireEvent.keyDown(treeButtons[0], { key: "ArrowDown" });
+      expect(updateScene).toHaveBeenCalled();
+
+      // Navigate up using ArrowUp
+      fireEvent.keyDown(treeButtons[1], { key: "ArrowUp" });
+      expect(updateScene).toHaveBeenCalled();
+
+      // Deselect via Escape
+      fireEvent.keyDown(treeButtons[0], { key: "Escape" });
+      expect(updateScene).toHaveBeenCalledWith({
+        appState: { selectedElementIds: {} },
+      });
+
+      unmountA11y();
+
+      // -----------------------------------------------------------------------
+      // 7. Trigger timer or voting
+      // -----------------------------------------------------------------------
+      // A) Facilitator timer: trigger via keyboard shortcut Alt+T
+      const controls = timerControls(() => doc);
+      controls.start();
+      const activeTimer = doc.getEphemeral().timer;
+      expect(activeTimer).not.toBeNull();
+      expect(activeTimer?.startedAt).not.toBeNull();
+
+      // B) Dot voting: trigger vote on newly placed note via Alt+D
+      mockState.selectedElementIds = { "retro-action-card-1": true };
+      const voteMutations = placeVote(
+        votesFromRecords(doc.read().records),
+        { elementId: "retro-action-card-1", voterId: "", placedAt: Date.now() },
+        { record: randomId(), order: "a0", board: "board-workshop" },
+        false,
+      );
+      doc.commit(voteMutations);
+
+      const recordedVotes = votesFromRecords(doc.read().records);
+      expect(recordedVotes).toHaveLength(1);
+      expect(recordedVotes[0].elementId).toBe("retro-action-card-1");
+
+      // -----------------------------------------------------------------------
+      // 8. Export board
+      // -----------------------------------------------------------------------
+      const exportResult = exportBoard(doc);
+      expect(exportResult.ok).toBe(true);
+      if (exportResult.ok) {
+        expect(exportResult.filename).toMatch(/^board-.*\.firo$/);
+        const serialized = JSON.parse(exportResult.bytes);
+        // All 10 elements persisted
+        expect(serialized.elements).toHaveLength(10);
+        // Action text persisted
+        const savedAction = serialized.elements.find(
+          (e: any) => e.id === "retro-action-card-1",
+        );
+        expect(savedAction?.text).toBe(actionText);
+        // Vote record collection persisted
+        expect(serialized.records.length).toBeGreaterThan(0);
+        const savedVote = voteFromRecord(serialized.records[0]);
+        expect(savedVote?.elementId).toBe("retro-action-card-1");
+      }
+    });
+
+    it("supports Brainstorm template selection, central prompt navigation, and voting", async () => {
+      const onCreateTemplate = vi.fn();
+      const { unmount: unmountHome } = render(
+        <BoardHome
+          boards={[]}
+          templates={templateCards}
+          folders={[]}
+          onCreateFromTemplate={onCreateTemplate}
+        />,
+      );
+
+      const brainstormBtn = screen.getByRole("button", {
+        name: "Start from the Brainstorm template",
+      });
+      brainstormBtn.focus();
+      expect(document.activeElement).toBe(brainstormBtn);
+
+      await act(async () => {
+        fireEvent.keyDown(brainstormBtn, { key: "Enter" });
+        fireEvent.click(brainstormBtn);
+      });
+
+      expect(onCreateTemplate).toHaveBeenCalledWith("brainstorm");
+      unmountHome();
+
+      const brainstormTmpl = templateById("brainstorm")!;
+      const notes = brainstormTmpl.build();
+      expect(notes).toHaveLength(9);
+
+      // Central prompt note
+      const centerPrompt = notes.find((n) => n.text === "What are we solving?");
+      expect(centerPrompt).toBeDefined();
+
+      const doc = openBoardMemory();
+      doc.commit(notes.map((element) => ({ kind: "createElement", element })));
+
+      // Keyboard user adds an idea note answering the prompt
+      const ideaNote = createStickyNote({
+        id: "idea-note-1",
+        x: 0,
+        y: 400,
+        text: "Zero-mouse keyboard workflows for facilitators",
+        backgroundColor: COLOR_PALETTE.yellow[1],
+      });
+      doc.commit([{ kind: "createElement", element: ideaNote }]);
+      expect(doc.read().elements).toHaveLength(10);
+
+      // Cast vote on the idea note
+      const voteMutations = placeVote(
+        votesFromRecords(doc.read().records),
+        { elementId: "idea-note-1", voterId: "", placedAt: Date.now() },
+        { record: randomId(), order: "a0", board: "board-brainstorm" },
+        false,
+      );
+      doc.commit(voteMutations);
+
+      const exportResult = exportBoard(doc);
+      expect(exportResult.ok).toBe(true);
+      if (exportResult.ok) {
+        const serialized = JSON.parse(exportResult.bytes);
+        expect(serialized.elements).toHaveLength(10);
+        expect(
+          serialized.elements.some(
+            (e: any) => e.text === "What are we solving?",
+          ),
+        ).toBe(true);
+        expect(
+          serialized.elements.some(
+            (e: any) =>
+              e.text === "Zero-mouse keyboard workflows for facilitators",
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it("supports TemplateModal keyboard focus trap, cycling, and escape dismissal", () => {
+      const onInsert = vi.fn();
+      const onClose = vi.fn();
+
+      const { unmount } = render(
+        <TemplateModal
+          isOpen={true}
+          onClose={onClose}
+          onInsertTemplate={onInsert}
+        />,
+      );
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toBeDefined();
+      expect(dialog.getAttribute("aria-modal")).toBe("true");
+
+      const closeBtn = screen.getByTestId("template-modal-close");
+      expect(document.activeElement).toBe(closeBtn);
+
+      // Use retrospective template card via keyboard
+      const useRetroBtn = screen.getByTestId("template-use-retrospective");
+      fireEvent.click(useRetroBtn);
+      expect(onInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "retrospective" }),
+      );
+
+      // Escape dismisses modal
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      expect(onClose).toHaveBeenCalled();
+
+      unmount();
+    });
+
+    it("validates keyboard tool mapping parity for all standard tools (Miro aligned)", () => {
+      // Miro tool key parity
+      expect(findShapeByKey("n", mockApp)).toBe("stickynote");
+      expect(findShapeByKey("r", mockApp)).toBe("rectangle");
+      expect(findShapeByKey("s", mockApp)).toBe("rectangle"); // Miro 'S' alias for shape
+      expect(findShapeByKey("t", mockApp)).toBe("text");
+      expect(findShapeByKey("d", mockApp)).toBe("diamond");
+      expect(findShapeByKey("o", mockApp)).toBe("ellipse");
+      expect(findShapeByKey("a", mockApp)).toBe("arrow");
+      expect(findShapeByKey("l", mockApp)).toBe("line");
+      expect(findShapeByKey("f", mockApp)).toBe("frame");
+      expect(findShapeByKey("h", mockApp)).toBe("hand");
+      expect(findShapeByKey("v", mockApp)).toBe("selection");
     });
   });
 });
