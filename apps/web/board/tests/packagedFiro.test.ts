@@ -158,8 +158,9 @@ describe("packaged .firo and multi-format import", () => {
 
     const elements = doc.read().elements;
     expect(elements.length).toBe(2);
-    expect(elements[0].type).toBe("stickynote");
-    expect(elements[1].type).toBe("ellipse");
+    // Stratified z-order places shapes (layer 10) below sticky notes (layer 30)
+    expect(elements[0].type).toBe("ellipse");
+    expect(elements[1].type).toBe("stickynote");
   });
 
   it("handles Miro .rtb backup by extracting assets and pairing with Miro items", async () => {
