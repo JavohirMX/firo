@@ -33,8 +33,11 @@
  *
  * **v3 adds `tags`** -- optional colourable/filterable labels on `ElementBase`
  * for Phase 8.3 element tags.
+ *
+ * **v4 adds `Doc Blocks`** -- structured documents on canvas via records
+ * and projections for Phase 10 §10.5.
  */
-export const CURRENT_ELEMENT_VERSION = 3;
+export const CURRENT_ELEMENT_VERSION = 4;
 
 /**
  * Current record/collection schema version. Bump with a migration + fixture.

@@ -55,7 +55,8 @@
   "dependencies": {
     "@firo/common": "0.1.0",
     "@firo/fractional-indexing": "0.1.0",
-    "@firo/schema": "0.1.0"
+    "@firo/schema": "0.1.0",
+    "prosemirror-model": "1.25.12"
   },
   "devDependencies": {}
 }

@@ -39,6 +39,7 @@ import {
   V1_TO_V2_FACILITATION_FLAGS,
 } from "../facilitation.js";
 import { elementTags, V2_TO_V3_ELEMENT_TAGS } from "../tags.js";
+import { V3_TO_V4_DOC_BLOCKS } from "../migrations.js";
 
 import {
   array,
@@ -277,7 +278,11 @@ export const LINEAR_SPECS: readonly ElementSpec<LinearElement>[] =
       type,
       knownFields: KNOWN_FIELDS,
       introducedAt: 1,
-      migrations: [V1_TO_V2_FACILITATION_FLAGS, V2_TO_V3_ELEMENT_TAGS],
+      migrations: [
+        V1_TO_V2_FACILITATION_FLAGS,
+        V2_TO_V3_ELEMENT_TAGS,
+        V3_TO_V4_DOC_BLOCKS,
+      ],
       validate: makeValidator(type),
     };
     registerElementType(spec);
