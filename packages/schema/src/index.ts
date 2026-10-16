@@ -22,3 +22,5 @@ export * from "./tags.js";
 export * from "./registry.js";
 export * from "./migrate.js";
 export * from "./fixtures.js";
+export * from "./records.js";
+export * from "./migrations.js";

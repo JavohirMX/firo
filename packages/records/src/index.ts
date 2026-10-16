@@ -39,6 +39,17 @@ import { timelineProjection } from "./timeline.js";
 
 import type { Projection } from "./types.js";
 
+export {
+  applyDocBlockChange,
+  createDefaultDocBlockNode,
+  docBlockProjection,
+  docBlockSchema,
+  docBlockToPlainText,
+  layoutDocBlockElement,
+  parseDocBlockJson,
+  serializeDocBlockNode,
+  DOC_BLOCK_LAYOUT,
+} from "./docBlock.js";
 export { boardProjection, groupAt, groupOf, groupsOf } from "./board.js";
 export { gridProjection, positionOf } from "./grid.js";
 export {

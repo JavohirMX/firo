@@ -24,6 +24,9 @@ import {
   registeredElementTypes,
   V1_TO_V2_FACILITATION_FLAGS,
   V2_TO_V3_ELEMENT_TAGS,
+  V3_TO_V4_DOC_BLOCKS,
+  migrateBoardV3ToV4,
+  DOC_BLOCK_COLLECTION_ID,
   roundTripFixture,
   serializeBoard,
 } from "@firo/schema";
@@ -31,6 +34,7 @@ import {
 import boardV1 from "./fixtures/v1/board.json";
 import boardV2 from "./fixtures/v2/board.json";
 import boardV3 from "./fixtures/v3/board.json";
+import boardV4 from "./fixtures/v4/board.json";
 
 describe("the committed fixture set", () => {
   test("covers every released element version, with no gaps", () => {
@@ -55,6 +59,11 @@ describe("the committed fixture set", () => {
     const inCodeV3 = fixtures().find((f) => f.version === 3);
     expect(inCodeV3).toBeDefined();
     expect(inCodeV3?.board).toEqual(boardV3);
+
+    // And the same for v4, which is the fixture for doc blocks.
+    const inCodeV4 = fixtures().find((f) => f.version === 4);
+    expect(inCodeV4).toBeDefined();
+    expect(inCodeV4?.board).toEqual(boardV4);
   });
 
   test("every fixture loads without repair", () => {
@@ -384,6 +393,9 @@ describe("every registered type carries a contiguous migration chain", () => {
       expect(requireElementSpec(type).migrations).toContain(
         V2_TO_V3_ELEMENT_TAGS,
       );
+      expect(requireElementSpec(type).migrations).toContain(
+        V3_TO_V4_DOC_BLOCKS,
+      );
     }
   });
 });
@@ -482,5 +494,76 @@ describe("the v2 -> v3 step", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe("the v3 -> v4 step", () => {
+  const step = V3_TO_V4_DOC_BLOCKS;
+
+  test("returns a new object rather than mutating in place", () => {
+    const raw = { id: "el-1", type: "stickynote", text: "t" };
+    const out = step.migrate(raw, new RepairLog());
+    expect(out).not.toBe(raw);
+    expect(out).toEqual(raw);
+  });
+
+  test("keeps unknown fields untouched", () => {
+    const out = step.migrate(
+      { id: "el-1", type: "stickynote", futureProp: 456 },
+      new RepairLog(),
+    );
+    expect(out).toHaveProperty("futureProp", 456);
+  });
+
+  test("it actually runs for a board stamped v3", () => {
+    const spy = vi.spyOn(V3_TO_V4_DOC_BLOCKS, "migrate");
+    try {
+      loadBoard(boardV3);
+      expect(spy).toHaveBeenCalledTimes(boardV3.elements.length);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("and does not run for a board already at v4", () => {
+    const spy = vi.spyOn(V3_TO_V4_DOC_BLOCKS, "migrate");
+    try {
+      loadBoard(boardV4);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("migrateBoardV3ToV4 adds doc blocks collection by spreading previous object", () => {
+    const v3Board = {
+      elementSchemaVersion: 3,
+      meta: { id: "custom-board", customKey: "preserved" },
+      elements: [{ id: "el-1", type: "stickynote" }],
+      collections: [{ id: "col-existing", name: "Existing" }],
+    };
+
+    const migrated = migrateBoardV3ToV4(v3Board);
+
+    expect(migrated.elementSchemaVersion).toBe(4);
+    expect(migrated.meta).toEqual(v3Board.meta);
+    expect(migrated.elements).toBe(v3Board.elements);
+    expect(migrated.collections).toHaveLength(2);
+    expect(
+      (migrated.collections as Array<{ id: string }>).some(
+        (c) => c.id === DOC_BLOCK_COLLECTION_ID,
+      ),
+    ).toBe(true);
+  });
+
+  test("migrateBoardV3ToV4 is idempotent when doc blocks collection already exists", () => {
+    const v4Board = {
+      elementSchemaVersion: 4,
+      meta: { id: "custom-board" },
+      collections: [{ id: DOC_BLOCK_COLLECTION_ID, name: "Doc Blocks" }],
+    };
+
+    const migrated = migrateBoardV3ToV4(v4Board);
+    expect(migrated.collections).toHaveLength(1);
   });
 });

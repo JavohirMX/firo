@@ -28,6 +28,7 @@ import {
   V1_TO_V2_FACILITATION_FLAGS,
 } from "../facilitation.js";
 import { elementTags, V2_TO_V3_ELEMENT_TAGS } from "../tags.js";
+import { V3_TO_V4_DOC_BLOCKS } from "../migrations.js";
 
 import {
   array,
@@ -198,7 +199,11 @@ export const FREEDRAW_SPEC: ElementSpec<FreedrawElement> = {
   type: "freedraw",
   knownFields: KNOWN_FIELDS,
   introducedAt: 1,
-  migrations: [V1_TO_V2_FACILITATION_FLAGS, V2_TO_V3_ELEMENT_TAGS],
+  migrations: [
+    V1_TO_V2_FACILITATION_FLAGS,
+    V2_TO_V3_ELEMENT_TAGS,
+    V3_TO_V4_DOC_BLOCKS,
+  ],
   validate: (raw: Record<string, unknown>, log: RepairLog): FreedrawElement => {
     /*
      * Migration rule 1: carry anything unrecognised through untouched, then

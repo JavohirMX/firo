@@ -588,3 +588,15 @@ export {
   actionZoomToFit,
   actionToggleGridMode,
 } from "./actions";
+
+export { DocBlockOverlay } from "./components/DocBlockOverlay";
+export type { DocBlockOverlayProps } from "./components/DocBlockOverlay";
+export {
+  renderDocBlock,
+  computeDocBlockLayout,
+} from "./renderer/renderDocBlock";
+export type {
+  DocBlockComputedLayout,
+  LayoutBlock,
+  LayoutLine,
+} from "./renderer/renderDocBlock";
