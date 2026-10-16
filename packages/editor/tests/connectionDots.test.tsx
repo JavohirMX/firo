@@ -628,4 +628,85 @@ describe("Miro Visual Quick Connection Anchor Dots on Element Hover", () => {
       expect(context.strokeStyle).toBe("#ffffff");
     });
   });
+
+  describe("Magnetic snapping and resize handle non-interference", () => {
+    it("magnetically snaps and emphasizes anchor dot when cursor is within 8px radius", () => {
+      const context = createMockContext();
+      const rect = API.createElement({
+        type: "rectangle",
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+      }) as unknown as NonDeleted<ExcalidrawBindableElement>;
+      const elementsMap = new Map([[rect.id, rect]]) as ElementsMap;
+
+      // Right midpoint is at (300, 150)
+      // Cursor is at (304, 152), distance = sqrt(16 + 4) = ~4.47px <= 8px
+      const appState = createMockAppState({
+        zoom: { value: 1 as any },
+        pointerCoords: pointFrom<GlobalPoint>(304, 152),
+      } as any);
+
+      renderConnectionDots(context, rect, elementsMap, appState);
+
+      // The right midpoint is the first one in [right, bottom, left, top]
+      // Magnetically snapped dot should have radius 6
+      expect(context.arc).toHaveBeenNthCalledWith(
+        1,
+        300,
+        150,
+        6,
+        0,
+        2 * Math.PI,
+      );
+      // Non-snapped midpoints keep the standard 4.5 radius
+      expect(context.arc).toHaveBeenNthCalledWith(
+        2,
+        200,
+        200,
+        4.5,
+        0,
+        2 * Math.PI,
+      );
+    });
+
+    it("does NOT render connection dots when element is actively resizing", () => {
+      const context = createMockContext();
+      const rect = API.createElement({
+        type: "rectangle",
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+      }) as unknown as NonDeleted<ExcalidrawBindableElement>;
+      const elementsMap = new Map([[rect.id, rect]]) as ElementsMap;
+      const appState = createMockAppState({
+        isResizing: true,
+      } as any);
+
+      renderConnectionDots(context, rect, elementsMap, appState);
+
+      expect(context.arc).not.toHaveBeenCalled();
+    });
+
+    it("does NOT render connection dots when element is actively rotating", () => {
+      const context = createMockContext();
+      const rect = API.createElement({
+        type: "rectangle",
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+      }) as unknown as NonDeleted<ExcalidrawBindableElement>;
+      const elementsMap = new Map([[rect.id, rect]]) as ElementsMap;
+      const appState = createMockAppState({
+        isRotating: true,
+      });
+
+      renderConnectionDots(context, rect, elementsMap, appState);
+
+      expect(context.arc).not.toHaveBeenCalled();
+    });
+  });
 });
