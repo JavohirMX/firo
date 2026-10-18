@@ -9,7 +9,9 @@ menus, the rail and its flyouts, the toolbars, the context menus, the panels and
 the keyboard, with the mechanism behind each.
 
 Researched **13 October 2026**. Live observation **15 October 2026**. Bundle
-structure mined **15 October 2026**.
+structure mined **15 October 2026**. Deep pass over every surface (same live
+board, scenario-driven DevTools Protocol) **18 October 2026**, written up in
+§"The deep pass, surface by surface".
 
 ## Clean-room guardrail
 
@@ -34,6 +36,7 @@ Three sources, in descending order of authority:
 
 | Source | What it settles | Depth |
 | --- | --- | --- |
+| **Deep pass** over the live board via Chrome DevTools, 18 Oct 2026 | The rendered grammar of the previously-unopened surfaces — rail flyouts, submenus, panels, dialogs, the palette, the shortcuts modal, both context-menu lanes — plus measured geometry ([`miro-geometry.md`](miro-geometry.md)) | Observed + measured |
 | **Live Miro board** via REA + Chrome DevTools, 15 Oct 2026 | Which controls are on screen, their accessibility roles and order, the contents of the menus that could be opened | Observed |
 | **Miro's own JS bundles** (`https://mirostatic.com/app/static/*.js`, 420 files, ~54 MB, **structure only**) | The command catalogue and its descriptor shape; categories; the shortcut registry; the context-menu lanes; panel contents; accessibility bindings | Structure mined |
 | **Miro's help articles** | Published shortcuts and documented behaviours | Cited per claim |
@@ -42,6 +45,8 @@ Evidence bundles and the downloaded scripts were held in a temporary directory
 and are **not** committed.
 
 ### What the live inspection could and could not do
+
+The 15 October inspection **[live]**:
 
 - **Could:** enumerate the main menu, the Zoom-and-navigation menu, the
   Facilitation-and-reactions menu, Talktracks and the Frames dialog; read the
@@ -53,11 +58,19 @@ and are **not** committed.
   rendered grammar (roles, focus order, labels as painted).
 - The canvas is a **WebGL surface**, so board objects never enter the DOM or the
   accessibility tree.
-- **Geometry and motion** are out of reach through passive inspection; the agent
-  reading this report cannot measure the screenshot.
+- **Geometry and motion** were out of reach through passive inspection; the agent
+  reading this report could not measure the screenshot.
 
-Every claim below is tagged where it comes from: **[live]**, **[bundle]** or
-**[docs]**.
+The 18 October deep pass drove the DevTools Protocol directly — synthetic
+pointer and keyboard input to open surfaces, `Runtime.evaluate` to read them —
+which lifted the limit that mattered most: **every surface the phase plan names
+was opened, dumped and photographed**, and computed styles and rects were read
+from the rendered DOM. Two limits survive: the canvas is still opaque to the DOM
+(only the chrome around it renders elements), and **motion was still not
+measured** — no duration or easing is claimed anywhere.
+
+Every claim below is tagged where it comes from: **[live]**, **[bundle]**,
+**[docs]** — and **[live, deep pass]** where only the 18 October pass settles it.
 
 ## How Miro models an interaction
 
@@ -432,15 +445,26 @@ canvas.
 Each sub-action carries its own keyboard binding, which is why one rail entry can
 own a family of tools.
 
+**Rendered on 18 October [live, deep pass]:** the flyouts were opened and
+captured — the sticky-note flyout (a 16-swatch colour grid, then Stack /
+Templates / Bulk mode), the pen flyout (five modes with the active one
+highlighted, then presets), the shapes quick strip, the frames presets, the
+full-height media library, the tools catalog and the templates modal. Contents
+in §"The deep pass, surface by surface"; measurements in
+[`miro-geometry.md`](miro-geometry.md).
+
 ### Canvas controls and the navigation menu **[live]**
 
 The bottom-right `toolbar "Controls"`: `Zoom out` · `Zoom and navigation` ·
 `Zoom in` · `Help and resources` · `Frames`, plus the zoom-percentage readout.
 
-The **Zoom and navigation** menu, enumerated live, contained: *Enter full screen*;
-*Show minimap* `(M)`; *Grid*; *Object dimensions* (a checkbox item); *Fit to
-screen* `(⌥1)`; and the zoom stops 50 %, 70 %, 100 % `(⌘0)`, 400 %, 1200 %,
-2000 % `(⌥3)`.
+The **Zoom and navigation** menu, enumerated live on 15 October, contained:
+*Enter full screen*; *Show minimap* `(M)`; *Grid*; *Object dimensions* (a
+checkbox item); *Fit to screen* `(⌥1)`; and the zoom stops 50 %, 70 %, 100 %
+`(⌘0)`, 400 %, 1200 %, 2000 % `(⌥3)`. **On 18 October the same menu carried the
+same items down to 400 % but no 1200 % / 2000 % stops** — the stops may be
+conditional on state or licence, or the product changed; not resolved (see
+[`miro-ui.md`](miro-ui.md) §"Still unverified").
 
 The **minimap is not a top-level button** — it lives inside this menu, which is
 why Firo's minimap is a `NavToolbar` concern.
@@ -476,6 +500,11 @@ metadata, image replacement (upload / URL / library), scale-to-size
 **Miro Assist** group (adjust / create category, cluster by keywords or
 sentiment, explore sidekicks).
 
+**Rendered on 18 October [live, deep pass]:** both lanes were captured in full —
+the right-click menu on empty canvas and on an object, and the selection
+toolbar with its 16 controls. §"The deep pass, surface by surface" lists the
+items; metrics are in [`miro-geometry.md`](miro-geometry.md).
+
 ### Activity and version history **[bundle]**
 
 `ACTIVITY_LIST` opens a panel with two tabs, `activityTab` and `versionsTab`. The
@@ -483,6 +512,10 @@ activity tab records `added` / `deleted` / `edited` per item. The versions tab i
 version history: `boardHistory.new`, `restoreButton`, `saveAsCopyModal.*`
 (restore into a new board named by the user), `someObjectsWereNotRestored`, and a
 paywall string. Both tabs have empty and error states.
+
+**18 October [live, deep pass]:** the Activity control opens the **comments side
+panel** (tabs *Board* / *Team*) — the Team tab is the activity feed. The versions
+tab was not reached in the deep pass; the bundle description above still stands.
 
 ### Comments **[bundle]**
 
@@ -492,6 +525,12 @@ thread, mark unread, previous / next comment, save a draft, and per-thread menu
 items (`copyLink`, `pin`, `resolve`, `unresolve`, `delete`, `deletethread`).
 There is also an **annotations** sub-feature with named categories and positions.
 
+**18 October [live, deep pass]:** clicking the comment tool and then the canvas
+opens the composer pinned at the click point (placeholder "Add a comment. Use @
+to mention."); Escape discards it. The comments panel carries the *Board* /
+*Team* tabs and an "All comments" filter, with resolved comments hidden by
+default.
+
 ### Command palette **[docs + bundle]**
 
 `⌘K` (`COMMAND_PALETTE_TOGGLE`) searches the same registry; `aliases` supply the
@@ -499,6 +538,13 @@ match words. Multi-step commands have a variant
 (`multiStepActionCommandPalette`, `semanticPositioningCommandPalette`,
 `flowConnectorCommandPalette`) where the palette then asks for a target — e.g.
 "create prototype connection to…".
+
+**18 October [live, deep pass]:** `⌘K` opened the palette as a ~546 px x-centred
+panel with the hint "Search for apps and actions…" and a single list mixing
+**apps** (Stickers, Diagramming shapes, Templates…) and **actions** (Timer, Save
+as PDF, Sticky note `N`, Frame `F`, Grid, Mind map…), each with its key chip
+where one exists. Escape closes. This matches the bundle's registry model
+exactly.
 
 ### Accessibility layer **[live + bundle]**
 
@@ -516,6 +562,126 @@ their own keys — `objectdetails` `(I)`, `objectcontent` `(R)`,
 > guidance names `⌥ + O` for the board overview; the bundle binds
 > `ACCESSIBILITY_COMMAND_PALETTE` to `⌥ + S`. Both were observed; they may be
 > different entry points, or the guidance may be stale. Not reconciled.
+>
+> **18 October:** the deep pass synthesised `⌥O` (as both `o` and `ø`, with
+> Alt) and the overview did not surface; nothing else was tried. Restated,
+> unresolved.
+
+## The deep pass, surface by surface (18 October 2026)
+
+Every surface the 15 October pass had to recover from bundles was opened on the
+live board through synthetic input and read from the rendered DOM. Measurements
+are in [`miro-geometry.md`](miro-geometry.md). **[live, deep pass]**
+
+### Board bar and people bar
+
+The board bar is sidebar toggle · Home · board thumbnail · board title ·
+**main menu**. The people bar, left to right: **facilitation** · **Activity** ·
+**Talktracks** · **avatar** · **Present** · **Share**. Menus open on a common
+line just under the bars.
+
+### Facilitation: reactions, Timer, Voting
+
+- The facilitation menu is a row of six reactions (thumbs-up, love, fire, wow,
+  celebration, wave) above the items **Timer**, **Voting**, **Private mode**,
+  **Notes**.
+- **Timer** opens a small setup popover: a minute stepper, a "Pick music"
+  combobox, a prominent **Start** and a close control. No timer was started.
+- **Voting** opens the 380 px side panel: tabs *New session* / *Results*;
+  steppers for *votes* (observed 3) and *minutes* (observed 2); toggles *One
+  vote per object* (off) and *Show results on the board* (on); a **Filter** box
+  listing eligible types with counts (sticky notes, shapes, images, text,
+  cards); and a footer **Start** + **Add to board**. Opening it puts a transient
+  **"Voting area" frame** on the canvas; closing removes it — board verified
+  clean afterwards.
+- **Notes** and **Private mode** were listed but not activated.
+
+### The rail, again
+
+Two reads of the rail minutes apart on the same account returned different
+compositions ([`miro-geometry.md`](miro-geometry.md) tabulates both) — the rail
+is per-user state. The later read also shows a **separator** between the comment
+tool and a newly present entry: the rail is a list of *groups*, not one column.
+The AI entry carried an admin-gating tooltip on this account.
+
+### Rail flyouts, rendered
+
+- **Sticky notes** — a 2 × 8 colour grid (16 swatches, 50 px cells), then
+  **Stack**, **Templates**, **Bulk mode**.
+- **Pen** — five modes (pen, highlighter, smart pen, eraser, precision eraser),
+  the active mode highlighted, then a divider and preset slots.
+- **Shapes** — a quick strip of basic shapes, 240 px wide.
+- **Frames** — a small presets panel, 256 × 357.
+- **Media** — a full-height library panel, 368 × 746.
+- **Tools (`+`)** — the catalog of apps and tools, 450 × 746.
+- **Templates** — the full-screen modal, 1 160 × 736, centred, dimmed backdrop.
+
+### Side panels
+
+Comments and Frames dock at the right inset (340 × 746); Voting is 380 wide.
+**A docked right panel pushes the bottom-right control strip left** by the panel
+width + 8, keeping its usual 12 px gap to it. Escape does **not** close side
+panels; each carries its own close control. On the canvas, Escape closes menus
+and popovers.
+
+### Share
+
+A 600 × 433 dialog, x-centred, with tabs **Invite** (an emails / user-groups
+field), **Embed**, **Publish**, **AI**. The body carries a **Board access**
+section: the owner row ("You're the board owner" with *Manage access*), a team
+row with an access selector ("No access"), and an "Anyone with the link" row
+with a second access selector ("No access"). The footer offers **Copy board
+link** and **Sharing settings**. Nothing was exercised — no invites, no link
+changes, no copying.
+
+### Command palette and the shortcuts modal
+
+- `⌘K` opens the palette (~546 px, x-centred) with the hint "Search for apps and
+  actions…" and one list mixing apps and actions (Timer, Frame, Mind map, Grid,
+  Diagramming shapes, Stickers, Emoji and GIFs, Templates, Save as PDF, Sticky
+  note…) with key chips where a binding exists. Escape closes.
+- Help → **Keyboard shortcuts** opens a rendered cheat-sheet (78 captured rows)
+  corroborating the published map, including the blocks section (`⌘⌥0…6`, `⌘/`,
+  `⌘E`, `⌘⇧U`, `⌘⇧X`, `⌘⌥M`, `⌘,`) and `⌥⌘K`, `⌘⇧L`, `⌘⇧F`. It is read-only, not
+  a settings surface.
+- The accessible board overview (on-screen guidance names `⌥O`) did **not** open
+  under synthesised `⌥O`; see the discrepancy note above.
+
+### The two context-menu lanes, rendered
+
+- **Empty canvas, right-click:** Paste · Unlock all · Add text · Add sticky
+  note · Add comment · Set start view · Set current view as start · a checkable
+  group (Show grid ✓, Show comments on board ✓, Snap to grid ☐, Snap objects ✓,
+  Show object size ☐, Suggest object size ✓) · Mouse or trackpad · Show all
+  (⌥1). Near the bottom edge the menu flips **above** the cursor.
+- **Object, right-click** (observed on a sticky): Copy · Copy link · Copy as
+  image · Duplicate · Delete · Add comment · Copy style · Paste style · Clear
+  content · Arrange ▸ · Link to · Lock · Create frame · Save as template ·
+  Export to CSV (Excel) · Info ▸ — with separators after Delete, Clear content,
+  Arrange, Create frame and Export to CSV, and painted shortcuts per item.
+- **Selection toolbar** (the floating lane): appears on selection, centred above
+  the object — Switch type · Convert to · Font style (family) · font size ± ·
+  Font style · Alignment · Insert link · Sticky note size · Fill color · Show
+  author · Add tag · Add emoji · Comment · Lock · Miro AI · More.
+
+### Creating an object
+
+- Double-click on empty canvas did **not** quick-add anything under synthetic
+  events (two attempts); creation was verified the documented way — arm the
+  rail's sticky tool, then click the canvas. The sticky lands in **edit mode**.
+- The in-canvas text editor for a sticky is a rich-text editor (Quill-family),
+  not a plain textarea.
+- Escape leaves edit mode with the object **selected**; Delete removes it;
+  undo/redo stayed disabled until a change existed.
+- The comment tool arms a pointer: clicking the canvas opens the composer
+  pinned at the click point (see § Comments).
+
+### Menus carry three metric systems
+
+App menus: 40 px items at 44 px pitch. The sidebar's create dropdown: 48 px
+pitch. Canvas context menus: 32 px items at 36 px pitch. It reads as a defect
+until measured; tabulated with widths in
+[`miro-geometry.md`](miro-geometry.md).
 
 ## The keyboard
 
@@ -614,7 +780,10 @@ single registry).
 [`miro-ui.md`](miro-ui.md) already tabulates geometry and placement. This is the
 interaction-level reconciliation, and it is what 7.5.8 and 7.5.9 acted on. The
 "Firo today" column records the state **after** both, so the table is a record of
-what was decided rather than a worklist.
+what was decided rather than a worklist. Phase 11's
+[`miro-parity-matrix.md`](miro-parity-matrix.md) re-derives the comparison
+against HEAD and is the living record; this table stays as the 7.5 decision
+record.
 
 | Interaction | Miro | Firo today | Decision |
 | --- | --- | --- | --- |
@@ -635,29 +804,39 @@ what was decided rather than a worklist.
 
 ## Gaps
 
-- **The rail's *default* composition** — the registry gives every command's
-  category (so the *panel* is exhaustive), and the live accessibility tree gives
-  the rail's order as rendered for this account. What is **not** separated is
-  which commands are on the rail *by default* versus only in the *Tools, Media and
-  Integrations* panel once a user has personalised it — the live board was already
-  someone's arrangement. Miro's own default is documented, not observed.
-- **Geometry and motion** — as in [`miro-ui.md`](miro-ui.md). Unchanged by the
-  bundle work: minified CSS-in-JS was not read for values.
-- **The rendered grammar of the unopened surfaces** — submenus and flyouts were
-  recovered from the registry, so their *contents* are known and their *roles,
-  focus order and painted labels* are not.
-- **Icon visuals** — only slot names were recovered, and the drawings would not
-  be copied in any case.
-- **Numbered-hotkey order** — the bundles confirm the keys are positional over
-  the rail and not remappable **[docs]**, but the painted order was not captured
-  (accessibility order only). Firo deliberately does not adopt it, so this is
-  harmless.
-- **The `⌥O` vs `⌥S` board-overview discrepancy** — recorded above, unresolved.
+Updated 18 October 2026 — closed items say so; the rest are restated with what
+would close them.
+
+- **The rail's *default* composition** — still open, for the same reason: the
+  live board was someone's arrangement. The deep pass strengthened the picture
+  (two reads, different compositions — both tabulated) and confirms the rail is
+  per-user state, but the *default* remains documented, not observed.
+- **Geometry — closed.** Measured in [`miro-geometry.md`](miro-geometry.md)
+  (rects, pitches, radii, shadows, colour roles; tolerances stated there).
+- **Motion — open.** Durations and easings for tool switches and panel
+  transitions were not measured; no value is claimed anywhere.
+- **The rendered grammar of the unopened surfaces — closed for everything the
+  phase plan names.** Rail flyouts, app submenus, the help and avatar menus, the
+  panels, the share dialog, the palette, the shortcuts modal, both context-menu
+  lanes: opened, dumped and captured on 18 October (§ above). What the deep pass
+  did *not* reach: the standalone board **home** (dashboard) page, the *output*
+  of the export actions, the Talktrack **recording** flow, and the AI panels
+  (metered; deliberately untouched).
+- **Icon visuals** — unchanged: slot names only, and the drawings would not be
+  copied in any case.
+- **Numbered-hotkey order — narrowed.** The rail's painted order matches its DOM
+  order in both reads (button positions increase monotonically). The positional
+  mapping of the number keys was not re-tested. Firo deliberately does not adopt
+  it, so this is harmless.
+- **The `⌥O` vs `⌥S` board-overview discrepancy — restated, unresolved.** The
+  deep pass synthesised `⌥O` (both `o` and `ø` after Alt) and the overview did
+  not surface; no other key was tried. The on-screen guidance still names `⌥O`.
 
 ## Sources
 
 | Source | What it settles |
 | --- | --- |
+| Deep pass over the live board via Chrome DevTools, 18 Oct 2026 | The rendered grammar of every surface the 15 October pass could not open, with computed-style and rect measurements (§"The deep pass, surface by surface") |
 | Live Miro board via REA + Chrome DevTools, 15 Oct 2026 | The main menu and canvas-controls menus; the rail and its order; the top bar; the accessibility layer; Talktracks and Frames; that the minimap is a submenu |
 | Miro's own JS bundles (`https://mirostatic.com/app/static/*.js`, 420 files, structure only) | The command catalogue and its descriptor shape; categories; the shortcut registry; the two context-menu lanes; panel and menu contents; accessibility bindings |
 | [Shortcuts and hotkeys](https://help.miro.com/hc/en-us/articles/360017731033) | The published key map, including `G` for grid and the numbered-hotkey rule |

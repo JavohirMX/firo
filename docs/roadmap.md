@@ -18,6 +18,7 @@ Each phase has an **exit criterion**. A phase is done when its criterion is met 
 | 8 | [Project layer](plans/phase-8-pm-layer.md) | **Complete.** Board index, folders, tags, content search, activity feed, timeline projection ([`ADR-0028`](adr/0028-project-layer-folders-and-content-search.md)) |
 | 9 | [Sync server](plans/phase-9-sync-server.md) | **Complete. AC-12 passes in full.** Single container on port 8080, SQLite persistence, snapshot compaction, WebSocket relay, comment lane enforcement ([`ADR-0027`](adr/0027-comments-are-their-own-lane.md)), presence, share capability links |
 | 10 | [AI, MCP, accessibility, desktop](plans/phase-10-ai-mcp-a11y-desktop.md) | **In progress (Wave 1 & §10.3 complete).** Local AI engine (`@firo/ai`), MCP server (`@firo/mcp`), accessibility & VPAT (`@firo/ui`), Tauri shell |
+| 11 | [Miro board-experience parity](plans/phase-11-miro-parity.md) | **In progress — evidence wave.** Every command and surface of a Miro board and its home is observed and classified (adopt / adapt / diverge / omit); adopt/adapt rows are implemented and verified side by side |
 
 Phases 0–9 are complete (Version 1 and Version 2 shipped). **Phase 10 is in progress:**
 Wave 1 shipped local-model AI (§10.1, `@firo/ai`) with zero cloud telemetry and
@@ -25,6 +26,11 @@ undoable mutations, and the Model Context Protocol stdio server (§10.2, `@firo/
 with declarative diffable board serialization; accessibility completion (§10.3) is
 complete with 200% zoom verification, keyboard parity tests, and a published VPAT ([`docs/vpat.md`](vpat.md));
 the Tauri desktop shell (§10.4), and doc blocks (§10.5) follow in Wave 2.
+
+**Phase 11 runs alongside it:** a scenario-driven evidence pass against a live
+Miro **Business** account lands a per-command parity matrix, implements every
+adopt/adapt row, and records a reason for every diverge/omit row
+([`plans/phase-11-miro-parity.md`](plans/phase-11-miro-parity.md)).
 
 ## Version boundaries
 

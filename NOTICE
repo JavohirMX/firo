@@ -154,5 +154,5 @@ anything. This is a requirement, not an accident — see NFR-3 in
 **Firo** is a working name and is not yet cleared for trademark registration.
 "Excalidraw" and "Miro" are trademarks of their respective owners. Firo is not
 affiliated with, endorsed by, or sponsored by either. See
-[`docs/adr/0009-mitre-licence-and-donation-funding.md`](docs/adr/0009-mitre-licence-and-donation-funding.md)
+[`docs/adr/0009-mit-licence-and-donation-funding.md`](docs/adr/0009-mit-licence-and-donation-funding.md)
 and the naming section of [`docs/vision.md`](docs/vision.md).

@@ -2,14 +2,17 @@
 
 What Firo's Phase 7.5 shell is modelled on, and where each claim comes from.
 
-**Status: observed.** The layout below was first taken from Miro's own
-documentation and has now been checked against a **live, authenticated board**
-(2026-10-15, Chrome 155) with REA's Chrome DevTools provider. Documentation-only
-claims have been replaced by observations wherever the live board could settle
-them, and the ones it could not are listed under §"Still unverified". This closes
-task 7.5.0.
+**Status: observed and measured.** The layout below was first taken from Miro's
+own documentation and has been checked against a **live, authenticated board**
+(2026-10-15, Chrome 155) with REA's Chrome DevTools provider. A second,
+scenario-driven deep pass (18 October 2026) opened the surfaces the first pass
+could not and measured the chrome; its numbers live in
+[`miro-geometry.md`](miro-geometry.md). Documentation-only claims have been
+replaced by observations wherever the live board could settle them, and the ones
+it could not are listed under §"Still unverified". This closes task 7.5.0.
 
-Researched **13 October 2026**. Live observation **15 October 2026**.
+Researched **13 October 2026**. Live observation **15 October 2026**. Deep pass
+**18 October 2026**.
 
 The **interaction** inventory behind this shell — the command catalogue, the
 menus, the context menus, the panels and the keyboard, each with the mechanism
@@ -49,13 +52,21 @@ What the method gave, and what it could not:
 
 - **Gave:** the DOM node tree, the accessibility tree (roles, names, states),
   element attribute **names**, event-listener wiring, and storage **key** names.
-- **Did not give:** computed styles, CSS custom properties, attribute **values**
-  (so no class names or `aria-label` values), storage values, or source-map
-  contents (source maps are reported as URLs and deliberately not fetched).
-- **Screenshots** capture the visible viewport; REA does not scroll or evaluate
-  script. The agent that read this report cannot view images, so geometry was
-  **not** measured from the screenshot — the PNG is retained only as temporary
-  evidence. See §"Still unverified".
+- **Did not give the first time:** computed styles, CSS custom properties,
+  attribute **values** (so no class names or `aria-label` values), storage
+  values, or source-map contents (source maps are reported as URLs and
+  deliberately not fetched).
+- **Screenshots** capture the visible viewport; the first pass could not
+  evaluate script, so geometry was **not** measured from the screenshot — the
+  PNG is retained only as temporary evidence.
+
+**Updated 18 October 2026.** The deep pass drove the DevTools Protocol directly
+(synthetic input plus `Runtime.evaluate`), which lifted both limits: computed
+styles, exact rects and `aria-label` values were read, and hover-triggered
+surfaces were opened and captured. All measured geometry comes from that pass
+and lives in [`miro-geometry.md`](miro-geometry.md). What did **not** change:
+the canvas is a WebGL surface, so board objects still never enter the DOM — only
+the chrome around them does.
 
 ## The shell, as observed
 
@@ -111,6 +122,13 @@ through React's delegated listeners):
 
 This answers the ordering-and-persistence question the earlier revision left
 open: **per user, locally, not per board.**
+
+The deep pass saw the arrangement change between two reads on the same account
+minutes apart — an entry appeared, another was absent, and a separator joined
+the new entry (both reads are tabulated in
+[`miro-geometry.md`](miro-geometry.md)). Nothing about the mechanism is asserted
+from that: it confirms only that the rail is per-user state, not a fixed
+contract.
 
 ## The keyboard, as observed
 
@@ -175,22 +193,29 @@ Recorded so the differences are decisions rather than accidents:
 
 ## Still unverified
 
-Not asserted anywhere in code or ADRs until observed:
+Not asserted anywhere in code or ADRs until observed. Updated 18 October 2026:
 
-- **Geometry.** Rail width, icon size and stroke weight, hit-target sizes, the
-  gap between the rail and undo/redo, corner radii and offsets. Computed styles
-  are unavailable through REA's passive inspection, and the screenshot could not
-  be measured (see above). Pixel-level geometry remains a gap.
-- **The rail's visual order versus the accessibility-tree order.** The list above
-  is DOM/accessibility order, which is not guaranteed to be the painted order.
-  Miro does have a stable positional order — its numbered hotkeys switch tools by
-  toolbar position, and `2` is always Templates — so a painted order exists; this
-  inspection captured the accessible order, not the painted one.
-- **Colour and motion tokens.** Durations and easings for tool switches and panel
-  transitions. (Colour values would not be copied verbatim in any case.)
-- **The selection context menu.** Exact actions, and whether it always floats near
-  the object or sometimes docks.
-- **Zoom bounds** and the precise behaviour of the zoom-percentage control.
+- **Geometry — closed.** Measured rects, pitches, radii, shadows and colour roles
+  are in [`miro-geometry.md`](miro-geometry.md). Precision and tolerances are
+  stated there; motion is explicitly *not* measured.
+- **The rail's painted order — largely closed.** The measured button order
+  matches the DOM order (button y-positions increase monotonically with the
+  order), so the two agree on this account. What was *not* re-tested is the
+  documented positional-numbered-hotkey mapping.
+- **Colour and motion tokens — half closed.** Colour roles were measured and
+  mapped to Firo tokens (geometry doc); durations and easings remain unobserved.
+- **The selection context menu — closed.** Sixteen controls were captured and are
+  listed in [`miro-interactions.md`](miro-interactions.md); its placement
+  (centred above the object) and metrics are in the geometry document.
+- **Zoom bounds and the percentage control — narrowed, not closed.** The live
+  zoom menu on 18 October carried stops 50 / 70 / 100 / 400 plus Fit (⌥1) and
+  100 % (⌘0) — the 1200 % and 2000 % stops the 15 October pass recorded were
+  **not** in the menu then: the stops may be conditional (state, licence) or the
+  product changed. Not resolved. The readout sits inside the zoom button.
+  Default zoom on an empty board at 1200 × 818 was 69 %, and it tracked available
+  canvas width exactly when the sidebar opened (54 % = 69 × 940/1200), which
+  describes a fit-to-view rule without pinning its formula. Above-400 % was not
+  probed.
 
 ## Sources
 
