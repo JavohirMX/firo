@@ -788,7 +788,7 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
   }
 
   const base = baseFor(element);
-
+  const labelId = labelIdFor(element.id);
   const sticky: ExcalidrawStickyNoteElement = {
     ...base,
     type: "stickynote",
@@ -801,11 +801,15 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
      * is edited, and editing happens in the editor, which tracks it properly.
      */
     baseHeight: element.height,
+    boundElements: [
+      { id: labelId, type: "text" },
+      ...(base.boundElements ?? []),
+    ],
   };
 
   const label: ExcalidrawTextElement = {
     ...base,
-    id: labelIdFor(element.id),
+    id: labelId,
     type: "text",
     /*
      * The label is derived state, not a sibling. Sharing the note's `version`
@@ -926,11 +930,13 @@ const sharedDocumentFields = (element: ExcalidrawElement) => {
      * from the drawing. The connector's copy is the one that matters, and it
      * round trips exactly.
      */
-    bindings: (element.boundElements ?? []).map((bound) => ({
-      elementId: bound.id as ElementId,
-      focus: 0,
-      gap: 1,
-    })),
+    bindings: (element.boundElements ?? [])
+      .filter((bound) => bound.type === "arrow")
+      .map((bound) => ({
+        elementId: bound.id as ElementId,
+        focus: 0,
+        gap: 1,
+      })),
     link: element.link,
     locked: element.locked,
     created: element.created ?? null,
@@ -1350,11 +1356,13 @@ export const foldEditorElement = (
      * or `gap`, so bindings read this way arrive with the geometry the document
      * is holding replaced by nothing. Sync goes field by field for this.
      */
-    bindings: (element.boundElements ?? []).map((bound) => ({
-      elementId: bound.id as ElementId,
-      focus: 0,
-      gap: 1,
-    })),
+    bindings: (element.boundElements ?? [])
+      .filter((bound) => bound.type === "arrow")
+      .map((bound) => ({
+        elementId: bound.id as ElementId,
+        focus: 0,
+        gap: 1,
+      })),
     /*
      * `originalText`, not `text`.
      *

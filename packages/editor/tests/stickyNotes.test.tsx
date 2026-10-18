@@ -1139,7 +1139,7 @@ describe("sticky notes", () => {
   });
 
   describe("creation date", () => {
-    it("exports the same absolute date to SVG and canvas, omitting unknown dates", async () => {
+    it("does not render creation date footer to SVG or canvas (clean Miro aesthetic)", async () => {
       const elements = [
         API.createElement({
           type: "stickynote",
@@ -1164,14 +1164,10 @@ describe("sticky notes", () => {
       );
       expect(
         [...svg.querySelectorAll("text")].map((text) => text.textContent),
-      ).toEqual(["7 Mar 2025"]);
+      ).toEqual([]);
 
       const canvas = await exportToCanvas({ elements, files: {} });
-      expect(canvas.getContext("2d")?.fillText).toHaveBeenCalledWith(
-        "7 Mar 2025",
-        expect.any(Number),
-        expect.any(Number),
-      );
+      expect(canvas.getContext("2d")?.fillText).not.toHaveBeenCalled();
     });
   });
 

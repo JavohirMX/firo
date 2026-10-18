@@ -5,6 +5,12 @@ import { createFiroDoc, putAsset } from "@firo/doc";
 import { mintBoardId } from "@firo/board";
 import { serializeBoard } from "@firo/schema";
 
+import { getAssetBytes } from "@firo/doc";
+
+import { loadBoard } from "@firo/schema";
+
+import { exportToPdf } from "@firo/utils/export";
+
 import type {
   ActivityFeedItem,
   BoardCardData,
@@ -33,7 +39,16 @@ import {
 } from "./board/library";
 import { BOARD_TEMPLATES, templateById } from "./board/templates";
 import { boardUrl } from "./board/routes";
-import { importBoardFile, pickBinaryFile } from "./board/files";
+import {
+  downloadBoard,
+  exportBoard,
+  exportPackagedBoard,
+  importBoardFile,
+  pickBinaryFile,
+  type ExportResult,
+  type PackagedExportResult,
+} from "./board/files";
+import { readBoardPayload } from "./board/storage";
 
 import type { MiroRtbArchive } from "./board/miro";
 
@@ -207,7 +222,7 @@ export const BoardHomeScreen: React.FC = () => {
 
   const handleImportBoard = async () => {
     const picked = await pickBinaryFile(
-      ".firo,.rtb,.json,.zip,application/json,application/zip,application/octet-stream",
+      ".firo,.rtb,.excalidraw,.json,.csv,.zip,application/json,application/zip,application/octet-stream,text/csv",
     );
     if (!picked) {
       return;
@@ -253,6 +268,70 @@ export const BoardHomeScreen: React.FC = () => {
     }
 
     alert(`That file could not be imported: ${result.detail}`);
+  };
+
+  const handleExportBoard = async (boardId: string, format: "firo" | "pdf") => {
+    try {
+      const rawPayload = await readBoardPayload(boardId);
+      if (!rawPayload) {
+        alert("Could not load board data for export.");
+        return;
+      }
+      const doc = createFiroDoc();
+      const loaded = loadBoard(JSON.parse(rawPayload));
+      doc.load(loaded);
+      const meta = (boards ?? []).find((b) => b.id === boardId);
+      const boardName = meta?.name || "board";
+
+      if (format === "firo") {
+        let result: ExportResult | PackagedExportResult = exportBoard(doc);
+        if (!result.ok && result.reason === "assets-not-carried") {
+          result = await exportPackagedBoard(doc, {
+            readAsset: async (hash) => {
+              const bytes = await getAssetBytes(hash);
+              return bytes ? new Uint8Array(bytes) : null;
+            },
+          });
+        }
+        if (result.ok) {
+          downloadBoard({ ...result, filename: `${boardName}.firo` });
+        } else {
+          alert(`Export failed: ${result.detail}`);
+        }
+        return;
+      }
+
+      if (format === "pdf") {
+        const elements = (doc.read().elements as any[]).filter(
+          (e) => !e.isDeleted,
+        );
+        const frames = elements.filter((el) => el.type === "frame");
+        const blob = await exportToPdf({
+          elements,
+          appState: {
+            exportBackground: true,
+            viewBackgroundColor: "#ffffff",
+            name: boardName,
+          } as any,
+          files: {},
+          exportMode: frames.length > 0 ? "multi-page-frames" : "single-page",
+          frames,
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${boardName}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+    } catch (err) {
+      console.error("Board export failed:", err);
+      alert(
+        `Export failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   };
 
   const handleCreateFromTemplate = async (templateId: string) => {
@@ -372,6 +451,7 @@ export const BoardHomeScreen: React.FC = () => {
         onDeleteFolder={handleDeleteFolder}
         onChangeViewMode={setViewMode}
         onChangeSortBy={setSortBy}
+        onExportBoard={handleExportBoard}
         activities={activities}
         onClearActivity={async () => {
           await clearActivity();

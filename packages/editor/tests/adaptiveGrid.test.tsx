@@ -318,8 +318,8 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       const radii = (ctx.arc as any).mock.calls.map((call: any[]) => call[2]);
       const uniqueRadii = Array.from(new Set(radii)) as number[];
       expect(uniqueRadii.length).toBe(2);
-      expect(Math.max(...uniqueRadii)).toBe(1.75); // Major dot radius
-      expect(Math.min(...uniqueRadii)).toBe(1.25); // Minor dot radius
+      expect(Math.max(...uniqueRadii)).toBe(1.1); // Major dot radius
+      expect(Math.min(...uniqueRadii)).toBe(0.75); // Minor dot radius
     });
   });
 

@@ -971,6 +971,51 @@ export const UploadIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   </svg>
 );
 
+export const DownloadIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3.5 13.5V15C3.5 15.83 4.17 16.5 5 16.5H15C15.83 16.5 16.5 15.83 16.5 15V13.5M10 12.5V3.5M10 12.5L6.5 9M10 12.5L13.5 9"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const FilePdfIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M4 3.5C4 2.67 4.67 2 5.5 2H11.5L16 6.5V16.5C16 17.33 15.33 18 14.5 18H5.5C4.67 18 4 17.33 4 16.5V3.5Z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M11 2V7H16"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const TagIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   <svg
     width={size}

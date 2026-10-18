@@ -29,3 +29,5 @@ export * from "./components/SelectionToolbar";
 export * from "./components/BoardHome";
 export * from "./components/ActivityFeed";
 export * from "./components/AccessibilityTree";
+export * from "./components/ExportModal";
+export * from "./components/ImportModal";

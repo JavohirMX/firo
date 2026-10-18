@@ -15,7 +15,6 @@ import {
   actionResetZoom,
   actionZoomToFit,
   actionToggleGridMode,
-  useFocusTrap,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -83,6 +82,26 @@ import {
   useHandleLibrary,
 } from "@firo/editor/data/library";
 
+import {
+  ExportModal,
+  ImportModal,
+  type ExportTab,
+  type ImportFileInfo,
+} from "@firo/ui";
+
+import {
+  exportToBlob,
+  exportToCanvas,
+  exportToPdf,
+  exportToSvg,
+} from "@firo/utils/export";
+
+import { mintBoardId } from "@firo/board";
+
+import { createFiroDoc, getAssetBytes, putAsset } from "@firo/doc";
+
+import { serializeBoard } from "@firo/schema";
+
 import type { AccessibilityTreeItem, ActivityFeedItem } from "@firo/ui";
 
 import type { RailToolItem, RailToolType } from "@firo/ui";
@@ -96,8 +115,10 @@ import type {
 } from "@firo/element/types";
 import type {
   AppState,
-  ExcalidrawImperativeAPI,
+  BinaryFileData,
   BinaryFiles,
+  DataURL,
+  ExcalidrawImperativeAPI,
   ExcalidrawInitialDataState,
   UIAppState,
   ExcalidrawProps,
@@ -118,6 +139,7 @@ import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
+import { VersionHistoryModal } from "./components/VersionHistoryModal";
 import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
 import { TagLayer } from "./components/TagLayer";
@@ -186,6 +208,26 @@ import {
   readReducedMotion,
   writeReducedMotion,
 } from "./board/reducedMotion";
+
+import {
+  downloadBoard,
+  exportBoard,
+  exportBoardDirectory,
+  exportPackagedBoard,
+  importBoardFile,
+  pickBinaryFile,
+  type ExportResult,
+  type PackagedExportResult,
+} from "./board/files";
+
+import { exportStickyNotesToCsv, exportRecordsToCsv } from "./board/csv";
+import { convertFiroToExcalidraw } from "./board/excalidraw";
+import { exportFramesToZip } from "./board/batchExport";
+import { generateMiroCreationScript } from "./board/miro";
+import { injectAssetsIntoEditor, uint8ArrayToDataUrl } from "./board/assets";
+import { canPickDirectory, writeFiroDirectory } from "./board/firoDownload";
+import { createBoard } from "./board/library";
+import { boardUrl } from "./board/routes";
 
 import "./index.scss";
 
@@ -1048,15 +1090,582 @@ const ExcalidrawWrapper = () => {
   );
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [commentMode, setCommentMode] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportModalTab, setExportModalTab] = useState<ExportTab>("image");
+  const [importPendingFile, setImportPendingFile] = useState<{
+    info: ImportFileInfo;
+    bytes: Uint8Array;
+  } | null>(null);
   const [minimapVisible, setMinimapVisible] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
-  const activityFeedDialogRef = useFocusTrap<HTMLDivElement>(activityFeedOpen);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const activityFeedDialogRef = useRef<HTMLDivElement>(null);
+
+  const handleExportImage = useCallback(
+    async (opts: {
+      format: "png" | "svg";
+      scale: number;
+      background: boolean;
+      selectionOnly: boolean;
+      embedScene: boolean;
+    }) => {
+      if (!excalidrawAPI) {
+        return;
+      }
+      const elements = excalidrawAPI.getSceneElements();
+      const appState = excalidrawAPI.getAppState();
+      const files = excalidrawAPI.getFiles();
+      const boardName = getActiveBoard()?.name || "board";
+      const selectedIds = appState.selectedElementIds || {};
+      const elementsToExport = opts.selectionOnly
+        ? elements.filter((el) => selectedIds[el.id])
+        : elements;
+
+      if (opts.format === "svg") {
+        const svg = await exportToSvg({
+          elements: elementsToExport,
+          appState: {
+            ...appState,
+            exportBackground: opts.background,
+            viewBackgroundColor: appState.viewBackgroundColor,
+            exportScale: opts.scale,
+          },
+          files,
+        });
+        const svgStr = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([svgStr], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${boardName}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+        return;
+      }
+
+      const canvas = await exportToCanvas({
+        elements: elementsToExport,
+        appState: {
+          ...appState,
+          exportBackground: opts.background,
+          exportScale: opts.scale,
+          exportEmbedScene: opts.embedScene,
+        },
+        files,
+      });
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${boardName}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      });
+    },
+    [excalidrawAPI],
+  );
+
+  const handleCopyImage = useCallback(
+    async (opts: {
+      format: "png" | "svg";
+      scale: number;
+      background: boolean;
+      selectionOnly: boolean;
+    }) => {
+      if (!excalidrawAPI) {
+        return;
+      }
+      const elements = excalidrawAPI.getSceneElements();
+      const appState = excalidrawAPI.getAppState();
+      const files = excalidrawAPI.getFiles();
+      const selectedIds = appState.selectedElementIds || {};
+      const elementsToExport = opts.selectionOnly
+        ? elements.filter((el) => selectedIds[el.id])
+        : elements;
+
+      if (opts.format === "svg") {
+        const svg = await exportToSvg({
+          elements: elementsToExport,
+          appState: {
+            ...appState,
+            exportBackground: opts.background,
+            viewBackgroundColor: appState.viewBackgroundColor,
+            exportScale: opts.scale,
+          },
+          files,
+        });
+        const svgStr = new XMLSerializer().serializeToString(svg);
+        await navigator.clipboard.writeText(svgStr);
+        return;
+      }
+
+      const blob = await exportToBlob({
+        elements: elementsToExport,
+        appState: {
+          ...appState,
+          exportBackground: opts.background,
+          exportScale: opts.scale,
+        },
+        files,
+        mimeType: "image/png",
+      });
+      if (blob && navigator.clipboard?.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+      }
+    },
+    [excalidrawAPI],
+  );
+
+  const handleExportPdf = useCallback(
+    async (opts: { mode: "frames" | "single"; background: boolean }) => {
+      if (!excalidrawAPI) {
+        return;
+      }
+      const elements = excalidrawAPI.getSceneElements();
+      const appState = excalidrawAPI.getAppState();
+      const files = excalidrawAPI.getFiles();
+      const boardName = getActiveBoard()?.name || "board";
+      const frames = elements.filter(
+        (el) => el.type === "frame" && !el.isDeleted,
+      ) as any[];
+
+      const blob = await exportToPdf({
+        elements,
+        appState: {
+          ...appState,
+          exportBackground: opts.background,
+          name: boardName,
+        },
+        files,
+        exportMode:
+          opts.mode === "frames" ? "multi-page-frames" : "single-page",
+        frames,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${boardName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    },
+    [excalidrawAPI],
+  );
+
+  const handleExportArchive = useCallback(
+    async (opts: { format: "firo" | "directory" }) => {
+      const doc = boardDoc();
+      const boardName = getActiveBoard()?.name || "board";
+
+      if (opts.format === "firo") {
+        let result: ExportResult | PackagedExportResult = exportBoard(doc);
+        if (!result.ok && result.reason === "assets-not-carried") {
+          result = await exportPackagedBoard(doc, {
+            readAsset: async (hash) => {
+              const bytes = await getAssetBytes(hash);
+              return bytes ? new Uint8Array(bytes) : null;
+            },
+          });
+        }
+        if (result.ok) {
+          downloadBoard({ ...result, filename: `${boardName}.firo` });
+        } else {
+          excalidrawAPI?.setToast({
+            message: `Export failed: ${result.detail}`,
+            closable: true,
+            duration: 5000,
+          });
+        }
+        return;
+      }
+
+      if (opts.format === "directory") {
+        if (!canPickDirectory()) {
+          excalidrawAPI?.setToast({
+            message:
+              "Folder export is not supported by your browser. Use .firo archive instead.",
+            closable: true,
+            duration: 5000,
+          });
+          return;
+        }
+        await exportBoardDirectory(doc, {
+          readAsset: async (hash) => {
+            const bytes = await getAssetBytes(hash);
+            return bytes ? new Uint8Array(bytes) : null;
+          },
+          write: (files) =>
+            writeFiroDirectory(files, { suggestedName: boardName }),
+        });
+      }
+    },
+    [excalidrawAPI],
+  );
+
+  const handleExportCsv = useCallback(
+    (opts: { target: "stickies" | "records" }) => {
+      const doc = boardDoc();
+      const boardName = getActiveBoard()?.name || "board";
+
+      if (opts.target === "stickies") {
+        const csvStr = exportStickyNotesToCsv(doc);
+        const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${boardName}-stickies.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+        return;
+      }
+
+      if (opts.target === "records") {
+        const csvStr = exportRecordsToCsv(doc);
+        const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${boardName}-records.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+    },
+    [],
+  );
+
+  const handleExportExcalidraw = useCallback(() => {
+    const doc = boardDoc();
+    const boardName = getActiveBoard()?.name || "board";
+    const scene = convertFiroToExcalidraw(doc.read());
+    const jsonStr = JSON.stringify(scene, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${boardName}.excalidraw`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, []);
+
+  const handleExportMiroScript = useCallback(() => {
+    const doc = boardDoc();
+    const elements = doc.read().elements;
+    const script = generateMiroCreationScript(elements);
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(script);
+      excalidrawAPI?.setToast({
+        message:
+          "Miro script copied to clipboard! Paste it into your Miro browser console.",
+        closable: true,
+        duration: 8000,
+      });
+    }
+  }, [excalidrawAPI]);
+
+  const handleExportBatchFrames = useCallback(
+    async (opts: { format: "png" | "svg"; scale: number }) => {
+      if (!excalidrawAPI) {
+        return;
+      }
+      const elements = excalidrawAPI.getSceneElements();
+      const appState = excalidrawAPI.getAppState();
+      const files = excalidrawAPI.getFiles();
+      const boardName = getActiveBoard()?.name || "board";
+
+      const zipBlob = await exportFramesToZip({
+        elements,
+        appState,
+        files,
+        format: opts.format,
+        scale: opts.scale,
+      });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${boardName}-frames.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    },
+    [excalidrawAPI],
+  );
+
+  const ingestImportedAssets = useCallback(
+    async (
+      assets: Map<
+        string,
+        { hash: string; bytes: Uint8Array; mimeType: string }
+      >,
+    ) => {
+      if (!excalidrawAPI || !assets || assets.size === 0) {
+        return;
+      }
+      await injectAssetsIntoEditor(excalidrawAPI, assets);
+      try {
+        const filesMap: Record<FileId, BinaryFileData> = {};
+        for (const asset of assets.values()) {
+          const dataURL = await uint8ArrayToDataUrl(
+            asset.bytes,
+            asset.mimeType,
+          );
+          filesMap[asset.hash as FileId] = {
+            id: asset.hash as FileId,
+            dataURL: dataURL as DataURL,
+            mimeType: asset.mimeType as any,
+            created: Date.now(),
+            lastRetrieved: Date.now(),
+          };
+        }
+        await LocalData.fileStorage.saveFiles({
+          elements: excalidrawAPI.getSceneElementsIncludingDeleted(),
+          files: filesMap,
+        });
+      } catch (e) {
+        console.warn("Failed to persist imported assets to fileStorage", e);
+      }
+    },
+    [excalidrawAPI],
+  );
+
+  const handleStartImport = useCallback(
+    async (filename: string, bytes: Uint8Array) => {
+      if (!excalidrawAPI) {
+        return;
+      }
+      const doc = boardDoc();
+      const existingElements = doc
+        .read()
+        .elements.filter((el) => !el.isDeleted);
+
+      const nameLower = filename.toLowerCase();
+      let format: ImportFileInfo["format"] = "firo";
+      if (nameLower.endsWith(".rtb")) {
+        format = "rtb";
+      } else if (nameLower.endsWith(".excalidraw")) {
+        format = "excalidraw";
+      } else if (nameLower.endsWith(".csv")) {
+        format = "csv";
+      } else if (nameLower.endsWith(".json")) {
+        format = "json";
+      }
+
+      // If board is empty, directly load!
+      if (existingElements.length === 0) {
+        const result = await importBoardFile(doc, bytes, {
+          putAsset: async (hash, data) => {
+            await putAsset(hash, data as never, undefined);
+          },
+          force: true,
+        });
+        if (result.ok) {
+          if (result.assets && result.assets.size > 0) {
+            await ingestImportedAssets(result.assets);
+          }
+          excalidrawAPI.setToast({
+            message: `Board loaded (${result.elements} elements)!`,
+            closable: true,
+            duration: 4000,
+          });
+        } else {
+          excalidrawAPI.setToast({
+            message: `Import failed: ${result.detail}`,
+            closable: true,
+            duration: 6000,
+          });
+        }
+        return;
+      }
+
+      // Board has existing content: open smart ImportModal!
+      setImportPendingFile({
+        info: {
+          name: filename,
+          sizeBytes: bytes.byteLength,
+          format,
+        },
+        bytes,
+      });
+    },
+    [excalidrawAPI, ingestImportedAssets],
+  );
+
+  const handleImportInsert = useCallback(async () => {
+    if (!importPendingFile || !excalidrawAPI) {
+      return;
+    }
+    const doc = boardDoc();
+    const result = await importBoardFile(doc, importPendingFile.bytes, {
+      putAsset: async (hash, data) => {
+        await putAsset(hash, data as never, undefined);
+      },
+      insertMode: "insert",
+    });
+    if (result.ok) {
+      if (result.assets && result.assets.size > 0) {
+        await ingestImportedAssets(result.assets);
+      }
+      excalidrawAPI.setToast({
+        message: `Inserted ${result.elements} elements onto current board!`,
+        closable: true,
+        duration: 4000,
+      });
+    } else {
+      excalidrawAPI.setToast({
+        message: `Insert failed: ${result.detail}`,
+        closable: true,
+        duration: 6000,
+      });
+    }
+    setImportPendingFile(null);
+  }, [importPendingFile, excalidrawAPI, ingestImportedAssets]);
+
+  const handleImportReplace = useCallback(async () => {
+    if (!importPendingFile || !excalidrawAPI) {
+      return;
+    }
+    const doc = boardDoc();
+    const result = await importBoardFile(doc, importPendingFile.bytes, {
+      putAsset: async (hash, data) => {
+        await putAsset(hash, data as never, undefined);
+      },
+      insertMode: "replace",
+      force: true,
+    });
+    if (result.ok) {
+      if (result.assets && result.assets.size > 0) {
+        await ingestImportedAssets(result.assets);
+      }
+      excalidrawAPI.setToast({
+        message: `Board replaced (${result.elements} elements)!`,
+        closable: true,
+        duration: 4000,
+      });
+    } else {
+      excalidrawAPI.setToast({
+        message: `Replace failed: ${result.detail}`,
+        closable: true,
+        duration: 6000,
+      });
+    }
+    setImportPendingFile(null);
+  }, [importPendingFile, excalidrawAPI, ingestImportedAssets]);
+
+  const handleImportOpenNew = useCallback(async () => {
+    if (!importPendingFile) {
+      return;
+    }
+    const { id, mutation } = mintBoardId();
+    const newDoc = createFiroDoc();
+    newDoc.commit([mutation]);
+    const result = await importBoardFile(newDoc, importPendingFile.bytes, {
+      putAsset: async (hash, data) => {
+        await putAsset(hash, data as never, undefined);
+      },
+      force: true,
+    });
+    if (result.ok) {
+      const read = newDoc.read();
+      const metaName = read.meta?.name;
+      const boardName =
+        typeof metaName === "string" &&
+        metaName.trim() &&
+        metaName !== "Untitled board"
+          ? metaName
+          : importPendingFile.info.name.replace(/\.[^/.]+$/, "");
+      const payload = JSON.stringify(serializeBoard(read));
+      await createBoard({
+        id,
+        name: boardName,
+        payload,
+      });
+      setImportPendingFile(null);
+      window.location.assign(boardUrl(id));
+    } else {
+      excalidrawAPI?.setToast({
+        message: `Import failed: ${result.detail}`,
+        closable: true,
+        duration: 6000,
+      });
+      setImportPendingFile(null);
+    }
+  }, [importPendingFile, excalidrawAPI]);
+
+  const handleMenuImport = useCallback(async () => {
+    const picked = await pickBinaryFile(
+      ".firo,.rtb,.excalidraw,.json,.csv,.zip,application/json,application/zip,application/octet-stream,text/csv",
+    );
+    if (!picked) {
+      return;
+    }
+    await handleStartImport(picked.name, picked.bytes);
+  }, [handleStartImport]);
+
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const onDrop = async (e: DragEvent) => {
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) {
+        return;
+      }
+      const file = files[0];
+      const name = file.name.toLowerCase();
+      if (
+        name.endsWith(".firo") ||
+        name.endsWith(".rtb") ||
+        name.endsWith(".excalidraw") ||
+        name.endsWith(".csv") ||
+        (name.endsWith(".json") && !name.endsWith(".excalidrawlib"))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        handleStartImport(file.name, bytes);
+      }
+    };
+
+    window.addEventListener("dragover", onDragOver, false);
+    window.addEventListener("drop", onDrop, { capture: true });
+    return () => {
+      window.removeEventListener("dragover", onDragOver, false);
+      window.removeEventListener("drop", onDrop, { capture: true });
+    };
+  }, [handleStartImport]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isWritableElement(event.target)) {
+        return;
+      }
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.shiftKey &&
+        (event.key === "e" || event.key === "E")
+      ) {
+        event.preventDefault();
+        setExportModalTab("image");
+        setExportModalOpen(true);
         return;
       }
       if (event.ctrlKey || event.metaKey || event.altKey) {
@@ -1331,23 +1940,23 @@ const ExcalidrawWrapper = () => {
         return;
       }
 
-      if (isInitialLoad) {
-        if (fileIds.length) {
-          LocalData.fileStorage
-            .getFiles(fileIds)
-            .then(async ({ loadedFiles, erroredFiles }) => {
-              if (loadedFiles.length) {
-                excalidrawAPI.addFiles(loadedFiles);
-              }
-              updateStaleImageStatuses({
-                excalidrawAPI,
-                erroredFiles,
-                elements: excalidrawAPI.getSceneElementsIncludingDeleted(),
-              });
+      if (fileIds.length) {
+        LocalData.fileStorage
+          .getFiles(fileIds)
+          .then(async ({ loadedFiles, erroredFiles }) => {
+            if (loadedFiles.length) {
+              excalidrawAPI.addFiles(loadedFiles);
+            }
+            updateStaleImageStatuses({
+              excalidrawAPI,
+              erroredFiles,
+              elements: excalidrawAPI.getSceneElementsIncludingDeleted(),
             });
-        }
-        // on fresh load, clear unused files from IDB (from previous
-        // session)
+          });
+      }
+
+      if (isInitialLoad) {
+        // on fresh load, clear unused files from IDB (from previous session)
         LocalData.fileStorage.clearObsoleteFiles({
           currentFileIds: fileIds,
         });
@@ -1544,6 +2153,12 @@ const ExcalidrawWrapper = () => {
       collabProviderRef.current?.setLocalTool(appState.activeTool.type);
     }
 
+    if (appState.openDialog?.name === "imageExport") {
+      excalidrawAPI?.updateScene({ appState: { openDialog: null } });
+      setExportModalTab("image");
+      setExportModalOpen(true);
+    }
+
     // this check is redundant, but since this is a hot path, it's best
     // not to evaludate the nested expression every time
     if (!LocalData.isSavePaused()) {
@@ -1736,7 +2351,10 @@ const ExcalidrawWrapper = () => {
             >
               <ActivityIcon size={18} />
             </button>
-            <SaveStatusIndicator />
+            <SaveStatusIndicator
+              collabStatus={isOffline ? "offline" : collabStatus}
+              onClick={() => setVersionHistoryOpen(true)}
+            />
             <FacilitatorBar />
           </CollabBar>
         )}
@@ -1904,6 +2522,12 @@ const ExcalidrawWrapper = () => {
           isCollaborating={isCollaborating}
           theme={appTheme}
           refresh={() => forceRefresh((prev) => !prev)}
+          onExport={() => {
+            setExportModalTab("image");
+            setExportModalOpen(true);
+          }}
+          onImport={handleMenuImport}
+          onVersionHistory={() => setVersionHistoryOpen(true)}
         />
         <AppWelcomeScreen />
         <OverwriteConfirmDialog>
@@ -2005,6 +2629,66 @@ const ExcalidrawWrapper = () => {
             ref={debugCanvasRef}
           />
         )}
+
+        <ExportModal
+          isOpen={exportModalOpen}
+          onClose={() => setExportModalOpen(false)}
+          defaultTab={exportModalTab}
+          boardName={getActiveBoard()?.name || "board"}
+          hasSelection={Boolean(
+            excalidrawAPI &&
+              Object.keys(excalidrawAPI.getAppState().selectedElementIds || {})
+                .length > 0,
+          )}
+          frames={
+            excalidrawAPI
+              ?.getSceneElements()
+              .filter((el) => el.type === "frame" && !el.isDeleted)
+              .map((f) => ({ id: f.id, name: (f as any).name || "Frame" })) ||
+            []
+          }
+          stickyNoteCount={
+            excalidrawAPI
+              ?.getSceneElements()
+              .filter((el) => el.type === "stickynote" && !el.isDeleted)
+              .length || 0
+          }
+          hasRecords={(boardDoc().read().records?.length ?? 0) > 0}
+          onExportImage={handleExportImage}
+          onCopyImage={handleCopyImage}
+          onExportPdf={handleExportPdf}
+          onExportArchive={handleExportArchive}
+          onExportCsv={handleExportCsv}
+          onExportExcalidraw={handleExportExcalidraw}
+          onExportMiroScript={handleExportMiroScript}
+          onExportBatchFrames={handleExportBatchFrames}
+        />
+
+        {importPendingFile && (
+          <ImportModal
+            isOpen={true}
+            onClose={() => setImportPendingFile(null)}
+            fileInfo={importPendingFile.info}
+            onInsert={handleImportInsert}
+            onReplace={handleImportReplace}
+            onOpenNew={handleImportOpenNew}
+          />
+        )}
+
+        <VersionHistoryModal
+          isOpen={versionHistoryOpen}
+          onClose={() => setVersionHistoryOpen(false)}
+          boardId={
+            (boardDoc().read().meta?.id as string | undefined) ||
+            getActiveBoard()?.id ||
+            "default"
+          }
+          doc={boardDoc()}
+          collabStatus={isOffline ? "offline" : collabStatus}
+          onRestore={() => {
+            excalidrawAPI?.refresh();
+          }}
+        />
       </Excalidraw>
     </div>
   );

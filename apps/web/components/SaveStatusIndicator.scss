@@ -1,0 +1,85 @@
+.firo-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  font-size: var(--firo-font-size-xs, 12px);
+  color: var(--firo-color-text-secondary, #475569);
+  padding: 3px 8px;
+  border-radius: var(--firo-radius-pill, 9999px);
+  background: var(--firo-color-surface, #f8f9fa);
+  border: 1px solid var(--firo-color-border, #e2e8f0);
+  user-select: none;
+  transition: all 0.15s ease;
+
+  &--interactive {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--firo-color-surface-hover, #f1f5f9);
+      border-color: var(--firo-color-border-hover, #cbd5e1);
+      color: var(--firo-color-text, #0f172a);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-accent, #2563eb);
+      outline-offset: 1px;
+    }
+  }
+
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--color-success, #10b981);
+    flex-shrink: 0;
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+    flex-shrink: 0;
+  }
+
+  &__text {
+    line-height: 1.2;
+    font-weight: 500;
+  }
+
+  &--saving {
+    .firo-save-status__dot {
+      background-color: var(--color-warning, #f59e0b);
+      animation: firoSavePulse 1s infinite ease-in-out;
+    }
+  }
+
+  &--saved {
+    .firo-save-status__dot {
+      background-color: var(--color-success, #10b981);
+    }
+  }
+
+  &--error {
+    color: var(--color-danger, #ef4444);
+    border-color: #fecaca;
+    background: #fef2f2;
+
+    .firo-save-status__dot {
+      background-color: var(--color-danger, #ef4444);
+    }
+  }
+}
+
+@keyframes firoSavePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}

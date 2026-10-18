@@ -12,15 +12,43 @@ const ENTITY_MAP: Readonly<Record<string, string>> = {
   "&nbsp;": " ",
   "&#x2F;": "/",
   "&#47;": "/",
+  "&bull;": "•",
+  "&middot;": "•",
+  "&mdash;": "—",
+  "&ndash;": "–",
+  "&hellip;": "…",
+  "&copy;": "©",
+  "&reg;": "®",
+  "&trade;": "™",
 };
 
 export const decodeHtmlEntities = (text: string): string => {
-  return text.replace(
-    /&(?:amp|lt|gt|quot|apos|nbsp|#39|#47|#x2F);/g,
+  let decoded = text.replace(
+    /&(?:amp|lt|gt|quot|apos|nbsp|#39|#47|#x2F|bull|middot|mdash|ndash|hellip|copy|reg|trade);/g,
     (match) => {
       return ENTITY_MAP[match] ?? match;
     },
   );
+
+  // Decode decimal numeric entities (e.g., &#8226;)
+  decoded = decoded.replace(/&#(\d+);/g, (_, dec) => {
+    try {
+      return String.fromCharCode(parseInt(dec, 10));
+    } catch {
+      return _;
+    }
+  });
+
+  // Decode hex numeric entities (e.g., &#x2022;)
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+
+  return decoded;
 };
 
 /**
@@ -35,6 +63,12 @@ export const miroHtmlToPlainText = (
 
   let text = html;
 
+  // Add bullet prefixes to unordered lists if not already prefixed
+  text = text.replace(/<li[^>]*>/gi, "• ");
+
+  // Normalize <br></p> or <br></div> before replacing
+  text = text.replace(/<br\s*\/?>\s*<\/(p|div)>/gi, "</$1>");
+
   // Replace <br> or <br/> with newline
   text = text.replace(/<br\s*\/?>/gi, "\n");
 
@@ -47,7 +81,7 @@ export const miroHtmlToPlainText = (
   // Decode HTML entities
   text = decodeHtmlEntities(text);
 
-  // Normalize multiple consecutive blank lines to at most two
+  // Normalize multiple consecutive blank lines to at most one blank line
   text = text.replace(/\n{3,}/g, "\n\n");
 
   return text.trim();

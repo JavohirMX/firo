@@ -21,7 +21,10 @@ import type {
 } from "@firo/element/types";
 import type { AppState, BinaryFiles } from "@firo/editor/types";
 
+import { generatePdfFromCanvases, type PdfPage } from "./pdf";
+
 export { MIME_TYPES };
+export * from "./pdf";
 
 type ExportOpts = {
   /** restored before exporting */
@@ -219,4 +222,56 @@ export const exportToClipboard = async (
   } else {
     throw new Error("Invalid export type");
   }
+};
+
+export const exportToPdf = async (
+  opts: ExportOpts & {
+    exportPadding?: number;
+    exportMode?: "multi-page-frames" | "single-page";
+    frames?: readonly NonDeleted<ExcalidrawFrameLikeElement>[];
+  },
+): Promise<Blob> => {
+  const exportMode = opts.exportMode ?? "single-page";
+  const frames = opts.frames ?? [];
+
+  if (exportMode === "multi-page-frames" && frames.length > 0) {
+    const pages: PdfPage[] = [];
+    for (const frame of frames) {
+      const canvas = await exportToCanvas({
+        ...opts,
+        exportingFrame: frame,
+      });
+      pages.push({
+        canvas,
+        title: frame.name ?? undefined,
+        width: frame.width,
+        height: frame.height,
+      });
+    }
+    const pdfBytes = generatePdfFromCanvases(pages, {
+      title: opts.appState?.name ?? "Board Presentation",
+      creator: "Firo",
+    });
+    return new Blob([pdfBytes.buffer as ArrayBuffer], {
+      type: "application/pdf",
+    });
+  }
+
+  // Single page mode (entire canvas or selection or single frame)
+  const canvas = await exportToCanvas(opts);
+  const pdfBytes = generatePdfFromCanvases(
+    [
+      {
+        canvas,
+        title: opts.appState?.name ?? "Board",
+      },
+    ],
+    {
+      title: opts.appState?.name ?? "Board",
+      creator: "Firo",
+    },
+  );
+  return new Blob([pdfBytes.buffer as ArrayBuffer], {
+    type: "application/pdf",
+  });
 };

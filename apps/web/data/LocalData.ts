@@ -22,6 +22,8 @@ import {
   get,
 } from "idb-keyval";
 
+import { getAssetBytes } from "@firo/doc";
+
 import type { LibraryPersistedData } from "@firo/editor/data/library";
 import type { ImportedDataState } from "@firo/editor/data/types";
 import type { ExcalidrawElement, FileId } from "@firo/element/types";
@@ -30,6 +32,8 @@ import type { MaybePromise } from "@firo/common/utility-types";
 
 import { appJotaiStore, atom } from "../app-jotai";
 import { SAVE_TO_LOCAL_STORAGE_TIMEOUT, STORAGE_KEYS } from "../app_constants";
+
+import { sniffMimeType, uint8ArrayToDataUrl } from "../board/assets";
 
 import { FileManager } from "./FileManager";
 import { FileStatusStore } from "./fileStatusStore";
@@ -167,23 +171,47 @@ export class LocalData {
 
           const filesToSave: [FileId, BinaryFileData][] = [];
 
-          filesData.forEach((data, index) => {
-            const id = ids[index];
-            if (data) {
-              const _data: BinaryFileData = {
-                ...data,
-                lastRetrieved: Date.now(),
-              };
-              filesToSave.push([id, _data]);
-              loadedFiles.push(_data);
-            } else {
-              erroredFiles.set(id, true);
-            }
-          });
+          await Promise.all(
+            filesData.map(async (data, index) => {
+              const id = ids[index];
+              if (data) {
+                const _data: BinaryFileData = {
+                  ...data,
+                  lastRetrieved: Date.now(),
+                };
+                filesToSave.push([id, _data]);
+                loadedFiles.push(_data);
+              } else {
+                try {
+                  const bytes = await getAssetBytes(id);
+                  if (bytes) {
+                    const uint8 = new Uint8Array(bytes);
+                    const mimeType = sniffMimeType(uint8);
+                    const dataURL = await uint8ArrayToDataUrl(uint8, mimeType);
+                    const _data: BinaryFileData = {
+                      id,
+                      dataURL: dataURL as any,
+                      mimeType: mimeType as any,
+                      created: Date.now(),
+                      lastRetrieved: Date.now(),
+                    };
+                    filesToSave.push([id, _data]);
+                    loadedFiles.push(_data);
+                  } else {
+                    erroredFiles.set(id, true);
+                  }
+                } catch {
+                  erroredFiles.set(id, true);
+                }
+              }
+            }),
+          );
 
           try {
             // save loaded files back to storage with updated `lastRetrieved`
-            setMany(filesToSave, filesStore);
+            if (filesToSave.length > 0) {
+              setMany(filesToSave, filesStore);
+            }
           } catch (error) {
             console.warn(error);
           }

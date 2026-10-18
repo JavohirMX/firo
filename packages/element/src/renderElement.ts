@@ -27,7 +27,6 @@ import {
   isSafari,
   STICKY_NOTE_EDGE_SHADOW_OPACITY,
   STICKY_NOTE_EDGE_SHADOW_WIDTH,
-  STICKY_NOTE_FOOTER,
   STICKY_NOTE_SHADOW_OPACITY,
   DEFAULT_ZOOM,
 } from "@firo/common";
@@ -73,7 +72,6 @@ import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
 import {
-  getStickyNoteFooter,
   getStickyNotePathCommands,
   type StickyNotePathCommand,
 } from "./stickyNote";
@@ -470,22 +468,6 @@ const drawElementOnCanvas = (
       );
       fillStickyNoteShape(context, commands);
       strokeStickyNoteEdge(context, commands);
-
-      // the label is absolute, so this cached canvas only goes stale at a
-      // year boundary — and is regenerated on the next zoom, theme or
-      // element change anyway
-      const footer = getStickyNoteFooter(element);
-      if (footer) {
-        context.font = `${STICKY_NOTE_FOOTER.fontSize}px ${STICKY_NOTE_FOOTER.fontFamily}`;
-        context.textAlign = "right";
-        context.textBaseline = "alphabetic";
-        context.fillStyle = applyDarkModeFilter(
-          element.strokeColor,
-          renderConfig.theme === THEME.DARK,
-        );
-        context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
-        context.fillText(footer.text, footer.x, footer.y);
-      }
 
       context.restore();
       break;

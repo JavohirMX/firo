@@ -136,6 +136,90 @@ export const getActiveBoardId = (): string => activeBoardId;
 const payloadKey = (id: string): string =>
   id === DEFAULT_BOARD_ID ? KEY : `${KEY}:${id}`;
 
+/**
+ * Key for rolling snapshot revisions of a board.
+ */
+export const snapshotsKey = (id: string): string =>
+  id === DEFAULT_BOARD_ID ? `${KEY}:snapshots` : `${KEY}:${id}:snapshots`;
+
+/** A single snapshot revision of a board's document. */
+export interface BoardRevision {
+  id: string;
+  timestamp: number;
+  elementCount: number;
+  label?: string;
+  payload: string;
+}
+
+export const MAX_REVISIONS = 10;
+export const SNAPSHOT_INTERVAL_MS = 30000;
+
+/**
+ * Request persistent browser storage so IndexedDB is not evicted under pressure.
+ * Checks whether storage is already persisted; if not, requests persistence.
+ * Returns true if persistent storage is granted or already active.
+ */
+export const requestPersistentStorage = async (): Promise<boolean> => {
+  if (typeof navigator === "undefined" || !navigator.storage) {
+    return false;
+  }
+  try {
+    if (navigator.storage.persisted && (await navigator.storage.persisted())) {
+      return true;
+    }
+    if (navigator.storage.persist) {
+      return await navigator.storage.persist();
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Check whether storage has been granted persistent status.
+ */
+export const isStoragePersisted = async (): Promise<boolean> => {
+  if (typeof navigator === "undefined" || !navigator.storage?.persisted) {
+    return false;
+  }
+  try {
+    return await navigator.storage.persisted();
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Estimate storage quota and usage from navigator.storage.estimate().
+ */
+export const getStorageEstimate = async (): Promise<{
+  quota?: number;
+  usage?: number;
+  percent?: number;
+}> => {
+  if (typeof navigator === "undefined" || !navigator.storage?.estimate) {
+    return {};
+  }
+  try {
+    const estimate = await navigator.storage.estimate();
+    const quota = estimate.quota;
+    const usage = estimate.usage;
+    let percent: number | undefined;
+    if (typeof quota === "number" && typeof usage === "number" && quota > 0) {
+      percent = Math.round((usage / quota) * 10000) / 100;
+    }
+    return { quota, usage, percent };
+  } catch {
+    return {};
+  }
+};
+
+// Automatically request persistent storage when loaded in a browser context
+if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+  void requestPersistentStorage().catch(() => {});
+}
+
 /** What a save produced, so the caller can tell success from silent failure. */
 export type SaveResult =
   | { ok: true; bytes: number }
@@ -265,6 +349,19 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
       summary: "Saved changes to board",
     });
   }
+
+  const elementCount = doc.read().elements.length;
+  const lastTime = lastSnapshotTimes.get(activeBoardId) ?? 0;
+  const lastCount = lastSnapshotElementCounts.get(activeBoardId) ?? -1;
+
+  if (
+    elementCount > 0 &&
+    (now - lastTime >= SNAPSHOT_INTERVAL_MS ||
+      (elementCount !== lastCount && lastTime === 0))
+  ) {
+    await saveBoardRevision(doc, activeBoardId);
+  }
+
   return { ok: true, bytes: payload.length };
 };
 
@@ -276,9 +373,7 @@ export const saveBoard = async (doc: FiroDoc): Promise<SaveResult> => {
  * one, and the one place where a blank canvas has no explanation.
  */
 export const restoreBoard = async (doc: FiroDoc): Promise<RestoreResult> => {
-  if (typeof navigator !== "undefined" && navigator.storage?.persist) {
-    void navigator.storage.persist().catch(() => {});
-  }
+  void requestPersistentStorage().catch(() => {});
   let payload: string | undefined;
   try {
     payload = await storedBoard();
@@ -338,6 +433,142 @@ export const hasSavedBoard = async (): Promise<boolean> => {
   }
 };
 
+const lastSnapshotTimes = new Map<string, number>();
+const lastSnapshotElementCounts = new Map<string, number>();
+let lastRevisionTimestamp = 0;
+
+/**
+ * Retrieve the rolling snapshot revisions for a board.
+ */
+export const getBoardRevisions = async (
+  boardId?: string,
+): Promise<BoardRevision[]> => {
+  const targetId = boardId ?? activeBoardId;
+  try {
+    const list = await get<BoardRevision[]>(snapshotsKey(targetId), boardStore);
+    if (Array.isArray(list)) {
+      return [...list];
+    }
+    return [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Save an explicit revision snapshot of the document, enforcing the rolling limit of 10.
+ */
+export const saveBoardRevision = async (
+  doc: FiroDoc,
+  boardId?: string,
+  label?: string,
+): Promise<BoardRevision | null> => {
+  const targetId = boardId ?? activeBoardId;
+  let payload: string;
+  try {
+    payload = JSON.stringify(serializeBoard(doc.read()));
+  } catch {
+    return null;
+  }
+
+  const elements = doc.read().elements;
+  const now = Date.now();
+  const timestamp = Math.max(now, lastRevisionTimestamp + 1);
+  lastRevisionTimestamp = timestamp;
+
+  const id = `rev_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
+  const revision: BoardRevision = {
+    id,
+    timestamp,
+    elementCount: elements.length,
+    ...(label !== undefined ? { label } : {}),
+    payload,
+  };
+
+  const key = snapshotsKey(targetId);
+  try {
+    const existing = (await get<BoardRevision[]>(key, boardStore)) ?? [];
+    const list = Array.isArray(existing) ? existing : [];
+    const updated = [...list, revision];
+    if (updated.length > MAX_REVISIONS) {
+      updated.splice(0, updated.length - MAX_REVISIONS);
+    }
+    await set(key, updated, boardStore);
+
+    lastSnapshotTimes.set(targetId, now);
+    lastSnapshotElementCounts.set(targetId, elements.length);
+
+    return revision;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Restore a document to a specific revision snapshot.
+ */
+export const restoreBoardRevision = async (
+  doc: FiroDoc,
+  revisionId: string,
+  boardId?: string,
+): Promise<RestoreResult> => {
+  const targetId = boardId ?? activeBoardId;
+  const revisions = await getBoardRevisions(targetId);
+  const revision = revisions.find((r) => r.id === revisionId);
+  if (!revision) {
+    return {
+      status: "failed",
+      detail: `Revision ${revisionId} not found`,
+    };
+  }
+
+  let loaded: ReturnType<typeof loadBoard>;
+  try {
+    loaded = loadBoard(JSON.parse(revision.payload));
+  } catch (error) {
+    return {
+      status: "failed",
+      detail: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  if (typeof doc.getRawYDoc === "function") {
+    const rawYdoc = doc.getRawYDoc();
+    rawYdoc.transact(() => {
+      rawYdoc.getMap("elements").clear();
+      const order = rawYdoc.getArray("elementOrder");
+      if (order.length > 0) {
+        order.delete(0, order.length);
+      }
+      rawYdoc.getMap("collections").clear();
+      rawYdoc.getMap("records").clear();
+      const recordOrder = rawYdoc.getArray("recordOrder");
+      if (recordOrder.length > 0) {
+        recordOrder.delete(0, recordOrder.length);
+      }
+      rawYdoc.getMap("comments").clear();
+    });
+  }
+
+  doc.load({
+    elements: loaded.elements,
+    collections: loaded.collections,
+    records: loaded.records,
+    comments: loaded.comments,
+    elementOrder: loaded.elementOrder,
+    meta: loaded.meta,
+  });
+
+  try {
+    await set(payloadKey(targetId), revision.payload, boardStore);
+    restoreFailed = false;
+  } catch {
+    // Non-fatal if setting active payload fails
+  }
+
+  return { status: "restored", elements: loaded.elements.length };
+};
+
 /**
  * Forget the autosaved board, and re-arm the autosave.
  *
@@ -347,8 +578,11 @@ export const hasSavedBoard = async (): Promise<boolean> => {
  */
 export const clearSavedBoard = async (): Promise<void> => {
   restoreFailed = false;
+  lastSnapshotTimes.delete(activeBoardId);
+  lastSnapshotElementCounts.delete(activeBoardId);
   try {
     await del(payloadKey(activeBoardId), boardStore);
+    await del(snapshotsKey(activeBoardId), boardStore);
   } catch {
     // A board that cannot be cleared is a nuisance.
   }
@@ -392,8 +626,11 @@ export const writeBoardPayload = async (
 
 /** Remove a board's document. The explicitly destructive half of delete. */
 export const deleteBoardPayload = async (id: string): Promise<void> => {
+  lastSnapshotTimes.delete(id);
+  lastSnapshotElementCounts.delete(id);
   try {
     await del(payloadKey(id), boardStore);
+    await del(snapshotsKey(id), boardStore);
   } catch {
     // A board that cannot be removed is a nuisance, and the index entry that
     // names it is removed by the caller either way.

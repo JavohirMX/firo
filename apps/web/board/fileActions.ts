@@ -42,6 +42,7 @@ import {
 } from "./files";
 import { canPickDirectory, writeFiroDirectory } from "./firoDownload";
 import { generateMiroCreationScript, type MiroRtbArchive } from "./miro";
+import { injectAssetsIntoEditor } from "./assets";
 
 let pendingMiroRtb: MiroRtbArchive | null = null;
 
@@ -252,6 +253,13 @@ export const registerFileActions = (
 
       if (result.ok) {
         pendingMiroRtb = null;
+        if (result.assets && result.assets.size > 0) {
+          try {
+            await injectAssetsIntoEditor(api, result.assets);
+          } catch (error) {
+            console.warn("Failed to inject assets into editor:", error);
+          }
+        }
         api.setToast?.({
           message: `Board loaded successfully (${result.elements} elements)!`,
           closable: true,

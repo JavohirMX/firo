@@ -12,6 +12,7 @@
  * - Multi-strategy image resolution from Miro .rtb backup archives
  * - Stratified z-index layer ordering (outer frames, inner frames, shapes, images, stickies, text, connectors on top)
  */
+import { DEFAULT_FONT_FAMILY } from "@firo/common";
 import { hashBytes } from "@firo/doc";
 
 import { miroHtmlToProseMirror } from "./htmlToProseMirror";
@@ -308,27 +309,107 @@ export const convertMiroItemsToFiro = async (
     { bytes: Uint8Array; ext: string }
   >();
   const mediaByFilename = new Map<string, { bytes: Uint8Array; ext: string }>();
+  const mediaList: Array<{ name: string; bytes: Uint8Array; ext: string }> = [];
+  let unassignedMediaIndex = 0;
 
   if (options.mediaFiles) {
-    for (const [filename, bytes] of options.mediaFiles) {
-      const ext = filename.split(".").pop()?.toLowerCase() ?? "png";
-      const match = filename.match(/^(\d+)(?:\.([^.]+))?$/);
+    for (const [rawFilename, bytes] of options.mediaFiles) {
+      const cleanFilename = rawFilename.replace(/^.*[\\/]/, "").toLowerCase();
+      let ext = cleanFilename.split(".").pop()?.toLowerCase() ?? "png";
+
+      // Magic byte sniffing if ext is missing, generic, or binary
+      if (bytes.length >= 4) {
+        if (
+          bytes[0] === 0x89 &&
+          bytes[1] === 0x50 &&
+          bytes[2] === 0x4e &&
+          bytes[3] === 0x47
+        ) {
+          ext = "png";
+        } else if (
+          bytes[0] === 0xff &&
+          bytes[1] === 0xd8 &&
+          bytes[2] === 0xff
+        ) {
+          ext = "jpg";
+        } else if (
+          bytes[0] === 0x47 &&
+          bytes[1] === 0x49 &&
+          bytes[2] === 0x46
+        ) {
+          ext = "gif";
+        } else if (
+          bytes.length >= 12 &&
+          bytes[8] === 0x57 &&
+          bytes[9] === 0x45 &&
+          bytes[10] === 0x42 &&
+          bytes[11] === 0x50
+        ) {
+          ext = "webp";
+        } else if (
+          bytes[0] === 0x25 &&
+          bytes[1] === 0x50 &&
+          bytes[2] === 0x44 &&
+          bytes[3] === 0x46
+        ) {
+          ext = "pdf";
+        }
+      }
+
+      const mediaEntry = { bytes, ext };
+      mediaList.push({ name: cleanFilename, bytes, ext });
+
+      // Match numeric IDs anywhere in filename (e.g. "999111.png", "img_34587645123456789_0.png")
+      const digitMatches = cleanFilename.match(/\d{5,25}/g);
+      if (digitMatches) {
+        for (const digits of digitMatches) {
+          if (!mediaByResourceId.has(digits)) {
+            mediaByResourceId.set(digits, mediaEntry);
+          }
+        }
+      }
+      const match = cleanFilename.match(/^(\d+)(?:\.([^.]+))?$/);
       if (match) {
         mediaByResourceId.set(match[1], {
           bytes,
           ext: match[2]?.toLowerCase() ?? ext,
         });
       }
-      mediaByFilename.set(filename.toLowerCase(), { bytes, ext });
+
+      // UUID matching
+      const uuidMatch = cleanFilename.match(
+        /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+      );
+      if (uuidMatch) {
+        mediaByResourceId.set(uuidMatch[0].toLowerCase(), mediaEntry);
+      }
+
+      // Name without extension
+      const nameWithoutExt = cleanFilename.replace(/\.[^/.]+$/, "");
+      if (nameWithoutExt) {
+        mediaByResourceId.set(nameWithoutExt, mediaEntry);
+      }
+
+      mediaByFilename.set(cleanFilename, mediaEntry);
+      mediaByFilename.set(rawFilename.toLowerCase(), mediaEntry);
     }
   }
 
-  // Also map resource names from resources.json
+  // Also map resource names and ids from resources.json
   const resourceIdByName = new Map<string, string>();
   if (options.resources) {
     for (const res of options.resources) {
-      if (res.name && res.id) {
-        resourceIdByName.set(String(res.name).toLowerCase(), String(res.id));
+      const resId = res.id != null ? String(res.id) : "";
+      const resName = res.name ? String(res.name).toLowerCase() : "";
+      if (resName && resId) {
+        resourceIdByName.set(resName, resId);
+      }
+      if (resId && resName) {
+        const media =
+          mediaByFilename.get(resName) ?? mediaByResourceId.get(resName);
+        if (media && !mediaByResourceId.has(resId)) {
+          mediaByResourceId.set(resId, media);
+        }
       }
     }
   }
@@ -424,26 +505,40 @@ export const convertMiroItemsToFiro = async (
         const bg = normalizeMiroColor(item.style?.fillColor, "#fff9b8");
         const textColor = getContrastingTextColor(bg);
 
-        // Adjust font size based on text density
-        const fontSize =
-          text.length > 250
-            ? 12
-            : text.length > 150
-            ? 14
-            : text.length > 60
-            ? 16
-            : 20;
+        // Normalize font size to schema-supported sizes: 16 | 20 | 28 | 36
+        const rawFontSize = Number(item.style?.fontSize ?? item.fontSize);
+        let fontSize: 16 | 20 | 28 | 36;
+        if (!isNaN(rawFontSize) && rawFontSize > 0) {
+          fontSize =
+            rawFontSize <= 18
+              ? 16
+              : rawFontSize <= 24
+              ? 20
+              : rawFontSize <= 32
+              ? 28
+              : 36;
+        } else {
+          fontSize =
+            text.length > 200
+              ? 16
+              : text.length > 80
+              ? 20
+              : text.length > 25
+              ? 28
+              : 36;
+        }
 
         elements.push({
           ...baseFields,
           ...bounds,
+          baseHeight: bounds.height,
           type: "stickynote",
           text,
           richText,
           fontSize,
-          fontFamily: 1,
-          textAlign: item.style?.textAlign ?? "left",
-          verticalAlign: item.style?.textAlignVertical ?? "top",
+          fontFamily: DEFAULT_FONT_FAMILY,
+          textAlign: item.style?.textAlign ?? "center",
+          verticalAlign: item.style?.textAlignVertical ?? "middle",
           backgroundColor: bg,
           strokeColor: textColor,
           isContainer: false,
@@ -495,9 +590,22 @@ export const convertMiroItemsToFiro = async (
 
         if (contentText) {
           const textColor = getContrastingTextColor(bg);
-          const fontSize =
-            Number(item.style?.fontSize) ||
-            (contentText.length > 120 ? 13 : contentText.length > 50 ? 15 : 18);
+          const rawFontSize = Number(item.style?.fontSize ?? item.fontSize);
+          let fontSize: number;
+          if (!isNaN(rawFontSize) && rawFontSize > 0) {
+            fontSize = Math.max(10, Math.min(64, Math.round(rawFontSize)));
+          } else {
+            const defaultBase =
+              contentText.length > 120 ? 14 : contentText.length > 50 ? 16 : 20;
+            const scale =
+              Number(
+                item.scale ?? item.data?.scale ?? (item.geometry as any)?.scale,
+              ) || 1;
+            fontSize = Math.max(
+              10,
+              Math.min(64, Math.round(defaultBase * scale)),
+            );
+          }
 
           elements.push({
             ...baseFields,
@@ -511,12 +619,14 @@ export const convertMiroItemsToFiro = async (
             text: contentText,
             richText,
             fontSize,
-            fontFamily: 1,
+            fontFamily: DEFAULT_FONT_FAMILY,
             textAlign: item.style?.textAlign ?? "center",
             verticalAlign: item.style?.textAlignVertical ?? "middle",
             strokeColor: textColor,
             backgroundColor: "transparent",
             containerId: id,
+            autoResize: true,
+            lineHeight: 1.25,
           });
         }
         break;
@@ -527,7 +637,16 @@ export const convertMiroItemsToFiro = async (
         const text = miroHtmlToPlainText(rawContent);
         const richText = miroHtmlToProseMirror(rawContent);
         const color = normalizeMiroColor(item.style?.color, "#1e1e1e");
-        const fontSize = Number(item.style?.fontSize) || 20;
+        const scale =
+          Number(
+            item.scale ?? item.data?.scale ?? (item.geometry as any)?.scale,
+          ) || 1;
+        const baseFontSize =
+          Number(item.style?.fontSize ?? item.fontSize) || 18;
+        const fontSize = Math.max(
+          10,
+          Math.min(64, Math.round(baseFontSize * scale)),
+        );
 
         elements.push({
           ...baseFields,
@@ -535,12 +654,14 @@ export const convertMiroItemsToFiro = async (
           type: "text",
           text,
           richText,
-          fontSize: isNaN(fontSize) ? 20 : fontSize,
-          fontFamily: 1,
+          fontSize,
+          fontFamily: DEFAULT_FONT_FAMILY,
           textAlign: item.style?.textAlign ?? "left",
           verticalAlign: item.style?.textAlignVertical ?? "top",
           strokeColor: color,
           backgroundColor: "transparent",
+          autoResize: true,
+          lineHeight: 1.25,
         });
         break;
       }
@@ -705,7 +826,7 @@ export const convertMiroItemsToFiro = async (
             text: labelText,
             richText: miroHtmlToProseMirror(labelContent),
             fontSize: 14,
-            fontFamily: 1,
+            fontFamily: DEFAULT_FONT_FAMILY,
             textAlign: "center",
             verticalAlign: "middle",
             strokeColor: stroke,
@@ -816,6 +937,27 @@ export const convertMiroItemsToFiro = async (
           matchedMedia = mediaByResourceId.get(String(item.id));
         }
 
+        // 5. Check extra resource properties
+        if (!matchedMedia) {
+          const extraResId = String(
+            item.data?.imageResourceId ??
+              item.data?.documentResourceId ??
+              (item.data?.resource as any)?.id ??
+              "",
+          );
+          if (extraResId && mediaByResourceId.has(extraResId)) {
+            matchedMedia = mediaByResourceId.get(extraResId);
+          }
+        }
+
+        // 6. Sequential media fallback if archive contains media files
+        if (!matchedMedia && mediaList.length > 0) {
+          const fallbackEntry =
+            mediaList[unassignedMediaIndex % mediaList.length];
+          unassignedMediaIndex++;
+          matchedMedia = { bytes: fallbackEntry.bytes, ext: fallbackEntry.ext };
+        }
+
         if (matchedMedia) {
           const buffer = matchedMedia.bytes.buffer.slice(
             matchedMedia.bytes.byteOffset,
@@ -877,8 +1019,8 @@ export const convertMiroItemsToFiro = async (
           type: "stickynote",
           text: cardText,
           richText,
-          fontSize: 15,
-          fontFamily: 1,
+          fontSize: 16,
+          fontFamily: DEFAULT_FONT_FAMILY,
           textAlign: "left",
           verticalAlign: "top",
           backgroundColor: "#ffffff",

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_FONT_FAMILY } from "@firo/common";
+
 import {
   convertFiroToMiroItems,
   convertMiroItemsToFiro,
@@ -606,6 +608,104 @@ describe("Miro conversion", () => {
       const script = generateMiroCreationScript(firoElements);
       expect(script).toContain("miro.board.createStickyNote");
       expect(script).toContain("Hello");
+    });
+  });
+
+  describe("Miro import enhancements", () => {
+    it("scales font size according to Miro item.scale", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "text-scale-1",
+          type: "text",
+          data: { content: "Scaled Title" },
+          position: { x: 0, y: 0 },
+          geometry: { width: 200, height: 50 },
+          style: { fontSize: 14 },
+          scale: 2.5,
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      expect(board.elements.length).toBe(1);
+      const textEl = board.elements[0];
+      expect(textEl.type).toBe("text");
+      // 14 * 2.5 = 35
+      expect(textEl.fontSize).toBe(35);
+      expect(textEl.fontFamily).toBe(DEFAULT_FONT_FAMILY);
+    });
+
+    it("quantizes sticky note font size to valid schema values [16, 20, 28, 36]", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "sticky-1",
+          type: "sticky_note",
+          data: { content: "Small sticky" },
+          position: { x: 0, y: 0 },
+          geometry: { width: 100, height: 100 },
+          style: { fontSize: 13 },
+        },
+        {
+          id: "sticky-2",
+          type: "sticky_note",
+          data: { content: "Medium sticky" },
+          position: { x: 200, y: 0 },
+          geometry: { width: 100, height: 100 },
+          style: { fontSize: 22 },
+        },
+        {
+          id: "sticky-3",
+          type: "sticky_note",
+          data: { content: "Large sticky" },
+          position: { x: 400, y: 0 },
+          geometry: { width: 100, height: 100 },
+          style: { fontSize: 34 },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      expect(board.elements.length).toBe(3);
+
+      expect(board.elements[0].fontSize).toBe(16);
+      expect(board.elements[0].textAlign).toBe("center");
+      expect(board.elements[0].verticalAlign).toBe("middle");
+
+      expect(board.elements[1].fontSize).toBe(20);
+      expect(board.elements[2].fontSize).toBe(36);
+    });
+
+    it("extracts and indexes media files into assetsToPut", async () => {
+      const pngBytes = new Uint8Array([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      const mediaFiles = new Map<string, Uint8Array>([
+        ["resources/12345.png", pngBytes],
+      ]);
+
+      const miroItems: MiroItem[] = [
+        {
+          id: "img-1",
+          type: "image",
+          data: {},
+          position: { x: 100, y: 100 },
+          geometry: { width: 200, height: 150 },
+          resourceId: "12345",
+        },
+      ];
+
+      const { board, assetsToPut } = await convertMiroItemsToFiro(miroItems, {
+        mediaFiles,
+      });
+
+      expect(board.elements.length).toBe(1);
+      const imgEl = board.elements[0];
+      expect(imgEl.type).toBe("image");
+      expect(imgEl.fileId).toBeDefined();
+
+      expect(assetsToPut.size).toBe(1);
+      const asset = Array.from(assetsToPut.values())[0];
+      expect(asset.hash).toBe(imgEl.fileId);
+      expect(asset.mimeType).toBe("image/png");
+      expect(asset.bytes).toEqual(pngBytes);
     });
   });
 });

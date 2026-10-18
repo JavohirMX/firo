@@ -75,6 +75,7 @@ describe("AppMainMenu", () => {
     expect(screen.getByTestId("main-menu-new-board")).not.toBeNull();
 
     // Section 2: File Operations
+    expect(screen.getByTestId("main-menu-version-history")).not.toBeNull();
     expect(screen.getByText("Import")).not.toBeNull();
     expect(screen.getByText("Export")).not.toBeNull();
 

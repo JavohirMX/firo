@@ -1,4 +1,4 @@
-import { CLASSES, KEYS, MIN_ZOOM, ZOOM_STEP } from "@firo/common";
+import { CLASSES, KEYS, MIN_ZOOM } from "@firo/common";
 
 import { resolveInputDevice } from "../appState";
 import { withBatchedUpdates } from "../reactUtils";
@@ -124,11 +124,9 @@ export class AppWheel {
     const { viewport } = this.app;
 
     const sign = Math.sign(deltaY);
-    const MAX_STEP = ZOOM_STEP * 100;
     const absDelta = Math.abs(deltaY);
-    let delta = deltaY;
-    if (absDelta > MAX_STEP) {
-      delta = MAX_STEP * sign;
+    if (absDelta === 0) {
+      return;
     }
 
     // where the pointer is now — the updater below runs when React flushes,
@@ -140,13 +138,18 @@ export class AppWheel {
       // ticks arriving before React has flushed the previous one would
       // otherwise all start from the same zoom and collapse into one step
       (state) => {
-        let newZoom = state.zoom.value - delta / 100;
-        // increase zoom steps the more zoomed-in we are (applies to >100% only)
-        newZoom +=
-          Math.log10(Math.max(1, state.zoom.value)) *
-          -sign *
-          // reduced amplification for small deltas (small movements on a trackpad)
-          Math.min(1, absDelta / 20);
+        // Geometric zoom scaling tuned to Miro/Figma standard.
+        // A single wheel notch (~100 delta) produces a smooth ~8% step.
+        // Small trackpad gestures produce fine fractional adjustments,
+        // and large wheel flicks are capped at 20% per tick.
+        const zoomFactor = Math.min(
+          0.2,
+          Math.max(-0.2, (absDelta / 100) * 0.08),
+        );
+        const newZoom =
+          sign > 0
+            ? state.zoom.value / (1 + zoomFactor)
+            : state.zoom.value * (1 + zoomFactor);
 
         const minZoom = state.scrollConstraints?.lockZoom
           ? state.scrollConstraints.zoom

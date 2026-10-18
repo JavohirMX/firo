@@ -2,7 +2,13 @@ import { MainMenu } from "@firo/editor/index";
 import React from "react";
 
 import { isDevEnv } from "@firo/common";
-import { BoardsIcon, PlusIcon } from "@firo/ui";
+import {
+  BoardsIcon,
+  ClockIcon,
+  DownloadIcon,
+  PlusIcon,
+  UploadIcon,
+} from "@firo/ui";
 import { useI18n } from "@firo/editor/i18n";
 
 import type { Theme } from "@firo/element/types";
@@ -30,6 +36,9 @@ export const AppMainMenu: React.FC<{
   isCollaborating: boolean;
   theme: Theme | "system";
   refresh: () => void;
+  onExport?: () => void;
+  onImport?: () => void;
+  onVersionHistory?: () => void;
 }> = React.memo((props) => {
   const { t } = useI18n();
 
@@ -60,33 +69,45 @@ export const AppMainMenu: React.FC<{
 
       {/* Section 2: File Operations */}
       <MainMenu.DefaultItems.SaveToActiveFile />
-      {/*
-       * Firo's board file.
-       *
-       * Beside "Export image..." because that is the same intent — getting the board
-       * off the screen — and someone looking for one will look near the other. The
-       * image export produces a picture; this produces the board, which is the thing
-       * they actually came back for.
-       *
-       * These belong *here* rather than in the editor's fallback menu. The app supplies
-       * its own menu through `MainMenuTunnel`, so `LayerUI`'s `__fallback` list is
-       * never rendered — a fact that cost an hour to find, because the items were
-       * added to the fallback first and simply never appeared, with no error.
-       *
-       * Both return `null` when the host has not registered the matching action, which
-       * is the case for a bare Excalidraw embed: the behaviour needs a document, and an
-       * embed has none.
-       */}
-      <MainMenu.DefaultItems.ImportSubMenu>
-        <MainMenu.DefaultItems.LoadFromFiroFile />
-        <MainMenu.DefaultItems.LoadScene />
-      </MainMenu.DefaultItems.ImportSubMenu>
-      <MainMenu.DefaultItems.ExportSubMenu>
-        <MainMenu.DefaultItems.SaveAsFiroFile />
-        <MainMenu.DefaultItems.SaveAsImage />
-        <MainMenu.DefaultItems.ExportMiroScript />
-        <MainMenu.DefaultItems.Export />
-      </MainMenu.DefaultItems.ExportSubMenu>
+      <MainMenu.Item
+        icon={<ClockIcon size={18} />}
+        onSelect={props.onVersionHistory}
+        data-testid="main-menu-version-history"
+      >
+        Version history...
+      </MainMenu.Item>
+      {props.onImport ? (
+        <MainMenu.Item
+          icon={<UploadIcon size={18} />}
+          onSelect={props.onImport}
+          data-testid="main-menu-import"
+        >
+          Import...
+        </MainMenu.Item>
+      ) : (
+        <MainMenu.DefaultItems.ImportSubMenu>
+          <MainMenu.DefaultItems.LoadFromFiroFile />
+          <MainMenu.DefaultItems.LoadScene />
+        </MainMenu.DefaultItems.ImportSubMenu>
+      )}
+
+      {props.onExport ? (
+        <MainMenu.Item
+          icon={<DownloadIcon size={18} />}
+          shortcut="CtrlOrCmd+Shift+E"
+          onSelect={props.onExport}
+          data-testid="main-menu-export"
+        >
+          Export...
+        </MainMenu.Item>
+      ) : (
+        <MainMenu.DefaultItems.ExportSubMenu>
+          <MainMenu.DefaultItems.SaveAsFiroFile />
+          <MainMenu.DefaultItems.SaveAsImage />
+          <MainMenu.DefaultItems.ExportMiroScript />
+          <MainMenu.DefaultItems.Export />
+        </MainMenu.DefaultItems.ExportSubMenu>
+      )}
 
       <MainMenu.Separator />
 

@@ -161,6 +161,7 @@ describe("packaged .firo and multi-format import", () => {
     // Stratified z-order places shapes (layer 10) below sticky notes (layer 30)
     expect(elements[0].type).toBe("ellipse");
     expect(elements[1].type).toBe("stickynote");
+    expect((elements[1] as any).text).toBe("Miro Idea");
   });
 
   it("handles Miro .rtb backup by extracting assets and pairing with Miro items", async () => {
@@ -236,6 +237,8 @@ describe("packaged .firo and multi-format import", () => {
     const loadedElements = doc.read().elements;
     expect(loadedElements.length).toBe(2);
     expect(loadedElements.some((e) => e.type === "stickynote")).toBe(true);
+    const stickyEl = loadedElements.find((e) => e.type === "stickynote");
+    expect((stickyEl as any)?.text).toBe("Sprint Goal");
     const imgEl = loadedElements.find((e) => e.type === "image");
     expect(imgEl).toBeDefined();
     expect(imgEl?.status).toBe("saved");

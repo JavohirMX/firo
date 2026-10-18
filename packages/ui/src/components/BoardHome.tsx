@@ -5,7 +5,9 @@ import {
   BoardsIcon,
   ClockIcon,
   CloseIcon,
+  DownloadIcon,
   DuplicateIcon,
+  FilePdfIcon,
   FolderIcon,
   GridViewIcon,
   ListViewIcon,
@@ -108,6 +110,7 @@ export interface BoardHomeProps {
   onDeleteFolder?: (id: string) => void;
   onChangeViewMode?: (mode: "grid" | "list") => void;
   onChangeSortBy?: (sort: "lastOpened" | "created" | "name") => void;
+  onExportBoard?: (id: string, format: "firo" | "pdf") => void;
 }
 
 export interface BoardCardProps {
@@ -122,6 +125,7 @@ export interface BoardCardProps {
   onDuplicate?: (id: string) => void;
   onMoveToFolder?: (id: string, folderId?: string) => void;
   onOpenMoveDialog?: (board: BoardCardData) => void;
+  onExportBoard?: (id: string, format: "firo" | "pdf") => void;
 }
 
 export const BoardCard: React.FC<BoardCardProps> = ({
@@ -136,6 +140,7 @@ export const BoardCard: React.FC<BoardCardProps> = ({
   onDuplicate,
   onMoveToFolder,
   onOpenMoveDialog,
+  onExportBoard,
 }) => {
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(board.name);
@@ -396,6 +401,34 @@ export const BoardCard: React.FC<BoardCardProps> = ({
                       <span>Move to folder...</span>
                     </button>
                   )}
+                  {onExportBoard && (
+                    <>
+                      <button
+                        type="button"
+                        className="firo-board-card__dropdown-item"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onExportBoard(board.id, "firo");
+                        }}
+                      >
+                        <DownloadIcon size={14} />
+                        <span>Export as .firo</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="firo-board-card__dropdown-item"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onExportBoard(board.id, "pdf");
+                        }}
+                      >
+                        <FilePdfIcon size={14} />
+                        <span>Export as PDF</span>
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     className="firo-board-card__dropdown-item firo-board-card__dropdown-item--danger"
@@ -475,6 +508,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   onDeleteFolder,
   onChangeViewMode,
   onChangeSortBy,
+  onExportBoard,
   activities,
   onClearActivity,
 }) => {
@@ -1137,6 +1171,32 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                               >
                                 <FolderIcon size={16} />
                               </button>
+                              {onExportBoard && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="firo-board-card__action"
+                                    aria-label={`Export ${board.name} as .firo`}
+                                    title="Export as .firo"
+                                    onClick={() =>
+                                      onExportBoard(board.id, "firo")
+                                    }
+                                  >
+                                    <DownloadIcon size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="firo-board-card__action"
+                                    aria-label={`Export ${board.name} as PDF`}
+                                    title="Export as PDF"
+                                    onClick={() =>
+                                      onExportBoard(board.id, "pdf")
+                                    }
+                                  >
+                                    <FilePdfIcon size={16} />
+                                  </button>
+                                </>
+                              )}
                               <button
                                 type="button"
                                 className="firo-board-card__action"
@@ -1170,6 +1230,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     onDuplicate={onDuplicateBoard}
                     onMoveToFolder={onMoveBoardToFolder}
                     onOpenMoveDialog={(b) => setMovingBoard(b)}
+                    onExportBoard={onExportBoard}
                   />
                 ))}
               </div>
@@ -1197,6 +1258,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   onDuplicate={onDuplicateBoard}
                   onMoveToFolder={onMoveBoardToFolder}
                   onOpenMoveDialog={(b) => setMovingBoard(b)}
+                  onExportBoard={onExportBoard}
                 />
               ))}
             </div>

@@ -66,8 +66,8 @@ const GridLineColor = {
 } as const;
 
 const GridDotColor = {
-  [THEME.LIGHT]: "#a8a8a8",
-  [THEME.DARK]: applyDarkModeFilter("#a8a8a8"),
+  [THEME.LIGHT]: "#d5d5d8",
+  [THEME.DARK]: applyDarkModeFilter("#505058"),
 } as const;
 
 const GridCrossColor = {
@@ -167,12 +167,12 @@ export const strokeGrid = (
   context.save();
 
   if (gridType === "dots") {
-    const majorDotRadius = 1.75 / zoom.value;
-    const minorDotRadius = 1.25 / zoom.value;
+    const majorDotRadius = 1.1 / zoom.value;
+    const minorDotRadius = 0.75 / zoom.value;
     context.fillStyle = GridDotColor[theme];
 
     // 1. Major dots
-    context.globalAlpha = 1;
+    context.globalAlpha = 0.65;
     context.beginPath();
     for (
       let x = offsetMajorX;
@@ -192,7 +192,7 @@ export const strokeGrid = (
 
     // 2. Minor dots with smooth alpha fade
     if (minorAlpha > 0.01) {
-      context.globalAlpha = minorAlpha;
+      context.globalAlpha = minorAlpha * 0.65;
       context.beginPath();
       for (
         let x = offsetMinorX;

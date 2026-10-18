@@ -65,6 +65,8 @@ import {
 
 import type { FiroDoc } from "@firo/doc";
 
+import type { FiroElement } from "@firo/schema";
+
 import {
   buildFiroDirectory,
   importFiroDirectory,
@@ -87,6 +89,8 @@ import {
   type MiroResourceMeta,
   type MiroRtbArchive,
 } from "./miro";
+import { isExcalidrawJson, convertExcalidrawToFiro } from "./excalidraw";
+import { csvToStickyNotes, parseCsv } from "./csv";
 
 /** What a single-file JSON export produced. */
 export type ExportResult =
@@ -118,7 +122,15 @@ export type PackagedExportResult =
 
 /** What an import did. Nothing is applied to the document unless this says `ok`. */
 export type ImportResult =
-  | { ok: true; elements: number; format?: "firo-v1" | "firo-v2" | "miro" }
+  | {
+      ok: true;
+      elements: number;
+      format?: "firo-v1" | "firo-v2" | "miro" | "excalidraw" | "csv";
+      assets?: Map<
+        string,
+        { hash: string; bytes: Uint8Array; mimeType: string }
+      >;
+    }
   | {
       ok: false;
       reason:
@@ -531,11 +543,85 @@ export const importBoard = (doc: FiroDoc, text: string): ImportResult => {
 };
 
 /**
+ * Safely inserts elements into an existing board document, remapping IDs
+ * and bindings to prevent CRDT collisions while preserving relative topology.
+ */
+export const insertElementsIntoDoc = (
+  doc: FiroDoc,
+  incoming: readonly FiroElement[],
+  offset?: { x: number; y: number },
+): void => {
+  const timestamp = Date.now();
+  const idMap = new Map<string, string>();
+  for (const el of incoming) {
+    const newId = `${el.id}_${timestamp}_${Math.random()
+      .toString(36)
+      .substring(2, 6)}`;
+    idMap.set(el.id, newId);
+  }
+
+  const dx = offset?.x ?? 0;
+  const dy = offset?.y ?? 0;
+
+  const remapped: FiroElement[] = incoming.map((el) => {
+    const newId = idMap.get(el.id) || el.id;
+    const remappedFrameId = el.frameId
+      ? idMap.get(el.frameId) || el.frameId
+      : null;
+    const remappedContainerId = el.containerId
+      ? idMap.get(el.containerId) || el.containerId
+      : null;
+    const remappedBindings = el.bindings
+      ? el.bindings.map((b) => ({
+          ...b,
+          elementId: (idMap.get(b.elementId) || b.elementId) as any,
+        }))
+      : [];
+
+    let startBinding = (el as any).startBinding;
+    if (startBinding?.elementId && idMap.has(startBinding.elementId)) {
+      startBinding = {
+        ...startBinding,
+        elementId: idMap.get(startBinding.elementId),
+      };
+    }
+    let endBinding = (el as any).endBinding;
+    if (endBinding?.elementId && idMap.has(endBinding.elementId)) {
+      endBinding = {
+        ...endBinding,
+        elementId: idMap.get(endBinding.elementId),
+      };
+    }
+
+    return {
+      ...el,
+      id: newId as any,
+      x: el.x + dx,
+      y: el.y + dy,
+      frameId: remappedFrameId,
+      containerId: remappedContainerId,
+      bindings: remappedBindings,
+      ...(startBinding !== undefined ? { startBinding } : {}),
+      ...(endBinding !== undefined ? { endBinding } : {}),
+      isDeleted: false,
+    } as FiroElement;
+  });
+
+  const mutations = remapped.map((element) => ({
+    kind: "createElement" as const,
+    element,
+  }));
+  doc.commit(mutations as any);
+};
+
+/**
  * Universal importer for board files:
  * - `.firo` single JSON files (Format v1)
  * - `.firo` packaged ZIP archives (Format v2)
  * - Miro `.rtb` archives
  * - Miro items JSON exports
+ * - `.excalidraw` scene drawings
+ * - `.csv` tabular spreadsheets
  */
 export const importBoardFile = async (
   doc: FiroDoc,
@@ -545,6 +631,8 @@ export const importBoardFile = async (
     miroItems?: readonly MiroItem[];
     miroRtbArchive?: MiroRtbArchive;
     force?: boolean;
+    insertMode?: "replace" | "insert";
+    offset?: { x: number; y: number };
   },
 ): Promise<ImportResult> => {
   const bytes = typeof data === "string" ? null : data;
@@ -555,7 +643,8 @@ export const importBoardFile = async (
 
     // 1A. Packaged .firo archive (v2)
     if (files.has("manifest.json") && files.has("board.json")) {
-      if (doc.read().elements.length > 0 && !deps?.force) {
+      const hasContent = doc.read().elements.length > 0;
+      if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
         return {
           ok: false,
           reason: "not-empty",
@@ -565,6 +654,25 @@ export const importBoardFile = async (
             "start a new one, then import.",
         };
       }
+
+      if (deps?.insertMode === "insert" && hasContent) {
+        try {
+          const boardJsonText = new TextDecoder().decode(
+            files.get("board.json")!,
+          );
+          const parsed = JSON.parse(boardJsonText);
+          const loaded = loadBoard(parsed);
+          insertElementsIntoDoc(doc, loaded.elements, deps?.offset);
+          return {
+            ok: true,
+            elements: loaded.elements.length,
+            format: "firo-v2",
+          };
+        } catch (e: any) {
+          return { ok: false, reason: "unreadable", detail: e.message };
+        }
+      }
+
       const imported = await importFiroDirectory(doc, files, {
         putAsset: deps?.putAsset ?? (async () => {}),
       });
@@ -618,8 +726,11 @@ export const importBoardFile = async (
           name.endsWith(".jpg") ||
           name.endsWith(".jpeg") ||
           name.endsWith(".svg") ||
+          name.endsWith(".webp") ||
+          name.endsWith(".gif") ||
           name.endsWith(".heic") ||
-          name.endsWith(".pdf")
+          name.endsWith(".pdf") ||
+          !name.includes(".")
         ) {
           mediaFiles.set(name, fileBytes);
         }
@@ -627,7 +738,8 @@ export const importBoardFile = async (
 
       // If Miro items are supplied (e.g. from companion JSON or callback)
       if (deps?.miroItems && deps.miroItems.length > 0) {
-        if (doc.read().elements.length > 0 && !deps?.force) {
+        const hasContent = doc.read().elements.length > 0;
+        if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
           return {
             ok: false,
             reason: "not-empty",
@@ -644,6 +756,19 @@ export const importBoardFile = async (
             await deps.putAsset(asset.hash, asset.bytes, asset.mimeType);
           }
         }
+        if (deps?.insertMode === "insert" && hasContent) {
+          insertElementsIntoDoc(
+            doc,
+            converted.board.elements as unknown as readonly FiroElement[],
+            deps?.offset,
+          );
+          return {
+            ok: true,
+            elements: converted.board.elements.length,
+            format: "miro",
+            assets: converted.assetsToPut,
+          };
+        }
         const loaded = loadBoard(converted.board);
         doc.load({
           elements: loaded.elements,
@@ -652,7 +777,12 @@ export const importBoardFile = async (
           elementOrder: loaded.elementOrder,
           meta: loaded.meta,
         });
-        return { ok: true, elements: loaded.elements.length, format: "miro" };
+        return {
+          ok: true,
+          elements: loaded.elements.length,
+          format: "miro",
+          assets: converted.assetsToPut,
+        };
       }
 
       // Check canvas.json
@@ -665,7 +795,8 @@ export const importBoardFile = async (
             ? canvasJson
             : canvasJson.items || canvasJson.widgets;
           if (Array.isArray(items)) {
-            if (doc.read().elements.length > 0 && !deps?.force) {
+            const hasContent = doc.read().elements.length > 0;
+            if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
               return {
                 ok: false,
                 reason: "not-empty",
@@ -682,6 +813,19 @@ export const importBoardFile = async (
                 await deps.putAsset(asset.hash, asset.bytes, asset.mimeType);
               }
             }
+            if (deps?.insertMode === "insert" && hasContent) {
+              insertElementsIntoDoc(
+                doc,
+                converted.board.elements as unknown as readonly FiroElement[],
+                deps?.offset,
+              );
+              return {
+                ok: true,
+                elements: converted.board.elements.length,
+                format: "miro",
+                assets: converted.assetsToPut,
+              };
+            }
             const loaded = loadBoard(converted.board);
             doc.load({
               elements: loaded.elements,
@@ -694,6 +838,7 @@ export const importBoardFile = async (
               ok: true,
               elements: loaded.elements.length,
               format: "miro",
+              assets: converted.assetsToPut,
             };
           }
         } catch {
@@ -722,16 +867,113 @@ export const importBoardFile = async (
     }
   }
 
-  // 2. Text or JSON handling
+  // 2. Text, CSV, or JSON handling
   const text = typeof data === "string" ? data : new TextDecoder().decode(data);
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(text);
   } catch {
+    // Check if it is a valid CSV
+    if (text.includes(",") || text.includes("\n")) {
+      const csv = parseCsv(text);
+      if (csv.headers.length > 0 || csv.rows.length > 0) {
+        const hasContent = doc.read().elements.length > 0;
+        if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
+          return {
+            ok: false,
+            reason: "not-empty",
+            detail: "Clear or export the current board before importing.",
+          };
+        }
+        const stickyNotes = csvToStickyNotes(text, {
+          originX: deps?.offset?.x ?? 0,
+          originY: deps?.offset?.y ?? 0,
+        });
+        if (stickyNotes.length > 0) {
+          if (deps?.insertMode === "insert" || (hasContent && deps?.force)) {
+            const mutations = stickyNotes.map((el) => ({
+              kind: "createElement" as const,
+              element: el,
+            }));
+            doc.commit(mutations as any);
+          } else {
+            doc.load({
+              elements: stickyNotes as any,
+              collections: [],
+              records: [],
+              elementOrder: stickyNotes.map((s) => s.id as any),
+              meta: {
+                id: "csv_import",
+                name: "Imported Spreadsheet",
+                created: Date.now(),
+                updated: Date.now(),
+              },
+            });
+          }
+          return { ok: true, elements: stickyNotes.length, format: "csv" };
+        }
+      }
+    }
+
     return {
       ok: false,
       reason: "unreadable",
-      detail: "The file could not be parsed as JSON or a valid ZIP archive.",
+      detail:
+        "The file could not be parsed as JSON, CSV, or a valid ZIP archive.",
+    };
+  }
+
+  // Check if it is an Excalidraw drawing
+  if (isExcalidrawJson(parsedJson)) {
+    const hasContent = doc.read().elements.length > 0;
+    if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
+      return {
+        ok: false,
+        reason: "not-empty",
+        detail: "Clear or export the current board before importing.",
+      };
+    }
+    const converted = await convertExcalidrawToFiro(parsedJson);
+    if (deps?.putAsset) {
+      for (const asset of converted.assetsToPut.values()) {
+        await deps.putAsset(asset.hash, asset.bytes, asset.mimeType);
+      }
+    }
+    if (deps?.insertMode === "insert" && hasContent) {
+      insertElementsIntoDoc(doc, converted.elements, deps?.offset);
+      return {
+        ok: true,
+        elements: converted.elements.length,
+        format: "excalidraw",
+        assets: converted.assetsToPut,
+      };
+    }
+    const loaded = loadBoard({
+      format: "firo",
+      version: 4,
+      meta: {
+        id: "excalidraw_import",
+        name: "Imported Drawing",
+        created: Date.now(),
+        updated: Date.now(),
+      },
+      elements: converted.elements,
+      collections: [],
+      records: [],
+      elementOrder: converted.elements.map((e) => e.id),
+    });
+    doc.load({
+      elements: loaded.elements,
+      collections: loaded.collections,
+      records: loaded.records,
+      elementOrder: loaded.elementOrder,
+      meta: loaded.meta,
+    });
+    return {
+      ok: true,
+      elements: converted.elements.length,
+      format: "excalidraw",
+      assets: converted.assetsToPut,
     };
   }
 
@@ -748,7 +990,8 @@ export const importBoardFile = async (
     ("type" in miroItems[0] || "widgetType" in miroItems[0]) &&
     !("elementSchemaVersion" in (parsedJson as object))
   ) {
-    if (doc.read().elements.length > 0 && !deps?.force) {
+    const hasContent = doc.read().elements.length > 0;
+    if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
       return {
         ok: false,
         reason: "not-empty",
@@ -764,6 +1007,19 @@ export const importBoardFile = async (
         await deps.putAsset(asset.hash, asset.bytes, asset.mimeType);
       }
     }
+    if (deps?.insertMode === "insert" && hasContent) {
+      insertElementsIntoDoc(
+        doc,
+        converted.board.elements as unknown as readonly FiroElement[],
+        deps?.offset,
+      );
+      return {
+        ok: true,
+        elements: converted.board.elements.length,
+        format: "miro",
+        assets: converted.assetsToPut,
+      };
+    }
     const loaded = loadBoard(converted.board);
     doc.load({
       elements: loaded.elements,
@@ -772,9 +1028,24 @@ export const importBoardFile = async (
       elementOrder: loaded.elementOrder,
       meta: loaded.meta,
     });
-    return { ok: true, elements: loaded.elements.length, format: "miro" };
+    return {
+      ok: true,
+      elements: loaded.elements.length,
+      format: "miro",
+      assets: converted.assetsToPut,
+    };
   }
 
   // Standard Firo JSON
+  if (deps?.insertMode === "insert" && doc.read().elements.length > 0) {
+    const parsed = parseBoard(text);
+    if (!parsed.ok) {
+      return parsed;
+    }
+    const loaded = loadBoard(JSON.parse(text));
+    insertElementsIntoDoc(doc, loaded.elements, deps?.offset);
+    return { ok: true, elements: loaded.elements.length, format: "firo-v1" };
+  }
+
   return importBoard(doc, text);
 };

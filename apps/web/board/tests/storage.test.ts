@@ -16,14 +16,20 @@ import {
   boardStore,
   clearSavedBoard,
   debounce,
+  getBoardRevisions,
   getSaveStatus,
+  getStorageEstimate,
   hasSavedBoard,
+  isStoragePersisted,
+  requestPersistentStorage,
   restoreBoard,
+  restoreBoardRevision,
   saveBoard,
+  saveBoardRevision,
+  snapshotsKey,
   subscribeSaveStatus,
+  type SaveResult,
 } from "../storage";
-
-import type { SaveResult } from "../storage";
 
 /*
  * Getting a board out and back.
@@ -421,5 +427,233 @@ describe("save status indicator (AC-10)", () => {
     expect(getSaveStatus()).toBe("saved");
 
     unsubscribe();
+  });
+});
+
+describe("storage hardening & persistent storage", () => {
+  const originalStorage = navigator.storage;
+
+  afterEach(() => {
+    Object.defineProperty(navigator, "storage", {
+      value: originalStorage,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  it("returns false from requestPersistentStorage if navigator.storage is unavailable", async () => {
+    Object.defineProperty(navigator, "storage", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    expect(await requestPersistentStorage()).toBe(false);
+    expect(await isStoragePersisted()).toBe(false);
+    expect(await getStorageEstimate()).toEqual({});
+  });
+
+  it("returns true without calling persist() if already persisted", async () => {
+    const persisted = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue(true);
+    Object.defineProperty(navigator, "storage", {
+      value: { persisted, persist },
+      configurable: true,
+      writable: true,
+    });
+
+    const result = await requestPersistentStorage();
+    expect(result).toBe(true);
+    expect(persisted).toHaveBeenCalledTimes(1);
+    expect(persist).not.toHaveBeenCalled();
+    expect(await isStoragePersisted()).toBe(true);
+  });
+
+  it("calls persist() and returns true if not already persisted but granted", async () => {
+    const persisted = vi.fn().mockResolvedValue(false);
+    const persist = vi.fn().mockResolvedValue(true);
+    Object.defineProperty(navigator, "storage", {
+      value: { persisted, persist },
+      configurable: true,
+      writable: true,
+    });
+
+    const result = await requestPersistentStorage();
+    expect(result).toBe(true);
+    expect(persisted).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(await isStoragePersisted()).toBe(false);
+  });
+
+  it("returns false if persist() rejects or returns false", async () => {
+    const persisted = vi.fn().mockResolvedValue(false);
+    const persistDenied = vi.fn().mockResolvedValue(false);
+    Object.defineProperty(navigator, "storage", {
+      value: { persisted, persist: persistDenied },
+      configurable: true,
+      writable: true,
+    });
+    expect(await requestPersistentStorage()).toBe(false);
+
+    const persistThrows = vi
+      .fn()
+      .mockRejectedValue(new Error("Permission denied"));
+    Object.defineProperty(navigator, "storage", {
+      value: { persisted, persist: persistThrows },
+      configurable: true,
+      writable: true,
+    });
+    expect(await requestPersistentStorage()).toBe(false);
+  });
+
+  it("returns quota, usage, and calculated percentage from getStorageEstimate", async () => {
+    const estimate = vi
+      .fn()
+      .mockResolvedValue({ quota: 1000000, usage: 250000 });
+    Object.defineProperty(navigator, "storage", {
+      value: { estimate },
+      configurable: true,
+      writable: true,
+    });
+
+    const result = await getStorageEstimate();
+    expect(result).toEqual({ quota: 1000000, usage: 250000, percent: 25 });
+  });
+
+  it("restoreBoard automatically invokes requestPersistentStorage", async () => {
+    const persisted = vi.fn().mockResolvedValue(true);
+    Object.defineProperty(navigator, "storage", {
+      value: { persisted },
+      configurable: true,
+      writable: true,
+    });
+
+    const doc = board();
+    await restoreBoard(doc);
+    expect(persisted).toHaveBeenCalled();
+  });
+});
+
+describe("rolling revision history", () => {
+  it("starts with an empty revisions list", async () => {
+    const revisions = await getBoardRevisions();
+    expect(revisions).toEqual([]);
+  });
+
+  it("saves and retrieves revisions with metadata", async () => {
+    const doc = board();
+    seed(doc, 3);
+    const rev = await saveBoardRevision(doc, undefined, "Initial checkpoint");
+    expect(rev).not.toBeNull();
+    expect(rev?.elementCount).toBe(3);
+    expect(rev?.label).toBe("Initial checkpoint");
+    expect(typeof rev?.id).toBe("string");
+    expect(typeof rev?.timestamp).toBe("number");
+    expect(typeof rev?.payload).toBe("string");
+
+    const revisions = await getBoardRevisions();
+    expect(revisions).toHaveLength(1);
+    expect(revisions[0]).toEqual(rev);
+  });
+
+  it("isolates revisions by boardId and uses correct snapshotsKey", async () => {
+    expect(snapshotsKey("default")).toBe("autosave:snapshots");
+    expect(snapshotsKey("custom-1")).toBe("autosave:custom-1:snapshots");
+
+    const doc = board();
+    seed(doc, 2);
+    await saveBoardRevision(doc, "board-alpha", "Alpha Rev");
+    await saveBoardRevision(doc, "board-beta", "Beta Rev");
+
+    const alphaRevs = await getBoardRevisions("board-alpha");
+    const betaRevs = await getBoardRevisions("board-beta");
+    const defaultRevs = await getBoardRevisions();
+
+    expect(alphaRevs).toHaveLength(1);
+    expect(alphaRevs[0].label).toBe("Alpha Rev");
+    expect(betaRevs).toHaveLength(1);
+    expect(betaRevs[0].label).toBe("Beta Rev");
+    expect(defaultRevs).toHaveLength(0);
+  });
+
+  it("enforces rolling snapshot limit of 10 with FIFO eviction of the 11th", async () => {
+    const doc = board();
+
+    for (let i = 0; i < 11; i++) {
+      seed(doc, 1);
+      const rev = await saveBoardRevision(doc, undefined, `Revision ${i}`);
+      expect(rev).not.toBeNull();
+    }
+
+    const revisions = await getBoardRevisions();
+    expect(revisions).toHaveLength(10);
+    // FIFO eviction: the first revision (Revision 0) was evicted
+    expect(revisions.find((r) => r.label === "Revision 0")).toBeUndefined();
+    expect(revisions[0].label).toBe("Revision 1");
+    expect(revisions[9].label).toBe("Revision 10");
+  });
+
+  it("restores a revision successfully restoring doc elements", async () => {
+    const doc = board();
+
+    // Revision 1: 2 notes
+    doc.commit([
+      {
+        kind: "createElement",
+        element: note("note-1", { text: "first note" }) as never,
+      },
+      {
+        kind: "createElement",
+        element: note("note-2", { text: "second note" }) as never,
+      },
+    ]);
+    const rev1 = await saveBoardRevision(doc, undefined, "v1");
+    expect(rev1).not.toBeNull();
+
+    // Add 2 more notes for Revision 2: 4 notes total
+    doc.commit([
+      {
+        kind: "createElement",
+        element: note("note-3", { text: "third note" }) as never,
+      },
+      {
+        kind: "createElement",
+        element: note("note-4", { text: "fourth note" }) as never,
+      },
+    ]);
+    const rev2 = await saveBoardRevision(doc, undefined, "v2");
+    expect(rev2).not.toBeNull();
+    expect(doc.read().elements).toHaveLength(4);
+
+    // Restore revision 1 into doc
+    const restoreResult = await restoreBoardRevision(doc, rev1!.id);
+    expect(restoreResult).toEqual({
+      status: "restored",
+      elements: 2,
+    });
+
+    const elementsAfterRestore = doc.read().elements;
+    expect(elementsAfterRestore).toHaveLength(2);
+    expect(elementsAfterRestore.map((e) => e.id)).toEqual(["note-1", "note-2"]);
+    expect(elementsAfterRestore[0].text).toBe("first note");
+    expect(elementsAfterRestore[1].text).toBe("second note");
+  });
+
+  it("reports failure when attempting to restore a nonexistent revision", async () => {
+    const doc = board();
+    const result = await restoreBoardRevision(doc, "nonexistent-rev-id");
+    expect(result.status).toBe("failed");
+    expect(result.status === "failed" ? result.detail : "").toContain(
+      "not found",
+    );
+  });
+
+  it("creates a revision snapshot on initial saveBoard with elements", async () => {
+    const doc = board();
+    seed(doc, 3);
+    await saveBoard(doc);
+
+    const revisions = await getBoardRevisions();
+    expect(revisions).toHaveLength(1);
+    expect(revisions[0].elementCount).toBe(3);
   });
 });
