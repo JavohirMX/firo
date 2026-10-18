@@ -81,5 +81,5 @@ These live at the repository root, not under `docs/`, because they are legal rec
 | File | What it is |
 | --- | --- |
 | [`NOTICE`](../NOTICE) | Provenance. The exact upstream commit, a map of where Excalidraw code now lives, and the retained dependencies |
-| [`FONT-LICENSES.md`](../FONT-LICENSES.md) | Per-font licence audit. **Incomplete — a release blocker.** See [ADR-0014](adr/0014-font-position-after-phase-0.md) |
+| [`FONT-LICENSES.md`](../FONT-LICENSES.md) | Per-font licence audit. Complete — all 8 bundled fonts verified and cleared under SIL OFL 1.1 / MIT. |
 | [`LICENSE`](../LICENSE) | MIT, with the Excalidraw notice embedded. Never alter it |

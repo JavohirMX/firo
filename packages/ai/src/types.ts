@@ -67,6 +67,11 @@ export type LlmClientConfig = Readonly<{
    * Custom fetch implementation, primarily for testing or sandboxing.
    */
   fetchFn?: typeof fetch;
+
+  /**
+   * Optional API key or bearer token for local servers requiring authorization.
+   */
+  apiKey?: string;
 }>;
 
 export type LlmGenerateOptions = Readonly<{
@@ -111,6 +116,7 @@ export interface LlmClient {
   ): Promise<string>;
   complete(prompt: string, options?: LlmGenerateOptions): Promise<string>;
   completeJson<T>(prompt: string, options?: LlmGenerateOptions): Promise<T>;
+  ping(): Promise<boolean>;
 }
 
 /* -------------------------------------------------------------------------- */

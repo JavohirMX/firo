@@ -43,8 +43,10 @@ export type DocBlockOverlayProps = {
     offsetTop?: number;
   };
   devicePixelRatio?: number;
-  onCommit: (updatedDoc: ProseMirrorNode, updatedTitle?: string) => void;
-  onDiscard: () => void;
+  onCommit?: (updatedDoc: ProseMirrorNode, updatedTitle?: string) => void;
+  onDiscard?: () => void;
+  onChange?: (updatedDoc: ProseMirrorNode, updatedTitle?: string) => void;
+  onClose?: () => void;
   readOnly?: boolean;
 };
 
@@ -140,6 +142,8 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
   appState,
   onCommit,
   onDiscard,
+  onChange,
+  onClose,
   readOnly = false,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -192,8 +196,10 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
       bindingRef.current.syncDOMToFragment(currentDoc);
     }
 
-    onCommit(currentDoc, title);
-  }, [getCurrentDoc, onCommit, title]);
+    onCommit?.(currentDoc, title);
+    onChange?.(currentDoc, title);
+    onClose?.();
+  }, [getCurrentDoc, onCommit, onChange, onClose, title]);
 
   /**
    * Discard editing session if untouched or explicitly cancelled.
@@ -203,8 +209,9 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
       return;
     }
     hasCommittedRef.current = true;
-    onDiscard();
-  }, [onDiscard]);
+    onDiscard?.();
+    onClose?.();
+  }, [onDiscard, onClose]);
 
   // Initialise ProseMirror DOM and Yjs binding on mount
   useEffect(() => {
@@ -296,6 +303,9 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
 
   const handleInput = () => {
     isDirtyRef.current = true;
+    if (onChange) {
+      onChange(getCurrentDoc(), title);
+    }
   };
 
   return (
@@ -325,8 +335,12 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
           placeholder="Doc Title"
           disabled={readOnly}
           onChange={(e) => {
-            setTitle(e.target.value);
+            const nextTitle = e.target.value;
+            setTitle(nextTitle);
             isDirtyRef.current = true;
+            if (onChange) {
+              onChange(getCurrentDoc(), nextTitle);
+            }
           }}
         />
       </div>

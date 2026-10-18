@@ -15,6 +15,7 @@ import {
   actionResetZoom,
   actionZoomToFit,
   actionToggleGridMode,
+  DocBlockOverlay,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -98,9 +99,27 @@ import {
 
 import { mintBoardId } from "@firo/board";
 
-import { createFiroDoc, getAssetBytes, putAsset } from "@firo/doc";
+import {
+  createFiroDoc,
+  getAssetBytes,
+  putAsset,
+  type FiroDoc,
+  type Mutation,
+} from "@firo/doc";
 
-import { serializeBoard } from "@firo/schema";
+import {
+  createDocBlockRecord,
+  docBlockRecordToFiroRecord,
+  docBlockRecordFromFiroRecord,
+  DOC_BLOCK_COLLECTION_ID,
+} from "@firo/records";
+import {
+  createDocBlockCollection,
+  isDocBlockRecord,
+  serializeBoard,
+  type DocBlockRecord,
+} from "@firo/schema";
+import { newElement } from "@firo/element";
 
 import type { AccessibilityTreeItem, ActivityFeedItem } from "@firo/ui";
 
@@ -147,6 +166,7 @@ import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
 import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
 import { ShareModal } from "./components/ShareModal";
 import { TemplateModal } from "./components/TemplateModal";
+import { AIAssistantModal } from "./components/AIAssistantModal";
 
 import {
   CollabProvider,
@@ -465,18 +485,25 @@ export const CREATION_TOOLS = new Set<RailToolType>([
   "line",
   "text",
   "frame",
+  "docblock",
 ]);
 
 export const WebCreationRail = ({
   appState,
   commentMode = false,
   onToggleCommentMode,
+  docBlockMode = false,
+  onToggleDocBlockMode,
   onOpenTemplates,
+  onOpenAI,
 }: {
   appState: UIAppState;
   commentMode?: boolean;
   onToggleCommentMode?: () => void;
+  docBlockMode?: boolean;
+  onToggleDocBlockMode?: () => void;
   onOpenTemplates?: () => void;
+  onOpenAI?: () => void;
 }) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
@@ -663,6 +690,24 @@ export const WebCreationRail = ({
       };
     }
 
+    if (id === "docblock") {
+      return {
+        id: "docblock",
+        label: "Document",
+        icon: RAIL_TOOL_ICONS.docblock,
+        activeOn: ["docblock"],
+      };
+    }
+
+    if (id === "ai") {
+      return {
+        id: "ai",
+        label: "AI Assistant",
+        icon: RAIL_TOOL_ICONS.ai,
+        activeOn: [],
+      };
+    }
+
     const toolKey = id in TOOLS ? (id as keyof typeof TOOLS) : undefined;
     const label = toolKey
       ? capitalizeString(t(`toolBar.${toolKey}`))
@@ -677,7 +722,15 @@ export const WebCreationRail = ({
 
   const isKnownTool = (id: RailToolType) =>
     id in TOOLS ||
-    ["shapes", "connectors", "pen", "templates", "comment"].includes(id);
+    [
+      "shapes",
+      "connectors",
+      "pen",
+      "templates",
+      "comment",
+      "docblock",
+      "ai",
+    ].includes(id);
 
   const tools: RailToolItem[] = [
     pointerItem,
@@ -691,7 +744,9 @@ export const WebCreationRail = ({
     <CreationRail
       tools={tools}
       hiddenTools={hiddenTools}
-      activeTool={commentMode ? "comment" : activeToolType}
+      activeTool={
+        commentMode ? "comment" : docBlockMode ? "docblock" : activeToolType
+      }
       onReorder={(order) =>
         setLayout((current) => reorderRailTools(current, order))
       }
@@ -725,6 +780,16 @@ export const WebCreationRail = ({
 
         if (tool === "comment") {
           onToggleCommentMode?.();
+          return;
+        }
+
+        if (tool === "docblock") {
+          onToggleDocBlockMode?.();
+          return;
+        }
+
+        if (tool === "ai") {
+          onOpenAI?.();
           return;
         }
 
@@ -1073,6 +1138,97 @@ const WebSelectionToolbar = ({
   );
 };
 
+/**
+ * Create a new doc block record in the document's records store
+ * and place its projection element on the board (§10.5).
+ */
+export const insertDocBlockOnBoard = (
+  getDocument: () => FiroDoc,
+  excalidrawAPI?: ExcalidrawImperativeAPI | null,
+  point?: { x: number; y: number },
+): { record: DocBlockRecord; element: NonDeletedExcalidrawElement } => {
+  const doc = getDocument();
+  const currentBoardId = (doc.read().meta?.id as string) || "board-1";
+  const collections = doc.read().collections;
+  const mutations: Mutation[] = [];
+
+  if (!collections.some((c) => c.id === DOC_BLOCK_COLLECTION_ID)) {
+    mutations.push({
+      kind: "createCollection",
+      collection: createDocBlockCollection(currentBoardId),
+    });
+  }
+
+  const docBlock = createDocBlockRecord({
+    title: "Untitled Document",
+  });
+  const firoRecord = docBlockRecordToFiroRecord(docBlock);
+  mutations.push({
+    kind: "createRecord",
+    record: firoRecord,
+  });
+
+  doc.commit(mutations);
+
+  let x = point?.x;
+  let y = point?.y;
+
+  if (x === undefined || y === undefined) {
+    if (excalidrawAPI) {
+      const appState = excalidrawAPI.getAppState();
+      x =
+        -appState.scrollX +
+        appState.width / 2 / appState.zoom.value -
+        docBlock.dimensions.width / 2;
+      y =
+        -appState.scrollY +
+        appState.height / 2 / appState.zoom.value -
+        docBlock.dimensions.height / 2;
+    } else {
+      x = 100;
+      y = 100;
+    }
+  }
+
+  const element = newElement({
+    type: "rectangle",
+    x,
+    y,
+    width: docBlock.dimensions.width,
+    height: docBlock.dimensions.height,
+    strokeColor: "#1e1e1e",
+    backgroundColor: docBlock.styling.backgroundColor ?? "#ffffff",
+    fillStyle: "solid",
+    strokeWidth: 1,
+    roughness: 0,
+    roundness: { type: 3 },
+    customData: {
+      isDocBlock: true,
+      recordId: firoRecord.id,
+    },
+  });
+  const docBlockElement = {
+    ...element,
+    recordId: firoRecord.id,
+  } as unknown as NonDeletedExcalidrawElement;
+
+  if (excalidrawAPI) {
+    const currentElements = excalidrawAPI.getSceneElements();
+    excalidrawAPI.updateScene({
+      elements: [
+        ...currentElements,
+        ...restoreElements([docBlockElement as any], null),
+      ],
+      appState: {
+        selectedElementIds: { [docBlockElement.id]: true },
+      },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+  }
+
+  return { record: docBlock, element: docBlockElement };
+};
+
 const ExcalidrawWrapper = () => {
   const excalidrawAPI = useExcalidrawAPI();
 
@@ -1089,7 +1245,63 @@ const ExcalidrawWrapper = () => {
     null,
   );
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [commentMode, setCommentMode] = useState(false);
+  const [docBlockMode, setDocBlockMode] = useState(false);
+  const [activeDocBlockId, setActiveDocBlockId] = useState<string | null>(null);
+  const lastCanvasClickRef = useRef<{
+    time: number;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const handleUpdateDocBlockRecord = useCallback(
+    (recordId: string, _updatedDoc: any, updatedTitle?: string) => {
+      const doc = boardDoc();
+      const existing = doc.read().records.find((r) => r.id === recordId);
+      if (!existing) {
+        return;
+      }
+      const typed = docBlockRecordFromFiroRecord(existing);
+      const nextTitle = updatedTitle !== undefined ? updatedTitle : typed.title;
+      const updatedTyped: DocBlockRecord = {
+        ...typed,
+        title: nextTitle,
+        updated: Date.now(),
+      };
+      const updatedFiroRecord = docBlockRecordToFiroRecord(updatedTyped);
+
+      doc.commit([
+        {
+          kind: "updateRecords",
+          updates: [
+            {
+              id: recordId,
+              changes: {
+                values: updatedFiroRecord.values,
+                updated: updatedFiroRecord.updated,
+              },
+            },
+          ],
+        },
+      ]);
+    },
+    [],
+  );
+
+  const createDocBlockAt = useCallback(
+    (point?: { x: number; y: number }) => {
+      const { record, element } = insertDocBlockOnBoard(
+        boardDoc,
+        excalidrawAPI,
+        point,
+      );
+      setActiveDocBlockId(record.id);
+      return { record, element };
+    },
+    [excalidrawAPI],
+  );
+
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalTab, setExportModalTab] = useState<ExportTab>("image");
   const [importPendingFile, setImportPendingFile] = useState<{
@@ -2149,6 +2361,32 @@ const ExcalidrawWrapper = () => {
      */
     refreshAccessibilityItems(elements);
 
+    const selectedIds = Object.keys(appState.selectedElementIds || {}).filter(
+      (id) => appState.selectedElementIds[id],
+    );
+    if (selectedIds.length === 1) {
+      const selected = elements.find((el) => el.id === selectedIds[0]);
+      const recordId =
+        (selected?.customData?.recordId as string | undefined) ||
+        ((selected as any)?.recordId as string | undefined);
+      if (
+        recordId &&
+        (selected?.customData?.isDocBlock || selected?.type === "rectangle")
+      ) {
+        const doc = boardDoc();
+        const record = doc.read().records.find((r) => r.id === recordId);
+        if (
+          record &&
+          (record.collectionId === DOC_BLOCK_COLLECTION_ID ||
+            isDocBlockRecord(record))
+        ) {
+          if (activeDocBlockId !== recordId) {
+            setActiveDocBlockId(recordId);
+          }
+        }
+      }
+    }
+
     if (appState.activeTool?.type) {
       collabProviderRef.current?.setLocalTool(appState.activeTool.type);
     }
@@ -2300,8 +2538,17 @@ const ExcalidrawWrapper = () => {
           <WebCreationRail
             appState={appState}
             commentMode={commentMode}
-            onToggleCommentMode={() => setCommentMode((mode) => !mode)}
+            onToggleCommentMode={() => {
+              setCommentMode((mode) => !mode);
+              setDocBlockMode(false);
+            }}
+            docBlockMode={docBlockMode}
+            onToggleDocBlockMode={() => {
+              setDocBlockMode((mode) => !mode);
+              setCommentMode(false);
+            }}
             onOpenTemplates={() => setTemplateModalOpen(true)}
+            onOpenAI={() => setAiModalOpen(true)}
           />
         )}
         renderNavigationUI={(_isMobile, appState) => (
@@ -2367,6 +2614,44 @@ const ExcalidrawWrapper = () => {
               },
             });
             setCommentMode(false);
+          } else if (docBlockMode) {
+            createDocBlockAt({
+              x: pointerDownState.origin.x,
+              y: pointerDownState.origin.y,
+            });
+            setDocBlockMode(false);
+          } else {
+            const now = Date.now();
+            const last = lastCanvasClickRef.current;
+            const isDouble = last && now - last.time < 350;
+            lastCanvasClickRef.current = {
+              time: now,
+              x: pointerDownState.origin.x,
+              y: pointerDownState.origin.y,
+            };
+
+            if (isDouble && excalidrawAPI) {
+              const elements = excalidrawAPI.getSceneElements();
+              const hit = elements.find(
+                (el) =>
+                  !el.isDeleted &&
+                  ((el as any).recordId ||
+                    el.customData?.recordId ||
+                    el.customData?.isDocBlock) &&
+                  pointerDownState.origin.x >= el.x &&
+                  pointerDownState.origin.x <= el.x + el.width &&
+                  pointerDownState.origin.y >= el.y &&
+                  pointerDownState.origin.y <= el.y + el.height,
+              );
+              if (hit) {
+                const recordId =
+                  (hit.customData?.recordId as string | undefined) ||
+                  ((hit as any).recordId as string | undefined);
+                if (recordId) {
+                  setActiveDocBlockId(recordId);
+                }
+              }
+            }
           }
         }}
         onPointerUpdate={(payload) => {
@@ -2416,6 +2701,74 @@ const ExcalidrawWrapper = () => {
           liveMessage={liveMessage}
         />
         <ProjectionView excalidrawAPI={excalidrawAPI} />
+        {activeDocBlockId &&
+          (() => {
+            const doc = boardDoc();
+            const firoRecord = doc
+              .read()
+              .records.find((r) => r.id === activeDocBlockId);
+            if (!firoRecord) {
+              return null;
+            }
+            const docBlockRecord = docBlockRecordFromFiroRecord(firoRecord);
+            const currentElements = excalidrawAPI?.getSceneElements() ?? [];
+            const projectionEl = currentElements.find(
+              (el) =>
+                !el.isDeleted &&
+                (((el as any).recordId as string | undefined) ===
+                  activeDocBlockId ||
+                  el.customData?.recordId === activeDocBlockId),
+            );
+            const currentAppState = excalidrawAPI?.getAppState();
+            const zoomVal = currentAppState?.zoom.value ?? 1;
+            const scrollXVal = currentAppState?.scrollX ?? 0;
+            const scrollYVal = currentAppState?.scrollY ?? 0;
+            const layout = {
+              x: projectionEl?.x ?? 0,
+              y: projectionEl?.y ?? 0,
+              width: projectionEl?.width ?? docBlockRecord.dimensions.width,
+              height: projectionEl?.height ?? docBlockRecord.dimensions.height,
+            };
+            const fragment = (doc.rawYdoc ?? doc.ydoc).getXmlFragment(
+              docBlockRecord.fragmentKey,
+            );
+
+            return (
+              <DocBlockOverlay
+                record={docBlockRecord}
+                fragment={fragment}
+                layout={layout}
+                appState={{
+                  zoom: { value: zoomVal },
+                  scrollX: scrollXVal,
+                  scrollY: scrollYVal,
+                  offsetLeft: currentAppState?.offsetLeft,
+                  offsetTop: currentAppState?.offsetTop,
+                }}
+                onCommit={(updatedDoc, updatedTitle) => {
+                  handleUpdateDocBlockRecord(
+                    activeDocBlockId,
+                    updatedDoc,
+                    updatedTitle,
+                  );
+                  setActiveDocBlockId(null);
+                }}
+                onDiscard={() => {
+                  setActiveDocBlockId(null);
+                }}
+                onChange={(updatedDoc, updatedTitle) => {
+                  handleUpdateDocBlockRecord(
+                    activeDocBlockId,
+                    updatedDoc,
+                    updatedTitle,
+                  );
+                }}
+                onClose={() => {
+                  setActiveDocBlockId(null);
+                }}
+              />
+            );
+          })()}
         <TagLayer
           excalidrawAPI={excalidrawAPI}
           onSelectTag={(tag) => {
@@ -2686,6 +3039,26 @@ const ExcalidrawWrapper = () => {
           doc={boardDoc()}
           collabStatus={isOffline ? "offline" : collabStatus}
           onRestore={() => {
+            excalidrawAPI?.refresh();
+          }}
+        />
+
+        <AIAssistantModal
+          isOpen={aiModalOpen}
+          onClose={() => setAiModalOpen(false)}
+          doc={boardDoc()}
+          selectedElements={
+            excalidrawAPI
+              ? (excalidrawAPI
+                  .getSceneElements()
+                  .filter(
+                    (el) =>
+                      !el.isDeleted &&
+                      excalidrawAPI.getAppState().selectedElementIds[el.id],
+                  ) as any)
+              : []
+          }
+          onSuccess={() => {
             excalidrawAPI?.refresh();
           }}
         />

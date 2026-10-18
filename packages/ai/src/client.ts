@@ -122,6 +122,7 @@ export class LocalLlmClient implements LlmClient {
       timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       systemPrompt: config.systemPrompt,
       fetchFn: config.fetchFn,
+      apiKey: config.apiKey,
     };
     this.fetchImpl = config.fetchFn ?? globalThis.fetch;
   }
@@ -178,12 +179,17 @@ export class LocalLlmClient implements LlmClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (this.config.apiKey) {
+      headers.Authorization = `Bearer ${this.config.apiKey}`;
+    }
+
     try {
       const response = await this.fetchImpl(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       });
@@ -296,6 +302,67 @@ export class LocalLlmClient implements LlmClient {
       formatJson: true,
     });
     return extractJsonFromText<T>(raw);
+  }
+
+  /**
+   * Pings the local LLM endpoint to verify connectivity and readiness.
+   * Returns true if the endpoint responded successfully, false otherwise.
+   */
+  async ping(): Promise<boolean> {
+    const provider = this.config.provider ?? "ollama";
+    const rawBase =
+      this.config.baseUrl ||
+      (provider === "openai-compatible"
+        ? DEFAULT_OPENAI_URL
+        : DEFAULT_OLLAMA_URL);
+    const trimmed = rawBase.replace(/\/+$/, "");
+
+    const probeUrl =
+      provider === "ollama"
+        ? trimmed.endsWith("/api/chat")
+          ? trimmed.replace(/\/api\/chat$/, "/api/tags")
+          : `${trimmed}/api/tags`
+        : trimmed.endsWith("/chat/completions")
+        ? trimmed.replace(/\/chat\/completions$/, "/models")
+        : trimmed.endsWith("/v1")
+        ? `${trimmed}/models`
+        : `${trimmed}/v1/models`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+
+    const headers: Record<string, string> = {};
+    if (this.config.apiKey) {
+      headers.Authorization = `Bearer ${this.config.apiKey}`;
+    }
+
+    try {
+      let res = await this.fetchImpl(probeUrl, {
+        method: "GET",
+        headers,
+        signal: controller.signal,
+      }).catch(async () => {
+        return await this.fetchImpl(trimmed, {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        });
+      });
+
+      if (!res.ok) {
+        res = await this.fetchImpl(trimmed, {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        });
+      }
+
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 

@@ -9,7 +9,13 @@
  * and the Doc Block projection over the record store.
  */
 import { Schema } from "prosemirror-model";
-import { docBlockRecordFromFiroRecord } from "@firo/schema";
+import {
+  createDocBlockRecord,
+  docBlockRecordToFiroRecord,
+  docBlockRecordFromFiroRecord,
+  DOC_BLOCK_COLLECTION_ID,
+  isDocBlockRecord,
+} from "@firo/schema";
 
 import type { Collection, FiroRecord } from "@firo/schema";
 
@@ -23,6 +29,14 @@ import type {
   ProjectionIntent,
   RecordMutation,
 } from "./types.js";
+
+export {
+  createDocBlockRecord,
+  docBlockRecordToFiroRecord,
+  docBlockRecordFromFiroRecord,
+  DOC_BLOCK_COLLECTION_ID,
+  isDocBlockRecord,
+};
 
 /**
  * The ProseMirror schema for structured Doc Blocks (§10.5, TRD-05).

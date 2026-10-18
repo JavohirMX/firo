@@ -22,7 +22,7 @@ export { clusterStickyNotes } from "./operations/cluster.js";
 export { summarizeBoard, summarizeComments } from "./operations/summarize.js";
 export { textToDiagram } from "./operations/diagram.js";
 export { textToRecords } from "./operations/records.js";
-export { textToProseMirrorDoc } from "./operations/utils.js";
+export { createElementBase, textToProseMirrorDoc } from "./operations/utils.js";
 
 // Executor & Undo Builder
 export {

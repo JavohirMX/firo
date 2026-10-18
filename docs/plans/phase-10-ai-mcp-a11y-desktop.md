@@ -16,7 +16,7 @@ in parallel.
 
 ---
 
-## 10.1 — AI (COMPLETE)
+## 10.1 — AI (UI integration in progress)
 
 Deferred deliberately from v1
 ([ADR-0012](../adr/0012-no-ai-in-v1.md)). The ordering is the point: **AI is only
@@ -42,6 +42,8 @@ advantage over an OCR-over-canvas system, not a feature we have to keep winning.
 
 **Guard rails:** every AI action is a normal undoable operation. No AI write bypasses
 the document. The user can always see what was changed.
+
+**Status:** The local engine in `@firo/ai` is complete (Ollama adapter, custom endpoint support, clustering, board summarization, text-to-diagram, text-to-records, and undoability tests). UI integration is currently in progress.
 
 ## 10.2 — MCP server (COMPLETE)
 
@@ -146,7 +148,7 @@ The value is filesystem access: "open a folder of boards" is a much better local
 story than the browser File System Access API, whose support is uneven — Safari does
 not implement it at all ([ADR-0005](../adr/0005-indexeddb-via-idb-keyval.md)).
 
-## 10.5 — Doc blocks
+## 10.5 — Doc blocks (COMPLETE)
 
 A structured document editor on the canvas, over the record store, using the full
 ProseMirror schema ([`../trd/05-rich-text.md`](../trd/05-rich-text.md)).
@@ -154,6 +156,8 @@ ProseMirror schema ([`../trd/05-rich-text.md`](../trd/05-rich-text.md)).
 **v3 because it is a whole product.** Miro's own Docs are new and thinly supported in
 its API. We do not start until the record store is solid and Phase 6's projections
 have proven the model.
+
+**Delivered:** implemented on canvas with ProseMirror WYSIWYG overlay (`DocBlockOverlay` in `@firo/editor`, canvas renderer in `renderDocBlock.ts`, `docBlock` record abstractions in `@firo/records`) and Schema v4 migrations in `@firo/schema` (`V3_TO_V4_DOC_BLOCKS`, `migrateBoardV3ToV4`, and v4 fixtures).
 
 ## Verification
 

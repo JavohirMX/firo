@@ -58,6 +58,8 @@ export const RAIL_TOOL_DEFAULTS: readonly RailToolType[] = [
   "pen",
   "frame",
   "comment",
+  "docblock",
+  "ai",
 ];
 
 /**

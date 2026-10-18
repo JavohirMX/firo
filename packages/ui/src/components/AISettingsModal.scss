@@ -1,0 +1,259 @@
+.firo-ai-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 17, 26, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: var(--firo-space-lg, 16px);
+  animation: firoAiFadeIn 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.firo-ai-settings-modal {
+  background: var(--firo-color-panel, #ffffff);
+  border: 1px solid var(--firo-color-border, #e4e5ea);
+  border-radius: var(--firo-radius-lg, 12px);
+  box-shadow: var(--firo-elevation-floating, 0 8px 30px rgba(0, 0, 0, 0.16));
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  color: var(--firo-color-text, #111318);
+  animation: firoAiScaleIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes firoAiFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes firoAiScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.firo-ai-settings-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--firo-space-lg, 20px) var(--firo-space-xl, 24px)
+    var(--firo-space-md, 12px);
+  border-bottom: 1px solid var(--firo-color-border, #e4e5ea);
+}
+
+.firo-ai-settings-modal__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.firo-ai-settings-modal__title {
+  margin: 0;
+  font-size: var(--firo-font-size-xl, 20px);
+  font-weight: var(--firo-font-weight-semibold, 600);
+  color: var(--firo-color-text, #111318);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.firo-ai-settings-modal__subtitle {
+  margin: 0;
+  font-size: var(--firo-font-size-sm, 12px);
+  color: var(--firo-color-text-muted, #5f6270);
+}
+
+.firo-ai-settings-modal__close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--firo-color-text-muted, #5f6270);
+  padding: var(--firo-space-xs, 4px);
+  border-radius: var(--firo-radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover {
+    background: var(--firo-color-surface, #f5f6f8);
+    color: var(--firo-color-text, #111318);
+  }
+}
+
+.firo-ai-settings-modal__body {
+  padding: var(--firo-space-lg, 20px) var(--firo-space-xl, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--firo-space-lg, 16px);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.firo-ai-settings-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.firo-ai-settings-modal__label {
+  font-size: var(--firo-font-size-sm, 12px);
+  font-weight: var(--firo-font-weight-semibold, 600);
+  color: var(--firo-color-text, #111318);
+}
+
+.firo-ai-settings-modal__hint {
+  font-size: 11px;
+  color: var(--firo-color-text-muted, #5f6270);
+  margin-top: 2px;
+}
+
+.firo-ai-settings-modal__provider-tabs {
+  display: flex;
+  border-radius: var(--firo-radius-md, 8px);
+  background: var(--firo-color-surface, #f5f6f8);
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid var(--firo-color-border, #e4e5ea);
+}
+
+.firo-ai-settings-modal__provider-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--firo-color-text-muted, #5f6270);
+  font-size: var(--firo-font-size-sm, 12px);
+  font-weight: var(--firo-font-weight-medium, 500);
+  border-radius: var(--firo-radius-sm, 6px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+
+  &:hover:not(&--active) {
+    color: var(--firo-color-text, #111318);
+  }
+
+  &--active {
+    background: var(--firo-color-panel, #ffffff);
+    color: var(--firo-color-accent, #5b4bff);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.firo-ai-settings-modal__input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--firo-radius-md, 6px);
+  border: 1px solid var(--firo-color-border-strong, #c9cbd3);
+  background: var(--firo-color-panel, #ffffff);
+  color: var(--firo-color-text, #111318);
+  font-family: inherit;
+  font-size: var(--firo-font-size-md, 14px);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--firo-color-accent, #5b4bff);
+    box-shadow: 0 0 0 2px rgba(91, 75, 255, 0.18);
+  }
+}
+
+.firo-ai-settings-modal__test-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: var(--firo-space-xs, 4px);
+}
+
+.firo-ai-settings-modal__test-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.firo-ai-settings-modal__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--firo-font-size-sm, 12px);
+  font-weight: var(--firo-font-weight-medium, 500);
+
+  &--success {
+    color: var(--firo-color-success, #12794a);
+  }
+
+  &--error {
+    color: var(--firo-color-danger, #d5253c);
+  }
+
+  &--testing {
+    color: var(--firo-color-accent, #5b4bff);
+  }
+}
+
+.firo-ai-settings-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: var(--firo-space-md, 14px) var(--firo-space-xl, 24px);
+  border-top: 1px solid var(--firo-color-border, #e4e5ea);
+  background: var(--firo-color-surface, #f5f6f8);
+}
+
+.firo-ai-settings-modal__btn {
+  padding: 8px 16px;
+  border-radius: var(--firo-radius-md, 6px);
+  font-size: var(--firo-font-size-sm, 13px);
+  font-weight: var(--firo-font-weight-medium, 500);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  &--secondary {
+    background: var(--firo-color-panel, #ffffff);
+    border: 1px solid var(--firo-color-border-strong, #c9cbd3);
+    color: var(--firo-color-text, #111318);
+
+    &:hover:not(:disabled) {
+      background: var(--firo-color-surface, #f5f6f8);
+    }
+  }
+
+  &--primary {
+    background: var(--firo-color-accent, #5b4bff);
+    border: 1px solid var(--firo-color-accent, #5b4bff);
+    color: var(--firo-color-on-accent, #ffffff);
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@excalidraw/random-username": "1.0.0",
+    "@firo/ai": "0.1.0",
     "@firo/board": "0.1.0",
     "callsites": "4.2.0",
     "i18next-browser-languagedetector": "6.1.4",

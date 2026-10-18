@@ -231,4 +231,42 @@ describe("Local Model Client: Request formatting and response handling", () => {
       expect(err.message).toContain("non-existent");
     }
   });
+
+  test("sends Authorization header when apiKey is configured", async () => {
+    let capturedHeaders: Record<string, string> = {};
+    const mockFetch = vi.fn().mockImplementation(async (_url, options) => {
+      capturedHeaders = options.headers;
+      return {
+        ok: true,
+        json: async () => ({
+          message: { role: "assistant", content: "pong" },
+        }),
+      };
+    });
+
+    const client = new LocalLlmClient({
+      apiKey: "secret-key-123",
+      fetchFn: mockFetch as any,
+    });
+
+    await client.complete("Ping");
+    expect(capturedHeaders.Authorization).toBe("Bearer secret-key-123");
+  });
+
+  test("ping returns true on successful response and false on failure", async () => {
+    const successFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+    });
+    const successClient = new LocalLlmClient({
+      fetchFn: successFetch as any,
+    });
+    expect(await successClient.ping()).toBe(true);
+
+    const failFetch = vi.fn().mockRejectedValue(new Error("Network Error"));
+    const failClient = new LocalLlmClient({
+      fetchFn: failFetch as any,
+    });
+    expect(await failClient.ping()).toBe(false);
+  });
 });

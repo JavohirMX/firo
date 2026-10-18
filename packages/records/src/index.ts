@@ -42,12 +42,17 @@ import type { Projection } from "./types.js";
 export {
   applyDocBlockChange,
   createDefaultDocBlockNode,
+  createDocBlockRecord,
   docBlockProjection,
+  docBlockRecordFromFiroRecord,
+  docBlockRecordToFiroRecord,
   docBlockSchema,
   docBlockToPlainText,
+  isDocBlockRecord,
   layoutDocBlockElement,
   parseDocBlockJson,
   serializeDocBlockNode,
+  DOC_BLOCK_COLLECTION_ID,
   DOC_BLOCK_LAYOUT,
 } from "./docBlock.js";
 export { boardProjection, groupAt, groupOf, groupsOf } from "./board.js";

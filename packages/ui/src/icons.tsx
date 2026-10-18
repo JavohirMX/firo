@@ -1205,3 +1205,84 @@ export const ShapesIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     />
   </svg>
 );
+
+export const SparklesIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M10 2L11.5 6.5L16 8L11.5 9.5L10 14L8.5 9.5L4 8L8.5 6.5L10 2Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M15 13L15.75 15.25L18 16L15.75 16.75L15 19L14.25 16.75L12 16L14.25 15.25L15 13Z"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const SettingsIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.75" />
+    <path
+      d="M10 2V4M10 16V18M2 10H4M16 10H18M4.34 4.34L5.75 5.75M14.25 14.25L15.66 15.66M4.34 15.66L5.75 14.25M14.25 5.75L15.66 4.34"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const DocIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M4.5 3C4.5 2.44772 4.94772 2 5.5 2H11.5L15.5 6V17C15.5 17.5523 15.0523 18 14.5 18H5.5C4.94772 18 4.5 17.5523 4.5 17V3Z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M11.5 2V6H15.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M7.5 10H12.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+    <path
+      d="M7.5 13.5H12.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);

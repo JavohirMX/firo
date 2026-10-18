@@ -23,6 +23,8 @@ import {
   ShapesIcon,
   CommentIcon,
   PlusIcon,
+  DocIcon,
+  SparklesIcon,
 } from "../icons";
 
 import "./CreationRail.scss";
@@ -46,7 +48,9 @@ export type RailToolType =
   | "shapes"
   | "connectors"
   | "pen"
-  | "more";
+  | "more"
+  | "docblock"
+  | "ai";
 
 export interface RailFlyoutItem {
   id: RailToolType;
@@ -111,7 +115,34 @@ export const RAIL_TOOL_ICONS: Record<RailToolType, React.ReactNode> = {
   connectors: <ConnectorIcon />,
   pen: <PenIcon />,
   more: <PlusIcon />,
+  docblock: <DocIcon />,
+  ai: <SparklesIcon />,
 };
+
+/** Default tool list and creation items including docblock (§10.5) */
+export const DEFAULT_CREATION_ITEMS: RailToolItem[] = [
+  { id: "docblock", label: "Document", icon: <DocIcon /> },
+  { id: "ai", label: "AI Assistant", icon: <SparklesIcon /> },
+];
+
+export const DEFAULT_RAIL_TOOLS: RailToolItem[] = [
+  {
+    id: "selection",
+    label: "Select / Hand",
+    icon: <SelectIcon />,
+    pinned: true,
+  },
+  { id: "templates", label: "Templates", icon: <TemplateIcon /> },
+  { id: "text", label: "Text", icon: <TextIcon /> },
+  { id: "stickynote", label: "Sticky note", icon: <StickyNoteIcon /> },
+  { id: "shapes", label: "Shapes", icon: <ShapesIcon /> },
+  { id: "connectors", label: "Connectors", icon: <ConnectorIcon /> },
+  { id: "pen", label: "Pen", icon: <PenIcon /> },
+  { id: "frame", label: "Frame", icon: <FrameIcon /> },
+  { id: "comment", label: "Comment", icon: <CommentIcon /> },
+  { id: "docblock", label: "Document", icon: <DocIcon /> },
+  { id: "ai", label: "AI Assistant", icon: <SparklesIcon /> },
+];
 
 export interface CreationRailProps {
   activeTool: string;

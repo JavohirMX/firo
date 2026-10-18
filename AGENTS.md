@@ -38,7 +38,7 @@ Authoritative once the fork exists. Upstream Excalidraw uses Yarn v1 classic wor
 | Unit tests | `yarn test` |
 | Update test snapshots | `yarn test:update` |
 | Lint and fix | `yarn fix` |
-| Full CI check | `yarn test:typecheck && yarn test && yarn fix --check` |
+| Full CI check | `yarn test:typecheck && yarn test && yarn test:code && yarn test:other` |
 
 **Run `yarn test:update` before every commit.** Upstream snapshot tests fail intentionally when rendering changes. Never delete a failing snapshot without reading the diff.
 
@@ -103,7 +103,7 @@ A change is complete when:
 
 1. `yarn test:typecheck` passes.
 2. `yarn test` passes, including new tests for the behaviour you added.
-3. `yarn fix` has been run and reports no changes.
+3. `yarn test:code && yarn test:other` pass.
 4. Any schema change has a migration and a fixture test.
 5. Any architectural decision that a future contributor would find surprising is captured — as an ADR if it constrains the whole system, as a code comment if it is local.
 
