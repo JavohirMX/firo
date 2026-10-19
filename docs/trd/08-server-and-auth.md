@@ -114,17 +114,20 @@ Capability URLs, **with revocation** — the thing Excalidraw lacks.
 - 128 bits of entropy, generated with a CSPRNG.
 - Scoped to one board, one role.
 - Revocable, individually.
-- Optionally password-protected (Argon2id, same as an account).
 - Expirable, optionally.
+- **Not password-protected in the Phase 11 contract.** The columns are
+  reserved, but a stored hash is not checked; see
+  [`ADR-0037`](../adr/0037-share-links-are-server-capabilities.md) §4. A
+  legacy password row is inert until an unlock grant exists.
 
-**E2EE is optional and per-board.** When enabled, the board key is generated in the
-browser, never sent to the server, and carried in the URL fragment so it is never
-transmitted. The server sees ciphertext.
+**No E2EE for sync or share links in the Phase 11 contract.** The server stores
+readable Yjs updates; a share link is a bearer capability. The encrypted-file
+format is a separate feature. [`ADR-0037`](../adr/0037-share-links-are-server-capabilities.md) §7
+makes the product say so.
 
-**The honest limitation of any capability-link scheme: anyone who has the link has
-the key.** Fragment-based keys are not sent to the server, but a link pasted into a
-chat is a leak. This is why revocation exists and why the UI must make creating and
-revoking links obvious.
+**The honest limitation of any capability-link scheme: anyone who has the link
+has access.** A link pasted into a chat is a leak. This is why revocation
+exists and why the UI must make creating and revoking links obvious.
 
 ## Asset storage
 

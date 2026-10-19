@@ -195,6 +195,8 @@ The clusters below need ADRs before their implementation starts, because each ch
 - [ ] Whatever the matrix forces — one ADR per contract change, none per widget. The matrix names three more than this draft did: **side-panel shell** (C8), **share-link server state** (C9), **voting session state** (C7); media scope and history lane were already listed, and format depth (C5) is confirmed.
   - [x] Side-panel shell and history lane (C8) — **accepted as [`ADR-0035`](../adr/0035-the-right-dock-and-its-panels.md).**
   - [x] Media scope (C6) — **accepted as [`ADR-0036`](../adr/0036-media-scope-emoji-and-embed-frames.md).**
+  - [x] Share-link server state and joined boards (C9) — **accepted as [`ADR-0037`](../adr/0037-share-links-are-server-capabilities.md).**
+  - [ ] Templates as content (C9, rows 55–56) — **ADR-0038** before that work; the C9 tick needs both.
 
 **Exit:** an accepted ADR per cluster above; no 11.3 cluster opens without one.
 
