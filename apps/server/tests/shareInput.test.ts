@@ -3,7 +3,6 @@ import http from "node:http";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Database from "better-sqlite3";
 
-import { hashPassword, verifyPassword } from "../src/auth/crypto.js";
 import { Storage } from "../src/db/storage.js";
 import { RateLimiter } from "../src/http/rateLimit.js";
 import { createHttpHandler } from "../src/http/routes.js";
