@@ -77,6 +77,7 @@ deciders: <names or roles>
 | [0036](0036-media-scope-emoji-and-embed-frames.md) | Ship the emoji surface, and make every embed frame a hostile frame | Accepted | 2026-10-19 |
 | [0037](0037-share-links-are-server-capabilities.md) | Share links are server capabilities, and the app must prove who it is | Accepted | 2026-10-19 |
 | [0038](0038-templates-are-content.md) | Templates are content: one gallery for built-ins and saved fragments | Accepted | 2026-10-19 |
+| [0039](0039-facilitation-is-one-driver-owned-session.md) | Facilitation is one driver-owned session: votes are durable, the live session is ephemeral | Accepted | 2026-10-19 |
 
 ## Open questions
 

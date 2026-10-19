@@ -197,6 +197,7 @@ The clusters below need ADRs before their implementation starts, because each ch
   - [x] Media scope (C6) — **accepted as [`ADR-0036`](../adr/0036-media-scope-emoji-and-embed-frames.md).**
   - [x] Share-link server state and joined boards (C9) — **accepted as [`ADR-0037`](../adr/0037-share-links-are-server-capabilities.md).**
   - [x] Templates as content (C9, rows 55–56) — **accepted as [`ADR-0038`](../adr/0038-templates-are-content.md);** the C9 tick needs both.
+  - [x] Voting session state (C7, rows 33–37) — **accepted as [`ADR-0039`](../adr/0039-facilitation-is-one-driver-owned-session.md).**
 
 **Exit:** an accepted ADR per cluster above; no 11.3 cluster opens without one.
 
