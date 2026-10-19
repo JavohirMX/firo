@@ -1,5 +1,7 @@
 import { URL } from "node:url";
 
+import * as Y from "yjs";
+
 import {
   buildExpiredSessionCookie,
   buildSessionCookie,
@@ -402,6 +404,36 @@ export function createHttpHandler(
 
       storage.revokeShare(shareId);
       sendJson(res, 200, { ok: true });
+      return;
+    }
+
+    // 8b. Board export: GET /api/boards/:id/export (owner or admin).
+    // Returns the full Yjs document state as a binary update, for backups.
+    const exportMatch = pathname.match(/^\/api\/boards\/([^/]+)\/export$/);
+    if (exportMatch && method === "GET") {
+      const boardId = decodeURIComponent(exportMatch[1]);
+      const user = authenticateUser(req, storage);
+      if (!user) {
+        sendJson(res, 401, { error: "Not authenticated." });
+        return;
+      }
+
+      const role = storage.resolveRole(boardId, user);
+      if (role !== "owner") {
+        sendJson(res, 403, { error: "Only board owners can export a board." });
+        return;
+      }
+
+      const doc = storage.loadBoardDocument(boardId);
+      const bytes = Y.encodeStateAsUpdate(doc);
+      doc.destroy();
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": bytes.byteLength,
+        "Content-Disposition": 'attachment; filename="board.ydoc"',
+        "Cache-Control": "no-store",
+      });
+      res.end(Buffer.from(bytes));
       return;
     }
 
