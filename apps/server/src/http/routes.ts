@@ -1,5 +1,3 @@
-import { URL } from "node:url";
-
 import {
   buildExpiredSessionCookie,
   buildSessionCookie,
@@ -14,6 +12,8 @@ import {
   hashPassword,
   verifyPassword,
 } from "../auth/crypto.js";
+
+import { parseRequestUrl } from "./requestUrl.js";
 
 import type http from "node:http";
 import type { ServerConfig } from "../config.js";
@@ -130,8 +130,12 @@ export function createHttpHandler(
       return;
     }
 
-    const host = req.headers.host || "localhost";
-    const parsedUrl = new URL(req.url || "/", `http://${host}`);
+    const parsedUrl = parseRequestUrl(req.url);
+    if (!parsedUrl) {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Bad Request");
+      return;
+    }
     const pathname = parsedUrl.pathname;
     const method = (req.method || "GET").toUpperCase();
 
