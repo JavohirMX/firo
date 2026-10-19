@@ -28,7 +28,12 @@ describe("Auth & REST endpoints", () => {
       authRateLimiter: rateLimiter,
     });
 
-    server = http.createServer(handler);
+    server = http.createServer((req, res) => {
+      void handler(req, res).catch(() => {
+        res.writeHead(500);
+        res.end();
+      });
+    });
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -51,6 +56,34 @@ describe("Auth & REST endpoints", () => {
       expect(verifyPassword("SuperSecret123!", hash, salt)).toBe(true);
       expect(verifyPassword("WrongPassword", hash, salt)).toBe(false);
       expect(verifyPassword("", hash, salt)).toBe(false);
+    });
+  });
+
+  describe.each(["register", "login"])("%s input validation", (endpoint) => {
+    it.each([
+      { username: 123, password: "password123" },
+      { username: [], password: "password123" },
+      { username: {}, password: "password123" },
+      { username: true, password: "password123" },
+      { username: "alice", password: 123456 },
+      { username: "alice", password: ["password123"] },
+      { username: "alice", password: { length: 12 } },
+      { username: "alice", password: true },
+      null,
+      [],
+      "alice",
+    ])("rejects malformed credentials %j without throwing", async (body) => {
+      const res = await fetch(`${serverUrl}/api/auth/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(3000),
+      });
+      expect(res.status).toBe(400);
+      expect(storage.countUsers()).toBe(0);
+      expect(await res.json()).toHaveProperty("error");
+      const health = await fetch(`${serverUrl}/healthz`);
+      expect(health.status).toBe(200);
     });
   });
 
