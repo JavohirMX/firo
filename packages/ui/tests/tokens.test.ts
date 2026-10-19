@@ -4,9 +4,14 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  BAR,
   COLOR,
+  CONTROL,
   CSS_PREFIX,
   FONT_FAMILY_UI,
+  MENU,
+  PANEL,
+  RAIL,
   SPACE,
   THEME_VARIABLES,
   THEME_VARIABLE_NAMES,
@@ -91,6 +96,25 @@ describe("design tokens", () => {
       THEME_VARIABLE_NAMES.length,
     );
     expect(THEME_VARIABLE_NAMES.length).toBeGreaterThan(30);
+  });
+
+  it("pins the measured shell geometry", () => {
+    // ADR-0034. These are literal contract values, not implementation details:
+    // a quiet tweak to any of them needs a new record, not a snapshot update.
+    expect(CONTROL).toEqual({ size: 40, sizeSm: 32 });
+    expect(BAR.height).toBe(48);
+    expect(RAIL.width).toBe(48);
+    expect(PANEL).toEqual({ width: 340, widthWide: 380 });
+    expect(MENU.app).toEqual({ itemHeight: 40, pitch: 44, separator: 9 });
+    expect(MENU.create).toEqual({ itemHeight: 40, pitch: 48 });
+    expect(MENU.canvas).toEqual({ itemHeight: 32, pitch: 36, separator: 5 });
+  });
+
+  it("flattens nested menu tokens one level into custom properties", () => {
+    expect(THEME_VARIABLES["--firo-menu-app-item-height"]).toBe("40px");
+    expect(THEME_VARIABLES["--firo-menu-app-pitch"]).toBe("44px");
+    expect(THEME_VARIABLES["--firo-menu-canvas-pitch"]).toBe("36px");
+    expect(THEME_VARIABLES["--firo-menu-canvas-separator"]).toBe("5px");
   });
 
   it("uses a monotonic spacing scale", () => {

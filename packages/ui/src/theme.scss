@@ -53,6 +53,24 @@
   --firo-space-xl: 24px;
   --firo-space-xxl: 32px;
 
+  /* Control geometry */
+  --firo-control-size: 40px;
+  --firo-control-size-sm: 32px;
+  --firo-bar-height: 48px;
+  --firo-rail-width: 48px;
+  --firo-panel-width: 340px;
+  --firo-panel-width-wide: 380px;
+
+  /* Menu geometry */
+  --firo-menu-app-item-height: 40px;
+  --firo-menu-app-pitch: 44px;
+  --firo-menu-app-separator: 9px;
+  --firo-menu-create-item-height: 40px;
+  --firo-menu-create-pitch: 48px;
+  --firo-menu-canvas-item-height: 32px;
+  --firo-menu-canvas-pitch: 36px;
+  --firo-menu-canvas-separator: 5px;
+
   /* Radii */
   --firo-radius-sm: 4px;
   --firo-radius-md: 8px;
@@ -71,6 +89,8 @@
   --firo-color-on-accent: #ffffff;
   --firo-color-focus-ring: #0b7285;
   --firo-color-selection: #5b4bff;
+  --firo-color-active-tool: rgba(91, 75, 255, 0.1);
+  --firo-color-button-secondary: rgba(17, 19, 24, 0.05);
   --firo-color-danger: #d5253c;
   --firo-color-success: #12794a;
   --firo-color-warning: #a35c00;
@@ -107,6 +127,8 @@
   --firo-color-on-accent: #0d0e12;
   --firo-color-focus-ring: #4dd4e8;
   --firo-color-selection: #8f86ff;
+  --firo-color-active-tool: rgba(143, 134, 255, 0.16);
+  --firo-color-button-secondary: rgba(255, 255, 255, 0.06);
   --firo-color-danger: #ff7183;
   --firo-color-success: #4fd18e;
   --firo-color-warning: #f2b04a;

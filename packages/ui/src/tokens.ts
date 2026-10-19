@@ -78,6 +78,16 @@ export const COLOR = {
   focusRing: { light: "#0b7285", dark: "#4dd4e8" },
   /** The canvas selection outline. */
   selection: { light: "#5b4bff", dark: "#8f86ff" },
+  /** The active tool's wash. Ours, not the reference's measured colour. */
+  activeTool: {
+    light: "rgba(91, 75, 255, 0.1)",
+    dark: "rgba(143, 134, 255, 0.16)",
+  },
+  /** Quiet secondary buttons, e.g. present and share. Ours, not measured. */
+  buttonSecondary: {
+    light: "rgba(17, 19, 24, 0.05)",
+    dark: "rgba(255, 255, 255, 0.06)",
+  },
   danger: { light: "#d5253c", dark: "#ff7183" },
   success: { light: "#12794a", dark: "#4fd18e" },
   warning: { light: "#a35c00", dark: "#f2b04a" },
@@ -93,6 +103,48 @@ export const SPACE = {
   lg: 16,
   xl: 24,
   xxl: 32,
+} as const;
+
+/**
+ * Control geometry.
+ *
+ * `size` is the 40 × 40 cell measured across the rail, the bars and the
+ * floating selection lane; `sizeSm` is the 32 px pill used by the avatar,
+ * present and share controls. See
+ * [`docs/adr/0034`](../../../docs/adr/0034-the-measured-geometry-as-tokens.md).
+ */
+export const CONTROL = {
+  size: 40,
+  sizeSm: 32,
+} as const;
+
+/** Shell bar heights. Both top bars and the floating selection bar are 48. */
+export const BAR = {
+  height: 48,
+} as const;
+
+/** The creation rail's container width. Its pitch is `CONTROL.size + SPACE.xs`. */
+export const RAIL = {
+  width: 48,
+} as const;
+
+/** Dock widths. `widthWide` is reserved for the voting dock. */
+export const PANEL = {
+  width: 340,
+  widthWide: 380,
+} as const;
+
+/**
+ * Menu geometry, in three systems.
+ *
+ * `separator` is the measured cost of a divider between item starts — the line
+ * plus its margins — not a margin alone. These are the only nested tokens: the
+ * three systems are only legible together.
+ */
+export const MENU = {
+  app: { itemHeight: 40, pitch: 44, separator: 9 },
+  create: { itemHeight: 40, pitch: 48 },
+  canvas: { itemHeight: 32, pitch: 36, separator: 5 },
 } as const;
 
 /** Corner radii. `pill` is a sentinel large enough for any control height. */
@@ -177,12 +229,27 @@ export const Z_INDEX = {
 const withPrefix = (group: string, key: string) =>
   `${CSS_PREFIX}${group}-${toCssName(key)}`;
 
+type PixelValue = number | Readonly<Record<string, number>>;
+type PixelScale = Readonly<Record<string, PixelValue>>;
+
+/** Flatten the one nested level the token contract allows into path keys. */
+const flattenPixelScale = (
+  scale: PixelScale,
+): ReadonlyArray<readonly [string, number]> =>
+  Object.entries(scale).flatMap(([key, value]) =>
+    typeof value === "number"
+      ? [[key, value] as const]
+      : Object.entries(value).map(
+          ([child, childValue]) => [`${key}-${child}`, childValue] as const,
+        ),
+  );
+
 const pxGroup = (
   group: string,
-  scale: Readonly<Record<string, number>>,
+  scale: PixelScale,
 ): Record<string, ThemeValue> =>
   Object.fromEntries(
-    Object.entries(scale).map(([key, value]) => [
+    flattenPixelScale(scale).map(([key, value]) => [
       withPrefix(group, key),
       `${value}px`,
     ]),
@@ -227,6 +294,11 @@ export const THEME_VARIABLES: Readonly<Record<string, ThemeValue>> = {
     ]),
   ),
   ...pxGroup("space", SPACE),
+  ...pxGroup("control", CONTROL),
+  ...pxGroup("bar", BAR),
+  ...pxGroup("rail", RAIL),
+  ...pxGroup("panel", PANEL),
+  ...pxGroup("menu", MENU),
   ...pxGroup("radius", RADIUS),
   ...pxGroup("font-size", FONT_SIZE),
   ...plainGroup("font-weight", FONT_WEIGHT),
