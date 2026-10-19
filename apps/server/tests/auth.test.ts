@@ -54,6 +54,65 @@ describe("Auth & REST endpoints", () => {
     });
   });
 
+  describe("Board share revocation", () => {
+    it.each(["POST", "DELETE"])(
+      "does not revoke another board's share via %s",
+      async (method) => {
+        const owner = storage.createUser({
+          id: "board-owner",
+          username: "owner",
+          password_hash: "unused",
+          salt: "unused",
+          is_admin: 0,
+        });
+        storage.createBoard("owned-board", "Owned board", owner.id);
+        storage.createBoard("other-board", "Other board");
+        storage.createSession("owner-session", owner.id, 60_000);
+        const share = storage.createShare({
+          id: "other-share",
+          boardId: "other-board",
+          token: "other-token",
+          role: "viewer",
+        });
+        const suffix = method === "POST" ? "/revoke" : "";
+        const response = await fetch(
+          `${serverUrl}/api/boards/owned-board/shares/${share.id}${suffix}`,
+          { method, headers: { Cookie: "firo_session=owner-session" } },
+        );
+        expect(response.status).toBe(404);
+        expect(storage.getShareById(share.id)?.revoked).toBe(0);
+      },
+    );
+
+    it.each(["POST", "DELETE"])(
+      "revokes a share belonging to the owned board via %s",
+      async (method) => {
+        const owner = storage.createUser({
+          id: "board-owner",
+          username: "owner",
+          password_hash: "unused",
+          salt: "unused",
+          is_admin: 0,
+        });
+        storage.createBoard("owned-board", "Owned board", owner.id);
+        storage.createSession("owner-session", owner.id, 60_000);
+        const share = storage.createShare({
+          id: "owned-share",
+          boardId: "owned-board",
+          token: "owned-token",
+          role: "viewer",
+        });
+        const suffix = method === "POST" ? "/revoke" : "";
+        const response = await fetch(
+          `${serverUrl}/api/boards/owned-board/shares/${share.id}${suffix}`,
+          { method, headers: { Cookie: "firo_session=owner-session" } },
+        );
+        expect(response.status).toBe(200);
+        expect(storage.getShareById(share.id)?.revoked).toBe(1);
+      },
+    );
+  });
+
   describe("Auth endpoints", () => {
     it("handles health check at /healthz", async () => {
       const res = await fetch(`${serverUrl}/healthz`);

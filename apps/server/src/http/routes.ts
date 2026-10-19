@@ -400,7 +400,13 @@ export function createHttpHandler(
         return;
       }
 
-      storage.revokeShare(shareId);
+      const share = storage.getShareById(shareId);
+      if (!share || share.board_id !== boardId) {
+        sendJson(res, 404, { error: "Share link not found." });
+        return;
+      }
+
+      storage.revokeShare(share.id);
       sendJson(res, 200, { ok: true });
       return;
     }
