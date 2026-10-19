@@ -176,4 +176,35 @@ describe("Auth & REST endpoints", () => {
       expect(err.error).toContain("Too many requests");
     });
   });
+
+  describe("Malformed URL escapes", () => {
+    it("answers 404 for a share token with a bad percent-escape instead of throwing", async () => {
+      const seen: unknown[] = [];
+      const onRejection = (e: unknown) => seen.push(e);
+      process.on("unhandledRejection", onRejection);
+      try {
+        const res = await new Promise<number>((resolve) => {
+          const addr = server.address() as { port: number };
+          const req = http.request(
+            { host: "127.0.0.1", port: addr.port, path: "/api/shares/%E0%A4%A", method: "GET" },
+            (r) => {
+              r.resume();
+              r.on("end", () => resolve(r.statusCode || 0));
+            },
+          );
+          req.setTimeout(1500, () => {
+            req.destroy();
+            resolve(0);
+          });
+          req.on("error", () => resolve(0));
+          req.end();
+        });
+        await new Promise((r) => setTimeout(r, 50));
+        expect(seen).toEqual([]);
+        expect(res).toBe(404);
+      } finally {
+        process.off("unhandledRejection", onRejection);
+      }
+    });
+  });
 });

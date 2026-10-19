@@ -102,6 +102,15 @@ function authenticateUser(
   return result?.user ?? null;
 }
 
+/** decodeURIComponent that does not throw on a malformed escape such as %E0%A4%A. */
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function createHttpHandler(
   ctx: HttpContext,
 ): (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void> {
@@ -293,7 +302,7 @@ export function createHttpHandler(
     // 6. Shares: POST /api/boards/:id/shares
     const sharesMatch = pathname.match(/^\/api\/boards\/([^/]+)\/shares$/);
     if (sharesMatch && method === "POST") {
-      const boardId = decodeURIComponent(sharesMatch[1]);
+      const boardId = safeDecode(sharesMatch[1]);
       const user = authenticateUser(req, storage);
       if (!user) {
         sendJson(res, 401, { error: "Not authenticated." });
@@ -354,7 +363,7 @@ export function createHttpHandler(
 
     // 7. Shares: GET /api/boards/:id/shares
     if (sharesMatch && method === "GET") {
-      const boardId = decodeURIComponent(sharesMatch[1]);
+      const boardId = safeDecode(sharesMatch[1]);
       const user = authenticateUser(req, storage);
       if (!user) {
         sendJson(res, 401, { error: "Not authenticated." });
@@ -386,8 +395,8 @@ export function createHttpHandler(
       /^\/api\/boards\/([^/]+)\/shares\/([^/]+)(\/revoke)?$/,
     );
     if (revokeMatch && (method === "POST" || method === "DELETE")) {
-      const boardId = decodeURIComponent(revokeMatch[1]);
-      const shareId = decodeURIComponent(revokeMatch[2]);
+      const boardId = safeDecode(revokeMatch[1]);
+      const shareId = safeDecode(revokeMatch[2]);
       const user = authenticateUser(req, storage);
       if (!user) {
         sendJson(res, 401, { error: "Not authenticated." });
@@ -410,7 +419,7 @@ export function createHttpHandler(
       pathname.match(/^\/s\/([^/]+)$/) ||
       pathname.match(/^\/api\/shares\/([^/]+)$/);
     if (publicShareMatch && method === "GET") {
-      const token = decodeURIComponent(publicShareMatch[1]);
+      const token = safeDecode(publicShareMatch[1]);
       const share = storage.getShareByToken(token);
       if (!share || share.revoked === 1) {
         sendJson(res, 404, { error: "Share link not found or revoked." });

@@ -65,7 +65,15 @@ export function createStaticHandler(
 
     const host = req.headers.host || "localhost";
     const parsedUrl = new URL(req.url || "/", `http://${host}`);
-    let pathname = decodeURIComponent(parsedUrl.pathname);
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(parsedUrl.pathname);
+    } catch {
+      // Malformed percent-escape such as /%E0%A4%A
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Bad Request");
+      return true;
+    }
 
     // Prevent null byte attacks
     if (pathname.includes("\0")) {
