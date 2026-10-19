@@ -73,6 +73,7 @@ deciders: <names or roles>
 | [0032](0032-shell-keyboard-model.md) | Bind `⌘K`, make the shell keyboard-navigable, generate the shortcut reference from the registries, and put single-key shortcuts behind one preference | Accepted (moves the `B` extra of [0030](0030-keyboard-parity-with-miro.md)) | 2026-10-19 |
 | [0033](0033-the-two-context-menu-lanes.md) | Draw the two context-menu lanes, add a submenu row, and bind `⌘ + Enter` | Accepted | 2026-10-19 |
 | [0034](0034-the-measured-geometry-as-tokens.md) | Make the measured shell geometry a token contract, with tolerances and the two missing colour roles | Accepted | 2026-10-19 |
+| [0035](0035-the-right-dock-and-its-panels.md) | Give the shell one right dock, and make it the home of activity, versions and frames | Accepted | 2026-10-19 |
 
 ## Open questions
 
