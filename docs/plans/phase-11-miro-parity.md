@@ -194,6 +194,7 @@ The clusters below need ADRs before their implementation starts, because each ch
 - [x] Geometry tokens — the measured spec as a `@firo/ui` contract, including tolerances — **accepted as [`ADR-0034`](../adr/0034-the-measured-geometry-as-tokens.md).**
 - [ ] Whatever the matrix forces — one ADR per contract change, none per widget. The matrix names three more than this draft did: **side-panel shell** (C8), **share-link server state** (C9), **voting session state** (C7); media scope and history lane were already listed, and format depth (C5) is confirmed.
   - [x] Side-panel shell and history lane (C8) — **accepted as [`ADR-0035`](../adr/0035-the-right-dock-and-its-panels.md).**
+  - [x] Media scope (C6) — **accepted as [`ADR-0036`](../adr/0036-media-scope-emoji-and-embed-frames.md).**
 
 **Exit:** an accepted ADR per cluster above; no 11.3 cluster opens without one.
 
