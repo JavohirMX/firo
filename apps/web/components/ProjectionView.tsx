@@ -475,6 +475,7 @@ const TableView: React.FC<TableViewProps> = ({
                     ) : column.type === "singleSelect" && column.options ? (
                       <select
                         className="firo-table__select"
+                        aria-label={column.name}
                         value={
                           valueOf(record, column.key)?.type === "singleSelect"
                             ? (valueOf(record, column.key) as { value: string })
@@ -549,6 +550,7 @@ const InlineCellEditor: React.FC<InlineCellEditorProps> = ({
       onBlur={() => onSave(value)}
       onKeyDown={handleKeyDown}
       data-testid="inline-cell-input"
+      aria-label="Edit cell value"
     />
   );
 };
