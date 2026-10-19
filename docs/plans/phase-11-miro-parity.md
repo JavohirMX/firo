@@ -196,7 +196,7 @@ The clusters below need ADRs before their implementation starts, because each ch
   - [x] Side-panel shell and history lane (C8) — **accepted as [`ADR-0035`](../adr/0035-the-right-dock-and-its-panels.md).**
   - [x] Media scope (C6) — **accepted as [`ADR-0036`](../adr/0036-media-scope-emoji-and-embed-frames.md).**
   - [x] Share-link server state and joined boards (C9) — **accepted as [`ADR-0037`](../adr/0037-share-links-are-server-capabilities.md).**
-  - [ ] Templates as content (C9, rows 55–56) — **ADR-0038** before that work; the C9 tick needs both.
+  - [x] Templates as content (C9, rows 55–56) — **accepted as [`ADR-0038`](../adr/0038-templates-are-content.md);** the C9 tick needs both.
 
 **Exit:** an accepted ADR per cluster above; no 11.3 cluster opens without one.
 

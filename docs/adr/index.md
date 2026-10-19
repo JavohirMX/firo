@@ -76,6 +76,7 @@ deciders: <names or roles>
 | [0035](0035-the-right-dock-and-its-panels.md) | Give the shell one right dock, and make it the home of activity, versions and frames | Accepted | 2026-10-19 |
 | [0036](0036-media-scope-emoji-and-embed-frames.md) | Ship the emoji surface, and make every embed frame a hostile frame | Accepted | 2026-10-19 |
 | [0037](0037-share-links-are-server-capabilities.md) | Share links are server capabilities, and the app must prove who it is | Accepted | 2026-10-19 |
+| [0038](0038-templates-are-content.md) | Templates are content: one gallery for built-ins and saved fragments | Accepted | 2026-10-19 |
 
 ## Open questions
 
