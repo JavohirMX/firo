@@ -67,8 +67,10 @@ deciders: <names or roles>
 | [0026](0026-board-home-and-its-index.md) | The board home reads its index from the autosave store, beside the boards it names | Accepted | 2026-10-14 |
 | [0027](0027-comments-are-their-own-lane.md) | Comments are their own durable lane, not elements or records | Accepted | 2026-10-14 |
 | [0028](0028-project-layer-folders-and-content-search.md) | Folders, starring, and content search in the project layer | Accepted | 2026-10-14 |
-| [0029](0029-the-rail-is-a-per-user-arrangement.md) | The creation rail is a per-user arrangement, and Select/Hand is one control | Accepted | 2026-10-15 |
-| [0030](0030-keyboard-parity-with-miro.md) | Bind `G` and `M`, keep the numeric tool keys, and let the host own its own chrome keys | Accepted | 2026-10-15 |
+| [0029](0029-the-rail-is-a-per-user-arrangement.md) | The creation rail is a per-user arrangement, and Select/Hand is one control | Accepted (restore clause superseded by [0031](0031-rail-slot-kinds-and-the-phase-11-composition.md)) | 2026-10-15 |
+| [0030](0030-keyboard-parity-with-miro.md) | Bind `G` and `M`, keep the numeric tool keys, and let the host own its own chrome keys | Accepted (`B` extra moved by [0032](0032-shell-keyboard-model.md)) | 2026-10-15 |
+| [0031](0031-rail-slot-kinds-and-the-phase-11-composition.md) | A rail slot carries a tool, a family, an option set or a surface, and Phase 11 completes the composition | Accepted (supersedes the restore clause of [0029](0029-the-rail-is-a-per-user-arrangement.md)) | 2026-10-18 |
+| [0032](0032-shell-keyboard-model.md) | Bind `⌘K`, make the shell keyboard-navigable, generate the shortcut reference from the registries, and put single-key shortcuts behind one preference | Accepted (moves the `B` extra of [0030](0030-keyboard-parity-with-miro.md)) | 2026-10-19 |
 
 ## Open questions
 

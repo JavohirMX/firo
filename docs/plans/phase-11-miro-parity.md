@@ -188,8 +188,8 @@ comment mode already exists.
 
 The clusters below need ADRs before their implementation starts, because each changes a system-wide contract rather than one widget. The list is expected to grow as the matrix lands; it does not shrink silently.
 
-- [ ] Rail composition and flyouts — one slot, a family of tools, sub-actions with their own keys (extends [`ADR-0029`](../adr/0029-the-rail-is-a-per-user-arrangement.md))
-- [ ] The shell keyboard model — the `⌘K` command palette over the single command registry, toolbar roving focus, `B` and `Escape`, and the single-key toggle (extends [`ADR-0030`](../adr/0030-keyboard-parity-with-miro.md))
+- [x] Rail composition and flyouts — one slot, a family of tools, sub-actions with their own keys (extends [`ADR-0029`](../adr/0029-the-rail-is-a-per-user-arrangement.md)) — **accepted as [`ADR-0031`](../adr/0031-rail-slot-kinds-and-the-phase-11-composition.md).**
+- [x] The shell keyboard model — the `⌘K` command palette over the single command registry, toolbar roving focus, `B` and `Escape`, and the single-key toggle (extends [`ADR-0030`](../adr/0030-keyboard-parity-with-miro.md)) — **accepted as [`ADR-0032`](../adr/0032-shell-keyboard-model.md).**
 - [ ] The two context-menu lanes — content, structure, and styling
 - [ ] Geometry tokens — the measured spec as a `@firo/ui` contract, including tolerances
 - [ ] Whatever the matrix forces — one ADR per contract change, none per widget. The matrix names three more than this draft did: **side-panel shell** (C8), **share-link server state** (C9), **voting session state** (C7); media scope and history lane were already listed, and format depth (C5) is confirmed.
