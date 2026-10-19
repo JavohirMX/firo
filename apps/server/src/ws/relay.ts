@@ -101,12 +101,18 @@ export class WebSocketRelay {
     ws.on("close", () => {
       room?.removeClient(client);
       if (room && room.clients.size === 0) {
-        // Optionally compact on room empty
+        // Compact, then release the room so its Y.Doc and awareness state do
+        // not stay in memory for every board ever opened. A later connection
+        // reloads the document from storage.
         try {
           this.storage.compactBoard(boardId);
         } catch {
           // ignore
         }
+        if (this.rooms.get(boardId) === room) {
+          this.rooms.delete(boardId);
+        }
+        room.destroy();
       }
     });
 
