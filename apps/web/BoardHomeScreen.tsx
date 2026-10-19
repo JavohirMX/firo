@@ -115,6 +115,19 @@ export const BoardHomeScreen: React.FC = () => {
 
   const [miroModalArchive, setMiroModalArchive] =
     React.useState<MiroRtbArchive | null>(null);
+  const miroModalOpen = miroModalArchive !== null;
+  React.useEffect(() => {
+    if (!miroModalOpen) {
+      return undefined;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMiroModalArchive(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [miroModalOpen]);
   const [miroPastedText, setMiroPastedText] = React.useState<string>("");
   const [copiedCmd, setCopiedCmd] = React.useState<boolean>(false);
   const [miroImportError, setMiroImportError] = React.useState<string | null>(
@@ -468,6 +481,7 @@ export const BoardHomeScreen: React.FC = () => {
           <div
             className="firo-board-modal"
             role="dialog"
+            aria-modal="true"
             aria-label="Complete Miro Import"
             onClick={(event) => event.stopPropagation()}
             style={{ maxWidth: 560, width: "90%" }}
