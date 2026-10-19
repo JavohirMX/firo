@@ -1179,4 +1179,47 @@ describe("Miro sticky note aesthetic and paper elevation", () => {
     const shadowCommands = getStickyNotePathCommands(sticky, { shadow: true });
     expect(shadowCommands.length).toBeGreaterThan(0);
   });
+
+  it("auto font size scales up short text and scales down multi-line text", () => {
+    const { scene, textId } = createStickyWithText("test");
+    const text = getBoundText(scene, textId);
+    const sticky = getSticky(scene, text.containerId);
+
+    // With auto font size enabled, short text "test" scales up large (>= 40px)
+    const layoutAutoShort = getStickyNoteLayout(sticky, text, {
+      autoFontSize: true,
+    });
+    expect(layoutAutoShort.text!.fontSize).toBeGreaterThanOrEqual(40);
+    expect(layoutAutoShort.text!.autoFontSize).toBe(true);
+
+    // Multi-line text ("miro\nsticky\nnotes") scales down to fit within note bounds
+    const multiLine = "miro\nsticky\nnotes";
+    const layoutMultiLine = getStickyNoteLayout(sticky, text, {
+      originalText: multiLine,
+      autoFontSize: true,
+    });
+    expect(layoutMultiLine.text!.fontSize).toBeLessThan(
+      layoutAutoShort.text!.fontSize,
+    );
+    expect(layoutMultiLine.container.height).toBe(sticky.baseHeight);
+
+    // Long paragraph scales down towards STICKY_NOTE_MIN_FONT_SIZE (16px)
+    const longParagraph =
+      "This is a longer paragraph written inside a Miro-style sticky note to verify auto font size fitting behavior. ".repeat(
+        3,
+      );
+    const layoutLong = getStickyNoteLayout(sticky, text, {
+      originalText: longParagraph,
+      autoFontSize: true,
+    });
+    expect(layoutLong.text!.fontSize).toBe(STICKY_NOTE_MIN_FONT_SIZE);
+
+    // When autoFontSize is false, it respects explicit baseFontSize
+    const layoutExplicit = getStickyNoteLayout(sticky, text, {
+      baseFontSize: 20,
+      autoFontSize: false,
+    });
+    expect(layoutExplicit.text!.fontSize).toBe(20);
+    expect(layoutExplicit.text!.autoFontSize).toBe(false);
+  });
 });

@@ -27,7 +27,6 @@ import {
   isSafari,
   STICKY_NOTE_EDGE_SHADOW_OPACITY,
   STICKY_NOTE_EDGE_SHADOW_WIDTH,
-  STICKY_NOTE_SHADOW_OPACITY,
   DEFAULT_ZOOM,
 } from "@firo/common";
 
@@ -436,38 +435,39 @@ const drawElementOnCanvas = (
     case "stickynote": {
       context.save();
 
-      // Miro-style realistic paper elevation: soft diffuse drop shadow + paper lift
-      const shadowCommands = getStickyNotePathCommands(element, {
-        shadow: true,
-      });
-
-      // Ambient soft diffuse shadow
-      context.save();
-      context.shadowColor = "rgba(0, 0, 0, 0.08)";
-      context.shadowBlur = 10;
-      context.shadowOffsetX = 0;
-      context.shadowOffsetY = 3;
-      context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY * 0.45})`;
-      fillStickyNoteShape(context, shadowCommands);
-      context.restore();
-
-      // Directional tangible paper lift shadow
-      context.save();
-      context.shadowColor = "rgba(0, 0, 0, 0.12)";
-      context.shadowBlur = 4;
-      context.shadowOffsetX = 1;
-      context.shadowOffsetY = 2;
-      context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY * 0.65})`;
-      fillStickyNoteShape(context, shadowCommands);
-      context.restore();
-
       const commands = getStickyNotePathCommands(element);
-      context.fillStyle = applyDarkModeFilter(
+      const paperFill = applyDarkModeFilter(
         element.backgroundColor,
         renderConfig.theme === THEME.DARK,
       );
+
+      const isDark = renderConfig.theme === THEME.DARK;
+
+      // Miro-style realistic downward drop shadow:
+      // Pass 1: Ambient soft downward shadow for paper elevation
+      context.save();
+      context.shadowColor = isDark
+        ? "rgba(0, 0, 0, 0.40)"
+        : "rgba(0, 0, 0, 0.12)";
+      context.shadowBlur = 10;
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = 4;
+      context.fillStyle = paperFill;
+      fillStickyNoteShape(context, commands);
+      context.restore();
+
+      // Pass 2: Tighter contact shadow and crisp paper boundary
+      context.save();
+      context.shadowColor = isDark
+        ? "rgba(0, 0, 0, 0.25)"
+        : "rgba(0, 0, 0, 0.08)";
+      context.shadowBlur = 2;
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = 1;
+      context.fillStyle = paperFill;
       fillStickyNoteShape(context, commands);
       strokeStickyNoteEdge(context, commands);
+      context.restore();
 
       context.restore();
       break;

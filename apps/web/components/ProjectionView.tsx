@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { VOTE_COLLECTION_ID } from "@firo/facilitation";
 import {
   DAY_WIDTH,
+  DOC_BLOCK_COLLECTION_ID,
   displayValue,
   groupingColumnFor,
   groupsOf,
@@ -60,7 +61,11 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
     const hasCollections = () =>
       doc
         .read()
-        .collections.some((collection) => collection.id !== VOTE_COLLECTION_ID);
+        .collections.some(
+          (collection) =>
+            collection.id !== VOTE_COLLECTION_ID &&
+            collection.id !== DOC_BLOCK_COLLECTION_ID,
+        );
 
     let last = hasCollections();
     const unsubscribe = doc.onUpdate(() => {
@@ -78,7 +83,10 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
   const doc = boardDoc();
   const collections = doc
     .read()
-    .collections.filter((col) => col.id !== VOTE_COLLECTION_ID);
+    .collections.filter(
+      (col) =>
+        col.id !== VOTE_COLLECTION_ID && col.id !== DOC_BLOCK_COLLECTION_ID,
+    );
 
   if (collections.length === 0) {
     return null;

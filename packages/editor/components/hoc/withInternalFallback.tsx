@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect } from "react";
 
 import { useTunnels } from "../../context/tunnels";
 import { atom } from "../../editor-jotai";
@@ -16,22 +16,22 @@ export const withInternalFallback = <P,>(
   > = (props) => {
     const {
       tunnelsJotai: { useAtom },
+      fallbackRegistry,
     } = useTunnels();
     // for rerenders
     const [, setCounter] = useAtom(renderAtom);
-    // for initial & subsequent renders. Tracked as component state
-    // due to excalidraw multi-instance scanerios.
-    const metaRef = useRef({
-      // flag set on initial render to tell the fallback component to skip the
-      // render until mount counter are initialized. This is because the counter
-      // is initialized in an effect, and thus we could end rendering both
-      // components at the same time until counter is initialized.
-      preferHost: false,
-      counter: 0,
-    });
+    // Tracked per editor-instance in fallbackRegistry (on TunnelsContext)
+    // so host and fallback coordinate within the instance without leaking
+    // to other Excalidraw instances.
+    if (!fallbackRegistry[componentName]) {
+      fallbackRegistry[componentName] = {
+        preferHost: false,
+        counter: 0,
+      };
+    }
+    const meta = fallbackRegistry[componentName];
 
     useLayoutEffect(() => {
-      const meta = metaRef.current;
       setCounter((c) => {
         const next = c + 1;
         meta.counter = next;
@@ -39,6 +39,9 @@ export const withInternalFallback = <P,>(
         return next;
       });
       return () => {
+        if (!props.__fallback) {
+          meta.preferHost = false;
+        }
         setCounter((c) => {
           const next = c - 1;
           meta.counter = next;
@@ -48,21 +51,19 @@ export const withInternalFallback = <P,>(
           return next;
         });
       };
-    }, [setCounter]);
+    }, [setCounter, meta, props.__fallback]);
 
     if (!props.__fallback) {
-      metaRef.current.preferHost = true;
+      meta.preferHost = true;
     }
 
     // ensure we don't render fallback and host components at the same time
     if (
       // either before the counters are initialized
-      (!metaRef.current.counter &&
-        props.__fallback &&
-        metaRef.current.preferHost) ||
+      (!meta.counter && props.__fallback && meta.preferHost) ||
       // or after the counters are initialized, and both are rendered
       // (this is the default when host renders as well)
-      (metaRef.current.counter > 1 && props.__fallback)
+      (meta.counter > 1 && props.__fallback)
     ) {
       return null;
     }

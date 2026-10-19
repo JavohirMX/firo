@@ -747,6 +747,10 @@ export class AppText {
           shouldBindToContainer && isStickyNoteElement(container)
             ? fontSize
             : null,
+        autoFontSize:
+          shouldBindToContainer && isStickyNoteElement(container)
+            ? true
+            : undefined,
         fontFamily,
         textAlign:
           arrowEndpointBinding?.textAlign ??

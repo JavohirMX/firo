@@ -171,6 +171,80 @@ describe("withInternalFallback provider requirement", () => {
     expect(queryByTestId("probe")).not.toBe(null);
   });
 
+  it("skips rendering fallback component when host component is present in the same provider", () => {
+    let hostRenderCount = 0;
+    let fallbackRenderCount = 0;
+    const Probe = withInternalFallback(
+      "SharedProbe",
+      (props: { __fallback?: boolean }) => {
+        if (props.__fallback) {
+          fallbackRenderCount++;
+        } else {
+          hostRenderCount++;
+        }
+        return (
+          <div
+            data-testid={props.__fallback ? "fallback-probe" : "host-probe"}
+          />
+        );
+      },
+    );
+
+    const { queryByTestId } = renderInIsolation(
+      <TunnelsProvider>
+        <Probe />
+        <Probe __fallback />
+      </TunnelsProvider>,
+    );
+
+    expect(hostRenderCount).toBeGreaterThan(0);
+    expect(fallbackRenderCount).toBe(0);
+    expect(queryByTestId("host-probe")).not.toBe(null);
+    expect(queryByTestId("fallback-probe")).toBe(null);
+  });
+
+  it("renders fallback component when host component unmounts", () => {
+    let hostRenderCount = 0;
+    let fallbackRenderCount = 0;
+    const Probe = withInternalFallback(
+      "UnmountProbe",
+      (props: { __fallback?: boolean }) => {
+        if (props.__fallback) {
+          fallbackRenderCount++;
+        } else {
+          hostRenderCount++;
+        }
+        return (
+          <div
+            data-testid={props.__fallback ? "fallback-probe" : "host-probe"}
+          />
+        );
+      },
+    );
+
+    const TestParent = ({ showHost }: { showHost: boolean }) => (
+      <TunnelsProvider>
+        {showHost && <Probe />}
+        <Probe __fallback />
+      </TunnelsProvider>
+    );
+
+    const { rerender, queryByTestId } = renderInIsolation(
+      <TestParent showHost={true} />,
+    );
+
+    expect(hostRenderCount).toBeGreaterThan(0);
+    expect(fallbackRenderCount).toBe(0);
+    expect(queryByTestId("host-probe")).not.toBe(null);
+    expect(queryByTestId("fallback-probe")).toBe(null);
+
+    rerender(<TestParent showHost={false} />);
+
+    expect(fallbackRenderCount).toBeGreaterThan(0);
+    expect(queryByTestId("host-probe")).toBe(null);
+    expect(queryByTestId("fallback-probe")).not.toBe(null);
+  });
+
   /**
    * `TunnelsContext` is created as `createContext(null!)`, so consuming it with
    * no provider yields `null` and the destructure in `withInternalFallback`

@@ -1,4 +1,8 @@
 import Trans from "@firo/editor/components/Trans";
+import {
+  EditorJotaiProvider,
+  editorJotaiStore,
+} from "@firo/editor/editor-jotai";
 import { t } from "@firo/editor/i18n";
 import React from "react";
 
@@ -40,7 +44,13 @@ export class TopErrorBoundary extends React.Component<
   };
 
   render() {
-    return this.state.hasError ? this.errorSplash() : this.props.children;
+    return this.state.hasError ? (
+      <EditorJotaiProvider store={editorJotaiStore}>
+        {this.errorSplash()}
+      </EditorJotaiProvider>
+    ) : (
+      this.props.children
+    );
   }
 
   componentDidCatch(error: Error, errorInfo: any) {

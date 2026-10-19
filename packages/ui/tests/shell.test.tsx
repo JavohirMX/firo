@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 import {
   CreationRail,
@@ -154,7 +154,7 @@ describe("@firo/ui shell components", () => {
         expect(onUnpin).toHaveBeenCalledWith("laser");
       });
 
-      it("offers every unpinned tool a way back", () => {
+      it("offers every unpinned tool a way back through the catalog", () => {
         const onRestore = vi.fn();
         render(
           <CreationRail
@@ -168,10 +168,161 @@ describe("@firo/ui shell components", () => {
           />,
         );
 
-        fireEvent.click(screen.getByRole("button", { name: "Unpinned tools" }));
-        fireEvent.click(screen.getByRole("menuitem", { name: "Eraser" }));
+        fireEvent.click(screen.getByRole("button", { name: "Tools catalog" }));
+        fireEvent.click(
+          screen.getByRole("button", { name: "Add Eraser to the toolbar" }),
+        );
 
         expect(onRestore).toHaveBeenCalledWith("eraser");
+      });
+
+      it("lists pinned tools first in the catalog and unpins from it", () => {
+        const onUnpin = vi.fn();
+        render(
+          <CreationRail
+            activeTool="selection"
+            onSelectTool={vi.fn()}
+            tools={configurableTools}
+            onUnpin={onUnpin}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Tools catalog" }));
+        const catalog = screen.getByRole("dialog", { name: "Tools" });
+        const rows = within(catalog).getAllByRole("listitem");
+
+        // The pointer heads the pinned section and offers no unpin.
+        expect(rows[0].textContent).toContain("Select / Hand");
+        expect(within(rows[0]).queryByRole("button")).toBeNull();
+        expect(within(catalog).getByText("Pinned")).toBeDefined();
+
+        fireEvent.click(
+          screen.getByRole("button", { name: "Unpin Rectangle" }),
+        );
+        expect(onUnpin).toHaveBeenCalledWith("rectangle");
+      });
+
+      describe("slot kinds", () => {
+        it("lights a family slot when one of its members is active", () => {
+          render(
+            <CreationRail
+              activeTool="diamond"
+              onSelectTool={vi.fn()}
+              tools={[
+                {
+                  id: "shapes",
+                  label: "Shapes",
+                  icon: RAIL_TOOL_ICONS.shapes,
+                  kind: "family",
+                  activeOn: ["shapes", "rectangle", "diamond"],
+                  activeSubTool: "diamond",
+                  flyoutItems: [
+                    {
+                      id: "rectangle",
+                      label: "Rectangle",
+                      icon: RAIL_TOOL_ICONS.rectangle,
+                    },
+                    {
+                      id: "diamond",
+                      label: "Diamond",
+                      icon: RAIL_TOOL_ICONS.diamond,
+                    },
+                  ],
+                },
+              ]}
+            />,
+          );
+
+          const slot = screen.getByRole("button", { name: "Shapes" });
+          expect(slot.getAttribute("aria-pressed")).toBe("true");
+
+          fireEvent.click(slot);
+          const diamond = screen.getByRole("menuitemradio", {
+            name: "Diamond",
+          });
+          expect(diamond.getAttribute("aria-checked")).toBe("true");
+        });
+
+        it("reports an options choice without changing the active tool", () => {
+          const onSelectTool = vi.fn();
+          const onSelectOption = vi.fn();
+          render(
+            <CreationRail
+              activeTool="selection"
+              onSelectTool={onSelectTool}
+              onSelectOption={onSelectOption}
+              tools={[
+                {
+                  id: "stickynote",
+                  label: "Sticky note",
+                  icon: RAIL_TOOL_ICONS.stickynote,
+                  kind: "options",
+                  optionGroups: [
+                    {
+                      id: "colour",
+                      label: "Colour",
+                      layout: "swatches",
+                      items: [
+                        {
+                          id: "yellow",
+                          label: "Yellow",
+                          color: "#FFF9B1",
+                          selected: true,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ]}
+            />,
+          );
+
+          fireEvent.click(screen.getByRole("button", { name: "Sticky note" }));
+          // The slot still selects its tool...
+          expect(onSelectTool).toHaveBeenCalledWith(
+            "stickynote",
+            expect.anything(),
+          );
+
+          fireEvent.click(
+            screen.getByRole("menuitemradio", { name: "Yellow" }),
+          );
+          // ...but the swatch is a setting, reported separately.
+          expect(onSelectOption).toHaveBeenCalledWith(
+            "stickynote",
+            expect.objectContaining({ id: "yellow", color: "#FFF9B1" }),
+            expect.anything(),
+          );
+        });
+
+        it("opens a surface instead of selecting a tool", () => {
+          const onSelectTool = vi.fn();
+          const onOpenSurface = vi.fn();
+          render(
+            <CreationRail
+              activeTool="selection"
+              onSelectTool={onSelectTool}
+              onOpenSurface={onOpenSurface}
+              tools={[
+                {
+                  id: "templates",
+                  label: "Templates",
+                  icon: RAIL_TOOL_ICONS.templates,
+                  kind: "surface",
+                  activeOn: [],
+                },
+              ]}
+            />,
+          );
+
+          fireEvent.click(screen.getByRole("button", { name: "Templates" }));
+
+          expect(onOpenSurface).toHaveBeenCalledWith(
+            "templates",
+            expect.anything(),
+          );
+          expect(onSelectTool).not.toHaveBeenCalled();
+        });
       });
 
       it("lights the pointer entry for either of the two tools it stands for", () => {
@@ -368,6 +519,74 @@ describe("@firo/ui shell components", () => {
     it("renders nothing without items", () => {
       const { container } = render(<SelectionToolbar x={0} y={0} items={[]} />);
       expect(container.firstChild).toBeNull();
+    });
+
+    it("anchors a popover under its item and reports the open state", () => {
+      const onClick = vi.fn();
+      render(
+        <SelectionToolbar
+          x={0}
+          y={0}
+          items={[
+            {
+              id: "sticky-size",
+              label: "Sticky note size (M)",
+              icon: <span>M</span>,
+              onClick,
+              expanded: true,
+              popover: (
+                <div role="menu" aria-label="Sticky note size">
+                  <button role="menuitemradio" aria-checked="true">
+                    Medium
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+        />,
+      );
+
+      const trigger = screen.getByRole("button", {
+        name: "Sticky note size (M)",
+      });
+      expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+
+      const menu = screen.getByRole("menu", { name: "Sticky note size" });
+      expect(menu).toBeDefined();
+      expect(
+        within(menu)
+          .getByRole("menuitemradio", { name: "Medium" })
+          .getAttribute("aria-checked"),
+      ).toBe("true");
+
+      fireEvent.click(trigger);
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not render a popover until the host opens it", () => {
+      render(
+        <SelectionToolbar
+          x={0}
+          y={0}
+          items={[
+            {
+              id: "sticky-size",
+              label: "Sticky note size (M)",
+              icon: <span>M</span>,
+              onClick: vi.fn(),
+              popover: <span>Medium</span>,
+            },
+          ]}
+        />,
+      );
+
+      expect(
+        screen
+          .getByRole("button", { name: "Sticky note size (M)" })
+          .getAttribute("aria-expanded"),
+      ).toBe("false");
+      expect(screen.queryByText("Medium")).toBeNull();
     });
 
     it("anchors to the selection and invokes an action", () => {

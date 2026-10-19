@@ -265,6 +265,11 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
      * the container decides its meaning.
      */
     baseFontSize: number | null;
+    /**
+     * Whether auto font size is enabled (Miro dynamic fit). When true, the
+     * font scales dynamically to fit note dimensions and text length.
+     */
+    autoFontSize?: boolean;
     text: string;
     textAlign: TextAlign;
     verticalAlign: VerticalAlign;

@@ -268,6 +268,32 @@ export const LaserIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   </svg>
 );
 
+export const LassoIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M10 4C14.4 4 17 6.2 17 9C17 11.8 14.4 14 10 14C5.6 14 3 11.8 3 9C3 7.4 4.2 6 6.1 5.2"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeDasharray="3 2.2"
+    />
+    <path
+      d="M7 13.2C7 14.8 7.7 15.8 8.7 16.2M8.7 16.2C8.7 17 8.1 17.5 7.4 17.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const UndoIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   <svg
     width={size}
@@ -1184,6 +1210,38 @@ export const ConnectorIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   </svg>
 );
 
+/**
+ * Two arrows exchanging places: "switch this shape's type".
+ *
+ * Deliberately not a pictogram of two shapes — the control converts the
+ * *selection*, and the arrow pair survives at 16 px where two outlines blur.
+ */
+export const ConvertIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M4 6.5H15M15 6.5L12 3.5M15 6.5L12 9.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M16 13.5H5M5 13.5L8 10.5M5 13.5L8 16.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const ShapesIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   <svg
     width={size}
@@ -1280,6 +1338,69 @@ export const DocIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     />
     <path
       d="M7.5 13.5H12.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const TextAlignLeftIcon: React.FC<IconProps> = ({
+  size = 20,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3 5H17M3 9H11M3 13H15M3 17H9"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const TextAlignCenterIcon: React.FC<IconProps> = ({
+  size = 20,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3 5H17M6 9H14M4 13H16M7 17H13"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const TextAlignRightIcon: React.FC<IconProps> = ({
+  size = 20,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M3 5H17M9 9H17M5 13H17M11 17H17"
       stroke="currentColor"
       strokeWidth="1.75"
       strokeLinecap="round"

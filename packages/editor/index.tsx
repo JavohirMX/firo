@@ -587,7 +587,11 @@ export {
   actionResetZoom,
   actionZoomToFit,
   actionToggleGridMode,
+  actionChangeStickyNoteSize,
+  STICKY_NOTE_SIZE_PRESETS,
+  getSelectionStickyNoteSize,
 } from "./actions";
+export type { StickyNoteSizePreset, StickyNoteSizeLabel } from "./actions";
 
 export { DocBlockOverlay } from "./components/DocBlockOverlay";
 export type { DocBlockOverlayProps } from "./components/DocBlockOverlay";

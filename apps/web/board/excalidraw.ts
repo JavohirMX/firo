@@ -3,6 +3,7 @@
  */
 import { DEFAULT_FONT_FAMILY } from "@firo/common";
 import { hashBytes } from "@firo/doc";
+import { toEditorElements } from "@firo/board";
 
 import type { FiroDoc } from "@firo/doc";
 import type { FiroElement } from "@firo/schema";
@@ -81,68 +82,20 @@ export const convertFiroToExcalidraw = (
     if (el.type === "stickynote") {
       const note = el as any;
       const text = note.text || "";
-      const textId = `${el.id}_label`;
-
-      // Export as a native Excalidraw sticky note with bound label
-      excalidrawElements.push({
-        id: el.id,
-        type: "stickynote",
-        x: el.x,
-        y: el.y,
-        width: el.width,
-        height: el.height,
-        angle: el.angle || 0,
-        strokeColor: el.strokeColor || "#1e1e1e",
-        backgroundColor: el.backgroundColor || "#fff9b8",
-        fillStyle: el.fillStyle || "solid",
-        strokeWidth: el.strokeWidth || 1,
-        strokeStyle: el.strokeStyle || "solid",
-        roundness: el.roundness ?? null,
-        roughness: el.roughness ?? 0,
-        opacity: el.opacity ?? 100,
-        groupIds: el.groupIds || [],
-        frameId: el.frameId || null,
-        boundElements: text ? [{ id: textId, type: "text" }] : [],
-        version: el.version || 1,
-        versionNonce: el.versionNonce || 12345,
-        isDeleted: false,
-        baseHeight: el.height,
+      const projected = toEditorElements({
+        ...note,
         text,
-      });
-
-      if (text) {
-        excalidrawElements.push({
-          id: textId,
-          type: "text",
-          x: el.x + 10,
-          y: el.y + 10,
-          width: Math.max(10, el.width - 20),
-          height: Math.max(10, el.height - 20),
-          angle: el.angle || 0,
-          strokeColor: el.strokeColor || "#1e1e1e",
-          backgroundColor: "transparent",
-          fillStyle: "solid",
-          strokeWidth: 1,
-          strokeStyle: "solid",
-          roundness: null,
-          roughness: 0,
-          opacity: 100,
-          groupIds: el.groupIds || [],
-          frameId: el.frameId || null,
-          containerId: el.id,
-          text,
-          originalText: text,
-          fontSize: note.fontSize || 20,
-          fontFamily: 1,
-          textAlign: note.textAlign || "center",
-          verticalAlign: note.verticalAlign || "middle",
-          autoResize: true,
-          lineHeight: 1.25,
-          version: 1,
-          versionNonce: 12345,
-          isDeleted: false,
-        });
+        index: note.index || "a0",
+        fontSize: note.fontSize || 20,
+        fontFamily: note.fontFamily || 1,
+        textAlign: note.textAlign || "center",
+        verticalAlign: note.verticalAlign || "middle",
+      } as any);
+      const [sticky] = projected;
+      if (sticky) {
+        (sticky as any).text = text;
       }
+      excalidrawElements.push(...projected);
       continue;
     }
 

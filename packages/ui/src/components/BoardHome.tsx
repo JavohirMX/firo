@@ -161,11 +161,12 @@ export const BoardCard: React.FC<BoardCardProps> = ({
         setMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleDocumentClick);
-    document.addEventListener("keydown", handleKeyDown);
+    const ownerDocument = menuRef.current?.ownerDocument ?? document;
+    ownerDocument.addEventListener("mousedown", handleDocumentClick);
+    ownerDocument.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleDocumentClick);
-      document.removeEventListener("keydown", handleKeyDown);
+      ownerDocument.removeEventListener("mousedown", handleDocumentClick);
+      ownerDocument.removeEventListener("keydown", handleKeyDown);
     };
   }, [menuOpen]);
 

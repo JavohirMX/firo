@@ -11,6 +11,13 @@ export interface SelectionToolbarItem {
   disabled?: boolean;
   /** For toggles such as lock. */
   pressed?: boolean;
+  /**
+   * A popover anchored under this item. The host owns both the content and the
+   * open state; the rail shell only positions it.
+   */
+  popover?: React.ReactNode;
+  /** Whether `popover` is showing, for `aria-expanded`. */
+  expanded?: boolean;
 }
 
 export interface SelectionToolbarProps {
@@ -52,18 +59,26 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
       style={{ left: `${x}px`, top: `${y}px` }}
     >
       {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          className="firo-selection-toolbar__item"
-          onClick={item.onClick}
-          disabled={item.disabled}
-          title={item.label}
-          aria-label={item.label}
-          aria-pressed={item.pressed}
-        >
-          {item.icon}
-        </button>
+        <div className="firo-selection-toolbar__slot" key={item.id}>
+          <button
+            type="button"
+            className="firo-selection-toolbar__item"
+            onClick={item.onClick}
+            disabled={item.disabled}
+            title={item.label}
+            aria-label={item.label}
+            aria-pressed={item.pressed}
+            aria-haspopup={item.popover ? "menu" : undefined}
+            aria-expanded={item.popover ? Boolean(item.expanded) : undefined}
+          >
+            {item.icon}
+          </button>
+          {item.popover && item.expanded ? (
+            <div className="firo-selection-toolbar__popover">
+              {item.popover}
+            </div>
+          ) : null}
+        </div>
       ))}
       {children}
     </div>

@@ -27,6 +27,20 @@ describe("the rail arrangement", () => {
     expect(layout.unpinned).toEqual([]);
   });
 
+  it("matches the composition table, with connectors retired", () => {
+    expect(defaultRailLayout().order).toEqual([
+      "ai",
+      "stickynote",
+      "templates",
+      "text",
+      "shapes",
+      "pen",
+      "frame",
+      "comment",
+      "docblock",
+    ]);
+  });
+
   it("never holds the pinned pointer entry, which is a control and not a tool", () => {
     // The rail hands its reorder result back pinned entry and all; the
     // arrangement must drop it rather than store it as a movable tool.
@@ -66,9 +80,34 @@ describe("the rail arrangement", () => {
       unpinned: ["laser"],
     });
     expect(layout.order).toContain("shapes");
-    expect(layout.order).toContain("connectors");
     expect(layout.order).not.toContain("rectangle");
     expect(layout.unpinned).toContain("pen");
+  });
+
+  it("folds a stored `connectors` slot into shapes exactly once", () => {
+    // The shapes family absorbed the connectors slot (ADR-0031). A layout
+    // written before that change still names it, and the alias must resolve it
+    // into the one slot rather than duplicating or dropping anything.
+    const layout = normaliseRailLayout({
+      order: ["connectors", "text", "shapes"],
+    });
+
+    expect(layout.order.filter((id) => id === "shapes")).toHaveLength(1);
+    expect(layout.order).not.toContain("connectors");
+    // The first occurrence keeps the slot, so shapes stays ahead of text.
+    expect(layout.order.indexOf("shapes")).toBeLessThan(
+      layout.order.indexOf("text"),
+    );
+  });
+
+  it("lets an unpinned `connectors` hide the merged shapes slot", () => {
+    const layout = normaliseRailLayout({
+      order: ["connectors", "text"],
+      unpinned: ["connectors"],
+    });
+
+    expect(layout.order).not.toContain("shapes");
+    expect(layout.unpinned).toEqual(["shapes"]);
   });
 
   it("falls back to the default order when storage is empty or unreadable", () => {
@@ -79,6 +118,44 @@ describe("the rail arrangement", () => {
       "{ this is not json",
     );
     expect(readRailLayout().order).toEqual([...RAIL_TOOL_DEFAULTS]);
+  });
+
+  it("round-trips a pre-0031 layout through storage without loss", () => {
+    // The arrangement a browser stored before connectors retired into shapes.
+    window.localStorage.setItem(
+      STORAGE_KEYS.LOCAL_STORAGE_RAIL_LAYOUT,
+      JSON.stringify({
+        order: [
+          "templates",
+          "text",
+          "stickynote",
+          "shapes",
+          "connectors",
+          "pen",
+          "frame",
+          "comment",
+          "docblock",
+          "ai",
+        ],
+        unpinned: [],
+      }),
+    );
+
+    const layout = readRailLayout();
+    writeRailLayout(layout);
+
+    expect(readRailLayout()).toEqual(layout);
+    expect(layout.order).toEqual([
+      "templates",
+      "text",
+      "stickynote",
+      "shapes",
+      "pen",
+      "frame",
+      "comment",
+      "docblock",
+      "ai",
+    ]);
   });
 
   it("round-trips an arrangement through storage", () => {

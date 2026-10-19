@@ -474,6 +474,7 @@ type RendererTextFields = Omit<
   | "type"
   | "containerId"
   | "baseFontSize"
+  | "autoFontSize"
   | "originalText"
   | "labelPosition"
   // ADR-0004's ProseMirror field, overridden by this type. See the note above.

@@ -37,8 +37,8 @@ const MainMenu = Object.assign(
       const appProps = useAppProps();
       const setAppState = useExcalidrawSetAppState();
 
-      return (
-        <MainMenuTunnel.In>
+      const menuContent = React.useMemo(
+        () => (
           <DropdownMenu open={appState.openMenu === "canvas"}>
             <DropdownMenu.Trigger
               onToggle={() => {
@@ -76,8 +76,20 @@ const MainMenu = Object.assign(
                 )}
             </DropdownMenu.Content>
           </DropdownMenu>
-        </MainMenuTunnel.In>
+        ),
+        [
+          appState.openMenu,
+          appState.collaborators,
+          appProps.userToFollow?.socketId,
+          appProps.currentUserControls,
+          children,
+          editorInterface.formFactor,
+          onSelect,
+          setAppState,
+        ],
       );
+
+      return <MainMenuTunnel.In>{menuContent}</MainMenuTunnel.In>;
     },
   ),
   {

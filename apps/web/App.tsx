@@ -9,6 +9,8 @@ import {
   useExcalidrawStateValue,
   TOOLS,
   getToolShortcut,
+  getSelectionStickyNoteSize,
+  STICKY_NOTE_SIZE_PRESETS,
   SelectedShapeActions,
   actionZoomIn,
   actionZoomOut,
@@ -31,8 +33,13 @@ import {
   TrashIcon,
   CommentIcon,
   TagIcon,
+  LinkIcon,
+  ConvertIcon,
   ActivityIcon,
   ActivityFeed,
+  TextAlignLeftIcon,
+  TextAlignCenterIcon,
+  TextAlignRightIcon,
 } from "@firo/ui";
 
 import { trackEvent } from "@firo/editor/analytics";
@@ -40,6 +47,7 @@ import {
   CommandPalette,
   DEFAULT_CATEGORIES,
 } from "@firo/editor/components/CommandPalette/CommandPalette";
+import { getConversionTypeFromElements } from "@firo/editor/components/ConvertElementTypePopup";
 import { ErrorDialog } from "@firo/editor/components/ErrorDialog";
 import { OverwriteConfirmDialog } from "@firo/editor/components/OverwriteConfirm/OverwriteConfirm";
 import { openConfirmModal } from "@firo/editor/components/OverwriteConfirm/OverwriteConfirmState";
@@ -48,6 +56,9 @@ import Trans from "@firo/editor/components/Trans";
 import {
   APP_NAME,
   EVENT,
+  DEFAULT_STICKY_NOTE_BG,
+  MIRO_STICKY_NOTE_COLORS,
+  MIRO_PASTEL_STICKY_NOTE_PALETTE,
   VERSION_TIMEOUT,
   capitalizeString,
   debounce,
@@ -58,6 +69,7 @@ import {
   resolvablePromise,
   isDevEnv,
   isWritableElement,
+  arrayToMap,
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -69,6 +81,10 @@ import {
   getCommonBounds,
   getSelectedElements,
   showSelectedShapeActions,
+  isStickyNoteElement,
+  getBoundTextElement,
+  updateStickyNoteLayout,
+  syncStickyNoteInk,
 } from "@firo/element";
 import {
   bumpElementVersions,
@@ -97,7 +113,7 @@ import {
   exportToSvg,
 } from "@firo/utils/export";
 
-import { mintBoardId } from "@firo/board";
+import { mintBoardId, toEditorScene } from "@firo/board";
 
 import {
   createFiroDoc,
@@ -118,6 +134,7 @@ import {
   isDocBlockRecord,
   serializeBoard,
   type DocBlockRecord,
+  type FiroElement,
 } from "@firo/schema";
 import { newElement } from "@firo/element";
 
@@ -127,7 +144,6 @@ import type { RailToolItem, RailToolType } from "@firo/ui";
 
 import type { RestoredDataState } from "@firo/editor/data/restore";
 import type {
-  ExcalidrawElement,
   FileId,
   NonDeletedExcalidrawElement,
   OrderedExcalidrawElement,
@@ -509,34 +525,43 @@ export const WebCreationRail = ({
   const actionManager = useExcalidrawActionManager();
   const activeToolType = appState.activeTool.type as RailToolType;
 
-  type ShapeSubTool = "rectangle" | "diamond" | "ellipse";
-  type ConnectorSubTool = "arrow" | "line";
-  type PenSubTool = "freedraw" | "eraser" | "laser";
+  // Shapes and lines are one family (ADR-0031): the family's active member is
+  // whichever of the five was last chosen, so a stored tool lights the slot.
+  type ShapeSubTool = "rectangle" | "diamond" | "ellipse" | "arrow" | "line";
+  // Highlighter, smart pen and precision eraser are not Firo tools, and a
+  // flyout member ships only with its target (ADR-0031) — so the family stops
+  // at the four modes the registry actually has.
+  type PenSubTool = "freedraw" | "eraser" | "laser" | "lasso";
 
   interface SubToolsState {
     shapes: ShapeSubTool;
-    connectors: ConnectorSubTool;
     pen: PenSubTool;
   }
 
   const [subTools, setSubTools] = useState<SubToolsState>({
     shapes: "rectangle",
-    connectors: "arrow",
     pen: "freedraw",
   });
 
   // Keep subTools synchronized with live activeTool
   useEffect(() => {
     const live = appState.activeTool.type;
-    if (live === "rectangle" || live === "diamond" || live === "ellipse") {
+    if (
+      live === "rectangle" ||
+      live === "diamond" ||
+      live === "ellipse" ||
+      live === "arrow" ||
+      live === "line"
+    ) {
       setSubTools((prev) =>
         prev.shapes === live ? prev : { ...prev, shapes: live },
       );
-    } else if (live === "arrow" || live === "line") {
-      setSubTools((prev) =>
-        prev.connectors === live ? prev : { ...prev, connectors: live },
-      );
-    } else if (live === "freedraw" || live === "eraser" || live === "laser") {
+    } else if (
+      live === "freedraw" ||
+      live === "eraser" ||
+      live === "laser" ||
+      live === "lasso"
+    ) {
       setSubTools((prev) =>
         prev.pen === live ? prev : { ...prev, pen: live },
       );
@@ -585,9 +610,17 @@ export const WebCreationRail = ({
       const activeShortcut = getToolShortcut(activeSub);
       return {
         id: "shapes",
+        kind: "family",
         label: `${activeLabel} (${activeShortcut || "R"})`,
         icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.shapes,
-        activeOn: ["shapes", "rectangle", "diamond", "ellipse"],
+        activeOn: [
+          "shapes",
+          "rectangle",
+          "diamond",
+          "ellipse",
+          "arrow",
+          "line",
+        ],
         activeSubTool: activeSub,
         flyoutItems: [
           {
@@ -608,21 +641,6 @@ export const WebCreationRail = ({
             icon: RAIL_TOOL_ICONS.ellipse,
             shortcut: getToolShortcut("ellipse"),
           },
-        ],
-      };
-    }
-
-    if (id === "connectors") {
-      const activeSub = subTools.connectors ?? "arrow";
-      const activeLabel = capitalizeString(t(`toolBar.${activeSub}`));
-      const activeShortcut = getToolShortcut(activeSub);
-      return {
-        id: "connectors",
-        label: `${activeLabel} (${activeShortcut || "A"})`,
-        icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.connectors,
-        activeOn: ["connectors", "arrow", "line"],
-        activeSubTool: activeSub,
-        flyoutItems: [
           {
             id: "arrow",
             label: capitalizeString(t("toolBar.arrow")),
@@ -642,12 +660,19 @@ export const WebCreationRail = ({
     if (id === "pen") {
       const activeSub = subTools.pen ?? "freedraw";
       const activeLabel = capitalizeString(t(`toolBar.${activeSub}`));
-      const activeShortcut = getToolShortcut(activeSub);
+      // Lasso is the one member without a key yet; `getToolShortcut` renders
+      // the absence as the string "undefined", so ask the registry first.
+      const activeShortcut = TOOLS[activeSub].letterKey
+        ? getToolShortcut(activeSub)
+        : "";
       return {
         id: "pen",
-        label: `${activeLabel} (${activeShortcut || "P"})`,
+        kind: "family",
+        label: activeShortcut
+          ? `${activeLabel} (${activeShortcut})`
+          : activeLabel,
         icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.pen,
-        activeOn: ["pen", "freedraw", "eraser", "laser"],
+        activeOn: ["pen", "freedraw", "eraser", "laser", "lasso"],
         activeSubTool: activeSub,
         flyoutItems: [
           {
@@ -668,6 +693,11 @@ export const WebCreationRail = ({
             icon: RAIL_TOOL_ICONS.laser,
             shortcut: getToolShortcut("laser"),
           },
+          {
+            id: "lasso",
+            label: capitalizeString(t("toolBar.lasso")),
+            icon: RAIL_TOOL_ICONS.lasso,
+          },
         ],
       };
     }
@@ -675,9 +705,39 @@ export const WebCreationRail = ({
     if (id === "templates") {
       return {
         id: "templates",
-        label: `${capitalizeString(t("toolBar.templates"))} (2)`,
+        kind: "surface",
+        label: capitalizeString(t("toolBar.templates")),
         icon: RAIL_TOOL_ICONS.templates,
         activeOn: [],
+      };
+    }
+
+    if (id === "stickynote") {
+      return {
+        id: "stickynote",
+        kind: "options",
+        label: `${capitalizeString(t("toolBar.stickynote"))} (N)`,
+        icon: RAIL_TOOL_ICONS.stickynote,
+        activeOn: ["stickynote"],
+        optionGroups: [
+          {
+            id: "colour",
+            label: t("colorPicker.colors"),
+            layout: "swatches",
+            items: Object.entries(MIRO_STICKY_NOTE_COLORS).map(
+              ([name, color]) => ({
+                id: name,
+                // `yellowDark` is spoken as "Yellow dark", not "YellowDark".
+                label: capitalizeString(
+                  name.replace(/([A-Z])/g, " $1").toLowerCase(),
+                ),
+                color,
+                selected:
+                  appState.currentItemStickynoteBackgroundColor === color,
+              }),
+            ),
+          },
+        ],
       };
     }
 
@@ -702,6 +762,7 @@ export const WebCreationRail = ({
     if (id === "ai") {
       return {
         id: "ai",
+        kind: "surface",
         label: "AI Assistant",
         icon: RAIL_TOOL_ICONS.ai,
         activeOn: [],
@@ -722,15 +783,7 @@ export const WebCreationRail = ({
 
   const isKnownTool = (id: RailToolType) =>
     id in TOOLS ||
-    [
-      "shapes",
-      "connectors",
-      "pen",
-      "templates",
-      "comment",
-      "docblock",
-      "ai",
-    ].includes(id);
+    ["shapes", "pen", "templates", "comment", "docblock", "ai"].includes(id);
 
   const tools: RailToolItem[] = [
     pointerItem,
@@ -773,11 +826,6 @@ export const WebCreationRail = ({
           return;
         }
 
-        if (tool === "templates") {
-          onOpenTemplates?.();
-          return;
-        }
-
         if (tool === "comment") {
           onToggleCommentMode?.();
           return;
@@ -785,6 +833,11 @@ export const WebCreationRail = ({
 
         if (tool === "docblock") {
           onToggleDocBlockMode?.();
+          return;
+        }
+
+        if (tool === "templates") {
+          onOpenTemplates?.();
           return;
         }
 
@@ -796,8 +849,6 @@ export const WebCreationRail = ({
         let targetTool: RailToolType = tool;
         if (tool === "shapes") {
           targetTool = subTools.shapes;
-        } else if (tool === "connectors") {
-          targetTool = subTools.connectors;
         } else if (tool === "pen") {
           targetTool = subTools.pen;
         }
@@ -806,21 +857,19 @@ export const WebCreationRail = ({
         if (
           targetTool === "rectangle" ||
           targetTool === "diamond" ||
-          targetTool === "ellipse"
+          targetTool === "ellipse" ||
+          targetTool === "arrow" ||
+          targetTool === "line"
         ) {
           setSubTools((prev) => ({
             ...prev,
             shapes: targetTool as ShapeSubTool,
           }));
-        } else if (targetTool === "arrow" || targetTool === "line") {
-          setSubTools((prev) => ({
-            ...prev,
-            connectors: targetTool as ConnectorSubTool,
-          }));
         } else if (
           targetTool === "freedraw" ||
           targetTool === "eraser" ||
-          targetTool === "laser"
+          targetTool === "laser" ||
+          targetTool === "lasso"
         ) {
           setSubTools((prev) => ({
             ...prev,
@@ -852,8 +901,6 @@ export const WebCreationRail = ({
         let targetTool = tool;
         if (tool === "shapes") {
           targetTool = subTools.shapes ?? "rectangle";
-        } else if (tool === "connectors") {
-          targetTool = subTools.connectors ?? "arrow";
         } else if (tool === "pen") {
           targetTool = subTools.pen ?? "freedraw";
         }
@@ -861,6 +908,26 @@ export const WebCreationRail = ({
         app.toolDrag.handleButtonPointerDown(
           targetTool as any,
           event.nativeEvent,
+        );
+      }}
+      onOpenSurface={(surface) => {
+        if (surface === "templates") {
+          onOpenTemplates?.();
+        } else if (surface === "ai") {
+          onOpenAI?.();
+        }
+      }}
+      onSelectOption={(tool, option) => {
+        if (tool !== "stickynote" || !option.color) {
+          return;
+        }
+        // The picker writes the sticky domain's default, which is exactly what
+        // a sticky placed next will read (`changeBackgroundColor` resolves the
+        // domain from the active tool). ADR-0031 row 19.
+        actionManager.executeAction(
+          actionManager.actions.changeBackgroundColor,
+          "ui",
+          { color: option.color },
         );
       }}
       onUndo={() => {
@@ -959,7 +1026,7 @@ const WebInspector = ({ appState }: { appState: UIAppState }) => {
  * it tracks pan and zoom without a viewport offset, because the overlay and the
  * canvas share an origin.
  */
-const WebSelectionToolbar = ({
+export const WebSelectionToolbar = ({
   appState,
   onComment,
 }: {
@@ -970,6 +1037,41 @@ const WebSelectionToolbar = ({
   const actionManager = useExcalidrawActionManager();
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
+  const [stickySizeOpen, setStickySizeOpen] = useState(false);
+  const [stickyFontSizeOpen, setStickyFontSizeOpen] = useState(false);
+  const [stickyColorOpen, setStickyColorOpen] = useState(false);
+  const [stickyAlignOpen, setStickyAlignOpen] = useState(false);
+
+  // The popover is not modal, so Escape is its only dismissal key that is not
+  // a choice. A pointer outside it deliberately does not close it: the tag
+  // popover next door behaves the same way.
+  useEffect(() => {
+    if (
+      !stickySizeOpen &&
+      !stickyFontSizeOpen &&
+      !stickyColorOpen &&
+      !stickyAlignOpen
+    ) {
+      return;
+    }
+    const ownerDocument = app.ownerDocument;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setStickySizeOpen(false);
+        setStickyFontSizeOpen(false);
+        setStickyColorOpen(false);
+        setStickyAlignOpen(false);
+      }
+    };
+    ownerDocument.addEventListener("keydown", onKeyDown);
+    return () => ownerDocument.removeEventListener("keydown", onKeyDown);
+  }, [
+    stickySizeOpen,
+    stickyFontSizeOpen,
+    stickyColorOpen,
+    stickyAlignOpen,
+    app.ownerDocument,
+  ]);
 
   const selected = getSelectedElements(
     app.scene.getNonDeletedElements(),
@@ -990,6 +1092,101 @@ const WebSelectionToolbar = ({
   const y = (minY + scrollY) * zoom.value;
 
   const allLocked = selected.every((element) => element.locked);
+  // `null` unless every selected element is a sticky note, which is also the
+  // rule for showing the size control (ADR-0040 §2).
+  const stickySize = getSelectionStickyNoteSize(selected);
+  const allStickyNotes =
+    selected.length > 0 && selected.every(isStickyNoteElement);
+
+  const getSceneElementsMap = () =>
+    typeof app.scene.getNonDeletedElementsMap === "function"
+      ? app.scene.getNonDeletedElementsMap()
+      : arrayToMap(app.scene.getNonDeletedElements());
+
+  const elementsMap = getSceneElementsMap();
+  const firstSticky = allStickyNotes ? selected[0] : null;
+  const firstLabel = firstSticky
+    ? getBoundTextElement(firstSticky, elementsMap)
+    : null;
+  const isAutoFontSize = firstLabel
+    ? firstLabel.autoFontSize !== false
+    : (firstSticky?.customData?.autoFontSize as boolean | undefined) !== false;
+  const currentFontSize = firstLabel?.fontSize ?? 20;
+  const currentTextAlign = firstLabel?.textAlign ?? "center";
+  const currentStickyColor =
+    firstSticky?.backgroundColor ?? DEFAULT_STICKY_NOTE_BG;
+
+  const handleStickyFontSizeChange = (size: "auto" | number) => {
+    const sceneElementsMap = getSceneElementsMap();
+    const notes = selected.filter(isStickyNoteElement);
+    for (const note of notes) {
+      const label = getBoundTextElement(note, sceneElementsMap);
+      if (size === "auto") {
+        if (label) {
+          app.scene.mutateElement(label, { autoFontSize: true });
+        }
+        app.scene.mutateElement(note, {
+          customData: { ...note.customData, autoFontSize: true },
+        });
+        updateStickyNoteLayout(note, app.scene, {
+          autoFontSize: true,
+          bindings: { simultaneouslyUpdated: notes },
+        });
+      } else {
+        if (label) {
+          app.scene.mutateElement(label, {
+            autoFontSize: false,
+            baseFontSize: size,
+            fontSize: size,
+          });
+        }
+        app.scene.mutateElement(note, {
+          customData: { ...note.customData, autoFontSize: false },
+        });
+        updateStickyNoteLayout(note, app.scene, {
+          baseFontSize: size,
+          autoFontSize: false,
+          bindings: { simultaneouslyUpdated: notes },
+        });
+      }
+    }
+    app.scene.triggerUpdate();
+    setStickyFontSizeOpen(false);
+  };
+
+  const handleStickyColorChange = (color: string) => {
+    const notes = selected.filter(isStickyNoteElement);
+    for (const note of notes) {
+      app.scene.mutateElement(note, { backgroundColor: color });
+    }
+    const allEls =
+      typeof app.scene.getElementsIncludingDeleted === "function"
+        ? app.scene.getElementsIncludingDeleted()
+        : app.scene.getNonDeletedElements();
+    syncStickyNoteInk(allEls, getSceneElementsMap());
+    app.scene.triggerUpdate();
+    setStickyColorOpen(false);
+  };
+
+  const handleStickyTextAlignChange = (align: "left" | "center" | "right") => {
+    const sceneElementsMap = getSceneElementsMap();
+    const notes = selected.filter(isStickyNoteElement);
+    for (const note of notes) {
+      const label = getBoundTextElement(note, sceneElementsMap);
+      if (label) {
+        app.scene.mutateElement(label, { textAlign: align });
+        updateStickyNoteLayout(note, app.scene, {
+          bindings: { simultaneouslyUpdated: notes },
+        });
+      }
+    }
+    app.scene.triggerUpdate();
+    setStickyAlignOpen(false);
+  };
+
+  // Conversion has a target only for the generic and linear families; a sticky
+  // note or a frame gets no control rather than a disabled one.
+  const canConvert = getConversionTypeFromElements(selected) !== null;
 
   const run = (
     action: typeof actionManager.actions[keyof typeof actionManager.actions],
@@ -1033,6 +1230,271 @@ const WebSelectionToolbar = ({
       x={x}
       y={y}
       items={[
+        ...(canConvert && !allLocked
+          ? [
+              {
+                id: "convert",
+                label: t("labels.shapeSwitch"),
+                icon: <ConvertIcon />,
+                onClick: () => run(actionManager.actions.toggleShapeSwitch),
+              },
+            ]
+          : []),
+        // Link edits exactly one element's hyperlink; with several selected
+        // there is no honest target, and a locked element cannot be edited,
+        // so the control is absent.
+        ...(selected.length === 1 && !selected[0].locked
+          ? [
+              {
+                id: "link",
+                label: selected[0].link
+                  ? t("labels.link.edit")
+                  : t("labels.link.create"),
+                icon: <LinkIcon />,
+                pressed: Boolean(selected[0].link),
+                onClick: () => run(actionManager.actions.hyperlink),
+              },
+            ]
+          : []),
+        ...(allStickyNotes && !allLocked
+          ? [
+              {
+                id: "sticky-font-size",
+                label: isAutoFontSize
+                  ? "Font size (Auto)"
+                  : `Font size (${Math.round(currentFontSize)})`,
+                icon: (
+                  <span className="firo-selection-toolbar__font-size">
+                    Aa {isAutoFontSize ? "Auto" : Math.round(currentFontSize)} ↕
+                  </span>
+                ),
+                expanded: stickyFontSizeOpen,
+                popover: (
+                  <div
+                    className="firo-selection-toolbar__popover-menu"
+                    role="menu"
+                    aria-label="Font size"
+                  >
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={isAutoFontSize}
+                      className="firo-selection-toolbar__popover-item"
+                      onClick={() => handleStickyFontSizeChange("auto")}
+                    >
+                      <span className="firo-selection-toolbar__popover-key">
+                        Aa
+                      </span>
+                      <span>Auto</span>
+                      {isAutoFontSize && (
+                        <span className="firo-selection-toolbar__popover-check">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                    <div className="firo-selection-toolbar__popover-divider" />
+                    {[12, 14, 16, 20, 24, 28, 32, 36, 44, 60].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={
+                          !isAutoFontSize &&
+                          Math.round(currentFontSize) === size
+                        }
+                        className="firo-selection-toolbar__popover-item"
+                        onClick={() => handleStickyFontSizeChange(size)}
+                      >
+                        <span className="firo-selection-toolbar__popover-key">
+                          {size}
+                        </span>
+                        <span>{size} px</span>
+                        {!isAutoFontSize &&
+                          Math.round(currentFontSize) === size && (
+                            <span className="firo-selection-toolbar__popover-check">
+                              ✓
+                            </span>
+                          )}
+                      </button>
+                    ))}
+                  </div>
+                ),
+                onClick: () => {
+                  setStickyFontSizeOpen((open) => !open);
+                  setStickyAlignOpen(false);
+                  setStickyColorOpen(false);
+                  setStickySizeOpen(false);
+                },
+              },
+              {
+                id: "sticky-text-align",
+                label: `Text align (${currentTextAlign})`,
+                icon:
+                  currentTextAlign === "left" ? (
+                    <TextAlignLeftIcon />
+                  ) : currentTextAlign === "right" ? (
+                    <TextAlignRightIcon />
+                  ) : (
+                    <TextAlignCenterIcon />
+                  ),
+                expanded: stickyAlignOpen,
+                popover: (
+                  <div
+                    className="firo-selection-toolbar__popover-menu"
+                    role="menu"
+                    aria-label="Text align"
+                  >
+                    {(["left", "center", "right"] as const).map((align) => (
+                      <button
+                        key={align}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={currentTextAlign === align}
+                        className="firo-selection-toolbar__popover-item"
+                        onClick={() => handleStickyTextAlignChange(align)}
+                      >
+                        <span className="firo-selection-toolbar__popover-key">
+                          {align === "left" ? (
+                            <TextAlignLeftIcon />
+                          ) : align === "right" ? (
+                            <TextAlignRightIcon />
+                          ) : (
+                            <TextAlignCenterIcon />
+                          )}
+                        </span>
+                        <span style={{ textTransform: "capitalize" }}>
+                          {align}
+                        </span>
+                        {currentTextAlign === align && (
+                          <span className="firo-selection-toolbar__popover-check">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ),
+                onClick: () => {
+                  setStickyAlignOpen((open) => !open);
+                  setStickyFontSizeOpen(false);
+                  setStickyColorOpen(false);
+                  setStickySizeOpen(false);
+                },
+              },
+            ]
+          : []),
+        ...(stickySize && !allLocked
+          ? [
+              {
+                id: "sticky-size",
+                label: `${t("labels.stickyNoteSize")} (${stickySize})`,
+                icon: (
+                  <span className="firo-selection-toolbar__size">
+                    {stickySize}
+                  </span>
+                ),
+                expanded: stickySizeOpen,
+                popover: (
+                  <div
+                    className="firo-selection-toolbar__popover-menu"
+                    role="menu"
+                    aria-label={t("labels.stickyNoteSize")}
+                  >
+                    {(["s", "m", "l"] as const).map((preset) => {
+                      const key = preset.toUpperCase();
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={stickySize === key}
+                          className="firo-selection-toolbar__popover-item"
+                          onClick={() => {
+                            actionManager.executeAction(
+                              actionManager.actions.changeStickyNoteSize,
+                              "ui",
+                              preset,
+                            );
+                            setStickySizeOpen(false);
+                          }}
+                        >
+                          <span className="firo-selection-toolbar__popover-key">
+                            {key}
+                          </span>
+                          <span>
+                            {t(
+                              preset === "s"
+                                ? "labels.stickyNoteSizeSmall"
+                                : preset === "m"
+                                ? "labels.stickyNoteSizeMedium"
+                                : "labels.stickyNoteSizeLarge",
+                            )}
+                          </span>
+                          <span className="firo-selection-toolbar__popover-detail">
+                            {STICKY_NOTE_SIZE_PRESETS[preset]} px
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ),
+                onClick: () => {
+                  setStickySizeOpen((open) => !open);
+                  setStickyFontSizeOpen(false);
+                  setStickyColorOpen(false);
+                  setStickyAlignOpen(false);
+                },
+              },
+              {
+                id: "sticky-color",
+                label: "Color",
+                icon: (
+                  <span
+                    className="firo-selection-toolbar__color-swatch"
+                    style={{ backgroundColor: currentStickyColor }}
+                  />
+                ),
+                expanded: stickyColorOpen,
+                popover: (
+                  <div
+                    className="firo-selection-toolbar__color-palette"
+                    role="menu"
+                    aria-label="Sticky note colors"
+                  >
+                    {MIRO_PASTEL_STICKY_NOTE_PALETTE.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={
+                          currentStickyColor.toLowerCase() ===
+                          color.toLowerCase()
+                        }
+                        className="firo-selection-toolbar__color-option"
+                        style={{ backgroundColor: color }}
+                        title={color}
+                        aria-label={`Color ${color}`}
+                        onClick={() => handleStickyColorChange(color)}
+                      />
+                    ))}
+                  </div>
+                ),
+                onClick: () => {
+                  setStickyColorOpen((open) => !open);
+                  setStickyFontSizeOpen(false);
+                  setStickySizeOpen(false);
+                  setStickyAlignOpen(false);
+                },
+              },
+            ]
+          : []),
+        {
+          id: "tags",
+          label: "Tags",
+          icon: <TagIcon />,
+          pressed: tagEditorOpen,
+          onClick: () => setTagEditorOpen((open) => !open),
+        },
         /*
          * Comment, only for a single element.
          *
@@ -1053,24 +1515,17 @@ const WebSelectionToolbar = ({
             ]
           : []),
         {
-          id: "tags",
-          label: "Tags",
-          icon: <TagIcon />,
-          pressed: tagEditorOpen,
-          onClick: () => setTagEditorOpen((open) => !open),
+          id: "lock",
+          label: allLocked ? "Unlock" : "Lock",
+          icon: allLocked ? <UnlockIcon /> : <LockIcon />,
+          pressed: allLocked,
+          onClick: () => run(actionManager.actions.toggleElementLock),
         },
         {
           id: "duplicate",
           label: "Duplicate",
           icon: <DuplicateIcon />,
           onClick: () => run(actionManager.actions.duplicateSelection),
-        },
-        {
-          id: "lock",
-          label: allLocked ? "Unlock" : "Lock",
-          icon: allLocked ? <UnlockIcon /> : <LockIcon />,
-          pressed: allLocked,
-          onClick: () => run(actionManager.actions.toggleElementLock),
         },
         {
           id: "front",
@@ -1301,6 +1756,33 @@ const ExcalidrawWrapper = () => {
     },
     [excalidrawAPI],
   );
+
+  const handleCommitDocBlock = useCallback(
+    (updatedDoc: any, updatedTitle?: string) => {
+      if (activeDocBlockId) {
+        handleUpdateDocBlockRecord(activeDocBlockId, updatedDoc, updatedTitle);
+      }
+      setActiveDocBlockId(null);
+    },
+    [activeDocBlockId, handleUpdateDocBlockRecord],
+  );
+
+  const handleDiscardDocBlock = useCallback(() => {
+    setActiveDocBlockId(null);
+  }, []);
+
+  const handleChangeDocBlock = useCallback(
+    (updatedDoc: any, updatedTitle?: string) => {
+      if (activeDocBlockId) {
+        handleUpdateDocBlockRecord(activeDocBlockId, updatedDoc, updatedTitle);
+      }
+    },
+    [activeDocBlockId, handleUpdateDocBlockRecord],
+  );
+
+  const handleCloseDocBlock = useCallback(() => {
+    setActiveDocBlockId(null);
+  }, []);
 
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalTab, setExportModalTab] = useState<ExportTab>("image");
@@ -1831,6 +2313,23 @@ const ExcalidrawWrapper = () => {
     await handleStartImport(picked.name, picked.bytes);
   }, [handleStartImport]);
 
+  const handleMenuRefresh = useCallback(() => {
+    forceRefresh((prev) => !prev);
+  }, []);
+
+  const handleMenuExport = useCallback(() => {
+    setExportModalTab("image");
+    setExportModalOpen(true);
+  }, []);
+
+  const handleMenuVersionHistory = useCallback(() => {
+    setVersionHistoryOpen(true);
+  }, []);
+
+  const handleFooterChange = useCallback(() => {
+    excalidrawAPI?.refresh();
+  }, [excalidrawAPI]);
+
   useEffect(() => {
     const onDragOver = (e: DragEvent) => {
       e.preventDefault();
@@ -1886,9 +2385,6 @@ const ExcalidrawWrapper = () => {
       if (event.key.toLowerCase() === "c" && !event.shiftKey) {
         event.preventDefault();
         setCommentMode((prev) => !prev);
-      } else if (event.key === "2" && !event.shiftKey) {
-        event.preventDefault();
-        setTemplateModalOpen(true);
       } else if (event.key === "Escape") {
         setCommentMode(false);
       }
@@ -2745,27 +3241,10 @@ const ExcalidrawWrapper = () => {
                   offsetLeft: currentAppState?.offsetLeft,
                   offsetTop: currentAppState?.offsetTop,
                 }}
-                onCommit={(updatedDoc, updatedTitle) => {
-                  handleUpdateDocBlockRecord(
-                    activeDocBlockId,
-                    updatedDoc,
-                    updatedTitle,
-                  );
-                  setActiveDocBlockId(null);
-                }}
-                onDiscard={() => {
-                  setActiveDocBlockId(null);
-                }}
-                onChange={(updatedDoc, updatedTitle) => {
-                  handleUpdateDocBlockRecord(
-                    activeDocBlockId,
-                    updatedDoc,
-                    updatedTitle,
-                  );
-                }}
-                onClose={() => {
-                  setActiveDocBlockId(null);
-                }}
+                onCommit={handleCommitDocBlock}
+                onDiscard={handleDiscardDocBlock}
+                onChange={handleChangeDocBlock}
+                onClose={handleCloseDocBlock}
               />
             );
           })()}
@@ -2838,18 +3317,22 @@ const ExcalidrawWrapper = () => {
               x: el.x + dx,
               y: el.y + dy,
             }));
+            const editorSceneElements = toEditorScene(
+              placed as unknown as readonly FiroElement[],
+            );
             const current = excalidrawAPI.getSceneElements();
             const selectedElementIds: Record<string, true> = {};
-            for (const el of placed) {
-              selectedElementIds[el.id] = true;
+            for (const el of editorSceneElements) {
+              if (el.type !== "text" || !el.containerId) {
+                selectedElementIds[el.id] = true;
+              }
             }
             excalidrawAPI.updateScene({
               elements: [
                 ...current,
-                ...restoreElements(
-                  placed as unknown as readonly ExcalidrawElement[],
-                  null,
-                ),
+                ...restoreElements(editorSceneElements, null, {
+                  refreshDimensions: true,
+                }),
               ],
               appState: { selectedElementIds },
               captureUpdate: CaptureUpdateAction.IMMEDIATELY,
@@ -2874,20 +3357,17 @@ const ExcalidrawWrapper = () => {
         <AppMainMenu
           isCollaborating={isCollaborating}
           theme={appTheme}
-          refresh={() => forceRefresh((prev) => !prev)}
-          onExport={() => {
-            setExportModalTab("image");
-            setExportModalOpen(true);
-          }}
+          refresh={handleMenuRefresh}
+          onExport={handleMenuExport}
           onImport={handleMenuImport}
-          onVersionHistory={() => setVersionHistoryOpen(true)}
+          onVersionHistory={handleMenuVersionHistory}
         />
         <AppWelcomeScreen />
         <OverwriteConfirmDialog>
           <OverwriteConfirmDialog.Actions.ExportToImage />
           <OverwriteConfirmDialog.Actions.SaveToDisk />
         </OverwriteConfirmDialog>
-        <AppFooter onChange={() => excalidrawAPI?.refresh()} />
+        <AppFooter onChange={handleFooterChange} />
 
         {isCollaborating && isOffline && (
           <div className="alertalert--warning">

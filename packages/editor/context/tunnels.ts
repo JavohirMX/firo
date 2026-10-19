@@ -18,6 +18,13 @@ type TunnelsContextValue = {
   // this can be removed once we create jotai stores per each editor
   // instance
   tunnelsJotai: ReturnType<typeof createIsolation>;
+  fallbackRegistry: Record<
+    string,
+    {
+      preferHost: boolean;
+      counter: number;
+    }
+  >;
 };
 
 export const TunnelsContext = React.createContext<TunnelsContextValue>(null!);
@@ -40,6 +47,7 @@ export const useInitializeTunnels = () => {
       OverwriteConfirmDialogTunnel: tunnel(),
       TTDDialogTriggerTunnel: tunnel(),
       tunnelsJotai,
+      fallbackRegistry: {},
     };
   }, []);
 };

@@ -568,6 +568,8 @@ export type StickyNoteLayoutOpts = {
    * Never a multiplier on the live value — that compounds across pointer-moves.
    */
   baseFontSize?: number;
+  /** whether auto font size is enabled (Miro dynamic fit). If omitted, uses label's live autoFontSize */
+  autoFontSize?: boolean;
   /** the edge that stays put when the content correction changes the height */
   anchor?: StickyNoteLayoutAnchor;
 };
@@ -582,6 +584,7 @@ export type StickyNoteLayout = {
     | "text"
     | "fontSize"
     | "baseFontSize"
+    | "autoFontSize"
     | "width"
     | "height"
     | "x"
@@ -719,9 +722,16 @@ export const getStickyNoteLayout = (
   }
 
   const originalText = opts.originalText ?? textElement.originalText;
-  const baseFontSize = normalizeStickyNoteFontSize(
+  const isAuto = opts.autoFontSize ?? textElement.autoFontSize ?? false;
+  const userBaseFontSize = normalizeStickyNoteFontSize(
     opts.baseFontSize ?? textElement.baseFontSize ?? textElement.fontSize,
   );
+  // Miro-style auto font size: short text scales up to ~44-55px; longer text shrinks down to 12px
+  const autoMaxFontSize = Math.min(
+    56,
+    Math.max(36, Math.round(baseHeight * 0.22)),
+  );
+  const baseFontSize = isAuto ? autoMaxFontSize : userBaseFontSize;
   const fontSizeMin = Math.min(STICKY_NOTE_MIN_FONT_SIZE, baseFontSize);
   const maxWidth = Math.max(baseWidth - STICKY_NOTE_PADDING * 2, 1);
   const maxHeight = Math.max(baseHeight - STICKY_NOTE_BODY_INSET_Y, 0);
@@ -778,7 +788,8 @@ export const getStickyNoteLayout = (
     text: {
       text: fitted.text,
       fontSize: fitted.fontSize,
-      baseFontSize,
+      baseFontSize: isAuto ? userBaseFontSize : baseFontSize,
+      autoFontSize: isAuto,
       width: fitted.width,
       height: fitted.height,
       x,
@@ -896,12 +907,19 @@ const STICKY_NOTE_LAYOUT_INPUTS = {
   text: [
     "originalText",
     "baseFontSize",
+    "autoFontSize",
     "fontFamily",
     "lineHeight",
     "textAlign",
     "verticalAlign",
   ],
 } as const;
+
+export const isStickyNoteAutoFontSize = (
+  textElement: ExcalidrawTextElement | null | undefined,
+): boolean => {
+  return textElement?.autoFontSize === true;
+};
 
 const hasStickyNoteLayoutInputChanged = (
   container: ExcalidrawStickyNoteElement,

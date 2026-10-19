@@ -4,8 +4,10 @@
   transform: translate(-50%, calc(-100% - 10px));
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: var(--firo-space-xs);
+  gap: var(--firo-space-xs);
+  // BAR.height is the measured 48: 40 px controls plus 3 px of inset on
+  // either side and the 1 px border (ADR-0034).
+  padding: calc(var(--firo-space-xs) - 1px);
   background-color: var(--firo-color-panel-raised);
   border: 1px solid var(--firo-color-border);
   border-radius: var(--firo-radius-md);
@@ -16,12 +18,18 @@
   user-select: none;
   z-index: var(--firo-z-selection);
 
+  &__slot {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
   &__item {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: var(--firo-control-size);
+    height: var(--firo-control-size);
     padding: 0;
     border: none;
     background: transparent;
@@ -48,5 +56,131 @@
     &[aria-pressed="true"] {
       color: var(--firo-color-accent);
     }
+  }
+
+  // The host draws the menu inside; the shell owns its card and anchor so a
+  // popover looks the same whether it carries sizes, tags or a future picker.
+  &__popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: var(--firo-z-menu);
+    min-width: 168px;
+    padding: var(--firo-space-xs);
+    background-color: var(--firo-color-panel-raised);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-md);
+    box-shadow: var(--firo-elevation-floating);
+  }
+
+  &__popover-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__popover-item {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-sm);
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: var(--firo-radius-sm);
+    background: transparent;
+    color: var(--firo-color-text);
+    font: inherit;
+    font-size: var(--firo-font-size-sm);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible,
+    &[aria-checked="true"] {
+      background-color: var(--firo-color-surface);
+    }
+
+    &[aria-checked="true"] {
+      color: var(--firo-color-accent);
+    }
+  }
+
+  &__popover-key {
+    width: 20px;
+    font-weight: var(--firo-font-weight-semibold);
+    text-align: center;
+  }
+
+  &__popover-detail {
+    margin-left: auto;
+    color: var(--firo-color-text-muted);
+    font-size: var(--firo-font-size-xs);
+  }
+
+  &__size {
+    font-size: var(--firo-font-size-sm);
+    font-weight: var(--firo-font-weight-semibold);
+    line-height: 1;
+  }
+
+  &__font-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: var(--firo-font-size-xs);
+    font-weight: var(--firo-font-weight-semibold);
+    line-height: 1;
+    white-space: nowrap;
+    padding: 0 4px;
+  }
+
+  &__color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  &__color-palette {
+    display: grid;
+    grid-template-columns: repeat(4, 26px);
+    gap: 6px;
+    padding: 4px;
+  }
+
+  &__color-option {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    padding: 0;
+    transition: transform var(--firo-motion-fast) ease;
+
+    &:hover {
+      transform: scale(1.15);
+    }
+
+    &[aria-checked="true"] {
+      outline: 2px solid var(--firo-color-accent);
+      outline-offset: 1px;
+    }
+  }
+
+  &__popover-divider {
+    height: 1px;
+    margin: 4px 0;
+    background-color: var(--firo-color-border);
+  }
+
+  &__popover-check {
+    margin-left: auto;
+    color: var(--firo-color-accent);
+    font-weight: bold;
+    font-size: var(--firo-font-size-sm);
   }
 }

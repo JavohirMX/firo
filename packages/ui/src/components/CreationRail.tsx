@@ -14,18 +14,19 @@ import {
   FrameIcon,
   EraserIcon,
   LaserIcon,
+  LassoIcon,
   UndoIcon,
   RedoIcon,
-  MoreVerticalIcon,
   TemplateIcon,
   FlyoutChevron,
-  ConnectorIcon,
   ShapesIcon,
   CommentIcon,
   PlusIcon,
   DocIcon,
   SparklesIcon,
 } from "../icons";
+
+import { ToolsCatalog } from "./ToolsCatalog";
 
 import "./CreationRail.scss";
 
@@ -43,14 +44,23 @@ export type RailToolType =
   | "frame"
   | "eraser"
   | "laser"
+  | "lasso"
   | "templates"
   | "comment"
   | "shapes"
-  | "connectors"
   | "pen"
   | "more"
   | "docblock"
   | "ai";
+
+/**
+ * What a rail slot *is*. A tool is a command; a family is a set of tools; an
+ * options slot carries settings for one tool; a surface opens host chrome.
+ *
+ * `tool` is the default, so every existing single-tool entry keeps its shape
+ * ([`ADR-0031`](../../../../docs/adr/0031-rail-slot-kinds-and-the-phase-11-composition.md)).
+ */
+export type RailSlotKind = "tool" | "family" | "options" | "surface";
 
 export interface RailFlyoutItem {
   id: RailToolType;
@@ -59,10 +69,34 @@ export interface RailFlyoutItem {
   shortcut?: string;
 }
 
+/**
+ * One choice inside an options flyout. It is deliberately not a tool: it has
+ * no tool id and selecting it never changes `activeTool`.
+ */
+export interface RailOptionItem {
+  id: string;
+  label: string;
+  /** A CSS colour, for a swatch in a `swatches` group. */
+  color?: string;
+  icon?: React.ReactNode;
+  shortcut?: string;
+  selected?: boolean;
+}
+
+export interface RailOptionGroup {
+  id: string;
+  label?: string;
+  /** `swatches` is a fixed grid; `list` is a row per choice. */
+  layout?: "list" | "swatches";
+  items: readonly RailOptionItem[];
+}
+
 export interface RailToolItem {
   id: RailToolType;
   label: string;
   icon: React.ReactNode;
+  /** Defaults to `family` when `flyoutItems` is set, otherwise `tool`. */
+  kind?: RailSlotKind;
   /**
    * Non-removable and non-movable. Miro keeps its cursor at the head of the
    * rail: a pinned entry offers no Unpin and cannot be dragged, and dropping
@@ -77,8 +111,10 @@ export interface RailToolItem {
    * [ADR-0029]: ../../../../docs/adr/0029-the-rail-is-a-per-user-arrangement.md
    */
   activeOn?: RailToolType[];
-  /** Sub-tools available in a flyout popover for this tool group */
+  /** Sub-tools available in a flyout popover for a `family` slot. */
   flyoutItems?: RailFlyoutItem[];
+  /** Settings and actions in a flyout for an `options` slot. */
+  optionGroups?: readonly RailOptionGroup[];
   /** Currently selected sub-tool within the flyout group */
   activeSubTool?: RailToolType;
 }
@@ -109,10 +145,10 @@ export const RAIL_TOOL_ICONS: Record<RailToolType, React.ReactNode> = {
   frame: <FrameIcon />,
   eraser: <EraserIcon />,
   laser: <LaserIcon />,
+  lasso: <LassoIcon />,
   templates: <TemplateIcon />,
   comment: <CommentIcon />,
   shapes: <ShapesIcon />,
-  connectors: <ConnectorIcon />,
   pen: <PenIcon />,
   more: <PlusIcon />,
   docblock: <DocIcon />,
@@ -132,16 +168,27 @@ export const DEFAULT_RAIL_TOOLS: RailToolItem[] = [
     icon: <SelectIcon />,
     pinned: true,
   },
-  { id: "templates", label: "Templates", icon: <TemplateIcon /> },
-  { id: "text", label: "Text", icon: <TextIcon /> },
-  { id: "stickynote", label: "Sticky note", icon: <StickyNoteIcon /> },
-  { id: "shapes", label: "Shapes", icon: <ShapesIcon /> },
-  { id: "connectors", label: "Connectors", icon: <ConnectorIcon /> },
-  { id: "pen", label: "Pen", icon: <PenIcon /> },
-  { id: "frame", label: "Frame", icon: <FrameIcon /> },
-  { id: "comment", label: "Comment", icon: <CommentIcon /> },
-  { id: "docblock", label: "Document", icon: <DocIcon /> },
-  { id: "ai", label: "AI Assistant", icon: <SparklesIcon /> },
+  { id: "ai", label: "AI Assistant", icon: <SparklesIcon />, kind: "surface" },
+  {
+    id: "stickynote",
+    label: "Sticky note",
+    icon: <StickyNoteIcon />,
+    kind: "options",
+  },
+  {
+    id: "templates",
+    label: "Templates",
+    icon: <TemplateIcon />,
+    kind: "surface",
+  },
+  { id: "text", label: "Text", icon: <TextIcon />, kind: "tool" },
+  { id: "shapes", label: "Shapes", icon: <ShapesIcon />, kind: "family" },
+  { id: "pen", label: "Pen", icon: <PenIcon />, kind: "family" },
+  // Miro's frame slot flies out size presets; Firo has no preset target yet,
+  // so the slot stays a plain tool rather than growing a dead chevron.
+  { id: "frame", label: "Frame", icon: <FrameIcon />, kind: "tool" },
+  { id: "comment", label: "Comment", icon: <CommentIcon />, kind: "tool" },
+  { id: "docblock", label: "Document", icon: <DocIcon />, kind: "tool" },
 ];
 
 export interface CreationRailProps {
@@ -165,10 +212,22 @@ export interface CreationRailProps {
   onReorder?: (order: RailToolType[]) => void;
   /** Called when a tool is unpinned from its right-click menu. */
   onUnpin?: (tool: RailToolType) => void;
-  /** Called when an unpinned tool is chosen from the hidden-tools list. */
+  /** Called when an unpinned tool is pinned again from the catalog. */
   onRestore?: (tool: RailToolType) => void;
-  /** Called when Miro-style '+' button is clicked to open more tools/apps. */
-  onMoreTools?: () => void;
+  /**
+   * A `surface` slot opens host chrome instead of selecting a tool. The host
+   * owns what the surface is; the rail only reports the request.
+   */
+  onOpenSurface?: (
+    surface: RailToolType,
+    event?: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
+  /** A choice inside an `options` flyout. Never changes the active tool. */
+  onSelectOption?: (
+    tool: RailToolType,
+    option: RailOptionItem,
+    event?: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
   canUndo?: boolean;
   canRedo?: boolean;
   onUndo?: () => void;
@@ -206,7 +265,8 @@ export const CreationRail: React.FC<CreationRailProps> = ({
   onReorder,
   onUnpin,
   onRestore,
-  onMoreTools,
+  onOpenSurface,
+  onSelectOption,
   canUndo = true,
   canRedo = true,
   onUndo,
@@ -215,19 +275,19 @@ export const CreationRail: React.FC<CreationRailProps> = ({
   const railRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [menuFor, setMenuFor] = useState<RailToolType | null>(null);
-  const [hiddenOpen, setHiddenOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [openFlyoutFor, setOpenFlyoutFor] = useState<RailToolType | null>(null);
 
   // Anything open closes on Escape, and on a pointer press outside the rail.
   // A press *inside* is left alone so the click that follows can land on the
   // menu item it was aimed at.
   useEffect(() => {
-    if (menuFor === null && !hiddenOpen && openFlyoutFor === null) {
+    if (menuFor === null && !catalogOpen && openFlyoutFor === null) {
       return;
     }
     const closeAll = () => {
       setMenuFor(null);
-      setHiddenOpen(false);
+      setCatalogOpen(false);
       setOpenFlyoutFor(null);
     };
     const onPointerDown = (event: PointerEvent) => {
@@ -241,13 +301,14 @@ export const CreationRail: React.FC<CreationRailProps> = ({
         closeAll();
       }
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
+    const ownerDocument = railRef.current?.ownerDocument ?? document;
+    ownerDocument.addEventListener("pointerdown", onPointerDown);
+    ownerDocument.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
+      ownerDocument.removeEventListener("pointerdown", onPointerDown);
+      ownerDocument.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuFor, hiddenOpen, openFlyoutFor]);
+  }, [menuFor, catalogOpen, openFlyoutFor]);
 
   /**
    * Slot 0 is the pinned pointer entry, so nothing may land there: a drop aimed
@@ -277,9 +338,18 @@ export const CreationRail: React.FC<CreationRailProps> = ({
             activeTool as RailToolType,
           );
           const menuOpen = menuFor === tool.id;
-          const hasFlyout = Boolean(
-            tool.flyoutItems && tool.flyoutItems.length > 0,
-          );
+          const kind =
+            tool.kind ??
+            (tool.flyoutItems && tool.flyoutItems.length > 0
+              ? "family"
+              : "tool");
+          // A kind with nothing to show is not a flyout: the chevron and the
+          // popover appear only when the host supplied their contents.
+          const hasFamilyFlyout =
+            kind === "family" && Boolean(tool.flyoutItems?.length);
+          const hasOptionsFlyout =
+            kind === "options" && Boolean(tool.optionGroups?.length);
+          const hasFlyout = hasFamilyFlyout || hasOptionsFlyout;
           const flyoutOpen = openFlyoutFor === tool.id;
 
           return (
@@ -293,16 +363,33 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                 }`}
                 draggable={!tool.pinned && Boolean(onReorder)}
                 onClick={(event) => {
-                  if (hasFlyout && isActive) {
+                  if (kind === "surface") {
+                    setOpenFlyoutFor(null);
+                    onOpenSurface?.(tool.id, event);
+                    return;
+                  }
+
+                  if (kind === "options" && hasOptionsFlyout) {
+                    // The slot still selects its tool — the flyout carries the
+                    // settings, not a second tool list — and toggles the
+                    // palette in the same gesture.
+                    setOpenFlyoutFor(flyoutOpen ? null : tool.id);
+                    onSelectTool(tool.activeSubTool ?? tool.id, event);
+                    return;
+                  }
+
+                  if (hasFamilyFlyout && isActive) {
                     setOpenFlyoutFor(flyoutOpen ? null : tool.id);
                   } else {
                     setOpenFlyoutFor(null);
                     onSelectTool(tool.activeSubTool ?? tool.id, event);
                   }
                 }}
-                onPointerDown={(event) =>
-                  onPointerDownTool?.(tool.activeSubTool ?? tool.id, event)
-                }
+                onPointerDown={(event) => {
+                  if (kind !== "surface") {
+                    onPointerDownTool?.(tool.activeSubTool ?? tool.id, event);
+                  }
+                }}
                 onContextMenu={(event) => {
                   if (tool.pinned || !onUnpin) {
                     return;
@@ -339,11 +426,11 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                 aria-label={tool.label}
                 aria-pressed={isActive}
                 aria-haspopup={
-                  hasFlyout
+                  kind === "surface"
+                    ? "dialog"
+                    : hasFlyout || (!tool.pinned && onUnpin)
                     ? "menu"
-                    : tool.pinned || !onUnpin
-                    ? undefined
-                    : "menu"
+                    : undefined
                 }
                 aria-expanded={hasFlyout ? flyoutOpen : menuOpen || undefined}
               >
@@ -378,7 +465,7 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                 </div>
               ) : null}
 
-              {hasFlyout && flyoutOpen ? (
+              {hasFamilyFlyout && flyoutOpen ? (
                 <div
                   className="firo-rail__flyout"
                   role="menu"
@@ -419,97 +506,114 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                   })}
                 </div>
               ) : null}
+
+              {hasOptionsFlyout && flyoutOpen ? (
+                <div
+                  className="firo-rail__flyout firo-rail__options"
+                  role="menu"
+                  aria-label={`${tool.label} options`}
+                >
+                  {tool.optionGroups?.map((group) => (
+                    <div
+                      className="firo-rail__option-group"
+                      key={group.id}
+                      role="group"
+                      aria-label={group.label ?? group.id}
+                    >
+                      {group.label ? (
+                        <span
+                          className="firo-rail__option-title"
+                          aria-hidden="true"
+                        >
+                          {group.label}
+                        </span>
+                      ) : null}
+                      <div
+                        className={`firo-rail__option-items${
+                          group.layout === "swatches"
+                            ? " firo-rail__option-items--swatches"
+                            : ""
+                        }`}
+                      >
+                        {group.items.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={item.selected ?? false}
+                            aria-label={item.label}
+                            title={item.label}
+                            className={`firo-rail__option-item${
+                              item.color
+                                ? " firo-rail__option-item--swatch"
+                                : ""
+                            }${
+                              item.selected
+                                ? " firo-rail__option-item--active"
+                                : ""
+                            }`}
+                            onClick={(event) => {
+                              // Deliberately does not select a tool: an option
+                              // changes a setting of the tool already chosen.
+                              onSelectOption?.(tool.id, item, event);
+                            }}
+                          >
+                            {item.color ? (
+                              <span
+                                className="firo-rail__swatch"
+                                style={{ backgroundColor: item.color }}
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <span className="firo-rail__flyout-icon">
+                                {item.icon}
+                              </span>
+                            )}
+                            {!item.color ? (
+                              <span className="firo-rail__flyout-label">
+                                {item.label}
+                              </span>
+                            ) : null}
+                            {item.shortcut ? (
+                              <span className="firo-rail__flyout-shortcut">
+                                {item.shortcut}
+                              </span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           );
         })}
 
-        {/* Miro-style '+' button at the bottom of the tools pill */}
+        {/* The '+' is the catalog, and the catalog is the one restore path. */}
         <div className="firo-rail__slot">
           <button
             type="button"
             className="firo-rail__item firo-rail__item--more"
-            onClick={() => {
-              if (onMoreTools) {
-                onMoreTools();
-              } else if (hiddenTools.length > 0) {
-                setHiddenOpen((open) => !open);
-              }
-            }}
-            title="More tools (+)"
-            aria-label={
-              hiddenTools.length > 0 ? "Unpinned tools" : "More tools"
-            }
-            aria-haspopup="menu"
-            aria-expanded={hiddenOpen}
+            onClick={() => setCatalogOpen((open) => !open)}
+            title="Tools (+)"
+            aria-label="Tools catalog"
+            aria-haspopup="dialog"
+            aria-expanded={catalogOpen}
           >
             <PlusIcon />
           </button>
-          {hiddenOpen && hiddenTools.length > 0 && !onMoreTools ? (
-            <div
-              className="firo-rail__menu firo-rail__menu--wide"
-              role="menu"
-              aria-label="Unpinned tools"
-            >
-              {hiddenTools.map((tool) => (
-                <button
-                  key={tool.id}
-                  type="button"
-                  role="menuitem"
-                  className="firo-rail__menu-item"
-                  onClick={() => {
-                    setHiddenOpen(false);
-                    onRestore?.(tool.id);
-                  }}
-                >
-                  <span className="firo-rail__menu-icon">{tool.icon}</span>
-                  {tool.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
       </div>
 
-      {/* Hidden tools backward-compatibility popover trigger when not in main pill */}
-      {hiddenTools.length > 0 && onMoreTools ? (
-        <div className="firo-rail__pill">
-          <div className="firo-rail__slot">
-            <button
-              type="button"
-              className="firo-rail__item"
-              onClick={() => setHiddenOpen((open) => !open)}
-              title="Unpinned tools"
-              aria-label="Unpinned tools"
-              aria-haspopup="menu"
-              aria-expanded={hiddenOpen}
-            >
-              <MoreVerticalIcon />
-            </button>
-            {hiddenOpen ? (
-              <div
-                className="firo-rail__menu firo-rail__menu--wide"
-                role="menu"
-                aria-label="Unpinned tools"
-              >
-                {hiddenTools.map((tool) => (
-                  <button
-                    key={tool.id}
-                    type="button"
-                    role="menuitem"
-                    className="firo-rail__menu-item"
-                    onClick={() => {
-                      setHiddenOpen(false);
-                      onRestore?.(tool.id);
-                    }}
-                  >
-                    <span className="firo-rail__menu-icon">{tool.icon}</span>
-                    {tool.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
+      {catalogOpen ? (
+        <ToolsCatalog
+          tools={tools}
+          hiddenTools={hiddenTools}
+          onClose={() => setCatalogOpen(false)}
+          onUnpin={onUnpin}
+          onRestore={onRestore}
+        />
       ) : null}
 
       <div className="firo-rail__pill">

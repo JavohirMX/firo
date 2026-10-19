@@ -1,4 +1,5 @@
 .firo-rail {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--firo-space-sm);
@@ -192,5 +193,92 @@
     font-size: 11px;
     color: var(--firo-color-text-muted);
     margin-left: var(--firo-space-sm);
+  }
+
+  &__options {
+    // The measured sticky colour panel is a narrow column (≈136 px), not a
+    // wide card: two swatch columns read top-to-bottom beside the rail.
+    box-sizing: border-box;
+    width: 136px;
+    min-width: 136px;
+    gap: var(--firo-space-sm);
+  }
+
+  &__option-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-xs);
+  }
+
+  &__option-title {
+    padding: 0 var(--firo-space-xs);
+    color: var(--firo-color-text-muted);
+    font-size: var(--firo-font-size-xs);
+    font-weight: var(--firo-font-weight-semibold);
+    letter-spacing: 0.04em;
+    line-height: var(--firo-line-height-tight);
+    text-transform: uppercase;
+  }
+
+  &__option-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    // The observed grid is two columns by eight rows on a 50 px pitch: a
+    // 44 px cell plus a 6 px gap.
+    &--swatches {
+      display: grid;
+      grid-template-columns: repeat(2, 44px);
+      justify-content: space-between;
+      gap: 6px 4px;
+    }
+  }
+
+  &__option-item {
+    display: flex;
+    align-items: center;
+    gap: var(--firo-space-xs);
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    background: transparent;
+    border-radius: var(--firo-radius-sm);
+    color: var(--firo-color-text);
+    font: inherit;
+    font-size: var(--firo-font-size-sm);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--firo-motion-fast) var(--firo-motion-ease),
+      color var(--firo-motion-fast) var(--firo-motion-ease);
+
+    &:hover,
+    &:focus-visible {
+      background-color: var(--firo-color-surface);
+    }
+
+    &--swatch {
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 2px;
+      box-sizing: border-box;
+      border-radius: var(--firo-radius-md);
+    }
+
+    &--active {
+      outline: 2px solid var(--firo-color-selection);
+      outline-offset: 1px;
+    }
+  }
+
+  &__swatch {
+    display: block;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-sm);
+    box-sizing: border-box;
   }
 }

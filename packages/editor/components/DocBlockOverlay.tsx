@@ -213,6 +213,11 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     onClose?.();
   }, [onDiscard, onClose]);
 
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  const discardRef = useRef(discard);
+  discardRef.current = discard;
+
   // Initialise ProseMirror DOM and Yjs binding on mount
   useEffect(() => {
     const editorEl = editorRef.current;
@@ -261,13 +266,13 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
       // Ensure we never destroy without committing or discarding per TRD-05
       if (!hasCommittedRef.current) {
         if (isDirtyRef.current) {
-          commit();
+          commitRef.current();
         } else {
-          discard();
+          discardRef.current();
         }
       }
     };
-  }, [fragment, readOnly, commit, discard]);
+  }, [fragment, readOnly]);
 
   // Handle global click outside to commit
   useEffect(() => {
@@ -276,7 +281,7 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        commit();
+        commitRef.current();
       }
     };
 
@@ -284,7 +289,7 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [commit]);
+  }, []);
 
   // Handle keyboard shortcuts per TRD-05
   const handleKeyDown = (event: React.KeyboardEvent) => {

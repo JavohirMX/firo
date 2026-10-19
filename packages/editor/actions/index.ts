@@ -86,6 +86,17 @@ export { actionToggleShowHints } from "./actionToggleShowHints";
 
 export { actionToggleStats } from "./actionToggleStats";
 export { actionUnbindText, actionBindText } from "./actionBoundText";
+export { actionToggleShapeSwitch } from "./actionToggleShapeSwitch";
+export {
+  actionChangeStickyNoteSize,
+  STICKY_NOTE_SIZE_PRESETS,
+  getStickyNoteSizePreset,
+  getSelectionStickyNoteSize,
+} from "./actionStickyNoteSize";
+export type {
+  StickyNoteSizePreset,
+  StickyNoteSizeLabel,
+} from "./actionStickyNoteSize";
 export { actionLink } from "./actionLink";
 export { actionToggleElementLock } from "./actionElementLock";
 export { actionToggleLinearEditor } from "./actionLinearEditor";

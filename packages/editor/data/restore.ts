@@ -575,6 +575,9 @@ export const restoreElement = (
         baseFontSize: isFiniteNumber(element.baseFontSize)
           ? normalizeStickyNoteFontSize(element.baseFontSize)
           : null,
+        ...(typeof (element as any).autoFontSize === "boolean"
+          ? { autoFontSize: (element as any).autoFontSize }
+          : {}),
       });
 
       // if empty text, mark as deleted. We keep in array
@@ -915,13 +918,21 @@ const restoreStickyNotes = (
         baseFontSize: normalizeStickyNoteFontSize(
           element.baseFontSize ?? element.fontSize,
         ),
+        ...(typeof element.autoFontSize === "boolean"
+          ? { autoFontSize: element.autoFontSize }
+          : {}),
         strokeColor,
       });
       if (container && container.strokeColor !== strokeColor) {
         Object.assign(container, { strokeColor });
       }
-    } else if (element.baseFontSize != null) {
-      Object.assign(element, { baseFontSize: null });
+    } else {
+      if (element.baseFontSize != null) {
+        Object.assign(element, { baseFontSize: null });
+      }
+      if (element.autoFontSize !== undefined) {
+        delete (element as any).autoFontSize;
+      }
     }
   }
 

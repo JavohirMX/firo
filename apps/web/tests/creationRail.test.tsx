@@ -28,6 +28,7 @@ vi.mock("@firo/editor", async () => {
       actions: {
         undo: "undoAction",
         redo: "redoAction",
+        changeBackgroundColor: "changeBackgroundColorAction",
       },
       executeAction: executeActionMock,
     }),
@@ -169,21 +170,53 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
       });
     });
 
-    it("toggles the Connectors flyout and selects the Line tool", () => {
+    it("keeps lines in the shapes family and selects the Line tool", () => {
+      // `connectors` retired into `shapes` (ADR-0031); the line tools are
+      // family members now, not a second slot.
       mockAppState.activeTool.type = "arrow";
       render(<WebCreationRail appState={mockAppState} />);
 
-      const arrowBtn = screen.getByRole("button", { name: /Arrow/i });
-      fireEvent.click(arrowBtn);
+      const shapesBtn = screen.getByRole("button", { name: /^Arrow/i });
+      fireEvent.click(shapesBtn);
 
       const lineItem = screen.getByRole("menuitemradio", { name: /Line/i });
       expect(lineItem).toBeDefined();
+
+      expect(screen.queryByRole("button", { name: /Connectors/i })).toBeNull();
 
       fireEvent.click(lineItem);
       expect(setActiveToolMock).toHaveBeenCalledWith({
         type: "line",
         locked: false,
       });
+    });
+
+    it("offers lasso in the pen family, where the reference puts it", () => {
+      mockAppState.activeTool.type = "freedraw";
+      render(<WebCreationRail appState={mockAppState} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /Draw/i }));
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /Lasso/i }));
+
+      expect(setActiveToolMock).toHaveBeenCalledWith({ type: "lasso" });
+    });
+
+    it("applies a sticky colour without selecting a tool", () => {
+      mockAppState.activeTool.type = "selection";
+      render(<WebCreationRail appState={mockAppState} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /Sticky note/i }));
+      setActiveToolMock.mockClear();
+
+      fireEvent.click(screen.getByRole("menuitemradio", { name: "Pink" }));
+
+      expect(executeActionMock).toHaveBeenCalledWith(
+        "changeBackgroundColorAction",
+        "ui",
+        { color: "#FFA9D2" },
+      );
+      // Choosing a colour is a setting, not a tool choice.
+      expect(setActiveToolMock).not.toHaveBeenCalled();
     });
 
     it("triggers template modal callback when Templates tool is clicked", () => {
@@ -287,8 +320,8 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
       render(<WebCreationRail appState={mockAppState} />);
 
       fireEvent.dragStart(screen.getByRole("button", { name: /Draw/i }));
-      fireEvent.dragOver(screen.getByRole("button", { name: /Templates/i }));
-      fireEvent.drop(screen.getByRole("button", { name: /Templates/i }));
+      fireEvent.dragOver(screen.getByRole("button", { name: /AI Assistant/i }));
+      fireEvent.drop(screen.getByRole("button", { name: /AI Assistant/i }));
 
       const payload = JSON.parse(
         window.localStorage.getItem(STORAGE_KEYS.LOCAL_STORAGE_RAIL_LAYOUT)!,
@@ -308,9 +341,9 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
       expect(payload.unpinned).toContain("pen");
       expect(payload.order).not.toContain("pen");
 
-      // ...and it comes back.
-      fireEvent.click(screen.getByRole("button", { name: "Unpinned tools" }));
-      fireEvent.click(screen.getByRole("menuitem", { name: /Draw/i }));
+      // ...and the catalog is the one way back.
+      fireEvent.click(screen.getByRole("button", { name: "Tools catalog" }));
+      fireEvent.click(screen.getByRole("button", { name: /Add Draw/ }));
 
       expect(
         JSON.parse(
@@ -341,7 +374,7 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
       // ...and what the user explicitly unpinned is out of the row.
       expect(screen.queryByRole("button", { name: /^Text/ })).toBeNull();
       expect(
-        screen.getByRole("button", { name: "Unpinned tools" }),
+        screen.getByRole("button", { name: "Tools catalog" }),
       ).toBeDefined();
     });
   });

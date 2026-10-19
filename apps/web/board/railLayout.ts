@@ -28,7 +28,7 @@ import { STORAGE_KEYS } from "../app_constants";
  *
  * [`ADR-0005`](../../../docs/adr/0005-indexeddb-via-idb-keyval.md) rejected
  * `localStorage` for the *board* — 5–10 MB and synchronous, which a workshop
- * with hundreds of images exhausts. None of that applies to eleven tool ids.
+ * with hundreds of images exhausts. None of that applies to nine tool ids.
  * The synchronous read is in fact what the rail wants: it renders once, already
  * arranged, with no flash of the default order. The theme made the same call.
  *
@@ -50,16 +50,15 @@ import { STORAGE_KEYS } from "../app_constants";
  * is not part of an arrangement — it is not draggable and it cannot be unpinned.
  */
 export const RAIL_TOOL_DEFAULTS: readonly RailToolType[] = [
+  "ai",
+  "stickynote",
   "templates",
   "text",
-  "stickynote",
   "shapes",
-  "connectors",
   "pen",
   "frame",
   "comment",
   "docblock",
-  "ai",
 ];
 
 /**
@@ -77,10 +76,14 @@ export const LEGACY_TOOL_MAP: Record<string, RailToolType> = {
   rectangle: "shapes",
   diamond: "shapes",
   ellipse: "shapes",
-  arrow: "connectors",
-  line: "connectors",
+  arrow: "shapes",
+  line: "shapes",
+  // `connectors` retired into the shapes family (ADR-0031). The alias is what
+  // lets a layout stored before the change resolve without losing the slot.
+  connectors: "shapes",
   freedraw: "pen",
   eraser: "pen",
+  lasso: "pen",
   laser: "pen",
 };
 

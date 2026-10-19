@@ -849,6 +849,9 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
     fontSize: element.fontSize,
     fontFamily: element.fontFamily as ExcalidrawTextElement["fontFamily"],
     baseFontSize: element.fontSize,
+    ...(typeof element.customData?.autoFontSize === "boolean"
+      ? { autoFontSize: element.customData.autoFontSize }
+      : {}),
     textAlign: element.textAlign,
     verticalAlign: element.verticalAlign,
     lineHeight: 1.25 as ExcalidrawTextElement["lineHeight"],
@@ -1391,7 +1394,16 @@ export const foldEditorElement = (
     created: element.created ?? null,
     updated: element.updated,
     ...(containerId ? { containerId } : {}),
-    ...(noteCustomData ? { customData: noteCustomData } : {}),
+    ...(noteCustomData || typeof label?.autoFontSize === "boolean"
+      ? {
+          customData: {
+            ...noteCustomData,
+            ...(typeof label?.autoFontSize === "boolean"
+              ? { autoFontSize: label.autoFontSize }
+              : {}),
+          },
+        }
+      : {}),
     ...facilitationFlags,
   } as unknown as StickyNoteElement;
 };

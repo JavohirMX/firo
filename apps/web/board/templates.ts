@@ -54,6 +54,9 @@ const note = (
     x,
     y,
     text,
+    fontSize: 28,
+    verticalAlign: "middle",
+    textAlign: "center",
     ...(backgroundColor ? { backgroundColor } : {}),
   });
 

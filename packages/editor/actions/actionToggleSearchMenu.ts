@@ -20,7 +20,6 @@ export const actionToggleSearchMenu = register({
   trackEvent: {
     category: "search_menu",
     action: "toggle",
-    predicate: (appState) => appState.gridModeEnabled,
   },
   perform(elements, appState, _, app) {
     if (appState.openDialog) {
@@ -50,9 +49,9 @@ export const actionToggleSearchMenu = register({
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
   },
-  checked: (appState) => appState.gridModeEnabled,
-  predicate: (element, appState, props) => {
-    return props.gridModeEnabled === undefined;
-  },
+  checked: (appState) =>
+    appState.openSidebar?.name === DEFAULT_SIDEBAR.name &&
+    appState.openSidebar.tab === CANVAS_SEARCH_TAB,
+  predicate: () => true,
   keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.F,
 });

@@ -21,6 +21,7 @@ export * from "./tokens";
 export * from "./icons";
 export * from "./accessibility";
 export * from "./components/CreationRail";
+export * from "./components/ToolsCatalog";
 export * from "./components/NavToolbar";
 export * from "./components/BoardMenu";
 export * from "./components/CollabBar";

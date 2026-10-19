@@ -1,12 +1,11 @@
 import { CaptureUpdateAction } from "@firo/element";
 
-import type { ExcalidrawElement } from "@firo/element/types";
-
 import {
   getConversionTypeFromElements,
   convertElementTypePopupAtom,
 } from "../components/ConvertElementTypePopup";
 import { editorJotaiStore } from "../editor-jotai";
+import { getSelectedElements } from "../scene";
 
 import { register } from "./register";
 
@@ -14,7 +13,7 @@ export const actionToggleShapeSwitch = register({
   name: "toggleShapeSwitch",
   label: "labels.shapeSwitch",
   icon: () => null,
-  viewMode: true,
+  viewMode: false,
   trackEvent: {
     category: "shape_switch",
     action: "toggle",
@@ -29,7 +28,12 @@ export const actionToggleShapeSwitch = register({
       captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
-  checked: (appState) => appState.gridModeEnabled,
-  predicate: (elements, appState, props) =>
-    getConversionTypeFromElements(elements as ExcalidrawElement[]) !== null,
+  predicate: (elements, appState) => {
+    const selected = getSelectedElements(elements, appState);
+    return (
+      selected.length > 0 &&
+      !selected.some((el) => el.locked) &&
+      getConversionTypeFromElements(selected) !== null
+    );
+  },
 });
