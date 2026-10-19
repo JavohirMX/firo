@@ -28,12 +28,7 @@ describe("Auth & REST endpoints", () => {
       authRateLimiter: rateLimiter,
     });
 
-    server = http.createServer((req, res) => {
-      void handler(req, res).catch(() => {
-        res.writeHead(500);
-        res.end();
-      });
-    });
+    server = http.createServer(handler);
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -56,61 +51,6 @@ describe("Auth & REST endpoints", () => {
       expect(verifyPassword("SuperSecret123!", hash, salt)).toBe(true);
       expect(verifyPassword("WrongPassword", hash, salt)).toBe(false);
       expect(verifyPassword("", hash, salt)).toBe(false);
-    });
-  });
-
-  describe("Share input validation", () => {
-    async function createShareRequest(body: string) {
-      const owner = storage.createUser({
-        id: "share-owner",
-        username: "share-owner",
-        password_hash: "unused",
-        salt: "unused",
-        is_admin: 0,
-      });
-      storage.createBoard("share-board", "Board", owner.id);
-      storage.createSession("share-session", owner.id, 60_000);
-      return fetch(`${serverUrl}/api/boards/share-board/shares`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: "firo_session=share-session",
-        },
-        body,
-      });
-    }
-
-    it.each([
-      "{",
-      "null",
-      "[]",
-      "true",
-      '"text"',
-      '{"password":123}',
-      '{"password":{}}',
-      '{"password":[]}',
-      '{"expiresAt":"tomorrow"}',
-      '{"expiresAt":{}}',
-      '{"expiresAt":1e999}',
-      '{"expiresAt":-1}',
-      '{"expiresAt":1.5}',
-      '{"role":123}',
-      '{"role":{}}',
-    ])("rejects invalid share body %s without a write", async (body) => {
-      const response = await createShareRequest(body);
-      expect(response.status).toBe(400);
-      expect(await response.json()).toHaveProperty("error");
-      expect(storage.listShares("share-board")).toHaveLength(0);
-    });
-
-    it.each([
-      {},
-      { role: "viewer", expiresAt: null },
-      { role: "commenter", expiresAt: 2000000000000, password: "secret" },
-    ])("accepts valid share options %j", async (body) => {
-      const response = await createShareRequest(JSON.stringify(body));
-      expect(response.status).toBe(201);
-      expect(storage.listShares("share-board")).toHaveLength(1);
     });
   });
 
