@@ -170,3 +170,12 @@ SSO, OIDC, SCIM, audit logs, quota enforcement, multi-organisation tenancy,
 horizontal scaling, regional data residency, eDiscovery. All of these are either on
 the never-list or require a product conversation we have not had
 ([`../vision.md`](../vision.md)).
+
+## Authentication rate-limit identity
+
+Authentication attempts are counted by the TCP peer address. The server does
+not trust `X-Forwarded-For`: accepting an arbitrary client-provided header lets
+a caller reset its quota on every request. When deployed behind a reverse
+proxy, clients share that proxy's authentication quota. Configure per-client
+limits at the trusted proxy as well; forwarded-client identity support is not
+implemented in Firo.

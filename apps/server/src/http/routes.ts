@@ -83,10 +83,8 @@ async function readJsonBody<T>(req: http.IncomingMessage): Promise<T | null> {
 }
 
 function getClientIp(req: http.IncomingMessage): string {
-  const xForwardedFor = req.headers["x-forwarded-for"];
-  if (typeof xForwardedFor === "string") {
-    return xForwardedFor.split(",")[0].trim();
-  }
+  // Forwarded headers are client-controlled unless a trusted proxy boundary
+  // is configured. Use the peer address rather than allowing arbitrary keys.
   return req.socket.remoteAddress || "127.0.0.1";
 }
 

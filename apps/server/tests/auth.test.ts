@@ -154,6 +154,29 @@ describe("Auth & REST endpoints", () => {
       expect(meAfterLogout.status).toBe(401);
     });
 
+    it("does not let clients bypass rate limits with forwarded IP headers", async () => {
+      for (let i = 0; i < 5; i++) {
+        const response = await fetch(`${serverUrl}/api/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Forwarded-For": `192.0.2.${i + 1}`,
+          },
+          body: JSON.stringify({ username: "unknown", password: "wrong" }),
+        });
+        expect(response.status).toBe(401);
+      }
+      const response = await fetch(`${serverUrl}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Forwarded-For": "192.0.2.99",
+        },
+        body: JSON.stringify({ username: "unknown", password: "wrong" }),
+      });
+      expect(response.status).toBe(429);
+    });
+
     it("enforces rate limits on auth requests", async () => {
       // 5 allowed requests
       for (let i = 0; i < 5; i++) {
