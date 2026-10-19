@@ -78,6 +78,7 @@ deciders: <names or roles>
 | [0037](0037-share-links-are-server-capabilities.md) | Share links are server capabilities, and the app must prove who it is | Accepted | 2026-10-19 |
 | [0038](0038-templates-are-content.md) | Templates are content: one gallery for built-ins and saved fragments | Accepted | 2026-10-19 |
 | [0039](0039-facilitation-is-one-driver-owned-session.md) | Facilitation is one driver-owned session: votes are durable, the live session is ephemeral | Accepted | 2026-10-19 |
+| [0040](0040-formats-are-record-views.md) | Formats are record views, and the selection lane is content-first | Accepted (supersedes the Snap to grid row of [0033](0033-the-two-context-menu-lanes.md) and the sticky-flyout size/stack clause of [0031](0031-rail-slot-kinds-and-the-phase-11-composition.md)) | 2026-10-19 |
 
 ## Open questions
 
