@@ -57,6 +57,23 @@ yarn test
 yarn fix
 ```
 
+### Self-hosting the server
+
+```sh
+docker compose up -d   # serves the app and sync server on http://localhost:8080
+```
+
+The server reads these environment variables (all optional):
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` / `FIRO_PORT` | `8080` | Listen port |
+| `HOST` | `0.0.0.0` | Listen address |
+| `FIRO_DATA_DIR` | `./data` | Where data is stored |
+| `FIRO_DB_PATH` | `<data dir>/firo.sqlite` | SQLite file |
+| `FIRO_WEB_DIR` | auto-detected | Built web app to serve |
+| `FIRO_OPEN_REGISTRATION` | `true` | Set to `false` to disable sign-up |
+
 Full details: [`docs/roadmap.md`](docs/roadmap.md) · [`docs/trd/`](docs/trd/) · [`docs/adr/`](docs/adr/)
 
 ---
