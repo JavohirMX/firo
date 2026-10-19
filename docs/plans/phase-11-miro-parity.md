@@ -191,7 +191,7 @@ The clusters below need ADRs before their implementation starts, because each ch
 - [x] Rail composition and flyouts — one slot, a family of tools, sub-actions with their own keys (extends [`ADR-0029`](../adr/0029-the-rail-is-a-per-user-arrangement.md)) — **accepted as [`ADR-0031`](../adr/0031-rail-slot-kinds-and-the-phase-11-composition.md).**
 - [x] The shell keyboard model — the `⌘K` command palette over the single command registry, toolbar roving focus, `B` and `Escape`, and the single-key toggle (extends [`ADR-0030`](../adr/0030-keyboard-parity-with-miro.md)) — **accepted as [`ADR-0032`](../adr/0032-shell-keyboard-model.md).**
 - [x] The two context-menu lanes — content, structure, and styling — **accepted as [`ADR-0033`](../adr/0033-the-two-context-menu-lanes.md).**
-- [ ] Geometry tokens — the measured spec as a `@firo/ui` contract, including tolerances
+- [x] Geometry tokens — the measured spec as a `@firo/ui` contract, including tolerances — **accepted as [`ADR-0034`](../adr/0034-the-measured-geometry-as-tokens.md).**
 - [ ] Whatever the matrix forces — one ADR per contract change, none per widget. The matrix names three more than this draft did: **side-panel shell** (C8), **share-link server state** (C9), **voting session state** (C7); media scope and history lane were already listed, and format depth (C5) is confirmed.
 
 **Exit:** an accepted ADR per cluster above; no 11.3 cluster opens without one.
