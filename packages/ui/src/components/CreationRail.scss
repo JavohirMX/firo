@@ -5,9 +5,12 @@
   user-select: none;
 
   &__pill {
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    padding: var(--firo-space-xs);
+    // The 1 px border is part of the measured 4 px inset to the button edge.
+    width: var(--firo-rail-width);
+    padding: calc(var(--firo-space-xs) - 1px);
     background-color: var(--firo-color-panel);
     border-radius: var(--firo-radius-md);
     box-shadow: var(--firo-elevation-panel);
@@ -26,9 +29,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: var(--firo-control-size);
+    height: var(--firo-control-size);
     padding: 0;
+    // CONTROL.size + 2 × this margin is the measured 44 px pitch.
     margin: 2px 0;
     border: none;
     background: transparent;
@@ -48,8 +52,8 @@
     }
 
     &--active {
-      background-color: var(--firo-color-accent) !important;
-      color: var(--firo-color-on-accent) !important;
+      background-color: var(--firo-color-active-tool) !important;
+      color: var(--firo-color-accent) !important;
     }
 
     &--dragging {
