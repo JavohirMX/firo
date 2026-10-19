@@ -80,7 +80,9 @@ export const createSyncSessionStore = (api: SyncApi): SyncSessionStore => {
   };
 };
 
-export const syncSession = createSyncSessionStore(createSyncApi());
+export const syncApi: SyncApi = createSyncApi();
+
+export const syncSession = createSyncSessionStore(syncApi);
 
 export const useSyncSession = (): SyncSessionState =>
   useSyncExternalStore(syncSession.subscribe, syncSession.getState);

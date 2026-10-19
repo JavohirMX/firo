@@ -203,7 +203,7 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
         fireEvent.click(createBtn);
       });
 
-      expect(onGenerate).toHaveBeenCalledWith("viewer");
+      expect(onGenerate).toHaveBeenCalledWith("viewer", { expiresAt: null });
 
       // Revoke the existing link
       const revokeBtn = screen.getByTestId(`revoke-link-${sampleLink.token}`);

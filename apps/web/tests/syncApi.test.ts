@@ -159,4 +159,15 @@ describe("sync API client", () => {
       createSyncApi({ fetchImpl: gone }).getShareInfo("t"),
     ).rejects.toMatchObject({ status: 410 });
   });
+
+  it("registers a board with its id and optional name", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(json(201, { board: { id: "b1", name: "Retro" } }));
+    await createSyncApi({ fetchImpl }).createBoard("b1", "Retro");
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("/api/boards");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ id: "b1", name: "Retro" });
+  });
 });

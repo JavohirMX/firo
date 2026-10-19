@@ -14,6 +14,7 @@ const user: SyncUser = {
 
 const fakeApi = (overrides: Partial<SyncApi> = {}): SyncApi => ({
   register: vi.fn().mockResolvedValue(user),
+  createBoard: vi.fn(),
   login: vi.fn().mockResolvedValue(user),
   logout: vi.fn().mockResolvedValue(undefined),
   me: vi.fn().mockResolvedValue(null),

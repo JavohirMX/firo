@@ -55,6 +55,8 @@ export interface SyncApi {
   logout(): Promise<void>;
   /** The signed-in user, or null when there is no valid session. */
   me(): Promise<SyncUser | null>;
+  /** Registers a board on the server for the signed-in user (idempotent). */
+  createBoard(id: string, name?: string): Promise<void>;
   createShare(
     boardId: string,
     options: { role: ShareRole; expiresAt?: number | null },
@@ -144,6 +146,10 @@ export const createSyncApi = (options: SyncApiOptions = {}): SyncApi => {
         }
         throw error;
       }
+    },
+
+    async createBoard(id, name) {
+      await request("/api/boards", { method: "POST", body: { id, name } });
     },
 
     async createShare(boardId, shareOptions) {

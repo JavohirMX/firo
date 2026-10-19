@@ -180,7 +180,7 @@ import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
 import { TagLayer } from "./components/TagLayer";
 import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
 import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
-import { ShareModal } from "./components/ShareModal";
+import { ConnectedShareModal } from "./components/ConnectedShareModal";
 import { TemplateModal } from "./components/TemplateModal";
 import { AuthDialog } from "./components/AuthDialog";
 import { syncSession, useSyncSession } from "./sync/session";
@@ -3284,9 +3284,18 @@ const ExcalidrawWrapper = () => {
           excalidrawAPI={excalidrawAPI}
           collaborators={collaborators}
         />
-        <ShareModal
+        <ConnectedShareModal
           isOpen={shareModalOpen}
           onClose={() => setShareModalOpen(false)}
+          boardId={
+            (boardDoc().read().meta?.id as string | undefined) ||
+            getActiveBoard()?.id ||
+            "default"
+          }
+          onSignIn={() => {
+            setShareModalOpen(false);
+            setAuthDialogOpen(true);
+          }}
         />
         <AuthDialog
           isOpen={authDialogOpen}
