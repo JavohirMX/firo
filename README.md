@@ -73,6 +73,7 @@ The server reads these environment variables (all optional):
 | `FIRO_DB_PATH` | `<data dir>/firo.sqlite` | SQLite file |
 | `FIRO_WEB_DIR` | auto-detected | Built web app to serve |
 | `FIRO_OPEN_REGISTRATION` | `true` | Set to `false` to disable sign-up |
+| `FIRO_ALLOWED_ORIGINS` | empty | Comma-separated extra browser origins allowed to call the API with credentials. Same-origin is always allowed |
 
 Full details: [`docs/roadmap.md`](docs/roadmap.md) · [`docs/trd/`](docs/trd/) · [`docs/adr/`](docs/adr/)
 
