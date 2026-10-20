@@ -151,7 +151,10 @@ export default defineConfig(({ mode }) => {
         },
         {
           find: /^@firo\/ai$/,
-          replacement: path.resolve(__dirname, "../../packages/ai/src/index.ts"),
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/ai/src/index.ts",
+          ),
         },
         {
           find: /^@firo\/ai\/(.*?)/,
