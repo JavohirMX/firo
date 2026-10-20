@@ -12,9 +12,11 @@ import {
   GridViewIcon,
   ListViewIcon,
   MenuHamburgerIcon,
+  MoonIcon,
   MoreVerticalIcon,
   PencilIcon,
   PlusIcon,
+  SunIcon,
   RestoreIcon,
   SearchIcon,
   SortIcon,
@@ -85,6 +87,9 @@ export interface BoardHomeProps {
   folders?: BoardFolderData[];
   activities?: readonly ActivityFeedItem[];
   onClearActivity?: () => void;
+  /** Current chrome theme. With onToggleTheme, shows a theme button. */
+  isDark?: boolean;
+  onToggleTheme?: () => void;
   activeSection?:
     | "all"
     | "recent"
@@ -473,9 +478,15 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         onClick={() => onCreate?.(template.id)}
       >
         <span
-          className="firo-template-card__swatch"
+          className={`firo-template-card__swatch firo-template-card__swatch--${template.id}`}
           style={{ backgroundColor: template.color }}
-        />
+          aria-hidden="true"
+        >
+          <span className="firo-template-card__chip" />
+          <span className="firo-template-card__chip" />
+          <span className="firo-template-card__chip" />
+          <span className="firo-template-card__chip" />
+        </span>
         <span className="firo-template-card__body">
           <span className="firo-template-card__name">{template.name}</span>
           <span className="firo-template-card__desc">
@@ -514,6 +525,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   onExportBoard,
   activities,
   onClearActivity,
+  isDark,
+  onToggleTheme,
 }) => {
   const [internalSection, setInternalSection] = React.useState<string>("all");
   const [internalViewMode, setInternalViewMode] = React.useState<
@@ -558,6 +571,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
     null,
   );
   const [renameBoardDraft, setRenameBoardDraft] = React.useState("");
+  const [moreBoard, setMoreBoard] = React.useState<BoardCardData | null>(null);
   const [movingBoard, setMovingBoard] = React.useState<BoardCardData | null>(
     null,
   );
@@ -623,6 +637,26 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
     setEditFolderName("");
   };
 
+  const [deletingBoard, setDeletingBoard] = React.useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const deleteOpenerRef = React.useRef<HTMLElement | null>(null);
+  const requestDelete = (id: string) => {
+    const target = boards.find((board) => board.id === id);
+    if (!target) {
+      return;
+    }
+    deleteOpenerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setDeletingBoard({ id: target.id, name: target.name });
+  };
+  const closeDeleteDialog = () => {
+    setDeletingBoard(null);
+    deleteOpenerRef.current?.focus?.();
+  };
   const live = boards.filter((board) => !board.trashed);
   const trashed = boards.filter((board) => board.trashed);
 
@@ -817,14 +851,6 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 <div className="firo-board-sidebar__folder-create-actions">
                   <button
                     type="button"
-                    className="firo-board-sidebar__folder-btn"
-                    onClick={handleConfirmCreateFolder}
-                    aria-label="Confirm folder"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
                     className="firo-board-sidebar__folder-btn firo-board-sidebar__folder-btn--cancel"
                     onClick={() => {
                       setIsCreatingFolder(false);
@@ -833,6 +859,15 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     aria-label="Cancel folder"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="firo-board-sidebar__folder-btn"
+                    onClick={handleConfirmCreateFolder}
+                    aria-label="Confirm folder"
+                    disabled={!newFolderName.trim()}
+                  >
+                    Add
                   </button>
                 </div>
               </div>
@@ -1005,6 +1040,19 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 <ListViewIcon size={16} />
               </button>
             </div>
+            {onToggleTheme && (
+              <button
+                type="button"
+                className="firo-board-home__view-btn firo-board-home__theme-btn"
+                aria-label={
+                  isDark ? "Switch to light theme" : "Switch to dark theme"
+                }
+                title={isDark ? "Light theme" : "Dark theme"}
+                onClick={onToggleTheme}
+              >
+                {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+              </button>
+            )}
             <div className="firo-board-home__sort">
               <SortIcon size={16} />
               <select
@@ -1048,7 +1096,9 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
 
         {currentSection === "all" && templates.length > 0 && (
           <section
-            className="firo-board-home__section"
+            className={`firo-board-home__section firo-board-home__section--templates${
+              live.length > 0 ? " is-compact" : ""
+            }`}
             aria-label="Start from a template"
           >
             <h2 className="firo-board-home__section-title">
@@ -1226,7 +1276,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 className="firo-board-card__action firo-board-card__action--danger"
                                 aria-label={`Delete ${board.name} permanently`}
                                 title="Delete forever"
-                                onClick={() => onDeleteBoard?.(board.id)}
+                                onClick={() => requestDelete(board.id)}
                               >
                                 <TrashIcon size={16} />
                               </button>
@@ -1293,6 +1343,16 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                               )}
                               <button
                                 type="button"
+                                className="firo-board-card__action firo-board-table__more"
+                                aria-label={`More actions for ${board.name}`}
+                                title="More actions"
+                                aria-haspopup="dialog"
+                                onClick={() => setMoreBoard(board)}
+                              >
+                                <MoreVerticalIcon size={16} />
+                              </button>
+                              <button
+                                type="button"
                                 className="firo-board-card__action"
                                 aria-label={`Move ${board.name} to trash`}
                                 title="Move to trash"
@@ -1319,7 +1379,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     onRename={onRenameBoard}
                     onTrash={onTrashBoard}
                     onRestore={onRestoreBoard}
-                    onDelete={onDeleteBoard}
+                    onDelete={requestDelete}
                     onToggleStar={onToggleStarBoard}
                     onDuplicate={onDuplicateBoard}
                     onMoveToFolder={onMoveBoardToFolder}
@@ -1347,7 +1407,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   onRename={onRenameBoard}
                   onTrash={onTrashBoard}
                   onRestore={onRestoreBoard}
-                  onDelete={onDeleteBoard}
+                  onDelete={requestDelete}
                   onToggleStar={onToggleStarBoard}
                   onDuplicate={onDuplicateBoard}
                   onMoveToFolder={onMoveBoardToFolder}
@@ -1360,6 +1420,97 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
         )}
       </main>
 
+      {moreBoard && (
+        <div
+          className="firo-board-modal-overlay"
+          onClick={() => setMoreBoard(null)}
+        >
+          <div
+            className="firo-board-modal"
+            role="dialog"
+            aria-label={`Actions for ${moreBoard.name}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="firo-board-modal__header">
+              <h3 className="firo-board-modal__title">{moreBoard.name}</h3>
+              <button
+                type="button"
+                className="firo-board-modal__close"
+                aria-label="Close dialog"
+                onClick={() => setMoreBoard(null)}
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+            <div className="firo-board-modal__body">
+              <div className="firo-board-modal__folder-list">
+                <button
+                  type="button"
+                  className="firo-board-modal__folder-option"
+                  onClick={() => {
+                    setRenameBoardDraft(moreBoard.name);
+                    setRenamingBoardId(moreBoard.id);
+                    setMoreBoard(null);
+                  }}
+                >
+                  <PencilIcon size={16} />
+                  <span>Rename</span>
+                </button>
+                {onDuplicateBoard && (
+                  <button
+                    type="button"
+                    className="firo-board-modal__folder-option"
+                    onClick={() => {
+                      onDuplicateBoard(moreBoard.id);
+                      setMoreBoard(null);
+                    }}
+                  >
+                    <DuplicateIcon size={16} />
+                    <span>Duplicate</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="firo-board-modal__folder-option"
+                  onClick={() => {
+                    setMovingBoard(moreBoard);
+                    setMoreBoard(null);
+                  }}
+                >
+                  <FolderIcon size={16} />
+                  <span>Move to folder</span>
+                </button>
+                {onExportBoard && (
+                  <>
+                    <button
+                      type="button"
+                      className="firo-board-modal__folder-option"
+                      onClick={() => {
+                        onExportBoard(moreBoard.id, "firo");
+                        setMoreBoard(null);
+                      }}
+                    >
+                      <DownloadIcon size={16} />
+                      <span>Export as .firo</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="firo-board-modal__folder-option"
+                      onClick={() => {
+                        onExportBoard(moreBoard.id, "pdf");
+                        setMoreBoard(null);
+                      }}
+                    >
+                      <FilePdfIcon size={16} />
+                      <span>Export as PDF</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {movingBoard && (
         <div
           className="firo-board-modal-overlay"
@@ -1418,6 +1569,72 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     <span>{f.name}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {deletingBoard && (
+        <div className="firo-board-modal-overlay" onClick={closeDeleteDialog}>
+          <div
+            className="firo-board-modal firo-board-modal--confirm"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="firo-delete-title"
+            aria-describedby="firo-delete-desc"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.stopPropagation();
+                closeDeleteDialog();
+              }
+              if (event.key === "Tab") {
+                const buttons = Array.from(
+                  event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                    "button",
+                  ),
+                );
+                const first = buttons[0];
+                const last = buttons[buttons.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                  event.preventDefault();
+                  last?.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                  event.preventDefault();
+                  first?.focus();
+                }
+              }
+            }}
+          >
+            <div className="firo-board-modal__header">
+              <h3 className="firo-board-modal__title" id="firo-delete-title">
+                Delete &ldquo;{deletingBoard.name}&rdquo; forever?
+              </h3>
+            </div>
+            <div className="firo-board-modal__body">
+              <p className="firo-board-modal__text" id="firo-delete-desc">
+                This deletes the board and its saved versions from this browser.
+                It can&rsquo;t be undone, so export it first if you may need it.
+              </p>
+              <div className="firo-board-modal__actions">
+                <button
+                  type="button"
+                  className="firo-board-modal__btn"
+                  autoFocus
+                  onClick={closeDeleteDialog}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="firo-board-modal__btn firo-board-modal__btn--danger"
+                  onClick={() => {
+                    onDeleteBoard?.(deletingBoard.id);
+                    setDeletingBoard(null);
+                  }}
+                >
+                  Delete forever
+                </button>
               </div>
             </div>
           </div>

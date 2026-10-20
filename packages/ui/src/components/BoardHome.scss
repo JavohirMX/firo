@@ -203,11 +203,17 @@
 
   &__empty {
     margin: 0;
-    padding: var(--firo-space-lg);
+    padding: var(--firo-space-xl) var(--firo-space-lg);
+    text-align: center;
     color: var(--firo-color-text-muted);
     background-color: var(--firo-color-panel);
+    background-image: radial-gradient(
+      var(--firo-color-border) 1px,
+      transparent 1px
+    );
+    background-size: 16px 16px;
     border: 1px dashed var(--firo-color-border-strong);
-    border-radius: var(--firo-radius-md);
+    border-radius: var(--firo-radius-lg);
   }
 }
 
@@ -364,7 +370,8 @@
   }
 
   &__folder-btn {
-    padding: 2px var(--firo-space-sm);
+    min-height: 28px;
+    padding: 0 var(--firo-space-md);
     font: inherit;
     font-size: var(--firo-font-size-xs);
     border-radius: var(--firo-radius-sm);
@@ -372,6 +379,11 @@
     background-color: var(--firo-color-accent);
     color: var(--firo-color-on-accent);
     cursor: pointer;
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
 
     &--cancel {
       background-color: transparent;
@@ -509,7 +521,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Not hidden: the actions menu drops below the thumbnail and must not be
+     cut off by the card edge. The thumbnail rounds its own top corners. */
+  overflow: visible;
   background-color: var(--firo-color-panel);
   border: 1px solid var(--firo-color-border);
   border-radius: var(--firo-radius-lg);
@@ -518,7 +532,12 @@
     border-color var(--firo-motion-fast) var(--firo-motion-ease),
     transform var(--firo-motion-fast) var(--firo-motion-ease);
 
+  &:focus-within {
+    z-index: 2;
+  }
+
   &:hover {
+    z-index: 2;
     box-shadow: var(--firo-elevation-floating);
     border-color: var(--firo-color-border-strong);
     transform: translateY(-2px);
@@ -589,6 +608,8 @@
     aspect-ratio: 16 / 10;
     width: 100%;
     overflow: hidden;
+    border-radius: calc(var(--firo-radius-lg) - 1px)
+      calc(var(--firo-radius-lg) - 1px) 0 0;
     color: var(--firo-color-text-muted);
     background-color: var(--firo-color-surface);
     border-bottom: 1px solid var(--firo-color-border);
@@ -781,6 +802,20 @@
   }
 }
 
+/* Touch targets on phones: 44px, the size a thumb can hit without a miss.
+   Wider touch screens keep the compact buttons, which fit a narrower card. */
+@media (pointer: coarse) {
+  .firo-board-card .firo-board-card__star,
+  .firo-board-card .firo-board-card__action {
+    width: 44px;
+    height: 44px;
+  }
+
+  .firo-board-card__thumb {
+    aspect-ratio: 16 / 9;
+  }
+}
+
 /* List / Table View */
 .firo-board-table-container {
   width: 100%;
@@ -903,6 +938,10 @@
       color: var(--firo-color-accent);
       text-decoration: underline;
     }
+  }
+
+  &__more {
+    display: none;
   }
 
   &__action-group {
@@ -1045,10 +1084,134 @@
   }
 
   &__swatch {
+    position: relative;
     width: 100%;
-    height: 72px;
+    height: 112px;
     display: block;
+    overflow: hidden;
     border-bottom: 1px solid var(--firo-color-border);
+    background-image: radial-gradient(
+      rgba(17, 19, 24, 0.12) 1px,
+      transparent 1px
+    );
+    background-size: 14px 14px;
+  }
+
+  /* Miniature board layouts, one per template. Chips are stand-ins for
+     stickies and frames, tinted from the template colour. */
+  &__chip {
+    position: absolute;
+    display: block;
+    width: 26%;
+    height: 34%;
+    background-color: rgba(255, 255, 255, 0.82);
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(15, 17, 26, 0.18);
+    transition: transform var(--firo-motion-base) var(--firo-motion-ease);
+
+    &:nth-child(1) {
+      left: 8%;
+      top: 16%;
+    }
+    &:nth-child(2) {
+      left: 38%;
+      top: 16%;
+    }
+    &:nth-child(3) {
+      left: 68%;
+      top: 16%;
+    }
+    &:nth-child(4) {
+      left: 23%;
+      top: 56%;
+      width: 54%;
+      height: 26%;
+    }
+  }
+
+  &__swatch--brainstorm &__chip {
+    &:nth-child(1) {
+      left: 37%;
+      top: 33%;
+      width: 26%;
+      height: 34%;
+      background-color: #fff;
+    }
+    &:nth-child(2) {
+      left: 8%;
+      top: 12%;
+      transform: rotate(-4deg);
+    }
+    &:nth-child(3) {
+      left: 68%;
+      top: 14%;
+      transform: rotate(3deg);
+    }
+    &:nth-child(4) {
+      left: 14%;
+      top: 62%;
+      width: 26%;
+      height: 28%;
+      transform: rotate(2deg);
+    }
+  }
+
+  &__swatch--user-story-map &__chip {
+    &:nth-child(1) {
+      left: 6%;
+      top: 12%;
+      width: 88%;
+      height: 20%;
+    }
+    &:nth-child(2) {
+      left: 6%;
+      top: 42%;
+      width: 24%;
+      height: 22%;
+    }
+    &:nth-child(3) {
+      left: 38%;
+      top: 42%;
+      width: 24%;
+      height: 22%;
+    }
+    &:nth-child(4) {
+      left: 70%;
+      top: 42%;
+      width: 24%;
+      height: 22%;
+    }
+  }
+
+  &__swatch--meeting-notes &__chip {
+    &:nth-child(1) {
+      left: 8%;
+      top: 14%;
+      width: 40%;
+      height: 72%;
+    }
+    &:nth-child(2) {
+      left: 54%;
+      top: 14%;
+      width: 38%;
+      height: 20%;
+    }
+    &:nth-child(3) {
+      left: 54%;
+      top: 42%;
+      width: 38%;
+      height: 20%;
+    }
+    &:nth-child(4) {
+      left: 54%;
+      top: 70%;
+      width: 38%;
+      height: 16%;
+    }
+  }
+
+  &:hover &__chip:nth-child(odd) {
+    transform: translateY(-2px);
   }
 
   &__body {
@@ -1221,8 +1384,214 @@
   }
 
   /* One comfortable column of cards on phones */
-  .firo-board-grid,
-  .firo-template-grid {
+  .firo-board-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* One swipeable row, so the user's own boards stay above the fold. */
+  .firo-template-grid {
+    display: flex;
+    gap: 12px;
+    margin: 0 calc(var(--firo-space-md) * -1);
+    padding: 0 var(--firo-space-md) var(--firo-space-md);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding: 0 var(--firo-space-md);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .firo-template-card {
+    flex: 0 0 200px;
+    scroll-snap-align: start;
+
+    &__swatch {
+      height: 84px;
+    }
+
+    &__desc {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+}
+
+/* Once a person has boards of their own, the templates step back: a shorter
+   preview and no description, so their boards come into view sooner. */
+.firo-board-home__section--templates.is-compact {
+  .firo-template-card__swatch {
+    height: 72px;
+  }
+
+  .firo-template-card__desc {
+    display: none;
+  }
+}
+
+/* List view on phones and touch tablets: keep star, name and actions in view. Folder and last
+   opened are secondary and would otherwise push the actions off screen. */
+@media (max-width: 768px), (pointer: coarse) {
+  .firo-board-table {
+    &__th--folder,
+    &__td--folder,
+    &__th--opened,
+    &__td--opened,
+    &__thumb {
+      display: none;
+    }
+
+    &__td--actions > * {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    &__th,
+    &__td {
+      padding-left: var(--firo-space-xs);
+      padding-right: var(--firo-space-xs);
+    }
+
+    &__td--star {
+      padding-left: var(--firo-space-sm);
+      width: 44px;
+    }
+
+    &__td--name {
+      width: 100%;
+      max-width: 0;
+    }
+
+    /* Let tags drop under the name, and give the rename field the full row. */
+    &__name-cell {
+      flex-wrap: wrap;
+      gap: var(--firo-space-xs) var(--firo-space-sm);
+    }
+
+    &__name-cell .firo-board-card__name-input {
+      flex: 1 1 100%;
+      min-width: 0;
+      min-height: 36px;
+      font-size: 16px;
+    }
+
+    &__td--name .firo-board-table__name-link,
+    &__td--name button {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &__td--actions {
+      padding-right: var(--firo-space-sm);
+    }
+
+    &__action-group {
+      gap: 0;
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .firo-board-table .firo-board-card__star,
+  .firo-board-table .firo-board-card__action {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Theme button: a bordered round control like the other header buttons. */
+.firo-board-home__view-btn.firo-board-home__theme-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-pill);
+  background-color: var(--firo-color-panel);
+  color: var(--firo-color-text);
+
+  &:hover {
+    background-color: var(--firo-color-surface);
+  }
+}
+
+@media (pointer: coarse) {
+  .firo-board-home__view-btn,
+  .firo-board-home__view-btn.firo-board-home__theme-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Compact row actions on phones and on any touch device: six 44px targets do
+   not fit a table row, so rename, duplicate, move and export sit in the More
+   actions sheet. */
+@media (max-width: 768px), (pointer: coarse) {
+  .firo-board-table {
+    /* Compact pattern: More actions and trash stay in the row; rename,
+       duplicate, move and export live in the More actions sheet. */
+    &__action-group {
+      flex-wrap: nowrap;
+
+      > .firo-board-card__action:not(:last-child):not(.firo-board-table__more) {
+        display: none;
+      }
+
+      > .firo-board-table__more {
+        display: inline-flex;
+      }
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .firo-board-sidebar__folder-btn,
+  .firo-board-sidebar__folder-input {
+    min-height: 44px;
+  }
+}
+
+.firo-board-modal--confirm {
+  max-width: 400px;
+
+  .firo-board-modal__text {
+    margin: 0 0 var(--firo-space-md);
+    font-size: var(--firo-font-size-sm);
+    color: var(--firo-color-text-muted);
+    line-height: 1.5;
+  }
+
+  .firo-board-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--firo-space-sm);
+  }
+
+  .firo-board-modal__btn {
+    min-height: 36px;
+    padding: 0 var(--firo-space-md);
+    font: inherit;
+    font-size: var(--firo-font-size-sm);
+    color: var(--firo-color-text);
+    background-color: var(--firo-color-surface);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-md);
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 2px;
+    }
+
+    &--danger {
+      color: #fff;
+      background-color: #c62828;
+      border-color: #c62828;
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .firo-board-modal--confirm .firo-board-modal__btn {
+    min-height: 44px;
   }
 }

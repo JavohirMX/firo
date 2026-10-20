@@ -96,6 +96,13 @@
   --firo-color-warning: #a35c00;
   --firo-color-shadow: rgba(15, 17, 26, 0.12);
 
+  /* Aliases that components already read. They were never defined, so each one
+     fell back to a light literal and stayed light in dark mode. */
+  --firo-color-surface-subtle: var(--firo-color-surface);
+  --firo-color-surface-hover: var(--firo-color-button-secondary);
+  --firo-color-text-secondary: var(--firo-color-text-muted);
+  --firo-color-border-hover: var(--firo-color-border-strong);
+
   /* Elevation */
   --firo-elevation-panel: 0 1px 2px var(--firo-color-shadow),
     0 4px 12px var(--firo-color-shadow);
@@ -133,6 +140,13 @@
   --firo-color-success: #4fd18e;
   --firo-color-warning: #f2b04a;
   --firo-color-shadow: rgba(0, 0, 0, 0.5);
+
+  /* Aliases that components already read. They were never defined, so each one
+     fell back to a light literal and stayed light in dark mode. */
+  --firo-color-surface-subtle: var(--firo-color-surface);
+  --firo-color-surface-hover: var(--firo-color-button-secondary);
+  --firo-color-text-secondary: var(--firo-color-text-muted);
+  --firo-color-border-hover: var(--firo-color-border-strong);
 }
 
 /**
