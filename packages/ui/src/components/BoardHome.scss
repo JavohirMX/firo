@@ -1357,7 +1357,7 @@
     display: flex;
     gap: 12px;
     margin: 0 calc(var(--firo-space-md) * -1);
-    padding: 0 var(--firo-space-md) var(--firo-space-sm);
+    padding: 0 var(--firo-space-md) var(--firo-space-md);
     overflow-x: auto;
     scroll-snap-type: x proximity;
     scroll-padding: 0 var(--firo-space-md);
