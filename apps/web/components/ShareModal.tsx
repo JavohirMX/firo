@@ -337,8 +337,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   className="firo-share-modal__empty"
                   data-testid="no-share-links"
                 >
-                  No active share links. Create one above to invite
-                  collaborators.
+                  {unavailableMessage
+                    ? "No active share links."
+                    : "No active share links. Create one above to invite collaborators."}
                 </div>
               ) : (
                 links.map((link) => {
