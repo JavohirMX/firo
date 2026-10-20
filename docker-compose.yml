@@ -9,6 +9,6 @@ services:
     ports:
       - "8080:8080"
     environment:
-      FIRO_SECRET: ${FIRO_SECRET:-} # generated on first run
-      FIRO_URL: ${FIRO_URL:-https://firo.example.com}
+      # Registration is open by default. Set to "false" once your users exist.
+      FIRO_OPEN_REGISTRATION: ${FIRO_OPEN_REGISTRATION:-true}
     restart: unless-stopped

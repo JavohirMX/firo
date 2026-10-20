@@ -20,8 +20,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      FIRO_SECRET: ${FIRO_SECRET}     # generated on first run
-      FIRO_URL: https://firo.example.com
+      FIRO_OPEN_REGISTRATION: "true"  # set to "false" to close sign-up
 ```
 
 That is the entire install. Anything that makes this longer is a design failure.
