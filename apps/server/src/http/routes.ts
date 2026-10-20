@@ -160,8 +160,9 @@ export function createHttpHandler(
       const body = await readJsonBody<{ username?: string; password?: string }>(
         req,
       );
-      const username = body?.username?.trim();
-      const password = body?.password;
+      const username =
+        typeof body?.username === "string" ? body.username.trim() : "";
+      const password = typeof body?.password === "string" ? body.password : "";
 
       if (!username || username.length < 3 || username.length > 50) {
         sendJson(res, 400, {
@@ -227,8 +228,9 @@ export function createHttpHandler(
       const body = await readJsonBody<{ username?: string; password?: string }>(
         req,
       );
-      const username = body?.username?.trim();
-      const password = body?.password;
+      const username =
+        typeof body?.username === "string" ? body.username.trim() : "";
+      const password = typeof body?.password === "string" ? body.password : "";
 
       if (!username || !password) {
         sendJson(res, 400, { error: "Username and password are required." });
