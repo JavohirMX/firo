@@ -370,7 +370,8 @@
   }
 
   &__folder-btn {
-    padding: 2px var(--firo-space-sm);
+    min-height: 28px;
+    padding: 0 var(--firo-space-md);
     font: inherit;
     font-size: var(--firo-font-size-xs);
     border-radius: var(--firo-radius-sm);
@@ -378,6 +379,11 @@
     background-color: var(--firo-color-accent);
     color: var(--firo-color-on-accent);
     cursor: pointer;
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
 
     &--cancel {
       background-color: transparent;
@@ -1534,5 +1540,12 @@
         display: inline-flex;
       }
     }
+  }
+}
+
+@media (pointer: coarse) {
+  .firo-board-sidebar__folder-btn,
+  .firo-board-sidebar__folder-input {
+    min-height: 44px;
   }
 }

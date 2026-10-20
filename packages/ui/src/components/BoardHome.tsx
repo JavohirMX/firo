@@ -831,14 +831,6 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 <div className="firo-board-sidebar__folder-create-actions">
                   <button
                     type="button"
-                    className="firo-board-sidebar__folder-btn"
-                    onClick={handleConfirmCreateFolder}
-                    aria-label="Confirm folder"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
                     className="firo-board-sidebar__folder-btn firo-board-sidebar__folder-btn--cancel"
                     onClick={() => {
                       setIsCreatingFolder(false);
@@ -847,6 +839,15 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     aria-label="Cancel folder"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="firo-board-sidebar__folder-btn"
+                    onClick={handleConfirmCreateFolder}
+                    aria-label="Confirm folder"
+                    disabled={!newFolderName.trim()}
+                  >
+                    Add
                   </button>
                 </div>
               </div>
