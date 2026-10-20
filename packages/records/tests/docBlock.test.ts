@@ -393,3 +393,36 @@ describe("Doc Block Projection Layout & Interaction", () => {
     expect(mutation?.recordId).toBe("doc-2");
   });
 });
+
+describe("Doc Block committed content", () => {
+  it("keeps the committed document through a record round trip", () => {
+    const node = docBlockSchema.nodes.doc.create(null, [
+      docBlockSchema.nodes.paragraph.create(
+        null,
+        docBlockSchema.text("Persist me 123"),
+      ),
+    ]);
+    const record = createDocBlockRecord({
+      title: "Notes",
+      contentJson: JSON.stringify(serializeDocBlockNode(node)),
+    });
+
+    const stored = JSON.parse(
+      JSON.stringify(docBlockRecordToFiroRecord(record)),
+    ) as FiroRecord;
+    const restored = docBlockRecordFromFiroRecord(stored);
+
+    expect(restored.contentJson).toBeDefined();
+    expect(
+      docBlockToPlainText(parseDocBlockJson(JSON.parse(restored.contentJson!))),
+    ).toContain("Persist me 123");
+  });
+
+  it("reads a record saved before content was stored", () => {
+    const legacy = docBlockRecordToFiroRecord(
+      createDocBlockRecord({ title: "Old" }),
+    );
+    expect(legacy.values.contentJson).toBeUndefined();
+    expect(docBlockRecordFromFiroRecord(legacy).contentJson).toBeUndefined();
+  });
+});
