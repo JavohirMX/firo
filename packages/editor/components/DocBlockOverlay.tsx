@@ -18,7 +18,11 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as Y from "yjs";
 import { DOMParser, DOMSerializer } from "prosemirror-model";
 
-import { createDefaultDocBlockNode, docBlockSchema } from "@firo/records";
+import {
+  createDefaultDocBlockNode,
+  docBlockSchema,
+  parseDocBlockJson,
+} from "@firo/records";
 
 import type { DocBlockRecord } from "@firo/schema";
 
@@ -151,6 +155,8 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   const [title, setTitle] = useState(record.title);
+  // Read once when the editor mounts; later saves must not reinitialise it.
+  const savedContentRef = useRef(record.contentJson);
   const isDirtyRef = useRef(false);
   const hasCommittedRef = useRef(false);
   const bindingRef = useRef<YProseMirrorBinding | null>(null);
@@ -247,8 +253,15 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
         );
       }
     } else {
-      // Create initial document
-      const initialDoc = createDefaultDocBlockNode();
+      // Nothing live: open the last committed content, or a fresh document.
+      let initialDoc = createDefaultDocBlockNode();
+      if (savedContentRef.current) {
+        try {
+          initialDoc = parseDocBlockJson(JSON.parse(savedContentRef.current));
+        } catch {
+          // unreadable saved content: fall back to the fresh document
+        }
+      }
       editorEl.innerHTML = "";
       editorEl.appendChild(
         DOMSerializer.fromSchema(docBlockSchema).serializeFragment(

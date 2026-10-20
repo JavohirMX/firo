@@ -127,6 +127,7 @@ import {
   createDocBlockRecord,
   docBlockRecordToFiroRecord,
   docBlockRecordFromFiroRecord,
+  serializeDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
 import {
@@ -1719,7 +1720,7 @@ const ExcalidrawWrapper = () => {
   } | null>(null);
 
   const handleUpdateDocBlockRecord = useCallback(
-    (recordId: string, _updatedDoc: any, updatedTitle?: string) => {
+    (recordId: string, updatedDoc: any, updatedTitle?: string) => {
       const doc = boardDoc();
       const existing = doc.read().records.find((r) => r.id === recordId);
       if (!existing) {
@@ -1730,6 +1731,11 @@ const ExcalidrawWrapper = () => {
       const updatedTyped: DocBlockRecord = {
         ...typed,
         title: nextTitle,
+        ...(updatedDoc
+          ? {
+              contentJson: JSON.stringify(serializeDocBlockNode(updatedDoc)),
+            }
+          : {}),
         updated: Date.now(),
       };
       const updatedFiroRecord = docBlockRecordToFiroRecord(updatedTyped);
