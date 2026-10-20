@@ -414,6 +414,12 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
           value={title}
           placeholder="Doc Title"
           disabled={readOnly}
+          onFocus={(e) => {
+            // A fresh block carries a stand-in title; typing should replace it.
+            if (e.target.value === "Untitled Document") {
+              e.target.select();
+            }
+          }}
           onChange={(e) => {
             const nextTitle = e.target.value;
             setTitle(nextTitle);
