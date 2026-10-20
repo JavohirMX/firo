@@ -53,11 +53,17 @@ export class Room {
   public addClient(client: ClientConnection): void {
     this.clients.add(client);
 
-    // 1. Send sync step 1 to client
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.writeSyncStep1(encoder, this.doc);
-    client.send(encoding.toUint8Array(encoder));
+    // Request offline document edits only from roles allowed to edit the board.
+    // A SyncStep1 makes the browser upload its local Yjs state as SyncStep2.
+    // Read-only/comment-only browsers may have locally seeded board metadata;
+    // asking for that upload immediately violates their write permissions and
+    // disconnects an otherwise valid reader before they do anything.
+    if (client.role === "owner" || client.role === "editor") {
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, MESSAGE_SYNC);
+      syncProtocol.writeSyncStep1(encoder, this.doc);
+      client.send(encoding.toUint8Array(encoder));
+    }
 
     // Send full document state to client so client is in sync immediately
     const step2Encoder = encoding.createEncoder();
