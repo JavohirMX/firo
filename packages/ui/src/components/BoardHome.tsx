@@ -11,6 +11,7 @@ import {
   FolderIcon,
   GridViewIcon,
   ListViewIcon,
+  MenuHamburgerIcon,
   MoreVerticalIcon,
   PencilIcon,
   PlusIcon,
@@ -525,6 +526,27 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   >([]);
 
   const [query, setQuery] = React.useState("");
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
+  // Close the mobile navigation overlay with Escape, and lock body scroll
+  // while it is open so the page behind it does not scroll under the sheet.
+  React.useEffect(() => {
+    if (!sidebarOpen) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [sidebarOpen]);
   const [isCreatingFolder, setIsCreatingFolder] = React.useState(false);
   const [newFolderName, setNewFolderName] = React.useState("");
   const [editingFolderId, setEditingFolderId] = React.useState<string | null>(
@@ -542,6 +564,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
 
   const handleSelectSection = (section: string) => {
     setInternalSection(section);
+    setSidebarOpen(false);
     onSelectSection?.(section);
   };
 
@@ -678,8 +701,21 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
 
   return (
     <div className="firo-board-home" role="region" aria-label="Boards">
-      <aside className="firo-board-sidebar" aria-label="Navigation">
+      <aside
+        className={`firo-board-sidebar ${
+          sidebarOpen ? "firo-board-sidebar--open" : ""
+        }`}
+        aria-label="Navigation"
+      >
         <div className="firo-board-sidebar__top">
+          <button
+            type="button"
+            className="firo-board-sidebar__close"
+            aria-label="Close navigation"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <CloseIcon size={18} />
+          </button>
           <div className="firo-board-sidebar__nav">
             <button
               type="button"
@@ -889,8 +925,26 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
         </div>
       </aside>
 
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="firo-board-sidebar__backdrop"
+          aria-label="Close navigation"
+          tabIndex={-1}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <main className="firo-board-home__main">
         <header className="firo-board-home__header">
+          <button
+            type="button"
+            className="firo-board-home__nav-toggle"
+            aria-label="Open navigation"
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <MenuHamburgerIcon size={18} />
+          </button>
           <h1 className="firo-board-home__title">Boards</h1>
           <div className="firo-board-home__actions">
             <label className="firo-board-home__search">
