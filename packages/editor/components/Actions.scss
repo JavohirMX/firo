@@ -154,6 +154,7 @@
       transition: all 0.2s ease;
 
       background: var(--mobile-action-button-bg);
+      box-shadow: var(--shadow-island);
 
       svg {
         width: 1rem;
@@ -201,6 +202,7 @@
       height: var(--mobile-action-button-size);
 
       background: var(--mobile-action-button-bg);
+      box-shadow: var(--shadow-island);
 
       &:hover {
         background-color: transparent;
