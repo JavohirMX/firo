@@ -1351,7 +1351,10 @@
   }
 
   /* One comfortable column of cards on phones */
-  .firo-board-grid,
+  .firo-board-grid {
+    grid-template-columns: 1fr;
+  }
+
   /* One swipeable row, so the user's own boards stay above the fold. */
   .firo-template-grid {
     display: flex;
