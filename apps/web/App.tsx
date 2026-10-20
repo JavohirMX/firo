@@ -76,6 +76,8 @@ import {
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { canAutoFit, computeFitView } from "./board/initialFit";
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
 
@@ -521,29 +523,15 @@ const fitViewToElements = (
   api: ExcalidrawImperativeAPI,
   elements: readonly { x: number; y: number; width: number; height: number }[],
 ) => {
-  if (elements.length === 0) {
+  const fit = computeFitView(api.getAppState(), elements);
+  if (!fit) {
     return;
   }
-  const view = api.getAppState();
-  const minX = Math.min(...elements.map((el) => el.x));
-  const minY = Math.min(...elements.map((el) => el.y));
-  const maxX = Math.max(...elements.map((el) => el.x + el.width));
-  const maxY = Math.max(...elements.map((el) => el.y + el.height));
-  const left = 96;
-  const top = 88;
-  const availW = Math.max(120, view.width - left - 40);
-  const availH = Math.max(120, view.height - top - 96);
-  const boundsW = Math.max(1, maxX - minX);
-  const boundsH = Math.max(1, maxY - minY);
-  const zoom = Math.min(
-    1,
-    Math.max(0.1, Math.min(availW / boundsW, availH / boundsH)),
-  );
   api.updateScene({
     appState: {
-      zoom: { value: zoom as never },
-      scrollX: (left + availW / 2) / zoom - (minX + maxX) / 2,
-      scrollY: (top + availH / 2) / zoom - (minY + maxY) / 2,
+      zoom: { value: fit.zoom as never },
+      scrollX: fit.scrollX,
+      scrollY: fit.scrollY,
     },
     captureUpdate: CaptureUpdateAction.NEVER,
   });
@@ -1679,9 +1667,27 @@ export const insertDocBlockOnBoard = (
     });
   }
 
-  const docBlock = createDocBlockRecord({
+  const created = createDocBlockRecord({
     title: "Untitled Document",
   });
+  // On a narrow screen a new block at its default width would run off the
+  // edge, or force a zoom where its text is tiny. Size the new block to the
+  // viewport instead (existing blocks are never resized).
+  const view = excalidrawAPI?.getAppState();
+  const fitWidth = view
+    ? Math.floor(view.width / view.zoom.value - 32)
+    : created.dimensions.width;
+  const fitHeight = view
+    ? Math.floor((view.height * 0.6) / view.zoom.value)
+    : created.dimensions.height;
+  const docBlock = {
+    ...created,
+    dimensions: {
+      ...created.dimensions,
+      width: Math.max(240, Math.min(created.dimensions.width, fitWidth)),
+      height: Math.max(200, Math.min(created.dimensions.height, fitHeight)),
+    },
+  };
   const firoRecord = docBlockRecordToFiroRecord(docBlock);
   mutations.push({
     kind: "createRecord",
@@ -1708,6 +1714,17 @@ export const insertDocBlockOnBoard = (
       x = 100;
       y = 100;
     }
+  }
+
+  if (view) {
+    // keep the block inside the viewport horizontally
+    const minX = -view.scrollX + 16 / view.zoom.value;
+    const maxX =
+      -view.scrollX +
+      view.width / view.zoom.value -
+      docBlock.dimensions.width -
+      16 / view.zoom.value;
+    x = Math.max(minX, Math.min(x, Math.max(minX, maxX)));
   }
 
   const element = newElement({
@@ -2792,14 +2809,7 @@ const ExcalidrawWrapper = () => {
       if (done) {
         return;
       }
-      if (
-        Date.now() - startedAt > 4000 ||
-        state.scrollX !== 0 ||
-        state.scrollY !== 0 ||
-        state.zoom.value !== 1 ||
-        state.newElement ||
-        state.editingTextElement
-      ) {
+      if (!canAutoFit(state, Date.now() - startedAt)) {
         done = true;
         return;
       }
