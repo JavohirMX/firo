@@ -163,7 +163,9 @@ export const CollabBar: React.FC<CollabBarProps> = ({
             data-testid="view-only-badge"
             title={`You have ${readOnlyRole} access to this board`}
           >
-            <span className="firo-connection-pill__label">View only</span>
+            <span className="firo-connection-pill__label">
+              {readOnlyRole === "commenter" ? "Comment only" : "View only"}
+            </span>
           </div>
         )}
 

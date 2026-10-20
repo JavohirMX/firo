@@ -206,6 +206,10 @@ describe("Client Collaboration and Presence UI", () => {
       expect(screen.getByTestId("view-only-badge").textContent).toContain(
         "View only",
       );
+      rerender(<CollabBar readOnlyRole="commenter" />);
+      expect(screen.getByTestId("view-only-badge").textContent).toContain(
+        "Comment only",
+      );
       rerender(<CollabBar readOnlyRole={null} />);
       expect(screen.queryByTestId("view-only-badge")).toBeNull();
     });
