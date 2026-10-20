@@ -1426,5 +1426,29 @@
       flex-wrap: wrap;
       justify-content: flex-end;
     }
+
+    &__td--star {
+      padding-left: var(--firo-space-md);
+      width: 44px;
+    }
+
+    /* Compact pattern: rename and trash stay in the row; duplicate, move and
+       export live in the grid view cards. Keeps two 44px targets, not six. */
+    &__action-group {
+      flex-wrap: nowrap;
+
+      > .firo-board-card__action:not(:first-child):not(:last-child),
+      > .firo-board-card__action:not(:first-child):not(:last-child) {
+        display: none;
+      }
+    }
+  }
+}
+
+@media (hover: none) and (max-width: 768px) {
+  .firo-board-table .firo-board-card__star,
+  .firo-board-table .firo-board-card__action {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
