@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import React from "react";
 
 import type { NonDeletedExcalidrawElement } from "@firo/element/types";
@@ -87,6 +88,7 @@ export const MobileMenu = ({
           ))}
         {defaultUIEnabled &&
           appState.viewModeEnabled &&
+          !app.props.viewModeEnabled &&
           app.isInteractionEnabled() && (
             <ExitViewModeButton actionManager={actionManager} />
           )}
@@ -185,6 +187,40 @@ export const MobileMenu = ({
           </Island>
         </div>
       )}
+
+      {appState.viewModeEnabled &&
+        app.props.mobileExtraTools &&
+        app.props.mobileExtraTools.length > 0 && (
+          // Read-only roles have no toolbar, but the host may still allow one
+          // tool (a commenter can comment).
+          <div
+            className="App-bottom-bar"
+            style={{ marginBottom: SCROLLBAR_WIDTH + SCROLLBAR_MARGIN }}
+            data-viewport-ui="bottom"
+          >
+            <Island className="App-toolbar">
+              <div className="mobile-toolbar" style={{ gap: 8 }}>
+                {app.props.mobileExtraTools.map((tool) => (
+                  <button
+                    key={tool.id}
+                    type="button"
+                    className={clsx("ToolIcon", {
+                      "ToolIcon--selected": tool.selected,
+                    })}
+                    style={{ width: "auto", padding: "0 12px", gap: 6 }}
+                    aria-pressed={tool.selected}
+                    disabled={tool.disabled}
+                    data-testid={`toolbar-mobile-${tool.id}`}
+                    onClick={tool.onSelect}
+                  >
+                    {tool.icon}
+                    <span>{tool.label}</span>
+                  </button>
+                ))}
+              </div>
+            </Island>
+          </div>
+        )}
 
       {!shouldRenderDefaultBottomBar && scrollBackToContentButton && (
         <div className="floating-status-stack">{scrollBackToContentButton}</div>

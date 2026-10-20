@@ -94,6 +94,24 @@ describe("Canvas DocBlock Integration (§10.5)", () => {
       fireEvent.click(docButton);
       expect(onToggleDocBlockMode).toHaveBeenCalledTimes(1);
     });
+
+    it("hides creation tools from viewers", () => {
+      render(<WebCreationRail appState={mockAppState} readOnlyRole="viewer" />);
+
+      expect(screen.queryByRole("button", { name: /Document/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Comment/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Sticky/i })).toBeNull();
+    });
+
+    it("shows only Comment (and no creation tools) to commenters", () => {
+      render(
+        <WebCreationRail appState={mockAppState} readOnlyRole="commenter" />,
+      );
+
+      expect(screen.getByRole("button", { name: /Comment/i })).toBeDefined();
+      expect(screen.queryByRole("button", { name: /Document/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Sticky/i })).toBeNull();
+    });
   });
 
   describe("insertDocBlockOnBoard", () => {
