@@ -824,13 +824,20 @@ export const WebCreationRail = ({
     id in TOOLS ||
     ["shapes", "pen", "templates", "comment", "docblock", "ai"].includes(id);
 
+  // Read-only roles only get tools that work for them (the pointer, and
+  // Comment for commenters), instead of buttons that silently do nothing.
+  const isAllowedForRole = (id: RailToolType) =>
+    !readOnlyRole || (readOnlyRole === "commenter" && id === "comment");
   const tools: RailToolItem[] = [
     pointerItem,
-    ...layout.order.filter(isKnownTool).map(buildRailTool),
+    ...layout.order
+      .filter(isKnownTool)
+      .filter(isAllowedForRole)
+      .map(buildRailTool),
   ];
-  const hiddenTools: RailToolItem[] = layout.unpinned
-    .filter(isKnownTool)
-    .map(buildRailTool);
+  const hiddenTools: RailToolItem[] = readOnlyRole
+    ? []
+    : layout.unpinned.filter(isKnownTool).map(buildRailTool);
 
   return (
     <CreationRail
