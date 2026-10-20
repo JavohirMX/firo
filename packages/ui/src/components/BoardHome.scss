@@ -1595,3 +1595,24 @@
     min-height: 44px;
   }
 }
+
+/* The phone drawer: Close gets its own row instead of floating over Recent. */
+@media (max-width: 768px) {
+  .firo-board-sidebar__top .firo-board-sidebar__close {
+    position: static;
+    align-self: flex-end;
+    margin-bottom: var(--firo-space-xs);
+  }
+}
+
+/* Touch: every drawer row and the new-folder button reach 44px. */
+@media (pointer: coarse) {
+  .firo-board-sidebar__item {
+    min-height: 44px;
+  }
+
+  .firo-board-sidebar__add-folder-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
