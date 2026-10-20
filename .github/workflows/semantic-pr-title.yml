@@ -32,6 +32,7 @@ jobs:
           requireScope: true
           scopes: |
             app
+            server
             editor
             packages/editor
             packages/utils
