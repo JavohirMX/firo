@@ -75,23 +75,16 @@ export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
     collabStatus !== null &&
     collabStatus !== "connected";
 
+  // The "saved" state means the board was written to this browser's local
+  // storage. The server's acknowledgement of the latest update is not part of
+  // this signal, so the text never claims a sync. Connection state has its own
+  // badge next to this one.
   let statusText = "";
   if (status === "saving") {
-    if (isConnected) {
-      statusText = "Syncing...";
-    } else if (isOfflineOrLocal) {
-      statusText = "Saving locally...";
-    } else {
-      statusText = "Saving...";
-    }
+    statusText = "Saving...";
   } else if (status === "saved") {
-    if (isConnected) {
-      statusText = "Synced to server";
-    } else if (isOfflineOrLocal) {
-      statusText = "Saved locally";
-    } else {
-      statusText = "Saved";
-    }
+    statusText =
+      isConnected || isOfflineOrLocal ? "Saved on this device" : "Saved";
   } else if (status === "error") {
     statusText = "Error saving";
   }
