@@ -790,8 +790,8 @@
 /* Touch targets on phones: 44px, the size a thumb can hit without a miss.
    Wider touch screens keep the compact buttons, which fit a narrower card. */
 @media (hover: none) and (max-width: 768px) {
-  .firo-board-card__star,
-  .firo-board-card__action {
+  .firo-board-card .firo-board-card__star,
+  .firo-board-card .firo-board-card__action {
     width: 44px;
     height: 44px;
   }
@@ -1407,5 +1407,24 @@
 
   .firo-template-card__desc {
     display: none;
+  }
+}
+
+/* List view on phones: keep star, name and actions in view. Folder and last
+   opened are secondary and would otherwise push the actions off screen. */
+@media (max-width: 768px) {
+  .firo-board-table {
+    &__th--folder,
+    &__td--folder,
+    &__th--opened,
+    &__td--opened,
+    &__thumb {
+      display: none;
+    }
+
+    &__td--actions > * {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
   }
 }
