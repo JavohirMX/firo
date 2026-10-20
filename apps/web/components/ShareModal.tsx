@@ -11,15 +11,51 @@ export interface ShareLink {
   token: string;
   role: ShareRole;
   createdAt: number;
+  /** Epoch ms after which the link stops working. Null or absent: never. */
+  expiresAt?: number | null;
   url: string;
 }
+
+export interface ShareLinkOptions {
+  expiresAt: number | null;
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/** The expiry choices offered when creating a link. */
+export const SHARE_EXPIRY_CHOICES = [
+  { id: "never", label: "Never expires", ms: null },
+  { id: "1h", label: "Expires in 1 hour", ms: HOUR_MS },
+  { id: "1d", label: "Expires in 1 day", ms: 24 * HOUR_MS },
+  { id: "7d", label: "Expires in 7 days", ms: 7 * 24 * HOUR_MS },
+  { id: "30d", label: "Expires in 30 days", ms: 30 * 24 * HOUR_MS },
+] as const;
+
+export const formatShareExpiry = (
+  expiresAt: number | null | undefined,
+): string => {
+  if (!expiresAt) {
+    return "Never expires";
+  }
+  return `Expires ${new Date(expiresAt).toLocaleString()}`;
+};
 
 export interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   boardId?: string;
   initialLinks?: readonly ShareLink[];
-  onGenerateLink?: (role: ShareRole) => Promise<ShareLink> | ShareLink;
+  onGenerateLink?: (
+    role: ShareRole,
+    options: ShareLinkOptions,
+  ) => Promise<ShareLink> | ShareLink;
+  /**
+   * When set, links cannot be created and this is shown instead, for example
+   * when the user is signed out or no sync server is reachable.
+   */
+  unavailableMessage?: string;
+  /** Optional action shown under `unavailableMessage`. */
+  unavailableAction?: { label: string; onSelect: () => void };
   onRevokeLink?: (tokenId: string) => Promise<void> | void;
 }
 
@@ -45,10 +81,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   initialLinks = [],
   onGenerateLink,
   onRevokeLink,
+  unavailableMessage,
+  unavailableAction,
 }) => {
   const [selectedRole, setSelectedRole] = useState<ShareRole>("editor");
   const [links, setLinks] = useState<ShareLink[]>([...initialLinks]);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [expiryId, setExpiryId] = useState<string>("never");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   // Sync initialLinks when prop changes
   useEffect(() => {
@@ -74,26 +115,46 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   }, [isOpen, onClose]);
 
   const handleCreateLink = useCallback(async () => {
-    let newLink: ShareLink;
-    if (onGenerateLink) {
-      newLink = await onGenerateLink(selectedRole);
-    } else {
-      const token = generateCapabilityToken();
-      const origin =
-        typeof window !== "undefined" && window.location?.origin
-          ? window.location.origin
-          : "https://firo.app";
-      newLink = {
-        id: token,
-        token,
-        role: selectedRole,
-        createdAt: Date.now(),
-        url: `${origin}/s/${token}`,
-      };
+    if (busy) {
+      return;
     }
+    const choice =
+      SHARE_EXPIRY_CHOICES.find((c) => c.id === expiryId) ??
+      SHARE_EXPIRY_CHOICES[0];
+    const expiresAt = choice.ms === null ? null : Date.now() + choice.ms;
 
-    setLinks((prev) => [newLink, ...prev]);
-  }, [onGenerateLink, selectedRole]);
+    setBusy(true);
+    setError(null);
+    try {
+      let newLink: ShareLink;
+      if (onGenerateLink) {
+        newLink = await onGenerateLink(selectedRole, { expiresAt });
+      } else {
+        const token = generateCapabilityToken();
+        const origin =
+          typeof window !== "undefined" && window.location?.origin
+            ? window.location.origin
+            : "https://firo.app";
+        newLink = {
+          id: token,
+          token,
+          role: selectedRole,
+          createdAt: Date.now(),
+          expiresAt,
+          url: `${origin}/s/${token}`,
+        };
+      }
+      setLinks((prev) => [newLink, ...prev]);
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not create the link.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, expiryId, onGenerateLink, selectedRole]);
 
   const handleCopyLink = useCallback(async (link: ShareLink) => {
     try {
@@ -118,8 +179,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleRevokeLink = useCallback(
     async (token: string) => {
-      if (onRevokeLink) {
-        await onRevokeLink(token);
+      setError(null);
+      try {
+        if (onRevokeLink) {
+          await onRevokeLink(token);
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Could not revoke the link.",
+        );
+        return;
       }
       setLinks((prev) =>
         prev.filter((l) => l.token !== token && l.id !== token),
@@ -176,33 +247,81 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           </div>
 
           {/* Create Link Section */}
-          <div className="firo-share-modal__creation-section">
-            <h3 className="firo-share-modal__section-title">Create new link</h3>
-            <div className="firo-share-modal__row">
-              <select
-                className="firo-share-modal__role-select"
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as ShareRole)}
-                data-testid="share-role-select"
-                aria-label="Select role for share link"
-              >
-                <option value="editor">Editor — can edit board content</option>
-                <option value="commenter">
-                  Commenter — can view and add comments
-                </option>
-                <option value="viewer">Viewer — can only view</option>
-              </select>
-
-              <button
-                type="button"
-                className="firo-share-modal__create-btn"
-                onClick={handleCreateLink}
-                data-testid="create-link-button"
-              >
-                Create link
-              </button>
+          {unavailableMessage ? (
+            <div
+              className="firo-share-modal__unavailable"
+              data-testid="share-unavailable"
+            >
+              <p>{unavailableMessage}</p>
+              {unavailableAction && (
+                <button
+                  type="button"
+                  className="firo-share-modal__create-btn"
+                  onClick={unavailableAction.onSelect}
+                  data-testid="share-unavailable-action"
+                >
+                  {unavailableAction.label}
+                </button>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="firo-share-modal__creation-section">
+              <h3 className="firo-share-modal__section-title">
+                Create new link
+              </h3>
+              <div className="firo-share-modal__row">
+                <select
+                  className="firo-share-modal__role-select"
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as ShareRole)}
+                  data-testid="share-role-select"
+                  aria-label="Select role for share link"
+                >
+                  <option value="editor">
+                    Editor — can edit board content
+                  </option>
+                  <option value="commenter">
+                    Commenter — can view and add comments
+                  </option>
+                  <option value="viewer">Viewer — can only view</option>
+                </select>
+
+                <select
+                  className="firo-share-modal__role-select"
+                  value={expiryId}
+                  onChange={(e) => setExpiryId(e.target.value)}
+                  data-testid="share-expiry-select"
+                  aria-label="Link expiry"
+                >
+                  {SHARE_EXPIRY_CHOICES.map((choice) => (
+                    <option key={choice.id} value={choice.id}>
+                      {choice.label}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  className="firo-share-modal__create-btn"
+                  onClick={handleCreateLink}
+                  disabled={busy}
+                  data-testid="create-link-button"
+                >
+                  Create link
+                </button>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div
+              className="firo-share-modal__error"
+              role="alert"
+              data-testid="share-error"
+            >
+              {error}
+            </div>
+          )}
 
           {/* Active Links List */}
           <div className="firo-share-modal__links-section">
@@ -243,6 +362,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                           title={link.url}
                         >
                           /s/{link.token.slice(0, 10)}...
+                        </span>
+                        <span
+                          className="firo-share-modal__link-expiry"
+                          data-testid={`share-link-expiry-${link.token}`}
+                        >
+                          {formatShareExpiry(link.expiresAt)}
                         </span>
                       </div>
 
