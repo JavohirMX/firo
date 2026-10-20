@@ -296,6 +296,46 @@ export function createHttpHandler(
       return;
     }
 
+    // 5b. Boards: POST /api/boards. Registers a board id for the signed-in
+    // user so it can be shared before anyone has connected to it. Safe to
+    // repeat for your own board; a board owned by someone else is a 403.
+    if (pathname === "/api/boards" && method === "POST") {
+      const user = authenticateUser(req, storage);
+      if (!user) {
+        sendJson(res, 401, { error: "Not authenticated." });
+        return;
+      }
+
+      const body = await readJsonBody<{ id?: unknown; name?: unknown }>(req);
+      const id = body?.id;
+      if (typeof id !== "string" || !/^[A-Za-z0-9_.-]{1,128}$/.test(id)) {
+        sendJson(res, 400, { error: "Invalid board id." });
+        return;
+      }
+      const name = body?.name;
+      if (
+        name !== undefined &&
+        (typeof name !== "string" || name.length === 0 || name.length > 200)
+      ) {
+        sendJson(res, 400, { error: "Invalid board name." });
+        return;
+      }
+
+      const existing = storage.getBoard(id);
+      if (existing) {
+        if (storage.resolveRole(id, user) !== "owner") {
+          sendJson(res, 403, { error: "That board belongs to someone else." });
+          return;
+        }
+        sendJson(res, 200, { board: { id: existing.id, name: existing.name } });
+        return;
+      }
+
+      const board = storage.createBoard(id, name ?? "Untitled Board", user.id);
+      sendJson(res, 201, { board: { id: board.id, name: board.name } });
+      return;
+    }
+
     // 6. Shares: POST /api/boards/:id/shares
     const sharesMatch = pathname.match(/^\/api\/boards\/([^/]+)\/shares$/);
     if (sharesMatch && method === "POST") {
