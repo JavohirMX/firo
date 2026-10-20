@@ -218,6 +218,13 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
   const discardRef = useRef(discard);
   discardRef.current = discard;
 
+  /*
+   * Generation counter guarding the deferred session end below. Bumped on
+   * every effect setup, so a session end scheduled by a cleanup is
+   * cancelled when the effect immediately re-runs.
+   */
+  const sessionEndGenerationRef = useRef(0);
+
   // Initialise ProseMirror DOM and Yjs binding on mount
   useEffect(() => {
     const editorEl = editorRef.current;
@@ -257,20 +264,52 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     bindingRef.current = binding;
 
     // Focus editor and place cursor
+    // The canvas takes focus back when the placing click finishes, which is
+    // after this effect runs, so focus again once that has settled.
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
     if (!readOnly) {
       editorEl.focus();
+      focusTimer = setTimeout(() => editorEl.focus(), 0);
     }
 
+    /*
+     * A new setup cancels any session end the previous cleanup scheduled.
+     * In development, React StrictMode mounts every component with a
+     * setup -> cleanup -> setup cycle to surface non-reusable effects.
+     * The cleanup below must therefore not end the editing session
+     * synchronously: on the simulated unmount it would discard a session
+     * that is still alive, and the resulting parent state change
+     * (`activeDocBlockId` -> null, then re-selected on the next editor
+     * change) remounts this overlay forever, a render loop that crashes
+     * the app with React error #185 ("Maximum update depth exceeded").
+     */
+    sessionEndGenerationRef.current += 1;
+
     return () => {
+      clearTimeout(focusTimer);
       binding.destroy();
-      // Ensure we never destroy without committing or discarding per TRD-05
-      if (!hasCommittedRef.current) {
+      // Ensure we never destroy without committing or discarding per TRD-05.
+      // Deferred out of the commit phase: if this cleanup was StrictMode's
+      // simulated unmount, the effect's re-setup runs first and bumps the
+      // generation, cancelling the session end. On a real unmount nothing
+      // re-runs, and the session is committed or discarded as before.
+      if (hasCommittedRef.current) {
+        return;
+      }
+      const generation = sessionEndGenerationRef.current;
+      setTimeout(() => {
+        if (generation !== sessionEndGenerationRef.current) {
+          return;
+        }
+        if (hasCommittedRef.current) {
+          return;
+        }
         if (isDirtyRef.current) {
           commitRef.current();
         } else {
           discardRef.current();
         }
-      }
+      }, 0);
     };
   }, [fragment, readOnly]);
 
@@ -353,6 +392,7 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
       <div
         ref={editorRef}
         className="ProseMirror"
+        data-type="wysiwyg"
         contentEditable={!readOnly}
         suppressContentEditableWarning
         onInput={handleInput}
