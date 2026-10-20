@@ -615,7 +615,7 @@
     "app": {
       "center_heading": "A blank board, ready when you are.",
       "center_heading_line2": "Pick a tool to start, or open a saved file.",
-      "center_heading_line3": "Boards save in this browser. Export a file to keep a backup.",
+      "center_heading_line3": "Press ? for shortcuts and help.",
       "center_heading_plus": "Did you want to go to the Excalidraw+ instead?",
       "menuHint": "Export, preferences, languages, ..."
     },
