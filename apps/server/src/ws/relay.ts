@@ -3,6 +3,7 @@ import { URL } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import { parseCookies } from "../auth/session.js";
+import { isAllowedOrigin } from "../http/routes.js";
 
 import { ClientConnection } from "./connection.js";
 
@@ -17,15 +18,19 @@ import type http from "node:http";
 export interface RelayOptions {
   storage: Storage;
   server?: http.Server;
+  /** Extra browser origins allowed to open a socket. Same-origin always is. */
+  allowedOrigins?: string[];
 }
 
 export class WebSocketRelay {
   public readonly storage: Storage;
   public readonly wss: WebSocketServer;
   public readonly rooms: Map<string, Room> = new Map();
+  private readonly allowedOrigins: string[];
 
   constructor(options: RelayOptions) {
     this.storage = options.storage;
+    this.allowedOrigins = options.allowedOrigins ?? [];
     this.wss = new WebSocketServer({ noServer: true });
 
     if (options.server) {
@@ -47,6 +52,21 @@ export class WebSocketRelay {
     socket: Socket,
     head: Buffer,
   ): void {
+    // Browsers send cookies on cross-site WebSocket handshakes, so a page on
+    // another origin could ride a signed-in session. Clients with no Origin
+    // header (non-browser) are not subject to that and are let through.
+    const origin = req.headers.origin;
+    if (
+      origin &&
+      !isAllowedOrigin(origin, req.headers.host, {
+        allowedOrigins: this.allowedOrigins,
+      })
+    ) {
+      socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
     const parsed = this.parseConnectionRequest(req);
     if (!parsed) {
       socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");

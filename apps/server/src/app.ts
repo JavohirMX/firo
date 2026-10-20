@@ -66,6 +66,7 @@ export class FiroServer {
     this.relay = new WebSocketRelay({
       storage: this.storage,
       server: this.httpServer,
+      allowedOrigins: this.config.allowedOrigins,
     });
   }
 

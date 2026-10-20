@@ -102,7 +102,7 @@ function authenticateUser(
   return result?.user ?? null;
 }
 
-function isAllowedOrigin(
+export function isAllowedOrigin(
   origin: string,
   host: string | undefined,
   config: { allowedOrigins: string[] },
