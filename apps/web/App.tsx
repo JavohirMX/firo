@@ -76,6 +76,7 @@ import {
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { JSX } from "react";
 
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
@@ -2744,7 +2745,7 @@ const ExcalidrawWrapper = () => {
       tools.push({
         id: "comment",
         label: "Comment",
-        icon: RAIL_TOOL_ICONS.comment,
+        icon: RAIL_TOOL_ICONS.comment as JSX.Element,
         selected: commentMode,
         onSelect: () => {
           setCommentMode((mode) => !mode);
@@ -2757,7 +2758,7 @@ const ExcalidrawWrapper = () => {
         {
           id: "docblock",
           label: "Document",
-          icon: RAIL_TOOL_ICONS.docblock,
+          icon: RAIL_TOOL_ICONS.docblock as JSX.Element,
           selected: docBlockMode,
           onSelect: () => {
             setDocBlockMode((mode) => !mode);
@@ -2767,13 +2768,13 @@ const ExcalidrawWrapper = () => {
         {
           id: "templates",
           label: "Templates",
-          icon: RAIL_TOOL_ICONS.templates,
+          icon: RAIL_TOOL_ICONS.templates as JSX.Element,
           onSelect: () => setTemplateModalOpen(true),
         },
         {
           id: "ai",
           label: "AI Assistant",
-          icon: RAIL_TOOL_ICONS.ai,
+          icon: RAIL_TOOL_ICONS.ai as JSX.Element,
           onSelect: () => setAiModalOpen(true),
         },
       );
