@@ -59,3 +59,33 @@ export const computeFitView = (
     scrollY: (top + availH / 2) / zoom - (minY + maxY) / 2,
   };
 };
+
+type Rect = { left: number; top: number; right: number; bottom: number };
+
+/**
+ * How far to scroll (in scene units, to add to scrollX) so a selection that
+ * sits under a docked panel ends up beside it. Returns 0 when the selection
+ * does not overlap the panel, or when moving it would push it under the left
+ * chrome. Pure so the guard is testable without a canvas.
+ */
+export const selectionRevealScrollX = (
+  selection: Rect,
+  panel: Rect,
+  zoom: number,
+  options: { margin?: number; minLeft?: number } = {},
+): number => {
+  const margin = options.margin ?? 16;
+  const minLeft = options.minLeft ?? 80;
+  const overlapsX =
+    selection.right > panel.left - margin && selection.left < panel.right;
+  const overlapsY =
+    selection.bottom > panel.top && selection.top < panel.bottom;
+  if (!overlapsX || !overlapsY || zoom <= 0) {
+    return 0;
+  }
+  const needed = selection.right - (panel.left - margin);
+  // Never push the selection under the left rail.
+  const room = selection.left - minLeft;
+  const px = Math.min(needed, room);
+  return px > 0 ? -px / zoom : 0;
+};
