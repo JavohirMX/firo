@@ -1614,8 +1614,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
             <div className="firo-board-modal__body">
               <p className="firo-board-modal__text" id="firo-delete-desc">
                 This deletes the board and its saved versions from this browser.
-                Exported files and boards you shared are not affected. It
-                can&rsquo;t be undone.
+                It can&rsquo;t be undone, so export it first if you may need it.
               </p>
               <div className="firo-board-modal__actions">
                 <button
