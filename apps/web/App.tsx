@@ -19,6 +19,7 @@ import {
   actionToggleGridMode,
   DocBlockOverlay,
   renderDocBlock,
+  viewportCoordsToSceneCoords,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -518,8 +519,11 @@ export const WebCreationRail = ({
   onToggleDocBlockMode,
   onOpenTemplates,
   onOpenAI,
+  readOnlyRole = null,
 }: {
   appState: UIAppState;
+  /** viewer/commenter share links: only navigation (and, for commenters, comments). */
+  readOnlyRole?: string | null;
   commentMode?: boolean;
   onToggleCommentMode?: () => void;
   docBlockMode?: boolean;
@@ -829,6 +833,13 @@ export const WebCreationRail = ({
             pointerActive && live === "selection" ? "hand" : "selection";
           trackEvent("toolbar", next, "ui");
           app.setActiveTool({ type: next as any });
+          return;
+        }
+
+        if (
+          readOnlyRole &&
+          !(readOnlyRole === "commenter" && tool === "comment")
+        ) {
           return;
         }
 
@@ -2567,6 +2578,9 @@ const ExcalidrawWrapper = () => {
     readonly CollaboratorInfo[]
   >([]);
 
+  const [shareRole, setShareRole] = useState<string | null>(null);
+  const isReadOnlyShare = shareRole === "viewer" || shareRole === "commenter";
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -2582,10 +2596,13 @@ const ExcalidrawWrapper = () => {
         getActiveBoard()?.id ||
         "default";
 
-      if (shareToken && (!boardId || boardId === "default")) {
+      if (shareToken) {
         const resolved = await resolveShareToken(shareToken);
-        if (resolved?.boardId) {
+        if (resolved?.boardId && (!boardId || boardId === "default")) {
           boardId = resolved.boardId;
+        }
+        if (resolved?.role && !isCancelled) {
+          setShareRole(resolved.role);
         }
       }
 
@@ -2623,6 +2640,30 @@ const ExcalidrawWrapper = () => {
       void cleanupPromise.then((cleanup) => cleanup?.());
     };
   }, []);
+
+  /*
+   * View mode swallows canvas pointer-downs, so the editor's own
+   * `onPointerDown` never fires for a commenter. Commenters may still place
+   * comments (server rule: they may write only the `comments` partition), so
+   * catch the click here while comment mode is armed.
+   */
+  useEffect(() => {
+    if (!commentMode || shareRole !== "commenter" || !excalidrawAPI) {
+      return undefined;
+    }
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest?.("canvas.interactive")) {
+        return;
+      }
+      const state = excalidrawAPI.getAppState();
+      const point = viewportCoordsToSceneCoords(event, state);
+      setCommentTarget({ point: { x: point.x, y: point.y } });
+      setCommentMode(false);
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [commentMode, shareRole, excalidrawAPI]);
 
   const isCollaborating = collabStatus === "connected";
   /**
@@ -3120,6 +3161,7 @@ const ExcalidrawWrapper = () => {
         renderCreationRailUI={(_isMobile, appState) => (
           <WebCreationRail
             appState={appState}
+            readOnlyRole={isReadOnlyShare ? shareRole : null}
             commentMode={commentMode}
             onToggleCommentMode={() => {
               setCommentMode((mode) => !mode);
@@ -3154,6 +3196,7 @@ const ExcalidrawWrapper = () => {
         renderTopRightUI={() => (
           <CollabBar
             connectionStatus={isOffline ? "offline" : collabStatus}
+            readOnlyRole={isReadOnlyShare ? shareRole : null}
             collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
@@ -3257,6 +3300,7 @@ const ExcalidrawWrapper = () => {
         onExport={onExport}
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
+        viewModeEnabled={isReadOnlyShare}
         UIOptions={{
           canvasActions: {
             toggleTheme: true,
