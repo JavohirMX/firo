@@ -14,7 +14,7 @@ and does not want to operate a database cluster to run a workshop tool.
 ```yaml
 services:
   firo:
-    image: ghcr.io/firo/firo:latest
+    image: ghcr.io/javohirmx/firo:latest
     volumes:
       - ./data:/data          # SQLite + assets
     ports:

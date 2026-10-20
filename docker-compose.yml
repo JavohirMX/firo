@@ -1,6 +1,6 @@
 services:
   firo:
-    image: ghcr.io/firo/firo:latest
+    image: ghcr.io/javohirmx/firo:latest
     build:
       context: .
       dockerfile: Dockerfile
