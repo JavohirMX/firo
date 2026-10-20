@@ -390,6 +390,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="e.g. User submits login form -> validate credentials -> if valid, issue auth token -> redirect to dashboard; if invalid, show error message."
                   data-testid="ai-prompt-input"
+                  aria-label="AI prompt"
                 />
               </div>
             )}
@@ -409,6 +410,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="e.g. Product launch tasks: Design QA (Alice, High, In Progress), Performance testing (Bob, Medium, Todo), API Docs (Charlie, Low, Done)."
                   data-testid="ai-prompt-input"
+                  aria-label="AI prompt"
                 />
               </div>
             )}

@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: master
+    branches: dev
 
 jobs:
   test:
@@ -15,5 +15,5 @@ jobs:
           node-version: 20.x
       - name: Install and test
         run: |
-          yarn install
-          yarn test:app
+          yarn install --frozen-lockfile
+          yarn test:app --watch=false

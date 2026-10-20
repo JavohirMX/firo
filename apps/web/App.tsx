@@ -180,8 +180,10 @@ import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
 import { TagLayer } from "./components/TagLayer";
 import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
 import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
-import { ShareModal } from "./components/ShareModal";
+import { ConnectedShareModal } from "./components/ConnectedShareModal";
 import { TemplateModal } from "./components/TemplateModal";
+import { AuthDialog } from "./components/AuthDialog";
+import { syncSession, useSyncSession } from "./sync/session";
 import { AIAssistantModal } from "./components/AIAssistantModal";
 
 import {
@@ -1700,6 +1702,12 @@ const ExcalidrawWrapper = () => {
     null,
   );
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const syncState = useSyncSession();
+  useEffect(() => {
+    void syncSession.refresh();
+  }, []);
+  const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [commentMode, setCommentMode] = useState(false);
   const [docBlockMode, setDocBlockMode] = useState(false);
@@ -3276,9 +3284,24 @@ const ExcalidrawWrapper = () => {
           excalidrawAPI={excalidrawAPI}
           collaborators={collaborators}
         />
-        <ShareModal
+        <ConnectedShareModal
           isOpen={shareModalOpen}
           onClose={() => setShareModalOpen(false)}
+          boardId={
+            (boardDoc().read().meta?.id as string | undefined) ||
+            getActiveBoard()?.id ||
+            "default"
+          }
+          onSignIn={() => {
+            setShareModalOpen(false);
+            setAuthDialogOpen(true);
+          }}
+        />
+        <AuthDialog
+          isOpen={authDialogOpen}
+          onClose={closeAuthDialog}
+          onSignIn={(u, p) => syncSession.signIn(u, p)}
+          onRegister={(u, p) => syncSession.register(u, p)}
         />
         <TemplateModal
           isOpen={templateModalOpen}
@@ -3361,6 +3384,19 @@ const ExcalidrawWrapper = () => {
           onExport={handleMenuExport}
           onImport={handleMenuImport}
           onVersionHistory={handleMenuVersionHistory}
+          syncUsername={
+            syncState.status === "signedIn" ? syncState.user.username : null
+          }
+          onSignIn={
+            syncState.status === "signedOut"
+              ? () => setAuthDialogOpen(true)
+              : undefined
+          }
+          onSignOut={
+            syncState.status === "signedIn"
+              ? () => void syncSession.signOut()
+              : undefined
+          }
         />
         <AppWelcomeScreen />
         <OverwriteConfirmDialog>

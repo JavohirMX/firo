@@ -14,14 +14,13 @@ and does not want to operate a database cluster to run a workshop tool.
 ```yaml
 services:
   firo:
-    image: ghcr.io/firo/firo:latest
+    image: ghcr.io/javohirmx/firo:latest
     volumes:
       - ./data:/data          # SQLite + assets
     ports:
       - "8080:8080"
     environment:
-      FIRO_SECRET: ${FIRO_SECRET}     # generated on first run
-      FIRO_URL: https://firo.example.com
+      FIRO_OPEN_REGISTRATION: "true"  # set to "false" to close sign-up
 ```
 
 That is the entire install. Anything that makes this longer is a design failure.
@@ -170,3 +169,12 @@ SSO, OIDC, SCIM, audit logs, quota enforcement, multi-organisation tenancy,
 horizontal scaling, regional data residency, eDiscovery. All of these are either on
 the never-list or require a product conversation we have not had
 ([`../vision.md`](../vision.md)).
+
+## Authentication rate-limit identity
+
+Authentication attempts are counted by the TCP peer address. The server does
+not trust `X-Forwarded-For`: accepting an arbitrary client-provided header lets
+a caller reset its quota on every request. When deployed behind a reverse
+proxy, clients share that proxy's authentication quota. Configure per-client
+limits at the trusted proxy as well; forwarded-client identity support is not
+implemented in Firo.

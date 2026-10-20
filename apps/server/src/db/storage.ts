@@ -311,8 +311,13 @@ export class Storage {
 
   public appendUpdate(boardId: string, updateBytes: Uint8Array): number {
     const now = Date.now();
-    // Ensure board exists
-    this.createBoard(boardId);
+    // Syncing content must not run createBoard's metadata upsert: its default
+    // name would overwrite a board title on every incoming document update.
+    this.db
+      .prepare(
+        "INSERT INTO boards (id, owner_id, name, created_at, updated_at) VALUES (?, NULL, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+      )
+      .run(boardId, "Untitled Board", now, now);
 
     const buffer = Buffer.from(
       updateBytes.buffer,

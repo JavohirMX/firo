@@ -39,6 +39,11 @@ export const AppMainMenu: React.FC<{
   onExport?: () => void;
   onImport?: () => void;
   onVersionHistory?: () => void;
+  /** Name of the signed-in sync user, if any. */
+  syncUsername?: string | null;
+  /** Offered only when a sync server is reachable. */
+  onSignIn?: () => void;
+  onSignOut?: () => void;
 }> = React.memo((props) => {
   const { t } = useI18n();
 
@@ -108,6 +113,22 @@ export const AppMainMenu: React.FC<{
           <MainMenu.DefaultItems.Export />
         </MainMenu.DefaultItems.ExportSubMenu>
       )}
+
+      {props.syncUsername && props.onSignOut ? (
+        <MainMenu.Item
+          onSelect={props.onSignOut}
+          data-testid="main-menu-sign-out"
+        >
+          Sign out ({props.syncUsername})
+        </MainMenu.Item>
+      ) : props.onSignIn ? (
+        <MainMenu.Item
+          onSelect={props.onSignIn}
+          data-testid="main-menu-sign-in"
+        >
+          Sign in to sync server...
+        </MainMenu.Item>
+      ) : null}
 
       <MainMenu.Separator />
 

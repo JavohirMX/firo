@@ -1,7 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 
-import { URL } from "node:url";
+import { parseRequestUrl } from "./http/requestUrl.js";
 
 import { loadConfig, type ServerConfig } from "./config.js";
 import { Storage } from "./db/storage.js";
@@ -39,8 +39,12 @@ export class FiroServer {
     const staticHandler = createStaticHandler(this.config.webDir);
 
     this.httpServer = http.createServer(async (req, res) => {
-      const host = req.headers.host || "localhost";
-      const parsedUrl = new URL(req.url || "/", `http://${host}`);
+      const parsedUrl = parseRequestUrl(req.url);
+      if (!parsedUrl) {
+        res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Bad Request");
+        return;
+      }
       const pathname = parsedUrl.pathname;
 
       // 1. Health check and /api/* always go to API handler

@@ -1,4 +1,4 @@
-import { URL } from "node:url";
+import * as Y from "yjs";
 
 import {
   buildExpiredSessionCookie,
@@ -14,6 +14,8 @@ import {
   hashPassword,
   verifyPassword,
 } from "../auth/crypto.js";
+
+import { parseRequestUrl } from "./requestUrl.js";
 
 import type http from "node:http";
 import type { ServerConfig } from "../config.js";
@@ -83,10 +85,8 @@ async function readJsonBody<T>(req: http.IncomingMessage): Promise<T | null> {
 }
 
 function getClientIp(req: http.IncomingMessage): string {
-  const xForwardedFor = req.headers["x-forwarded-for"];
-  if (typeof xForwardedFor === "string") {
-    return xForwardedFor.split(",")[0].trim();
-  }
+  // Forwarded headers are client-controlled unless a trusted proxy boundary
+  // is configured. Use the peer address rather than allowing arbitrary keys.
   return req.socket.remoteAddress || "127.0.0.1";
 }
 
@@ -130,8 +130,12 @@ export function createHttpHandler(
       return;
     }
 
-    const host = req.headers.host || "localhost";
-    const parsedUrl = new URL(req.url || "/", `http://${host}`);
+    const parsedUrl = parseRequestUrl(req.url);
+    if (!parsedUrl) {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Bad Request");
+      return;
+    }
     const pathname = parsedUrl.pathname;
     const method = (req.method || "GET").toUpperCase();
 
@@ -160,8 +164,9 @@ export function createHttpHandler(
       const body = await readJsonBody<{ username?: string; password?: string }>(
         req,
       );
-      const username = body?.username?.trim();
-      const password = body?.password;
+      const username =
+        typeof body?.username === "string" ? body.username.trim() : "";
+      const password = typeof body?.password === "string" ? body.password : "";
 
       if (!username || username.length < 3 || username.length > 50) {
         sendJson(res, 400, {
@@ -227,8 +232,9 @@ export function createHttpHandler(
       const body = await readJsonBody<{ username?: string; password?: string }>(
         req,
       );
-      const username = body?.username?.trim();
-      const password = body?.password;
+      const username =
+        typeof body?.username === "string" ? body.username.trim() : "";
+      const password = typeof body?.password === "string" ? body.password : "";
 
       if (!username || !password) {
         sendJson(res, 400, { error: "Username and password are required." });
@@ -290,6 +296,46 @@ export function createHttpHandler(
       return;
     }
 
+    // 5b. Boards: POST /api/boards. Registers a board id for the signed-in
+    // user so it can be shared before anyone has connected to it. Safe to
+    // repeat for your own board; a board owned by someone else is a 403.
+    if (pathname === "/api/boards" && method === "POST") {
+      const user = authenticateUser(req, storage);
+      if (!user) {
+        sendJson(res, 401, { error: "Not authenticated." });
+        return;
+      }
+
+      const body = await readJsonBody<{ id?: unknown; name?: unknown }>(req);
+      const id = body?.id;
+      if (typeof id !== "string" || !/^[A-Za-z0-9_.-]{1,128}$/.test(id)) {
+        sendJson(res, 400, { error: "Invalid board id." });
+        return;
+      }
+      const name = body?.name;
+      if (
+        name !== undefined &&
+        (typeof name !== "string" || name.length === 0 || name.length > 200)
+      ) {
+        sendJson(res, 400, { error: "Invalid board name." });
+        return;
+      }
+
+      const existing = storage.getBoard(id);
+      if (existing) {
+        if (storage.resolveRole(id, user) !== "owner") {
+          sendJson(res, 403, { error: "That board belongs to someone else." });
+          return;
+        }
+        sendJson(res, 200, { board: { id: existing.id, name: existing.name } });
+        return;
+      }
+
+      const board = storage.createBoard(id, name ?? "Untitled Board", user.id);
+      sendJson(res, 201, { board: { id: board.id, name: board.name } });
+      return;
+    }
+
     // 6. Shares: POST /api/boards/:id/shares
     const sharesMatch = pathname.match(/^\/api\/boards\/([^/]+)\/shares$/);
     if (sharesMatch && method === "POST") {
@@ -312,7 +358,27 @@ export function createHttpHandler(
         password?: string;
       }>(req);
 
-      const targetRole: Role = body?.role ?? "editor";
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        sendJson(res, 400, { error: "A JSON object is required." });
+        return;
+      }
+      if (body.password !== undefined && typeof body.password !== "string") {
+        sendJson(res, 400, { error: "Share password must be a string." });
+        return;
+      }
+      if (
+        body.expiresAt !== undefined &&
+        body.expiresAt !== null &&
+        (!Number.isSafeInteger(body.expiresAt) || body.expiresAt < 0)
+      ) {
+        sendJson(res, 400, {
+          error:
+            "Share expiry must be a non-negative integer timestamp or null.",
+        });
+        return;
+      }
+
+      const targetRole: Role = body.role ?? "editor";
       if (!["owner", "editor", "commenter", "viewer"].includes(targetRole)) {
         sendJson(res, 400, { error: "Invalid share role." });
         return;
@@ -400,8 +466,44 @@ export function createHttpHandler(
         return;
       }
 
-      storage.revokeShare(shareId);
+      const share = storage.getShareById(shareId);
+      if (!share || share.board_id !== boardId) {
+        sendJson(res, 404, { error: "Share link not found." });
+        return;
+      }
+
+      storage.revokeShare(share.id);
       sendJson(res, 200, { ok: true });
+      return;
+    }
+
+    // 8b. Board export: GET /api/boards/:id/export (owner or admin).
+    // Returns the full Yjs document state as a binary update, for backups.
+    const exportMatch = pathname.match(/^\/api\/boards\/([^/]+)\/export$/);
+    if (exportMatch && method === "GET") {
+      const boardId = decodeURIComponent(exportMatch[1]);
+      const user = authenticateUser(req, storage);
+      if (!user) {
+        sendJson(res, 401, { error: "Not authenticated." });
+        return;
+      }
+
+      const role = storage.resolveRole(boardId, user);
+      if (role !== "owner") {
+        sendJson(res, 403, { error: "Only board owners can export a board." });
+        return;
+      }
+
+      const doc = storage.loadBoardDocument(boardId);
+      const bytes = Y.encodeStateAsUpdate(doc);
+      doc.destroy();
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": bytes.byteLength,
+        "Content-Disposition": 'attachment; filename="board.ydoc"',
+        "Cache-Control": "no-store",
+      });
+      res.end(Buffer.from(bytes));
       return;
     }
 

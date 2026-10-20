@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { URL } from "node:url";
+
+import { parseRequestUrl } from "./requestUrl.js";
 
 import type http from "node:http";
 
@@ -63,8 +64,12 @@ export function createStaticHandler(
       return false;
     }
 
-    const host = req.headers.host || "localhost";
-    const parsedUrl = new URL(req.url || "/", `http://${host}`);
+    const parsedUrl = parseRequestUrl(req.url);
+    if (!parsedUrl) {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Bad Request");
+      return true;
+    }
     let pathname = decodeURIComponent(parsedUrl.pathname);
 
     // Prevent null byte attacks
@@ -96,6 +101,25 @@ export function createStaticHandler(
       res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("Forbidden");
       return true;
+    }
+
+    // Symlink defense: the resolved file must also stay inside the web root.
+    if (fs.existsSync(targetFilePath)) {
+      let realTarget: string;
+      let realBase: string;
+      try {
+        realTarget = fs.realpathSync(targetFilePath);
+        realBase = fs.realpathSync(resolvedWebDir);
+      } catch {
+        res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Forbidden");
+        return true;
+      }
+      if (!isSafePath(realBase, realTarget)) {
+        res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Forbidden");
+        return true;
+      }
     }
 
     // 1. Direct file check
