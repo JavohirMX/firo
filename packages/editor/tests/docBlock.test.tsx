@@ -9,6 +9,7 @@ import {
   computeDocBlockLayout,
   renderDocBlock,
 } from "../renderer/renderDocBlock";
+import { isWritableElement } from "@firo/common";
 import { DocBlockOverlay } from "../components/DocBlockOverlay";
 
 describe("Doc Block Canvas Renderer (renderDocBlock)", () => {
@@ -155,6 +156,33 @@ describe("DocBlockOverlay", () => {
     expect(editor).toBeDefined();
   });
 
+  it("is a writable element so canvas shortcuts do not eat typed keys", async () => {
+    vi.useFakeTimers();
+    const yDoc = new Y.Doc();
+    const fragment = yDoc.getXmlFragment("doc-block-fragment-focus");
+    const record = createDocBlockRecord({ title: "Focus" });
+
+    const { container } = render(
+      <DocBlockOverlay
+        record={record}
+        fragment={fragment}
+        layout={{ x: 0, y: 0, width: 400, height: 300 }}
+        appState={{ zoom: { value: 1 }, scrollX: 0, scrollY: 0 }}
+      />,
+    );
+    const editor = container.querySelector(".ProseMirror") as HTMLElement;
+
+    // The editor's own typing must not be treated as canvas shortcuts
+    // (space pans, "c" picks the comment tool, and so on).
+    expect(isWritableElement(editor)).toBe(true);
+
+    // The canvas takes focus after the placing click; focus comes back.
+    (document.body.querySelector("input,textarea") ?? document.body).focus();
+    vi.runAllTimers();
+    expect(document.activeElement).toBe(editor);
+    vi.useRealTimers();
+  });
+
   it("commits on Cmd+Enter", () => {
     const yDoc = new Y.Doc();
     const fragment = yDoc.getXmlFragment("doc-block-fragment-2");
@@ -266,4 +294,3 @@ describe("DocBlockOverlay", () => {
     }
   });
 });
-

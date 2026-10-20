@@ -264,8 +264,12 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     bindingRef.current = binding;
 
     // Focus editor and place cursor
+    // The canvas takes focus back when the placing click finishes, which is
+    // after this effect runs, so focus again once that has settled.
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
     if (!readOnly) {
       editorEl.focus();
+      focusTimer = setTimeout(() => editorEl.focus(), 0);
     }
 
     /*
@@ -282,6 +286,7 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     sessionEndGenerationRef.current += 1;
 
     return () => {
+      clearTimeout(focusTimer);
       binding.destroy();
       // Ensure we never destroy without committing or discarding per TRD-05.
       // Deferred out of the commit phase: if this cleanup was StrictMode's
@@ -387,6 +392,7 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
       <div
         ref={editorRef}
         className="ProseMirror"
+        data-type="wysiwyg"
         contentEditable={!readOnly}
         suppressContentEditableWarning
         onInput={handleInput}
