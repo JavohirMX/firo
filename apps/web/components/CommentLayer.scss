@@ -239,6 +239,9 @@
     width: auto;
     transform: none;
     box-sizing: border-box;
+    /* Long threads scroll inside the sheet instead of running off screen. */
+    max-height: calc(100dvh - 112px - 72px - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
   }
 
   .firo-comment-popover__input {
