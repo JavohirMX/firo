@@ -1084,3 +1084,41 @@
   white-space: nowrap;
   border-width: 0;
 }
+
+/* Narrow screens: the sidebar becomes a wrapping top bar so it no longer takes
+   220px of a 390px viewport and clips the boards next to it. */
+@media (max-width: 720px) {
+  .firo-board-home {
+    flex-direction: column;
+
+    &__main {
+      padding: var(--firo-space-lg) var(--firo-space-md);
+    }
+  }
+
+  .firo-board-sidebar {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--firo-color-border);
+    padding: var(--firo-space-sm) var(--firo-space-md);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--firo-space-sm);
+
+    &__top,
+    &__nav {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    &__item {
+      width: auto;
+    }
+  }
+}
