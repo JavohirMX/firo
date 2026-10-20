@@ -178,7 +178,10 @@ describe("DocBlockOverlay", () => {
     expect(isWritableElement(editor)).toBe(true);
 
     // The canvas takes focus after the placing click; focus comes back.
-    (document.body.querySelector("input,textarea") ?? document.body).focus();
+    (
+      (document.body.querySelector("input,textarea") ??
+        document.body) as HTMLElement
+    ).focus();
     vi.runAllTimers();
     expect(document.activeElement).toBe(editor);
     vi.useRealTimers();
