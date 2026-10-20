@@ -283,6 +283,7 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
               }
             }}
             data-testid="comment-composer-input"
+            aria-label="Comment"
           />
           <div className="firo-comment-popover__actions">
             <span className="firo-comment-popover__hint">
@@ -405,6 +406,7 @@ const ThreadPopover: React.FC<ThreadPopoverProps> = ({
           }
         }}
         data-testid="comment-reply-input"
+        aria-label="Reply"
       />
 
       <div className="firo-comment-thread__actions">
