@@ -127,6 +127,7 @@ import {
   createDocBlockRecord,
   docBlockRecordToFiroRecord,
   docBlockRecordFromFiroRecord,
+  serializeDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
 import {
@@ -1712,6 +1713,12 @@ const ExcalidrawWrapper = () => {
   const [commentMode, setCommentMode] = useState(false);
   const [docBlockMode, setDocBlockMode] = useState(false);
   const [activeDocBlockId, setActiveDocBlockId] = useState<string | null>(null);
+  /**
+   * The doc block the user just closed while it was still the selected
+   * element. Selecting a doc block opens its editor, so without this the
+   * editor reopens the instant Escape or a commit closes it.
+   */
+  const dismissedDocBlockIdRef = useRef<string | null>(null);
   const lastCanvasClickRef = useRef<{
     time: number;
     x: number;
@@ -1719,7 +1726,7 @@ const ExcalidrawWrapper = () => {
   } | null>(null);
 
   const handleUpdateDocBlockRecord = useCallback(
-    (recordId: string, _updatedDoc: any, updatedTitle?: string) => {
+    (recordId: string, updatedDoc: any, updatedTitle?: string) => {
       const doc = boardDoc();
       const existing = doc.read().records.find((r) => r.id === recordId);
       if (!existing) {
@@ -1730,6 +1737,11 @@ const ExcalidrawWrapper = () => {
       const updatedTyped: DocBlockRecord = {
         ...typed,
         title: nextTitle,
+        ...(updatedDoc
+          ? {
+              contentJson: JSON.stringify(serializeDocBlockNode(updatedDoc)),
+            }
+          : {}),
         updated: Date.now(),
       };
       const updatedFiroRecord = docBlockRecordToFiroRecord(updatedTyped);
@@ -1770,14 +1782,16 @@ const ExcalidrawWrapper = () => {
       if (activeDocBlockId) {
         handleUpdateDocBlockRecord(activeDocBlockId, updatedDoc, updatedTitle);
       }
+      dismissedDocBlockIdRef.current = activeDocBlockId;
       setActiveDocBlockId(null);
     },
     [activeDocBlockId, handleUpdateDocBlockRecord],
   );
 
   const handleDiscardDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const handleChangeDocBlock = useCallback(
     (updatedDoc: any, updatedTitle?: string) => {
@@ -1789,8 +1803,9 @@ const ExcalidrawWrapper = () => {
   );
 
   const handleCloseDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalTab, setExportModalTab] = useState<ExportTab>("image");
@@ -2884,11 +2899,26 @@ const ExcalidrawWrapper = () => {
           (record.collectionId === DOC_BLOCK_COLLECTION_ID ||
             isDocBlockRecord(record))
         ) {
-          if (activeDocBlockId !== recordId) {
+          if (
+            activeDocBlockId !== recordId &&
+            dismissedDocBlockIdRef.current !== recordId
+          ) {
             setActiveDocBlockId(recordId);
           }
         }
       }
+    }
+    // Once the dismissed block is no longer the only selection, selecting it
+    // again should open it.
+    if (
+      dismissedDocBlockIdRef.current &&
+      !(
+        selectedIds.length === 1 &&
+        elements.find((el) => el.id === selectedIds[0])?.customData
+          ?.recordId === dismissedDocBlockIdRef.current
+      )
+    ) {
+      dismissedDocBlockIdRef.current = null;
     }
 
     if (appState.activeTool?.type) {
@@ -3152,6 +3182,8 @@ const ExcalidrawWrapper = () => {
                   (hit.customData?.recordId as string | undefined) ||
                   ((hit as any).recordId as string | undefined);
                 if (recordId) {
+                  // An explicit click on the block always opens it.
+                  dismissedDocBlockIdRef.current = null;
                   setActiveDocBlockId(recordId);
                 }
               }

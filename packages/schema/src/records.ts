@@ -33,6 +33,11 @@ export type DocBlockRecord = Readonly<{
   collectionId: string;
   title: string;
   fragmentKey: string;
+  /**
+   * The committed document as ProseMirror JSON. The Yjs fragment is live-only
+   * and is not part of the saved board, so this is what survives a reload.
+   */
+  contentJson?: string;
   dimensions: DocBlockDimensions;
   styling: DocBlockStyling;
   order: FractionalIndex;
@@ -96,6 +101,9 @@ export const createDocBlockRecord = (
     collectionId: overrides.collectionId ?? DOC_BLOCK_COLLECTION_ID,
     title: overrides.title,
     fragmentKey: overrides.fragmentKey ?? `fragment-${id}`,
+    ...(overrides.contentJson !== undefined
+      ? { contentJson: overrides.contentJson }
+      : {}),
     dimensions: {
       width: overrides.dimensions?.width ?? DEFAULT_DOC_BLOCK_DIMENSIONS.width,
       height:
@@ -123,6 +131,9 @@ export const docBlockRecordToFiroRecord = (
   values: {
     title: { type: "text", value: docBlock.title },
     fragmentKey: { type: "text", value: docBlock.fragmentKey },
+    ...(docBlock.contentJson !== undefined
+      ? { contentJson: { type: "text" as const, value: docBlock.contentJson } }
+      : {}),
     width: { type: "number", value: docBlock.dimensions.width },
     height: { type: "number", value: docBlock.dimensions.height },
     styling: { type: "text", value: JSON.stringify(docBlock.styling) },
@@ -141,6 +152,7 @@ export const docBlockRecordFromFiroRecord = (
 ): DocBlockRecord => {
   const titleVal = record.values.title;
   const fragVal = record.values.fragmentKey;
+  const contentVal = record.values.contentJson;
   const widthVal = record.values.width;
   const heightVal = record.values.height;
   const styleVal = record.values.styling;
@@ -175,6 +187,9 @@ export const docBlockRecordFromFiroRecord = (
     collectionId: record.collectionId,
     title,
     fragmentKey,
+    ...(contentVal && contentVal.type === "text" && contentVal.value
+      ? { contentJson: contentVal.value }
+      : {}),
     dimensions: { width, height },
     styling,
     order: record.order,
