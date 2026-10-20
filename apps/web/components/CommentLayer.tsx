@@ -33,6 +33,16 @@ interface CommentLayerProps {
 }
 
 /** The canvas position a thread's pin should sit at, or null if its element is gone. */
+/** Keep a 280px popover (plus its 12px offset) on screen. */
+const clampPopoverLeft = (left: number) =>
+  Math.max(
+    8,
+    Math.min(
+      left,
+      (typeof window === "undefined" ? 1024 : window.innerWidth) - 280 - 24,
+    ),
+  );
+
 const pinPosition = (
   thread: CommentThread,
   elements: readonly FiroElement[],
@@ -265,7 +275,10 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
       {composerTarget && composerPosition && (
         <div
           className="firo-comment-popover"
-          style={{ left: composerPosition.left, top: composerPosition.top }}
+          style={{
+            left: clampPopoverLeft(composerPosition.left),
+            top: composerPosition.top,
+          }}
           role="dialog"
           aria-label="New comment"
           data-testid="comment-composer"
@@ -353,7 +366,7 @@ const ThreadPopover: React.FC<ThreadPopoverProps> = ({
   return (
     <div
       className="firo-comment-popover firo-comment-thread"
-      style={{ left: position.left, top: position.top }}
+      style={{ left: clampPopoverLeft(position.left), top: position.top }}
       role="dialog"
       aria-label="Comment thread"
       data-testid={`comment-thread-${thread.id}`}

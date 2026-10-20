@@ -101,6 +101,9 @@ describe("Canvas DocBlock Integration (§10.5)", () => {
       expect(screen.queryByRole("button", { name: /Document/i })).toBeNull();
       expect(screen.queryByRole("button", { name: /Comment/i })).toBeNull();
       expect(screen.queryByRole("button", { name: /Sticky/i })).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: /Tools catalog/i }),
+      ).toBeNull();
     });
 
     it("shows only Comment (and no creation tools) to commenters", () => {
