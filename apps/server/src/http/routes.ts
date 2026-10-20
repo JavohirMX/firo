@@ -314,7 +314,27 @@ export function createHttpHandler(
         password?: string;
       }>(req);
 
-      const targetRole: Role = body?.role ?? "editor";
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        sendJson(res, 400, { error: "A JSON object is required." });
+        return;
+      }
+      if (body.password !== undefined && typeof body.password !== "string") {
+        sendJson(res, 400, { error: "Share password must be a string." });
+        return;
+      }
+      if (
+        body.expiresAt !== undefined &&
+        body.expiresAt !== null &&
+        (!Number.isSafeInteger(body.expiresAt) || body.expiresAt < 0)
+      ) {
+        sendJson(res, 400, {
+          error:
+            "Share expiry must be a non-negative integer timestamp or null.",
+        });
+        return;
+      }
+
+      const targetRole: Role = body.role ?? "editor";
       if (!["owner", "editor", "commenter", "viewer"].includes(targetRole)) {
         sendJson(res, 400, { error: "Invalid share role." });
         return;
