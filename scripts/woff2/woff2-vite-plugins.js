@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 // Font asset base URL.
 //
 // Upstream hard-coded Excalidraw's own CDN
@@ -39,7 +42,7 @@ const PRELOAD_FONTS = [
  *
  * @returns {import("vite").PluginOption}
  */
-module.exports.woff2BrowserPlugin = () => {
+export const woff2BrowserPlugin = () => {
   let isDev;
 
   return {
@@ -47,6 +50,29 @@ module.exports.woff2BrowserPlugin = () => {
     enforce: "pre",
     config(_, { command }) {
       isDev = command === "serve";
+    },
+    generateBundle() {
+      // The transform below points the prod `fonts.css` (and the preloads) at
+      // `fonts/Assistant/*.woff2`, but Assistant is registered only through
+      // that stylesheet — it is never imported as a module, so rollup never
+      // emits the binaries and every one of those URLs 404'd in production
+      // builds. Emit them here, from the same directory the stylesheet lives
+      // beside, so the referenced URLs exist by construction. OFL.txt ships
+      // alongside the binaries, as its licence requires.
+      if (isDev) {
+        return;
+      }
+      const assistantDir = path.resolve(
+        import.meta.dirname,
+        "../../packages/editor/fonts/Assistant",
+      );
+      for (const file of fs.readdirSync(assistantDir)) {
+        this.emitFile({
+          type: "asset",
+          fileName: `fonts/Assistant/${file}`,
+          source: fs.readFileSync(path.join(assistantDir, file)),
+        });
+      }
     },
     transform(code, id) {
       // Copy/replace, rather than rely on vite/rollup: fonts declared in the
