@@ -1352,7 +1352,31 @@
 
   /* One comfortable column of cards on phones */
   .firo-board-grid,
+  /* One swipeable row, so the user's own boards stay above the fold. */
   .firo-template-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    gap: 12px;
+    margin: 0 calc(var(--firo-space-md) * -1);
+    padding: 0 var(--firo-space-md) var(--firo-space-sm);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding: 0 var(--firo-space-md);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .firo-template-card {
+    flex: 0 0 200px;
+    scroll-snap-align: start;
+
+    &__swatch {
+      height: 84px;
+    }
+
+    &__desc {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
   }
 }
