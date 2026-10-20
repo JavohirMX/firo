@@ -208,4 +208,62 @@ describe("DocBlockOverlay", () => {
     fireEvent.keyDown(overlayEl, { key: "Escape" });
     expect(onDiscard).toHaveBeenCalled();
   });
+
+  /*
+   * Regression: React error #185 ("Maximum update depth exceeded") when
+   * placing a doc block in the dev server. StrictMode mounts the overlay
+   * with a setup -> cleanup -> setup cycle; the mount effect's cleanup
+   * used to discard the session synchronously, which set the parent's
+   * activeDocBlockId to null, and the still-selected element re-opened the
+   * overlay on the next editor change — an unmount/remount loop that
+   * crashed the app. The cleanup now defers the session end and the
+   * re-setup cancels it.
+   */
+  it("survives StrictMode's simulated unmount without discarding the session", () => {
+    vi.useFakeTimers();
+    try {
+      const yDoc = new Y.Doc();
+      const fragment = yDoc.getXmlFragment("doc-block-strictmode-fragment");
+      const record = createDocBlockRecord({
+        title: "StrictMode Doc",
+        dimensions: { width: 400, height: 300 },
+      });
+      const appState = { zoom: { value: 1 }, scrollX: 0, scrollY: 0 };
+      const layout = { x: 0, y: 0, width: 400, height: 300 };
+      const onCommit = vi.fn();
+      const onDiscard = vi.fn();
+      const onClose = vi.fn();
+
+      const { container, unmount } = render(
+        <React.StrictMode>
+          <DocBlockOverlay
+            record={record}
+            fragment={fragment}
+            layout={layout}
+            appState={appState}
+            onCommit={onCommit}
+            onDiscard={onDiscard}
+            onClose={onClose}
+          />
+        </React.StrictMode>,
+      );
+
+      // The simulated unmount must not end the session, even after the
+      // deferred session-end task would have fired.
+      vi.runAllTimers();
+      expect(onDiscard).not.toHaveBeenCalled();
+      expect(onCommit).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(container.querySelector(".DocBlockOverlay")).not.toBeNull();
+
+      // A real unmount still discards an untouched session (TRD-05).
+      unmount();
+      vi.runAllTimers();
+      expect(onDiscard).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
+
