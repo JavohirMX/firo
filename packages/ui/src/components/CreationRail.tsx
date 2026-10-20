@@ -208,6 +208,8 @@ export interface CreationRailProps {
    * popover. Without this the rail would be a one-way door.
    */
   hiddenTools?: RailToolItem[];
+  /** Show the "+" tools catalog. Hosts hide it when there is nothing to add. */
+  showCatalog?: boolean;
   /** Called with the full visible order (pinned entries included) after a drag. */
   onReorder?: (order: RailToolType[]) => void;
   /** Called when a tool is unpinned from its right-click menu. */
@@ -262,6 +264,7 @@ export const CreationRail: React.FC<CreationRailProps> = ({
   onPointerDownTool,
   tools,
   hiddenTools = [],
+  showCatalog = true,
   onReorder,
   onUnpin,
   onRestore,
@@ -591,22 +594,24 @@ export const CreationRail: React.FC<CreationRailProps> = ({
         })}
 
         {/* The '+' is the catalog, and the catalog is the one restore path. */}
-        <div className="firo-rail__slot">
-          <button
-            type="button"
-            className="firo-rail__item firo-rail__item--more"
-            onClick={() => setCatalogOpen((open) => !open)}
-            title="Tools (+)"
-            aria-label="Tools catalog"
-            aria-haspopup="dialog"
-            aria-expanded={catalogOpen}
-          >
-            <PlusIcon />
-          </button>
-        </div>
+        {showCatalog && (
+          <div className="firo-rail__slot">
+            <button
+              type="button"
+              className="firo-rail__item firo-rail__item--more"
+              onClick={() => setCatalogOpen((open) => !open)}
+              title="Tools (+)"
+              aria-label="Tools catalog"
+              aria-haspopup="dialog"
+              aria-expanded={catalogOpen}
+            >
+              <PlusIcon />
+            </button>
+          </div>
+        )}
       </div>
 
-      {catalogOpen ? (
+      {showCatalog && catalogOpen ? (
         <ToolsCatalog
           tools={tools}
           hiddenTools={hiddenTools}

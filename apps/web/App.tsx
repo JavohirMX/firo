@@ -843,6 +843,9 @@ export const WebCreationRail = ({
     <CreationRail
       tools={tools}
       hiddenTools={hiddenTools}
+      showCatalog={!readOnlyRole}
+      canUndo={!readOnlyRole}
+      canRedo={!readOnlyRole}
       activeTool={
         commentMode ? "comment" : docBlockMode ? "docblock" : activeToolType
       }
