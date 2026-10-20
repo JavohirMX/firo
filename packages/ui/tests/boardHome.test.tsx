@@ -130,6 +130,19 @@ describe("@firo/ui BoardHome", () => {
     expect(onRenameBoard).toHaveBeenCalledWith("roadmap", "Q3 roadmap");
   });
 
+  it("selects the whole name when rename starts, so typing replaces it", () => {
+    render(<BoardHome boards={[boards[1]]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+    const input = screen.getByRole("textbox", {
+      name: "Rename Roadmap",
+    }) as HTMLInputElement;
+    fireEvent.focus(input);
+
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("Roadmap".length);
+  });
+
   it("ignores a rename that only adds whitespace", () => {
     const onRenameBoard = vi.fn();
     render(<BoardHome boards={[boards[1]]} onRenameBoard={onRenameBoard} />);
