@@ -201,6 +201,15 @@ describe("Client Collaboration and Presence UI", () => {
   });
 
   describe("CollabBar", () => {
+    it("shows a view-only badge only for read-only share roles", () => {
+      const { rerender } = render(<CollabBar readOnlyRole="viewer" />);
+      expect(screen.getByTestId("view-only-badge").textContent).toContain(
+        "View only",
+      );
+      rerender(<CollabBar readOnlyRole={null} />);
+      expect(screen.queryByTestId("view-only-badge")).toBeNull();
+    });
+
     it("renders connection status pill with appropriate dot indicator", () => {
       const { rerender } = render(<CollabBar connectionStatus="connected" />);
       expect(screen.getByTestId("connection-dot-connected")).toBeDefined();

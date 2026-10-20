@@ -2503,6 +2503,9 @@ const ExcalidrawWrapper = () => {
     readonly CollaboratorInfo[]
   >([]);
 
+  const [shareRole, setShareRole] = useState<string | null>(null);
+  const isReadOnlyShare = shareRole === "viewer" || shareRole === "commenter";
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -2518,10 +2521,13 @@ const ExcalidrawWrapper = () => {
         getActiveBoard()?.id ||
         "default";
 
-      if (shareToken && (!boardId || boardId === "default")) {
+      if (shareToken) {
         const resolved = await resolveShareToken(shareToken);
-        if (resolved?.boardId) {
+        if (resolved?.boardId && (!boardId || boardId === "default")) {
           boardId = resolved.boardId;
+        }
+        if (resolved?.role && !isCancelled) {
+          setShareRole(resolved.role);
         }
       }
 
@@ -3075,6 +3081,7 @@ const ExcalidrawWrapper = () => {
         renderTopRightUI={() => (
           <CollabBar
             connectionStatus={isOffline ? "offline" : collabStatus}
+            readOnlyRole={isReadOnlyShare ? shareRole : null}
             collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
@@ -3176,6 +3183,7 @@ const ExcalidrawWrapper = () => {
         onExport={onExport}
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
+        viewModeEnabled={isReadOnlyShare}
         UIOptions={{
           canvasActions: {
             toggleTheme: true,
