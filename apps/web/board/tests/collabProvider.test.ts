@@ -531,6 +531,36 @@ describe("CollabProvider", () => {
     });
   });
 
+  it("does not notify awareness or collaborators for an unchanged tool", () => {
+    const provider = new CollabProvider({
+      boardId: "tool-feedback-regression",
+      doc,
+      WebSocketPolyfill: MockWebSocket as unknown as typeof WebSocket,
+    });
+    const updated = vi.fn();
+    provider.awareness.on("update", updated);
+    const collaborators = vi.fn();
+    const unsubscribe = provider.onCollaboratorsChange(collaborators);
+    collaborators.mockClear();
+
+    provider.setLocalTool("rectangle");
+    expect(updated).toHaveBeenCalledTimes(1);
+    expect(collaborators).toHaveBeenCalledTimes(1);
+
+    for (let i = 0; i < 100; i++) {
+      provider.setLocalTool("rectangle");
+    }
+    expect(updated).toHaveBeenCalledTimes(1);
+    expect(collaborators).toHaveBeenCalledTimes(1);
+
+    provider.setLocalTool("ellipse");
+    expect(updated).toHaveBeenCalledTimes(2);
+    expect(collaborators).toHaveBeenCalledTimes(2);
+    expect(provider.awareness.getLocalState()?.user.tool).toBe("ellipse");
+    unsubscribe();
+    provider.destroy();
+  });
+
   describe("resolveShareToken", () => {
     it("fetches /api/shares/:token and extracts share details", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
