@@ -515,7 +515,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Not hidden: the actions menu drops below the thumbnail and must not be
+     cut off by the card edge. The thumbnail rounds its own top corners. */
+  overflow: visible;
   background-color: var(--firo-color-panel);
   border: 1px solid var(--firo-color-border);
   border-radius: var(--firo-radius-lg);
@@ -524,7 +526,12 @@
     border-color var(--firo-motion-fast) var(--firo-motion-ease),
     transform var(--firo-motion-fast) var(--firo-motion-ease);
 
+  &:focus-within {
+    z-index: 2;
+  }
+
   &:hover {
+    z-index: 2;
     box-shadow: var(--firo-elevation-floating);
     border-color: var(--firo-color-border-strong);
     transform: translateY(-2px);
@@ -595,6 +602,8 @@
     aspect-ratio: 16 / 10;
     width: 100%;
     overflow: hidden;
+    border-radius: calc(var(--firo-radius-lg) - 1px)
+      calc(var(--firo-radius-lg) - 1px) 0 0;
     color: var(--firo-color-text-muted);
     background-color: var(--firo-color-surface);
     border-bottom: 1px solid var(--firo-color-border);
