@@ -564,6 +564,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
     null,
   );
   const [renameBoardDraft, setRenameBoardDraft] = React.useState("");
+  const [moreBoard, setMoreBoard] = React.useState<BoardCardData | null>(null);
   const [movingBoard, setMovingBoard] = React.useState<BoardCardData | null>(
     null,
   );
@@ -1301,6 +1302,16 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                               )}
                               <button
                                 type="button"
+                                className="firo-board-card__action firo-board-table__more"
+                                aria-label={`More actions for ${board.name}`}
+                                title="More actions"
+                                aria-haspopup="dialog"
+                                onClick={() => setMoreBoard(board)}
+                              >
+                                <MoreVerticalIcon size={16} />
+                              </button>
+                              <button
+                                type="button"
                                 className="firo-board-card__action"
                                 aria-label={`Move ${board.name} to trash`}
                                 title="Move to trash"
@@ -1368,6 +1379,97 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
         )}
       </main>
 
+      {moreBoard && (
+        <div
+          className="firo-board-modal-overlay"
+          onClick={() => setMoreBoard(null)}
+        >
+          <div
+            className="firo-board-modal"
+            role="dialog"
+            aria-label={`Actions for ${moreBoard.name}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="firo-board-modal__header">
+              <h3 className="firo-board-modal__title">{moreBoard.name}</h3>
+              <button
+                type="button"
+                className="firo-board-modal__close"
+                aria-label="Close dialog"
+                onClick={() => setMoreBoard(null)}
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+            <div className="firo-board-modal__body">
+              <div className="firo-board-modal__folder-list">
+                <button
+                  type="button"
+                  className="firo-board-modal__folder-option"
+                  onClick={() => {
+                    setRenameBoardDraft(moreBoard.name);
+                    setRenamingBoardId(moreBoard.id);
+                    setMoreBoard(null);
+                  }}
+                >
+                  <PencilIcon size={16} />
+                  <span>Rename</span>
+                </button>
+                {onDuplicateBoard && (
+                  <button
+                    type="button"
+                    className="firo-board-modal__folder-option"
+                    onClick={() => {
+                      onDuplicateBoard(moreBoard.id);
+                      setMoreBoard(null);
+                    }}
+                  >
+                    <DuplicateIcon size={16} />
+                    <span>Duplicate</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="firo-board-modal__folder-option"
+                  onClick={() => {
+                    setMovingBoard(moreBoard);
+                    setMoreBoard(null);
+                  }}
+                >
+                  <FolderIcon size={16} />
+                  <span>Move to folder</span>
+                </button>
+                {onExportBoard && (
+                  <>
+                    <button
+                      type="button"
+                      className="firo-board-modal__folder-option"
+                      onClick={() => {
+                        onExportBoard(moreBoard.id, "firo");
+                        setMoreBoard(null);
+                      }}
+                    >
+                      <DownloadIcon size={16} />
+                      <span>Export as .firo</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="firo-board-modal__folder-option"
+                      onClick={() => {
+                        onExportBoard(moreBoard.id, "pdf");
+                        setMoreBoard(null);
+                      }}
+                    >
+                      <FilePdfIcon size={16} />
+                      <span>Export as PDF</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {movingBoard && (
         <div
           className="firo-board-modal-overlay"
