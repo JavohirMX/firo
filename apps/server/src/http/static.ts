@@ -103,6 +103,25 @@ export function createStaticHandler(
       return true;
     }
 
+    // Symlink defense: the resolved file must also stay inside the web root.
+    if (fs.existsSync(targetFilePath)) {
+      let realTarget: string;
+      let realBase: string;
+      try {
+        realTarget = fs.realpathSync(targetFilePath);
+        realBase = fs.realpathSync(resolvedWebDir);
+      } catch {
+        res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Forbidden");
+        return true;
+      }
+      if (!isSafePath(realBase, realTarget)) {
+        res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Forbidden");
+        return true;
+      }
+    }
+
     // 1. Direct file check
     if (fs.existsSync(targetFilePath) && fs.statSync(targetFilePath).isFile()) {
       const stat = fs.statSync(targetFilePath);
