@@ -1447,6 +1447,19 @@
       max-width: 0;
     }
 
+    /* Let tags drop under the name, and give the rename field the full row. */
+    &__name-cell {
+      flex-wrap: wrap;
+      gap: var(--firo-space-xs) var(--firo-space-sm);
+    }
+
+    &__name-cell .firo-board-card__name-input {
+      flex: 1 1 100%;
+      min-width: 0;
+      min-height: 36px;
+      font-size: 16px;
+    }
+
     &__td--name .firo-board-table__name-link,
     &__td--name button {
       max-width: 100%;
