@@ -278,6 +278,8 @@ import { boardUrl } from "./board/routes";
 
 import "./index.scss";
 
+import type { JSX } from "react";
+
 import type { RailLayout } from "./board/railLayout";
 
 polyfill();
@@ -2744,7 +2746,7 @@ const ExcalidrawWrapper = () => {
       tools.push({
         id: "comment",
         label: "Comment",
-        icon: RAIL_TOOL_ICONS.comment,
+        icon: RAIL_TOOL_ICONS.comment as JSX.Element,
         selected: commentMode,
         onSelect: () => {
           setCommentMode((mode) => !mode);
@@ -2757,7 +2759,7 @@ const ExcalidrawWrapper = () => {
         {
           id: "docblock",
           label: "Document",
-          icon: RAIL_TOOL_ICONS.docblock,
+          icon: RAIL_TOOL_ICONS.docblock as JSX.Element,
           selected: docBlockMode,
           onSelect: () => {
             setDocBlockMode((mode) => !mode);
@@ -2767,13 +2769,13 @@ const ExcalidrawWrapper = () => {
         {
           id: "templates",
           label: "Templates",
-          icon: RAIL_TOOL_ICONS.templates,
+          icon: RAIL_TOOL_ICONS.templates as JSX.Element,
           onSelect: () => setTemplateModalOpen(true),
         },
         {
           id: "ai",
           label: "AI Assistant",
-          icon: RAIL_TOOL_ICONS.ai,
+          icon: RAIL_TOOL_ICONS.ai as JSX.Element,
           onSelect: () => setAiModalOpen(true),
         },
       );
