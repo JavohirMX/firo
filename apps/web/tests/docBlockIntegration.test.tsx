@@ -160,13 +160,15 @@ describe("Canvas DocBlock Integration (§10.5)", () => {
 
       const { element } = insertDocBlockOnBoard(() => doc, mockExcalidrawAPI);
 
-      // Center calculation:
-      // x = -scrollX + (width / 2) / zoom - docBlock.dimensions.width / 2
-      // x = -50 + 400 / 2 - 560 / 2 = -50 + 200 - 280 = -130
-      // y = -scrollY + (height / 2) / zoom - docBlock.dimensions.height / 2
-      // y = -100 + 300 / 2 - 400 / 2 = -100 + 150 - 200 = -150
-      expect(element.x).toBe(-130);
-      expect(element.y).toBe(-150);
+      // The viewport is 400 x 300 world units, so the new block is sized
+      // down to fit it: width = min(560, 400 - 32) = 368 and
+      // height = max(200, min(400, 0.6 * 300)) = 200.
+      // x = -scrollX + (width / 2) / zoom - 368 / 2 = -50 + 200 - 184 = -34
+      // y = -scrollY + (height / 2) / zoom - 200 / 2 = -100 + 150 - 100 = -50
+      expect(element.width).toBe(368);
+      expect(element.height).toBe(200);
+      expect(element.x).toBe(-34);
+      expect(element.y).toBe(-50);
     });
 
     it("does not duplicate collection if DOC_BLOCK_COLLECTION_ID already exists", () => {

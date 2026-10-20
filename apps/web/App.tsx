@@ -1717,17 +1717,6 @@ export const insertDocBlockOnBoard = (
     }
   }
 
-  if (view) {
-    // keep the block inside the viewport horizontally
-    const minX = -view.scrollX + 16 / view.zoom.value;
-    const maxX =
-      -view.scrollX +
-      view.width / view.zoom.value -
-      docBlock.dimensions.width -
-      16 / view.zoom.value;
-    x = Math.max(minX, Math.min(x, Math.max(minX, maxX)));
-  }
-
   const element = newElement({
     type: "rectangle",
     x,
