@@ -371,6 +371,13 @@ export function createHttpHandler(
         return;
       }
 
+      // Admins pass the role check for any id, but a share row needs a real
+      // board to point at; without this the insert throws a foreign key error.
+      if (!storage.getBoard(boardId)) {
+        sendJson(res, 404, { error: "Board not found." });
+        return;
+      }
+
       const body = await readJsonBody<{
         role?: Role;
         expiresAt?: number;
