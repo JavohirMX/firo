@@ -345,6 +345,25 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
           >
             {t("toolBar.bucketfill")}
           </DropdownMenu.Item>
+          {app.props.mobileExtraTools && app.props.mobileExtraTools.length > 0 && (
+            <>
+              <div style={{ margin: "6px 0", fontSize: 14, fontWeight: 600 }}>
+                Board tools
+              </div>
+              {app.props.mobileExtraTools.map((tool) => (
+                <DropdownMenu.Item
+                  key={tool.id}
+                  onSelect={tool.onSelect}
+                  icon={tool.icon}
+                  data-testid={`toolbar-mobile-${tool.id}`}
+                  selected={tool.selected}
+                  disabled={tool.disabled}
+                >
+                  {tool.label}
+                </DropdownMenu.Item>
+              ))}
+            </>
+          )}
           <div style={{ margin: "6px 0", fontSize: 14, fontWeight: 600 }}>
             Generate
           </div>

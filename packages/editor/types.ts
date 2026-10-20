@@ -940,6 +940,11 @@ export interface ExcalidrawProps {
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
+  /**
+   * Host-provided entries for the mobile toolbar's "More tools" menu, for
+   * tools the generic editor does not know about (the host's own rail tools).
+   */
+  mobileExtraTools?: readonly MobileExtraTool[];
   renderNavigationUI?: (
     isMobile: boolean,
     appState: UIAppState,

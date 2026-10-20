@@ -20,6 +20,7 @@ import {
   DocBlockOverlay,
   renderDocBlock,
   viewportCoordsToSceneCoords,
+  type MobileExtraTool,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -2665,6 +2666,56 @@ const ExcalidrawWrapper = () => {
     return () => window.removeEventListener("pointerdown", onDown, true);
   }, [commentMode, shareRole, excalidrawAPI]);
 
+  /*
+   * The mobile toolbar is the generic editor's, so the board's own tools reach
+   * it as extra "More tools" entries. Same rules as the desktop rail: read-only
+   * share roles get no creation tools, commenters keep Comment.
+   */
+  const mobileExtraTools = useMemo(() => {
+    const canCreate = !isReadOnlyShare;
+    const canComment = canCreate || shareRole === "commenter";
+    const tools: MobileExtraTool[] = [];
+    if (canComment) {
+      tools.push({
+        id: "comment",
+        label: "Comment",
+        icon: RAIL_TOOL_ICONS.comment,
+        selected: commentMode,
+        onSelect: () => {
+          setCommentMode((mode) => !mode);
+          setDocBlockMode(false);
+        },
+      });
+    }
+    if (canCreate) {
+      tools.push(
+        {
+          id: "docblock",
+          label: "Document",
+          icon: RAIL_TOOL_ICONS.docblock,
+          selected: docBlockMode,
+          onSelect: () => {
+            setDocBlockMode((mode) => !mode);
+            setCommentMode(false);
+          },
+        },
+        {
+          id: "templates",
+          label: "Templates",
+          icon: RAIL_TOOL_ICONS.templates,
+          onSelect: () => setTemplateModalOpen(true),
+        },
+        {
+          id: "ai",
+          label: "AI Assistant",
+          icon: RAIL_TOOL_ICONS.ai,
+          onSelect: () => setAiModalOpen(true),
+        },
+      );
+    }
+    return tools;
+  }, [isReadOnlyShare, shareRole, commentMode, docBlockMode]);
+
   const isCollaborating = collabStatus === "connected";
   /**
    * Follow-mode viewport status. Presence arrives with the v2 sync server
@@ -3300,6 +3351,7 @@ const ExcalidrawWrapper = () => {
         onExport={onExport}
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
+        mobileExtraTools={mobileExtraTools}
         viewModeEnabled={isReadOnlyShare}
         UIOptions={{
           canvasActions: {
