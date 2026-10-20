@@ -183,6 +183,35 @@ describe("DocBlockOverlay", () => {
     vi.useRealTimers();
   });
 
+  it("ignores the press that placed the block but commits on a later outside press", () => {
+    const yDoc = new Y.Doc();
+    const fragment = yDoc.getXmlFragment("doc-block-fragment-outside");
+    const record = createDocBlockRecord({ title: "Outside" });
+    const onCommit = vi.fn();
+    const onDiscard = vi.fn();
+
+    // The placing press exists before the overlay mounts.
+    const placingPress = new MouseEvent("mousedown", { bubbles: true });
+
+    render(
+      <DocBlockOverlay
+        record={record}
+        fragment={fragment}
+        layout={{ x: 0, y: 0, width: 400, height: 300 }}
+        appState={{ zoom: { value: 1 }, scrollX: 0, scrollY: 0 }}
+        onCommit={onCommit}
+        onDiscard={onDiscard}
+      />,
+    );
+
+    document.body.dispatchEvent(placingPress);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(onDiscard).not.toHaveBeenCalled();
+
+    document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(onCommit.mock.calls.length + onDiscard.mock.calls.length).toBe(1);
+  });
+
   it("commits on Cmd+Enter", () => {
     const yDoc = new Y.Doc();
     const fragment = yDoc.getXmlFragment("doc-block-fragment-2");

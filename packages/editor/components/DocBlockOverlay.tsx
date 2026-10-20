@@ -328,7 +328,14 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
 
   // Handle global click outside to commit
   useEffect(() => {
+    // The click that placed this block is still being delivered when the
+    // overlay mounts; its mousedown lands outside the new overlay and would
+    // close it at once. Only react to presses that began after the mount.
+    const mountedAt = new Event("mount").timeStamp;
     const handleClickOutside = (event: MouseEvent) => {
+      if (event.timeStamp < mountedAt) {
+        return;
+      }
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
