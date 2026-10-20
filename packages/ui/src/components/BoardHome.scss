@@ -789,7 +789,7 @@
 
 /* Touch targets on phones: 44px, the size a thumb can hit without a miss.
    Wider touch screens keep the compact buttons, which fit a narrower card. */
-@media (hover: none) and (max-width: 768px) {
+@media (pointer: coarse) {
   .firo-board-card .firo-board-card__star,
   .firo-board-card .firo-board-card__action {
     width: 44px;
@@ -1414,9 +1414,9 @@
   }
 }
 
-/* List view on phones: keep star, name and actions in view. Folder and last
+/* List view on phones and touch tablets: keep star, name and actions in view. Folder and last
    opened are secondary and would otherwise push the actions off screen. */
-@media (max-width: 768px) {
+@media (max-width: 768px), (pointer: coarse) {
   .firo-board-table {
     &__th--folder,
     &__td--folder,
@@ -1461,24 +1461,10 @@
     &__action-group {
       gap: 0;
     }
-
-    /* Compact pattern: More actions and trash stay in the row; rename,
-       duplicate, move and export live in the More actions sheet. */
-    &__action-group {
-      flex-wrap: nowrap;
-
-      > .firo-board-card__action:not(:last-child):not(.firo-board-table__more) {
-        display: none;
-      }
-
-      > .firo-board-table__more {
-        display: inline-flex;
-      }
-    }
   }
 }
 
-@media (hover: none) and (max-width: 768px) {
+@media (pointer: coarse) {
   .firo-board-table .firo-board-card__star,
   .firo-board-table .firo-board-card__action {
     min-width: 44px;
@@ -1500,9 +1486,31 @@
   }
 }
 
-@media (hover: none) and (max-width: 768px) {
+@media (pointer: coarse) {
+  .firo-board-home__view-btn,
   .firo-board-home__view-btn.firo-board-home__theme-btn {
-    width: 44px;
-    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Compact row actions on phones and on any touch device: six 44px targets do
+   not fit a table row, so rename, duplicate, move and export sit in the More
+   actions sheet. */
+@media (max-width: 768px), (pointer: coarse) {
+  .firo-board-table {
+    /* Compact pattern: More actions and trash stay in the row; rename,
+       duplicate, move and export live in the More actions sheet. */
+    &__action-group {
+      flex-wrap: nowrap;
+
+      > .firo-board-card__action:not(:last-child):not(.firo-board-table__more) {
+        display: none;
+      }
+
+      > .firo-board-table__more {
+        display: inline-flex;
+      }
+    }
   }
 }
