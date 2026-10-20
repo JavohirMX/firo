@@ -127,6 +127,27 @@ describe("Storage", () => {
     });
   });
 
+  it("preserves a named board when an incoming update is appended", () => {
+    storage.createUser({
+      id: "sync-owner",
+      username: "sync-owner",
+      password_hash: "h",
+      salt: "s",
+      is_admin: 0,
+    });
+    storage.createBoard("named-board", "Sprint retrospective", "sync-owner");
+    const original = storage.getBoard("named-board")!;
+    const doc = new Y.Doc();
+    doc.getMap("elements").set("note", { text: "Keep this" });
+    storage.appendUpdate("named-board", Y.encodeStateAsUpdate(doc));
+    const board = storage.getBoard("named-board")!;
+    expect(board.name).toBe("Sprint retrospective");
+    expect(board.owner_id).toBe(original.owner_id);
+    expect(board.created_at).toBe(original.created_at);
+    expect(storage.getUpdates("named-board")).toHaveLength(1);
+    doc.destroy();
+  });
+
   describe("Yjs updates, sequencing & compaction", () => {
     it("sequences updates and loads full document state", () => {
       const boardId = "doc-board-1";
