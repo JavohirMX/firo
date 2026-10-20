@@ -111,7 +111,9 @@ export async function resolveShareToken(
   requiresPassword?: boolean;
 } | null> {
   try {
-    const res = await fetch(`${apiBase}/s/${encodeURIComponent(token)}`);
+    const res = await fetch(
+      `${apiBase}/api/shares/${encodeURIComponent(token)}`,
+    );
     if (!res.ok) {
       return null;
     }
