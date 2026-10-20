@@ -512,6 +512,43 @@ export const CREATION_TOOLS = new Set<RailToolType>([
   "docblock",
 ]);
 
+/**
+ * Fit the viewport to a set of elements, leaving room for the board chrome.
+ * Only the viewport changes, never the elements, so shared documents keep
+ * their world coordinates.
+ */
+const fitViewToElements = (
+  api: ExcalidrawImperativeAPI,
+  elements: readonly { x: number; y: number; width: number; height: number }[],
+) => {
+  if (elements.length === 0) {
+    return;
+  }
+  const view = api.getAppState();
+  const minX = Math.min(...elements.map((el) => el.x));
+  const minY = Math.min(...elements.map((el) => el.y));
+  const maxX = Math.max(...elements.map((el) => el.x + el.width));
+  const maxY = Math.max(...elements.map((el) => el.y + el.height));
+  const left = 96;
+  const top = 88;
+  const availW = Math.max(120, view.width - left - 40);
+  const availH = Math.max(120, view.height - top - 96);
+  const boundsW = Math.max(1, maxX - minX);
+  const boundsH = Math.max(1, maxY - minY);
+  const zoom = Math.min(
+    1,
+    Math.max(0.1, Math.min(availW / boundsW, availH / boundsH)),
+  );
+  api.updateScene({
+    appState: {
+      zoom: { value: zoom as never },
+      scrollX: (left + availW / 2) / zoom - (minX + maxX) / 2,
+      scrollY: (top + availH / 2) / zoom - (minY + maxY) / 2,
+    },
+    captureUpdate: CaptureUpdateAction.NEVER,
+  });
+};
+
 export const WebCreationRail = ({
   appState,
   commentMode = false,
@@ -1023,6 +1060,16 @@ const WebInspector = ({ appState }: { appState: UIAppState }) => {
   const elements = app.scene.getNonDeletedElements();
 
   if (!showSelectedShapeActions(appState, elements)) {
+    return null;
+  }
+
+  // A document block has no stroke, fill or text styling to edit, so the
+  // generic shape panel only gets in the way of it.
+  const selected = elements.filter((el) => appState.selectedElementIds[el.id]);
+  if (
+    selected.length > 0 &&
+    selected.every((el) => el.customData?.isDocBlock)
+  ) {
     return null;
   }
 
@@ -1819,6 +1866,17 @@ const ExcalidrawWrapper = () => {
         point,
       );
       setActiveDocBlockId(record.id);
+      // On a narrow screen the new block can be wider than the viewport. Fit
+      // the view to it rather than resizing the shared document.
+      if (excalidrawAPI) {
+        const view = excalidrawAPI.getAppState();
+        const needsFit =
+          element.width * view.zoom.value > view.width * 0.95 ||
+          element.height * view.zoom.value > view.height * 0.7;
+        if (needsFit) {
+          fitViewToElements(excalidrawAPI, [element]);
+        }
+      }
       return { record, element };
     },
     [excalidrawAPI],
@@ -2715,6 +2773,45 @@ const ExcalidrawWrapper = () => {
     }
     return tools;
   }, [isReadOnlyShare, shareRole, commentMode, docBlockMode]);
+
+  /*
+   * A board opens at scroll 0,0, which hides content that sits near the origin
+   * behind the chrome or off the edge on a phone (templates start there). No
+   * view is stored per board, so fit the view once, when content first shows up
+   * in the opening seconds (local load or first sync). Stop as soon as the
+   * user has panned or zoomed, or after the window, so a first shape drawn on
+   * an empty board never moves the view.
+   */
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    let done = false;
+    const startedAt = Date.now();
+    const off = excalidrawAPI.onChange((elements, state) => {
+      if (done) {
+        return;
+      }
+      if (
+        Date.now() - startedAt > 4000 ||
+        state.scrollX !== 0 ||
+        state.scrollY !== 0 ||
+        state.zoom.value !== 1 ||
+        state.newElement ||
+        state.editingTextElement
+      ) {
+        done = true;
+        return;
+      }
+      const live = elements.filter((el) => !el.isDeleted);
+      if (live.length === 0) {
+        return;
+      }
+      done = true;
+      fitViewToElements(excalidrawAPI, live);
+    });
+    return off;
+  }, [excalidrawAPI]);
 
   const isCollaborating = collabStatus === "connected";
   /**
