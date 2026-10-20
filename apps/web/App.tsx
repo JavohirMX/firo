@@ -168,6 +168,7 @@ import type {
 import type { ResolutionType } from "@firo/common/utility-types";
 import type { ResolvablePromise } from "@firo/common/utils";
 
+import { changedDocBlockIds } from "./board/docContentSync";
 import { canAutoFit, computeFitView } from "./board/initialFit";
 
 import { clearActivity, listActivity } from "./board/activity";
@@ -1855,14 +1856,11 @@ const ExcalidrawWrapper = () => {
     readContent().forEach((v, k) => seen.set(k, v));
     return boardDoc().subscribe(() => {
       const next = readContent();
-      const changed = new Set<string>();
-      next.forEach((v, k) => {
-        if (seen.get(k) !== v) {
-          changed.add(k);
-        }
-        seen.set(k, v);
-      });
-      changed.delete(activeDocBlockIdRef.current ?? "");
+      const changed = changedDocBlockIds(
+        seen,
+        next,
+        activeDocBlockIdRef.current,
+      );
       if (!changed.size) {
         return;
       }
