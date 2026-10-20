@@ -240,6 +240,7 @@ export const BoardCard: React.FC<BoardCardProps> = ({
             value={draft}
             autoFocus
             aria-label={`Rename ${board.name}`}
+            onFocus={(event) => event.currentTarget.select()}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -806,6 +807,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                         className="firo-board-sidebar__folder-rename-input"
                         autoFocus
                         aria-label={`Rename folder ${folder.name}`}
+                        onFocus={(event) => event.currentTarget.select()}
                         value={editFolderName}
                         onChange={(event) =>
                           setEditFolderName(event.target.value)
