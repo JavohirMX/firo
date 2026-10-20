@@ -33,13 +33,16 @@ interface CommentLayerProps {
 }
 
 /** The canvas position a thread's pin should sit at, or null if its element is gone. */
-/** Keep a 280px popover (plus its 12px offset) on screen. */
+/**
+ * Keep a popover on screen. It renders 306px wide (280px content plus padding
+ * and border) and is offset 12px from its anchor, with an 8px edge margin.
+ */
 const clampPopoverLeft = (left: number) =>
   Math.max(
     8,
     Math.min(
       left,
-      (typeof window === "undefined" ? 1024 : window.innerWidth) - 280 - 24,
+      (typeof window === "undefined" ? 1024 : window.innerWidth) - 326,
     ),
   );
 
