@@ -37,7 +37,7 @@ export function revokeSession(storage: Storage, token: string): void {
 export function parseCookies(
   cookieHeader: string | undefined,
 ): Record<string, string> {
-  const out: Record<string, string> = {};
+  const out: Record<string, string> = Object.create(null);
   if (!cookieHeader) {
     return out;
   }
@@ -51,7 +51,12 @@ export function parseCookies(
     const key = pair.slice(0, idx).trim();
     const val = pair.slice(idx + 1).trim();
     if (key) {
-      out[key] = decodeURIComponent(val);
+      try {
+        out[key] = decodeURIComponent(val);
+      } catch {
+        // One malformed client cookie must not abort an authenticated request.
+        continue;
+      }
     }
   }
   return out;
