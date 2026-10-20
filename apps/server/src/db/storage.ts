@@ -146,9 +146,10 @@ export class Storage {
     stmt.run(token);
   }
 
-  public deleteExpiredSessions(): void {
+  /** Deletes expired sessions and returns how many were removed. */
+  public deleteExpiredSessions(): number {
     const stmt = this.db.prepare("DELETE FROM sessions WHERE expires_at <= ?");
-    stmt.run(Date.now());
+    return stmt.run(Date.now()).changes;
   }
 
   // --- Boards ---

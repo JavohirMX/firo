@@ -323,7 +323,9 @@ describe("Client Collaboration and Presence UI", () => {
         fireEvent.click(createBtn);
       });
 
-      expect(onGenerateLink).toHaveBeenCalledWith("commenter");
+      expect(onGenerateLink).toHaveBeenCalledWith("commenter", {
+        expiresAt: null,
+      });
 
       // Verify link item rendered
       const roleBadge = screen.getByTestId("share-link-role-custom-token-123");

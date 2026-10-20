@@ -102,6 +102,21 @@ function authenticateUser(
   return result?.user ?? null;
 }
 
+export function isAllowedOrigin(
+  origin: string,
+  host: string | undefined,
+  config: { allowedOrigins: string[] },
+): boolean {
+  if (config.allowedOrigins.includes(origin)) {
+    return true;
+  }
+  try {
+    return host !== undefined && new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export function createHttpHandler(
   ctx: HttpContext,
 ): (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void> {
@@ -111,18 +126,22 @@ export function createHttpHandler(
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> => {
-    // CORS headers
-    const origin = req.headers.origin || "*";
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS",
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Cookie",
-    );
-    res.setHeader("Access-Control-Allow-Credentials", "true");
+    // CORS: only same-origin or explicitly allowed origins get credentialed
+    // access. Anything else gets no CORS headers, so browsers block it.
+    const origin = req.headers.origin;
+    res.setHeader("Vary", "Origin");
+    if (origin && isAllowedOrigin(origin, req.headers.host, config)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
+      res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization, Cookie",
+      );
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);

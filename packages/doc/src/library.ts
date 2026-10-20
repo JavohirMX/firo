@@ -145,7 +145,9 @@ export type StoredAsset = {
  * the await costs nothing next to the IndexedDB write that follows.
  */
 export const hashBytes = async (bytes: ArrayBuffer): Promise<string> => {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  // Wrap in a Uint8Array: ArrayBuffers created in another realm (jsdom tests
+  // on Node 20) fail WebCrypto's instanceof check, typed arrays do not.
+  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");

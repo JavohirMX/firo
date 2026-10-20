@@ -16,6 +16,7 @@ export class FiroServer {
   public readonly httpServer: http.Server;
   public readonly relay: WebSocketRelay;
   public readonly authRateLimiter: RateLimiter;
+  private maintenanceTimer: NodeJS.Timeout | null = null;
 
   constructor(configOverrides: Partial<ServerConfig> = {}) {
     this.config = loadConfig(configOverrides);
@@ -66,10 +67,23 @@ export class FiroServer {
     this.relay = new WebSocketRelay({
       storage: this.storage,
       server: this.httpServer,
+      allowedOrigins: this.config.allowedOrigins,
     });
   }
 
+  /** Purges expired sessions and idle rate-limit keys. */
+  public runMaintenance(): void {
+    this.storage.deleteExpiredSessions();
+    this.authRateLimiter.prune();
+  }
+
   public async start(): Promise<{ port: number; host: string }> {
+    this.runMaintenance();
+    this.maintenanceTimer = setInterval(
+      () => this.runMaintenance(),
+      60 * 60 * 1000,
+    );
+    this.maintenanceTimer.unref();
     return new Promise((resolve, reject) => {
       this.httpServer.listen(this.config.port, this.config.host, () => {
         const address = this.httpServer.address();
@@ -84,6 +98,10 @@ export class FiroServer {
   }
 
   public async stop(): Promise<void> {
+    if (this.maintenanceTimer) {
+      clearInterval(this.maintenanceTimer);
+      this.maintenanceTimer = null;
+    }
     return new Promise((resolve) => {
       this.relay.close();
       this.httpServer.close(() => {
