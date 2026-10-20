@@ -532,7 +532,7 @@ describe("CollabProvider", () => {
   });
 
   describe("resolveShareToken", () => {
-    it("fetches /s/:token and extracts share details", async () => {
+    it("fetches /api/shares/:token and extracts share details", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -550,7 +550,7 @@ describe("CollabProvider", () => {
         "https://api.firo.test",
       );
       expect(mockFetch).toHaveBeenCalledWith(
-        "https://api.firo.test/s/tok-test-123",
+        "https://api.firo.test/api/shares/tok-test-123",
       );
       expect(result).toEqual({
         boardId: "board-share-resolved",
