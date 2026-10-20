@@ -30,6 +30,19 @@ export class RateLimiter {
     return true; // Allowed
   }
 
+  /** Drops keys with no hits left in the window, so the map cannot grow forever. */
+  public prune(): number {
+    const windowStart = Date.now() - this.windowMs;
+    let removed = 0;
+    for (const [key, timestamps] of this.hits) {
+      if (!timestamps.some((t) => t > windowStart)) {
+        this.hits.delete(key);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
   public reset(): void {
     this.hits.clear();
   }
