@@ -18,6 +18,7 @@ import {
   actionZoomToFit,
   actionToggleGridMode,
   DocBlockOverlay,
+  renderDocBlock,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -91,7 +92,7 @@ import {
   restoreAppState,
   restoreElements,
 } from "@firo/editor/data/restore";
-import { newElementWith } from "@firo/element";
+import { newElementWith, setElementContentDrawer } from "@firo/element";
 import { isInitializedImageElement } from "@firo/element";
 import clsx from "clsx";
 import {
@@ -127,6 +128,9 @@ import {
   createDocBlockRecord,
   docBlockRecordToFiroRecord,
   docBlockRecordFromFiroRecord,
+  serializeDocBlockNode,
+  parseDocBlockJson,
+  createDefaultDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
 import {
@@ -1712,6 +1716,44 @@ const ExcalidrawWrapper = () => {
   const [commentMode, setCommentMode] = useState(false);
   const [docBlockMode, setDocBlockMode] = useState(false);
   const [activeDocBlockId, setActiveDocBlockId] = useState<string | null>(null);
+  /**
+   * The doc block the user just closed while it was still the selected
+   * element. Selecting a doc block opens its editor, so without this the
+   * editor reopens the instant Escape or a commit closes it.
+   */
+  const dismissedDocBlockIdRef = useRef<string | null>(null);
+  const activeDocBlockIdRef = useRef<string | null>(null);
+  activeDocBlockIdRef.current = activeDocBlockId;
+
+  // Paint committed doc block content on the canvas when it is not being
+  // edited. The overlay covers the block while editing, so draw the plain
+  // shape then.
+  useEffect(() => {
+    setElementContentDrawer((element, context) => {
+      const recordId = element.customData?.recordId as string | undefined;
+      if (!recordId || recordId === activeDocBlockIdRef.current) {
+        return false;
+      }
+      const firoRecord = boardDoc()
+        .read()
+        .records.find((r) => r.id === recordId);
+      if (!firoRecord) {
+        return false;
+      }
+      const typed = docBlockRecordFromFiroRecord(firoRecord);
+      let node = createDefaultDocBlockNode();
+      if (typed.contentJson) {
+        try {
+          node = parseDocBlockJson(JSON.parse(typed.contentJson));
+        } catch {
+          // unreadable content: show the empty document
+        }
+      }
+      renderDocBlock(context, typed, node, 0, 0, element.width, element.height);
+      return true;
+    });
+    return () => setElementContentDrawer(null);
+  }, []);
   const lastCanvasClickRef = useRef<{
     time: number;
     x: number;
@@ -1719,7 +1761,7 @@ const ExcalidrawWrapper = () => {
   } | null>(null);
 
   const handleUpdateDocBlockRecord = useCallback(
-    (recordId: string, _updatedDoc: any, updatedTitle?: string) => {
+    (recordId: string, updatedDoc: any, updatedTitle?: string) => {
       const doc = boardDoc();
       const existing = doc.read().records.find((r) => r.id === recordId);
       if (!existing) {
@@ -1730,6 +1772,11 @@ const ExcalidrawWrapper = () => {
       const updatedTyped: DocBlockRecord = {
         ...typed,
         title: nextTitle,
+        ...(updatedDoc
+          ? {
+              contentJson: JSON.stringify(serializeDocBlockNode(updatedDoc)),
+            }
+          : {}),
         updated: Date.now(),
       };
       const updatedFiroRecord = docBlockRecordToFiroRecord(updatedTyped);
@@ -1770,14 +1817,30 @@ const ExcalidrawWrapper = () => {
       if (activeDocBlockId) {
         handleUpdateDocBlockRecord(activeDocBlockId, updatedDoc, updatedTitle);
       }
+      dismissedDocBlockIdRef.current = activeDocBlockId;
+      // The canvas caches each element's drawing by version, so touch the
+      // element to make it repaint with the committed content.
+      if (activeDocBlockId && excalidrawAPI) {
+        excalidrawAPI.updateScene({
+          elements: excalidrawAPI.getSceneElementsIncludingDeleted().map((el) =>
+            el.customData?.recordId === activeDocBlockId
+              ? newElementWith(el, {
+                  customData: { ...el.customData, contentRev: Date.now() },
+                })
+              : el,
+          ),
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
       setActiveDocBlockId(null);
     },
-    [activeDocBlockId, handleUpdateDocBlockRecord],
+    [activeDocBlockId, handleUpdateDocBlockRecord, excalidrawAPI],
   );
 
   const handleDiscardDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const handleChangeDocBlock = useCallback(
     (updatedDoc: any, updatedTitle?: string) => {
@@ -1789,8 +1852,9 @@ const ExcalidrawWrapper = () => {
   );
 
   const handleCloseDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalTab, setExportModalTab] = useState<ExportTab>("image");
@@ -2884,11 +2948,26 @@ const ExcalidrawWrapper = () => {
           (record.collectionId === DOC_BLOCK_COLLECTION_ID ||
             isDocBlockRecord(record))
         ) {
-          if (activeDocBlockId !== recordId) {
+          if (
+            activeDocBlockId !== recordId &&
+            dismissedDocBlockIdRef.current !== recordId
+          ) {
             setActiveDocBlockId(recordId);
           }
         }
       }
+    }
+    // Once the dismissed block is no longer the only selection, selecting it
+    // again should open it.
+    if (
+      dismissedDocBlockIdRef.current &&
+      !(
+        selectedIds.length === 1 &&
+        elements.find((el) => el.id === selectedIds[0])?.customData
+          ?.recordId === dismissedDocBlockIdRef.current
+      )
+    ) {
+      dismissedDocBlockIdRef.current = null;
     }
 
     if (appState.activeTool?.type) {
@@ -3152,6 +3231,8 @@ const ExcalidrawWrapper = () => {
                   (hit.customData?.recordId as string | undefined) ||
                   ((hit as any).recordId as string | undefined);
                 if (recordId) {
+                  // An explicit click on the block always opens it.
+                  dismissedDocBlockIdRef.current = null;
                   setActiveDocBlockId(recordId);
                 }
               }

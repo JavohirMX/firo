@@ -425,6 +425,24 @@ const strokeStickyNoteEdge = (
   context.restore();
 };
 
+/**
+ * Lets the app paint an element's own content (a doc block's text) in place of
+ * the plain shape. The drawer gets the element and a context already placed at
+ * the element's origin, and returns true when it drew the element.
+ */
+export type ElementContentDrawer = (
+  element: NonDeletedExcalidrawElement,
+  context: CanvasRenderingContext2D,
+) => boolean;
+
+let elementContentDrawer: ElementContentDrawer | null = null;
+
+export const setElementContentDrawer = (
+  drawer: ElementContentDrawer | null,
+) => {
+  elementContentDrawer = drawer;
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
   rc: RoughCanvas,
@@ -479,6 +497,14 @@ const drawElementOnCanvas = (
     case "ellipse": {
       context.lineJoin = "round";
       context.lineCap = "round";
+
+      if (
+        element.type === "rectangle" &&
+        element.customData?.isDocBlock &&
+        elementContentDrawer?.(element, context)
+      ) {
+        break;
+      }
 
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
       break;
