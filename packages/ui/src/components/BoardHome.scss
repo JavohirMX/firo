@@ -203,11 +203,17 @@
 
   &__empty {
     margin: 0;
-    padding: var(--firo-space-lg);
+    padding: var(--firo-space-xl) var(--firo-space-lg);
+    text-align: center;
     color: var(--firo-color-text-muted);
     background-color: var(--firo-color-panel);
+    background-image: radial-gradient(
+      var(--firo-color-border) 1px,
+      transparent 1px
+    );
+    background-size: 16px 16px;
     border: 1px dashed var(--firo-color-border-strong);
-    border-radius: var(--firo-radius-md);
+    border-radius: var(--firo-radius-lg);
   }
 }
 
@@ -1045,10 +1051,60 @@
   }
 
   &__swatch {
+    position: relative;
     width: 100%;
-    height: 72px;
+    height: 112px;
     display: block;
+    overflow: hidden;
     border-bottom: 1px solid var(--firo-color-border);
+    background-image: radial-gradient(
+      rgba(17, 19, 24, 0.12) 1px,
+      transparent 1px
+    );
+    background-size: 14px 14px;
+  }
+
+  /* Miniature board layouts, one per template. Chips are stand-ins for
+     stickies and frames, tinted from the template colour. */
+  &__chip {
+    position: absolute;
+    display: block;
+    width: 26%;
+    height: 34%;
+    background-color: rgba(255, 255, 255, 0.82);
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(15, 17, 26, 0.18);
+    transition: transform var(--firo-motion-base) var(--firo-motion-ease);
+
+    &:nth-child(1) { left: 8%; top: 16%; }
+    &:nth-child(2) { left: 38%; top: 16%; }
+    &:nth-child(3) { left: 68%; top: 16%; }
+    &:nth-child(4) { left: 23%; top: 56%; width: 54%; height: 26%; }
+  }
+
+  &__swatch--brainstorm &__chip {
+    &:nth-child(1) { left: 37%; top: 33%; width: 26%; height: 34%; background-color: #fff; }
+    &:nth-child(2) { left: 8%; top: 12%; transform: rotate(-4deg); }
+    &:nth-child(3) { left: 68%; top: 14%; transform: rotate(3deg); }
+    &:nth-child(4) { left: 14%; top: 62%; width: 26%; height: 28%; transform: rotate(2deg); }
+  }
+
+  &__swatch--user-story-map &__chip {
+    &:nth-child(1) { left: 6%; top: 12%; width: 88%; height: 20%; }
+    &:nth-child(2) { left: 6%; top: 42%; width: 24%; height: 22%; }
+    &:nth-child(3) { left: 38%; top: 42%; width: 24%; height: 22%; }
+    &:nth-child(4) { left: 70%; top: 42%; width: 24%; height: 22%; }
+  }
+
+  &__swatch--meeting-notes &__chip {
+    &:nth-child(1) { left: 8%; top: 14%; width: 40%; height: 72%; }
+    &:nth-child(2) { left: 54%; top: 14%; width: 38%; height: 20%; }
+    &:nth-child(3) { left: 54%; top: 42%; width: 38%; height: 20%; }
+    &:nth-child(4) { left: 54%; top: 70%; width: 38%; height: 16%; }
+  }
+
+  &:hover &__chip:nth-child(odd) {
+    transform: translateY(-2px);
   }
 
   &__body {

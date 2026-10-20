@@ -473,9 +473,15 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         onClick={() => onCreate?.(template.id)}
       >
         <span
-          className="firo-template-card__swatch"
+          className={`firo-template-card__swatch firo-template-card__swatch--${template.id}`}
           style={{ backgroundColor: template.color }}
-        />
+          aria-hidden="true"
+        >
+          <span className="firo-template-card__chip" />
+          <span className="firo-template-card__chip" />
+          <span className="firo-template-card__chip" />
+          <span className="firo-template-card__chip" />
+        </span>
         <span className="firo-template-card__body">
           <span className="firo-template-card__name">{template.name}</span>
           <span className="firo-template-card__desc">
