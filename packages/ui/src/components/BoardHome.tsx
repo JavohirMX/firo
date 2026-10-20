@@ -554,6 +554,10 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
     null,
   );
   const [editFolderName, setEditFolderName] = React.useState("");
+  const [renamingBoardId, setRenamingBoardId] = React.useState<string | null>(
+    null,
+  );
+  const [renameBoardDraft, setRenameBoardDraft] = React.useState("");
   const [movingBoard, setMovingBoard] = React.useState<BoardCardData | null>(
     null,
   );
@@ -594,6 +598,14 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
     }
     setIsCreatingFolder(false);
     setNewFolderName("");
+  };
+
+  const commitTableRename = (board: BoardCardData) => {
+    setRenamingBoardId(null);
+    const name = renameBoardDraft.trim();
+    if (name && name !== board.name) {
+      onRenameBoard?.(board.id, name);
+    }
   };
 
   const handleConfirmRenameFolder = (id: string) => {
@@ -1136,14 +1148,38 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 <BoardsIcon size={16} />
                               )}
                             </span>
-                            <button
-                              type="button"
-                              className="firo-board-table__name-btn"
-                              onClick={() => onOpenBoard?.(board.id)}
-                              aria-label={`Open ${board.name}`}
-                            >
-                              {board.name}
-                            </button>
+                            {renamingBoardId === board.id ? (
+                              <input
+                                className="firo-board-card__name-input"
+                                value={renameBoardDraft}
+                                autoFocus
+                                aria-label={`Rename ${board.name}`}
+                                onFocus={(event) =>
+                                  event.currentTarget.select()
+                                }
+                                onChange={(event) =>
+                                  setRenameBoardDraft(event.target.value)
+                                }
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    commitTableRename(board);
+                                  }
+                                  if (event.key === "Escape") {
+                                    setRenamingBoardId(null);
+                                  }
+                                }}
+                                onBlur={() => commitTableRename(board)}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                className="firo-board-table__name-btn"
+                                onClick={() => onOpenBoard?.(board.id)}
+                                aria-label={`Open ${board.name}`}
+                              >
+                                {board.name}
+                              </button>
+                            )}
                             {board.tags.length > 0 && (
                               <ul className="firo-board-card__tags">
                                 {board.tags.map((tag) => (
@@ -1202,9 +1238,10 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 className="firo-board-card__action"
                                 aria-label={`Rename ${board.name}`}
                                 title="Rename"
-                                onClick={() =>
-                                  onRenameBoard?.(board.id, board.name)
-                                }
+                                onClick={() => {
+                                  setRenameBoardDraft(board.name);
+                                  setRenamingBoardId(board.id);
+                                }}
                               >
                                 <PencilIcon size={16} />
                               </button>

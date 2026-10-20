@@ -364,6 +364,25 @@ describe("@firo/ui BoardHome", () => {
       expect(screen.queryByRole("table", { name: "Boards" })).toBeNull();
     });
 
+    it("renames a board in place from the list view", () => {
+      const onRenameBoard = vi.fn();
+      render(
+        <BoardHome
+          boards={[boards[1]]}
+          viewMode="list"
+          onRenameBoard={onRenameBoard}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+      const input = screen.getByRole("textbox", { name: "Rename Roadmap" });
+      fireEvent.change(input, { target: { value: "Q3 roadmap" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(onRenameBoard).toHaveBeenCalledTimes(1);
+      expect(onRenameBoard).toHaveBeenCalledWith("roadmap", "Q3 roadmap");
+    });
+
     it("creates a new folder via the sidebar prompt", () => {
       const onCreateFolder = vi.fn();
       render(
