@@ -77,7 +77,6 @@ import {
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { canAutoFit, computeFitView } from "./board/initialFit";
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
 
@@ -168,6 +167,8 @@ import type {
 } from "@firo/editor/types";
 import type { ResolutionType } from "@firo/common/utility-types";
 import type { ResolvablePromise } from "@firo/common/utils";
+
+import { canAutoFit, computeFitView } from "./board/initialFit";
 
 import { clearActivity, listActivity } from "./board/activity";
 
