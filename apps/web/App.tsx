@@ -18,6 +18,7 @@ import {
   actionZoomToFit,
   actionToggleGridMode,
   DocBlockOverlay,
+  renderDocBlock,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -91,7 +92,7 @@ import {
   restoreAppState,
   restoreElements,
 } from "@firo/editor/data/restore";
-import { newElementWith } from "@firo/element";
+import { newElementWith, setElementContentDrawer } from "@firo/element";
 import { isInitializedImageElement } from "@firo/element";
 import clsx from "clsx";
 import {
@@ -128,6 +129,8 @@ import {
   docBlockRecordToFiroRecord,
   docBlockRecordFromFiroRecord,
   serializeDocBlockNode,
+  parseDocBlockJson,
+  createDefaultDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
 import {
@@ -1719,6 +1722,38 @@ const ExcalidrawWrapper = () => {
    * editor reopens the instant Escape or a commit closes it.
    */
   const dismissedDocBlockIdRef = useRef<string | null>(null);
+  const activeDocBlockIdRef = useRef<string | null>(null);
+  activeDocBlockIdRef.current = activeDocBlockId;
+
+  // Paint committed doc block content on the canvas when it is not being
+  // edited. The overlay covers the block while editing, so draw the plain
+  // shape then.
+  useEffect(() => {
+    setElementContentDrawer((element, context) => {
+      const recordId = element.customData?.recordId as string | undefined;
+      if (!recordId || recordId === activeDocBlockIdRef.current) {
+        return false;
+      }
+      const firoRecord = boardDoc()
+        .read()
+        .records.find((r) => r.id === recordId);
+      if (!firoRecord) {
+        return false;
+      }
+      const typed = docBlockRecordFromFiroRecord(firoRecord);
+      let node = createDefaultDocBlockNode();
+      if (typed.contentJson) {
+        try {
+          node = parseDocBlockJson(JSON.parse(typed.contentJson));
+        } catch {
+          // unreadable content: show the empty document
+        }
+      }
+      renderDocBlock(context, typed, node, 0, 0, element.width, element.height);
+      return true;
+    });
+    return () => setElementContentDrawer(null);
+  }, []);
   const lastCanvasClickRef = useRef<{
     time: number;
     x: number;
@@ -1783,9 +1818,23 @@ const ExcalidrawWrapper = () => {
         handleUpdateDocBlockRecord(activeDocBlockId, updatedDoc, updatedTitle);
       }
       dismissedDocBlockIdRef.current = activeDocBlockId;
+      // The canvas caches each element's drawing by version, so touch the
+      // element to make it repaint with the committed content.
+      if (activeDocBlockId && excalidrawAPI) {
+        excalidrawAPI.updateScene({
+          elements: excalidrawAPI.getSceneElementsIncludingDeleted().map((el) =>
+            el.customData?.recordId === activeDocBlockId
+              ? newElementWith(el, {
+                  customData: { ...el.customData, contentRev: Date.now() },
+                })
+              : el,
+          ),
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
       setActiveDocBlockId(null);
     },
-    [activeDocBlockId, handleUpdateDocBlockRecord],
+    [activeDocBlockId, handleUpdateDocBlockRecord, excalidrawAPI],
   );
 
   const handleDiscardDocBlock = useCallback(() => {
