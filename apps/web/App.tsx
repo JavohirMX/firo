@@ -1832,6 +1832,53 @@ const ExcalidrawWrapper = () => {
     });
     return () => setElementContentDrawer(null);
   }, []);
+  // A collaborator's committed doc content arrives as a record change, but the
+  // canvas caches each element's drawing by version. Touch the matching
+  // element when a doc block's stored content changes so it repaints.
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    const seen = new Map<string, string>();
+    const readContent = () => {
+      const out = new Map<string, string>();
+      for (const r of boardDoc().read().records) {
+        if (r.collectionId === DOC_BLOCK_COLLECTION_ID) {
+          out.set(
+            r.id,
+            String(docBlockRecordFromFiroRecord(r).contentJson ?? ""),
+          );
+        }
+      }
+      return out;
+    };
+    readContent().forEach((v, k) => seen.set(k, v));
+    return boardDoc().subscribe(() => {
+      const next = readContent();
+      const changed = new Set<string>();
+      next.forEach((v, k) => {
+        if (seen.get(k) !== v) {
+          changed.add(k);
+        }
+        seen.set(k, v);
+      });
+      changed.delete(activeDocBlockIdRef.current ?? "");
+      if (!changed.size) {
+        return;
+      }
+      excalidrawAPI.updateScene({
+        elements: excalidrawAPI.getSceneElementsIncludingDeleted().map((el) =>
+          changed.has(el.customData?.recordId as string)
+            ? newElementWith(el, {
+                customData: { ...el.customData, contentRev: Date.now() },
+              })
+            : el,
+        ),
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    });
+  }, [excalidrawAPI]);
+
   const lastCanvasClickRef = useRef<{
     time: number;
     x: number;
