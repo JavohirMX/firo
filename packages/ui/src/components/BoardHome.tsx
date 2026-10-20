@@ -12,9 +12,11 @@ import {
   GridViewIcon,
   ListViewIcon,
   MenuHamburgerIcon,
+  MoonIcon,
   MoreVerticalIcon,
   PencilIcon,
   PlusIcon,
+  SunIcon,
   RestoreIcon,
   SearchIcon,
   SortIcon,
@@ -85,6 +87,9 @@ export interface BoardHomeProps {
   folders?: BoardFolderData[];
   activities?: readonly ActivityFeedItem[];
   onClearActivity?: () => void;
+  /** Current chrome theme. With onToggleTheme, shows a theme button. */
+  isDark?: boolean;
+  onToggleTheme?: () => void;
   activeSection?:
     | "all"
     | "recent"
@@ -520,6 +525,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   onExportBoard,
   activities,
   onClearActivity,
+  isDark,
+  onToggleTheme,
 }) => {
   const [internalSection, setInternalSection] = React.useState<string>("all");
   const [internalViewMode, setInternalViewMode] = React.useState<
@@ -1012,6 +1019,19 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 <ListViewIcon size={16} />
               </button>
             </div>
+            {onToggleTheme && (
+              <button
+                type="button"
+                className="firo-board-home__view-btn firo-board-home__theme-btn"
+                aria-label={
+                  isDark ? "Switch to light theme" : "Switch to dark theme"
+                }
+                title={isDark ? "Light theme" : "Dark theme"}
+                onClick={onToggleTheme}
+              >
+                {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+              </button>
+            )}
             <div className="firo-board-home__sort">
               <SortIcon size={16} />
               <select

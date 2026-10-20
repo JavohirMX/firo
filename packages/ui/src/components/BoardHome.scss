@@ -1485,3 +1485,24 @@
     min-height: 44px;
   }
 }
+
+/* Theme button: a bordered round control like the other header buttons. */
+.firo-board-home__view-btn.firo-board-home__theme-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-pill);
+  background-color: var(--firo-color-panel);
+  color: var(--firo-color-text);
+
+  &:hover {
+    background-color: var(--firo-color-surface);
+  }
+}
+
+@media (hover: none) and (max-width: 768px) {
+  .firo-board-home__view-btn.firo-board-home__theme-btn {
+    width: 44px;
+    height: 44px;
+  }
+}

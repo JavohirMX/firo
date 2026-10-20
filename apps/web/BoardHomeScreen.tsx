@@ -112,7 +112,7 @@ let cachedMiroRtbArchive: MiroRtbArchive | null = null;
  * the editor bundle, which the home deliberately never loads) and mirrors
  * its "system" resolution. Kept in sync with `useHandleAppTheme`.
  */
-const useHomeThemeIsDark = (): boolean => {
+const useHomeThemeIsDark = (): [boolean, () => void] => {
   const readIsDark = (): boolean => {
     const stored = window.localStorage.getItem(
       STORAGE_KEYS.LOCAL_STORAGE_THEME,
@@ -141,11 +141,20 @@ const useHomeThemeIsDark = (): boolean => {
     };
   }, []);
 
-  return isDark;
+  const toggle = React.useCallback(() => {
+    const next = !readIsDark();
+    window.localStorage.setItem(
+      STORAGE_KEYS.LOCAL_STORAGE_THEME,
+      next ? "dark" : "light",
+    );
+    setIsDark(next);
+  }, []);
+
+  return [isDark, toggle];
 };
 
 export const BoardHomeScreen: React.FC = () => {
-  const isDark = useHomeThemeIsDark();
+  const [isDark, toggleTheme] = useHomeThemeIsDark();
   const [boards, setBoards] = React.useState<BoardMeta[] | null>(null);
   const [folders, setFolders] = React.useState<BoardFolder[]>([]);
   const [activities, setActivities] = React.useState<ActivityFeedItem[]>([]);
@@ -508,6 +517,8 @@ export const BoardHomeScreen: React.FC = () => {
         onChangeSortBy={setSortBy}
         onExportBoard={handleExportBoard}
         activities={activities}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
         onClearActivity={async () => {
           await clearActivity();
           setActivities([]);
