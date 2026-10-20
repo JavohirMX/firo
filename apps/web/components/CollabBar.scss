@@ -131,8 +131,8 @@
 /*
  * Small screens: strip the text labels out of the top bar so it fits a
  * phone viewport. Status and connection state stay visible as their
- * icon/dot affordances (both still expose their text via title and remain
- * clickable), and Share keeps its label as the primary action.
+ * icon/dot affordances (both keep their text for screen readers, visually
+ * hidden, and remain clickable), and Share keeps its label as the primary action.
  */
 @media (max-width: 768px) {
   .firo-collab-bar-wrapper {
@@ -143,7 +143,15 @@
     padding: 3px 6px;
 
     &__label {
-      display: none;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
   }
 
@@ -151,7 +159,15 @@
     padding: 3px 6px;
 
     &__text {
-      display: none;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
   }
 

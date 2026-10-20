@@ -787,6 +787,20 @@
   }
 }
 
+/* Touch targets on phones: 44px, the size a thumb can hit without a miss.
+   Wider touch screens keep the compact buttons, which fit a narrower card. */
+@media (hover: none) and (max-width: 768px) {
+  .firo-board-card__star,
+  .firo-board-card__action {
+    width: 44px;
+    height: 44px;
+  }
+
+  .firo-board-card__thumb {
+    aspect-ratio: 16 / 9;
+  }
+}
+
 /* List / Table View */
 .firo-board-table-container {
   width: 100%;
@@ -1381,5 +1395,17 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+  }
+}
+
+/* Once a person has boards of their own, the templates step back: a shorter
+   preview and no description, so their boards come into view sooner. */
+.firo-board-home__section--templates.is-compact {
+  .firo-template-card__swatch {
+    height: 72px;
+  }
+
+  .firo-template-card__desc {
+    display: none;
   }
 }

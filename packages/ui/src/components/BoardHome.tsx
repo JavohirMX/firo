@@ -1054,7 +1054,9 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
 
         {currentSection === "all" && templates.length > 0 && (
           <section
-            className="firo-board-home__section"
+            className={`firo-board-home__section firo-board-home__section--templates${
+              live.length > 0 ? " is-compact" : ""
+            }`}
             aria-label="Start from a template"
           >
             <h2 className="firo-board-home__section-title">
