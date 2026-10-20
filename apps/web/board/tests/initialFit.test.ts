@@ -4,6 +4,7 @@ import {
   canAutoFit,
   computeFitView,
   INITIAL_FIT_WINDOW_MS,
+  selectionRevealScrollX,
 } from "../initialFit";
 
 const fresh = {
@@ -72,5 +73,48 @@ describe("computeFitView", () => {
       { x: 0, y: 0, width: 100000, height: 100000 },
     ])!;
     expect(fit.zoom).toBe(0.1);
+  });
+});
+
+describe("selectionRevealScrollX", () => {
+  const panel = { left: 1018, top: 72, right: 1264, bottom: 714 };
+
+  it("scrolls a selection under the panel to sit beside it", () => {
+    const dx = selectionRevealScrollX(
+      { left: 1127, right: 1175, top: 668, bottom: 704 },
+      panel,
+      0.24,
+    );
+    // right edge 1175 must reach 1018 - 16 = 1002: 173px, in scene units
+    expect(dx).toBeCloseTo(-173 / 0.24, 5);
+  });
+
+  it("does nothing when the selection is clear of the panel", () => {
+    expect(
+      selectionRevealScrollX(
+        { left: 200, right: 260, top: 100, bottom: 140 },
+        panel,
+        1,
+      ),
+    ).toBe(0);
+  });
+
+  it("does nothing when it overlaps horizontally but is below the panel", () => {
+    expect(
+      selectionRevealScrollX(
+        { left: 1100, right: 1200, top: 730, bottom: 780 },
+        panel,
+        1,
+      ),
+    ).toBe(0);
+  });
+
+  it("never pushes the selection under the left rail", () => {
+    const dx = selectionRevealScrollX(
+      { left: 100, right: 1100, top: 200, bottom: 300 },
+      panel,
+      1,
+    );
+    expect(dx).toBe(-20);
   });
 });

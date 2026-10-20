@@ -169,7 +169,11 @@ import type { ResolutionType } from "@firo/common/utility-types";
 import type { ResolvablePromise } from "@firo/common/utils";
 
 import { changedDocBlockIds } from "./board/docContentSync";
-import { canAutoFit, computeFitView } from "./board/initialFit";
+import {
+  canAutoFit,
+  computeFitView,
+  selectionRevealScrollX,
+} from "./board/initialFit";
 
 import { clearActivity, listActivity } from "./board/activity";
 
@@ -2868,6 +2872,79 @@ const ExcalidrawWrapper = () => {
       fitViewToElements(excalidrawAPI, live);
     });
     return off;
+  }, [excalidrawAPI]);
+
+  /*
+   * A selection restored on load can sit under the docked Properties panel.
+   * In the opening seconds, and only until the user touches the canvas, slide
+   * the view sideways once so the selected shapes end up beside the panel. The
+   * selection is kept. Nothing moves during later manipulation.
+   */
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    let done = false;
+    const startedAt = Date.now();
+    const stop = () => {
+      done = true;
+    };
+    window.addEventListener("pointerdown", stop, true);
+    window.addEventListener("keydown", stop, true);
+    const off = excalidrawAPI.onChange((elements, state) => {
+      if (done) {
+        return;
+      }
+      if (
+        Date.now() - startedAt > 8000 ||
+        state.newElement ||
+        state.editingTextElement
+      ) {
+        done = true;
+        return;
+      }
+      const ids = state.selectedElementIds ?? {};
+      const picked = elements.filter((el) => !el.isDeleted && ids[el.id]);
+      const panel = document.querySelector(".firo-inspector");
+      if (picked.length === 0 || !panel) {
+        return;
+      }
+      const z = state.zoom.value;
+      const minX = Math.min(...picked.map((el) => el.x));
+      const maxX = Math.max(...picked.map((el) => el.x + el.width));
+      const minY = Math.min(...picked.map((el) => el.y));
+      const maxY = Math.max(...picked.map((el) => el.y + el.height));
+      const toX = (x: number) => (x + state.scrollX) * z + state.offsetLeft;
+      const toY = (y: number) => (y + state.scrollY) * z + state.offsetTop;
+      const rect = panel.getBoundingClientRect();
+      const dx = selectionRevealScrollX(
+        {
+          left: toX(minX),
+          right: toX(maxX),
+          top: toY(minY),
+          bottom: toY(maxY),
+        },
+        {
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+        },
+        z,
+      );
+      done = true;
+      if (dx !== 0) {
+        excalidrawAPI.updateScene({
+          appState: { scrollX: state.scrollX + dx },
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
+    });
+    return () => {
+      off();
+      window.removeEventListener("pointerdown", stop, true);
+      window.removeEventListener("keydown", stop, true);
+    };
   }, [excalidrawAPI]);
 
   const isCollaborating = collabStatus === "connected";
