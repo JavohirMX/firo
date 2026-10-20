@@ -223,3 +223,31 @@
     border-color: var(--firo-color-danger);
   }
 }
+
+/*
+ * Phones: the composer is anchored at a canvas point, so near the right or
+ * bottom edge it ran off screen. Dock it as a sheet above the bottom bar
+ * instead. Position only; the composer's behaviour is unchanged.
+ */
+@media (max-width: 768px) {
+  .firo-comment-popover {
+    position: fixed;
+    left: var(--firo-space-md) !important;
+    right: var(--firo-space-md);
+    top: auto !important;
+    bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    transform: none;
+    box-sizing: border-box;
+  }
+
+  .firo-comment-popover__input {
+    /* 16px stops iOS from zooming the page when the field is focused. */
+    font-size: 16px;
+  }
+
+  .firo-comment-popover__send {
+    min-height: 44px;
+    padding: 0 var(--firo-space-lg);
+  }
+}
