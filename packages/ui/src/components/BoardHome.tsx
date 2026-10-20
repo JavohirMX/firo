@@ -637,6 +637,26 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
     setEditFolderName("");
   };
 
+  const [deletingBoard, setDeletingBoard] = React.useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const deleteOpenerRef = React.useRef<HTMLElement | null>(null);
+  const requestDelete = (id: string) => {
+    const target = boards.find((board) => board.id === id);
+    if (!target) {
+      return;
+    }
+    deleteOpenerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setDeletingBoard({ id: target.id, name: target.name });
+  };
+  const closeDeleteDialog = () => {
+    setDeletingBoard(null);
+    deleteOpenerRef.current?.focus?.();
+  };
   const live = boards.filter((board) => !board.trashed);
   const trashed = boards.filter((board) => board.trashed);
 
@@ -1256,7 +1276,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 className="firo-board-card__action firo-board-card__action--danger"
                                 aria-label={`Delete ${board.name} permanently`}
                                 title="Delete forever"
-                                onClick={() => onDeleteBoard?.(board.id)}
+                                onClick={() => requestDelete(board.id)}
                               >
                                 <TrashIcon size={16} />
                               </button>
@@ -1359,7 +1379,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     onRename={onRenameBoard}
                     onTrash={onTrashBoard}
                     onRestore={onRestoreBoard}
-                    onDelete={onDeleteBoard}
+                    onDelete={requestDelete}
                     onToggleStar={onToggleStarBoard}
                     onDuplicate={onDuplicateBoard}
                     onMoveToFolder={onMoveBoardToFolder}
@@ -1387,7 +1407,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   onRename={onRenameBoard}
                   onTrash={onTrashBoard}
                   onRestore={onRestoreBoard}
-                  onDelete={onDeleteBoard}
+                  onDelete={requestDelete}
                   onToggleStar={onToggleStarBoard}
                   onDuplicate={onDuplicateBoard}
                   onMoveToFolder={onMoveBoardToFolder}
@@ -1549,6 +1569,72 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     <span>{f.name}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {deletingBoard && (
+        <div className="firo-board-modal-overlay" onClick={closeDeleteDialog}>
+          <div
+            className="firo-board-modal firo-board-modal--confirm"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="firo-delete-title"
+            aria-describedby="firo-delete-desc"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.stopPropagation();
+                closeDeleteDialog();
+              }
+              if (event.key === "Tab") {
+                const buttons = Array.from(
+                  event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                    "button",
+                  ),
+                );
+                const first = buttons[0];
+                const last = buttons[buttons.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                  event.preventDefault();
+                  last?.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                  event.preventDefault();
+                  first?.focus();
+                }
+              }
+            }}
+          >
+            <div className="firo-board-modal__header">
+              <h3 className="firo-board-modal__title" id="firo-delete-title">
+                Delete &ldquo;{deletingBoard.name}&rdquo; forever?
+              </h3>
+            </div>
+            <div className="firo-board-modal__body">
+              <p className="firo-board-modal__text" id="firo-delete-desc">
+                This removes the board from this device. It can&rsquo;t be
+                restored.
+              </p>
+              <div className="firo-board-modal__actions">
+                <button
+                  type="button"
+                  className="firo-board-modal__btn"
+                  autoFocus
+                  onClick={closeDeleteDialog}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="firo-board-modal__btn firo-board-modal__btn--danger"
+                  onClick={() => {
+                    onDeleteBoard?.(deletingBoard.id);
+                    setDeletingBoard(null);
+                  }}
+                >
+                  Delete forever
+                </button>
               </div>
             </div>
           </div>

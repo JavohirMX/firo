@@ -1549,3 +1549,49 @@
     min-height: 44px;
   }
 }
+
+.firo-board-modal--confirm {
+  max-width: 400px;
+
+  .firo-board-modal__text {
+    margin: 0 0 var(--firo-space-md);
+    font-size: var(--firo-font-size-sm);
+    color: var(--firo-color-text-muted);
+    line-height: 1.5;
+  }
+
+  .firo-board-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--firo-space-sm);
+  }
+
+  .firo-board-modal__btn {
+    min-height: 36px;
+    padding: 0 var(--firo-space-md);
+    font: inherit;
+    font-size: var(--firo-font-size-sm);
+    color: var(--firo-color-text);
+    background-color: var(--firo-color-surface);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-md);
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 2px;
+    }
+
+    &--danger {
+      color: #fff;
+      background-color: #c62828;
+      border-color: #c62828;
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .firo-board-modal--confirm .firo-board-modal__btn {
+    min-height: 44px;
+  }
+}

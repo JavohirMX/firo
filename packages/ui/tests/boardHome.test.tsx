@@ -186,10 +186,28 @@ describe("@firo/ui BoardHome", () => {
     fireEvent.click(screen.getByRole("button", { name: "Restore Old board" }));
     expect(onRestoreBoard).toHaveBeenCalledWith("gone");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Delete Old board permanently" }),
-    );
+    // Permanent delete is confirmed: Cancel and Escape keep the board.
+    const openDelete = () =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Delete Old board permanently" }),
+      );
+    openDelete();
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain("Old board");
+    expect(onDeleteBoard).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onDeleteBoard).not.toHaveBeenCalled();
+
+    openDelete();
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onDeleteBoard).not.toHaveBeenCalled();
+
+    openDelete();
+    fireEvent.click(screen.getByRole("button", { name: "Delete forever" }));
     expect(onDeleteBoard).toHaveBeenCalledWith("gone");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("renders a card on its own", () => {
