@@ -15,6 +15,8 @@ export interface ServerConfig {
   authRateLimitMax: number;
   authRateLimitWindowMs: number;
   allowOpenRegistration: boolean;
+  /** Extra browser origins allowed to call the HTTP API with credentials. */
+  allowedOrigins: string[];
 }
 
 export function loadConfig(
@@ -68,5 +70,11 @@ export function loadConfig(
     allowOpenRegistration:
       overrides.allowOpenRegistration ??
       process.env.FIRO_OPEN_REGISTRATION !== "false",
+    allowedOrigins:
+      overrides.allowedOrigins ??
+      (process.env.FIRO_ALLOWED_ORIGINS ?? "")
+        .split(",")
+        .map((o) => o.trim().replace(/\/+$/, ""))
+        .filter(Boolean),
   };
 }
