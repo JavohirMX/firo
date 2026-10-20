@@ -38,6 +38,7 @@ import {
   trashBoard,
 } from "./board/library";
 import { BOARD_TEMPLATES, templateById } from "./board/templates";
+import { STORAGE_KEYS } from "./app_constants";
 import { boardUrl } from "./board/routes";
 import {
   downloadBoard,
@@ -103,7 +104,48 @@ const toCard = (meta: BoardMeta, foldersList: BoardFolder[]): BoardCardData => {
 
 let cachedMiroRtbArchive: MiroRtbArchive | null = null;
 
+/**
+ * The home is chrome, so it follows the chrome's theme. The editor toggles
+ * `theme--dark` on its own container, but the home renders outside it, so it
+ * resolved its tokens against the light set regardless of the stored theme.
+ * This reads the same `firo-theme` key the editor writes (without importing
+ * the editor bundle, which the home deliberately never loads) and mirrors
+ * its "system" resolution. Kept in sync with `useHandleAppTheme`.
+ */
+const useHomeThemeIsDark = (): boolean => {
+  const readIsDark = (): boolean => {
+    const stored = window.localStorage.getItem(
+      STORAGE_KEYS.LOCAL_STORAGE_THEME,
+    );
+    if (stored === "dark") {
+      return true;
+    }
+    if (stored === "system") {
+      return (
+        window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false
+      );
+    }
+    return false;
+  };
+
+  const [isDark, setIsDark] = React.useState<boolean>(readIsDark);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const handleChange = () => setIsDark(readIsDark());
+    mediaQuery?.addEventListener("change", handleChange);
+    window.addEventListener("storage", handleChange);
+    return () => {
+      mediaQuery?.removeEventListener("change", handleChange);
+      window.removeEventListener("storage", handleChange);
+    };
+  }, []);
+
+  return isDark;
+};
+
 export const BoardHomeScreen: React.FC = () => {
+  const isDark = useHomeThemeIsDark();
   const [boards, setBoards] = React.useState<BoardMeta[] | null>(null);
   const [folders, setFolders] = React.useState<BoardFolder[]>([]);
   const [activities, setActivities] = React.useState<ActivityFeedItem[]>([]);
@@ -439,7 +481,7 @@ export const BoardHomeScreen: React.FC = () => {
   }
 
   return (
-    <>
+    <div className={isDark ? "theme--dark" : undefined}>
       <BoardHome
         boards={displayedBoards.map((b) => toCard(b, folders))}
         templates={activeSection === "trash" ? [] : templateCards}
@@ -678,6 +720,6 @@ export const BoardHomeScreen: React.FC = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
