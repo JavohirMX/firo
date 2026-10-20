@@ -187,6 +187,32 @@ describe("DocBlockOverlay", () => {
     vi.useRealTimers();
   });
 
+  it("keeps focus inside the block on Tab and moves title to body on Enter", () => {
+    const yDoc = new Y.Doc();
+    const fragment = yDoc.getXmlFragment("doc-block-fragment-tab");
+    const record = createDocBlockRecord({ title: "Tabs" });
+    const { container } = render(
+      <DocBlockOverlay
+        record={record}
+        fragment={fragment}
+        layout={{ x: 0, y: 0, width: 400, height: 300 }}
+        appState={{ zoom: { value: 1 }, scrollX: 0, scrollY: 0 }}
+      />,
+    );
+    const editor = container.querySelector(".ProseMirror") as HTMLElement;
+    const title = container.querySelector(
+      ".DocBlockOverlay-title",
+    ) as HTMLElement;
+
+    editor.focus();
+    const tab = fireEvent.keyDown(editor, { key: "Tab" });
+    expect(tab).toBe(false); // default prevented, focus is not lost
+    fireEvent.keyDown(editor, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(title);
+    fireEvent.keyDown(title, { key: "Enter" });
+    expect(document.activeElement).toBe(editor);
+  });
+
   it("ignores the press that placed the block but commits on a later outside press", () => {
     const yDoc = new Y.Doc();
     const fragment = yDoc.getXmlFragment("doc-block-fragment-outside");

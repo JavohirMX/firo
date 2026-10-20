@@ -362,6 +362,22 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       commit();
+    } else if (
+      event.key === "Enter" &&
+      event.target === titleInputRef.current
+    ) {
+      // Enter in the title moves on to the body.
+      event.preventDefault();
+      editorRef.current?.focus();
+    } else if (event.key === "Tab" && !readOnly) {
+      // Keep focus inside the block: Tab used to leave it, so text typed
+      // next went nowhere. Shift+Tab walks back up to the title.
+      event.preventDefault();
+      if (event.shiftKey && event.target !== titleInputRef.current) {
+        titleInputRef.current?.focus();
+      } else if (event.target === titleInputRef.current) {
+        editorRef.current?.focus();
+      }
     }
   };
 
