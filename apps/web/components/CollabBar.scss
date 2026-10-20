@@ -142,6 +142,19 @@
   .firo-connection-pill {
     padding: 3px 6px;
 
+    /* Trouble and access states are worth a visible word on a phone. A
+       healthy connection stays a quiet dot (still announced). */
+    &[data-status="connecting"] .firo-connection-pill__label,
+    &[data-status="offline"] .firo-connection-pill__label,
+    &[data-testid="view-only-badge"] .firo-connection-pill__label {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip: auto;
+    }
+
     &__label {
       position: absolute;
       width: 1px;

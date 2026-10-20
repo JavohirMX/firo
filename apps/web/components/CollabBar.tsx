@@ -142,6 +142,7 @@ export const CollabBar: React.FC<CollabBarProps> = ({
         <div
           className="firo-connection-pill"
           data-testid="connection-status-pill"
+          data-status={connectionStatus}
           title={`Status: ${connectionStatus}`}
           role="status"
           aria-live="polite"
