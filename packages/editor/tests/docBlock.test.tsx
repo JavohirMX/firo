@@ -5,11 +5,12 @@ import * as Y from "yjs";
 import { createDocBlockRecord } from "@firo/schema";
 import { createDefaultDocBlockNode, docBlockSchema } from "@firo/records";
 
+import { isWritableElement } from "@firo/common";
+
 import {
   computeDocBlockLayout,
   renderDocBlock,
 } from "../renderer/renderDocBlock";
-import { isWritableElement } from "@firo/common";
 import { DocBlockOverlay } from "../components/DocBlockOverlay";
 
 describe("Doc Block Canvas Renderer (renderDocBlock)", () => {
