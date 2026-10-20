@@ -76,7 +76,6 @@ import {
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { JSX } from "react";
 
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
@@ -278,6 +277,8 @@ import { createBoard } from "./board/library";
 import { boardUrl } from "./board/routes";
 
 import "./index.scss";
+
+import type { JSX } from "react";
 
 import type { RailLayout } from "./board/railLayout";
 
