@@ -27,6 +27,7 @@ import "./Actions.scss";
 
 import { useExcalidrawContainer } from "./App";
 import Stack from "./Stack";
+import { ZoomMenu } from "./footer/ZoomMenu";
 import { Tooltip } from "./Tooltip";
 import { PropertiesPopover } from "./PropertiesPopover";
 import {
@@ -876,13 +877,20 @@ export const MobileShapeActions = ({
 
 export const ZoomActions = ({
   renderAction,
+  actionManager,
 }: {
   renderAction: ActionManager["renderAction"];
+  actionManager: ActionManager;
 }) => (
   <Stack.Col gap={1} className={CLASSES.ZOOM_ACTIONS}>
     <Stack.Row align="center">
       {renderAction("zoomOut")}
-      {renderAction("resetZoom")}
+      {/*
+       * The percentage control is the navigation menu's trigger (Miro parity
+       * row 11), not a bare reset button: resetting is the menu's 100% stop
+       * and ⌘0. See footer/ZoomMenu.tsx.
+       */}
+      <ZoomMenu actionManager={actionManager} />
       {renderAction("zoomIn")}
     </Stack.Row>
   </Stack.Col>

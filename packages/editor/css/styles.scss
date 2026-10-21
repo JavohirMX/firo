@@ -647,6 +647,22 @@ body.excalidraw-cursor-resize * {
     font-family: var(--ui-font);
   }
 
+  .zoom-menu-trigger {
+    // The dropdown primitive's own class resets button chrome; keep the zoom
+    // cluster's look by reusing the reset-zoom-button sizing.
+    min-width: 2.6rem;
+  }
+
+  .zoom-menu__dimensions {
+    // Muted like a dropdown shortcut label: the editor defines
+    // --color-on-surface in both themes, so opacity carries the dark flip.
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-on-surface);
+    opacity: 0.6;
+    white-space: nowrap;
+  }
+
   .finalize-button {
     display: grid;
     grid-auto-flow: column;
