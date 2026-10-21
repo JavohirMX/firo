@@ -210,6 +210,29 @@ describe("@firo/ui BoardHome", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
+  it("hides board-only header controls in the Activity view", () => {
+    // The activity feed ignores the board filter, view mode and sort, so
+    // showing those controls there would promise an effect they do not have.
+    render(<BoardHome boards={boards} activeSection="activity" />);
+    expect(screen.queryByLabelText("Filter boards")).toBeNull();
+    expect(screen.queryByLabelText("Sort boards")).toBeNull();
+    expect(screen.queryByLabelText("Grid view")).toBeNull();
+    expect(screen.queryByLabelText("List view")).toBeNull();
+  });
+
+  it("keeps board header controls in the Trash view", () => {
+    render(
+      <BoardHome
+        boards={[{ id: "gone", name: "Old board", tags: [], trashed: true }]}
+        activeSection="trash"
+      />,
+    );
+    expect(screen.getByLabelText("Filter boards")).toBeDefined();
+    expect(screen.getByLabelText("Sort boards")).toBeDefined();
+    expect(screen.getByLabelText("Grid view")).toBeDefined();
+    expect(screen.getByLabelText("List view")).toBeDefined();
+  });
+
   it("renders a card on its own", () => {
     const onOpen = vi.fn();
     render(<BoardCard board={boards[1]} onOpen={onOpen} />);
