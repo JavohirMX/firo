@@ -21,6 +21,7 @@ import {
   renderDocBlock,
   viewportCoordsToSceneCoords,
   type MobileExtraTool,
+  type ZoomMenuExtraItem,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -2859,6 +2860,26 @@ const ExcalidrawWrapper = () => {
   }, [commentMode, shareRole, excalidrawAPI]);
 
   /*
+   * The zoom cluster's navigation menu is the generic editor's, so the
+   * board's own navigation surfaces reach it as extra entries — the same
+   * injection pattern as `mobileExtraTools`. Today that is the minimap,
+   * which the editor has never heard of; `M` still toggles it from
+   * `board/chromeShortcuts.ts` whether or not the menu is open.
+   */
+  const zoomMenuExtraItems = useMemo<ZoomMenuExtraItem[]>(
+    () => [
+      {
+        id: "minimap",
+        label: "Minimap",
+        shortcut: "M",
+        checked: minimapVisible,
+        onSelect: () => setMinimapVisible((visible) => !visible),
+      },
+    ],
+    [minimapVisible],
+  );
+
+  /*
    * The mobile toolbar is the generic editor's, so the board's own tools reach
    * it as extra "More tools" entries. Same rules as the desktop rail: read-only
    * share roles get no creation tools, commenters keep Comment.
@@ -3722,6 +3743,7 @@ const ExcalidrawWrapper = () => {
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
         mobileExtraTools={mobileExtraTools}
+        zoomMenuExtraItems={zoomMenuExtraItems}
         viewModeEnabled={isReadOnlyShare}
         UIOptions={{
           canvasActions: {
