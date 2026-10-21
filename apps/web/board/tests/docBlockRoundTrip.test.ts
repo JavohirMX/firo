@@ -174,4 +174,28 @@ describe("native Firo board files are not Excalidraw files", () => {
       recordId: "doc-1792524252417-23o12",
     });
   });
+
+  it("keeps the current board's id instead of the file's", async () => {
+    const target = createFiroDoc();
+    target.load({
+      elements: [],
+      collections: [],
+      records: [],
+      elementOrder: [],
+      meta: {
+        id: "my-board-id",
+        name: "Mine",
+        created: 1,
+        updated: 1,
+      } as never,
+    });
+    const result = await importBoardFile(
+      target,
+      JSON.stringify(exportedBoard),
+      { force: true },
+    );
+    expect(result.ok).toBe(true);
+    expect(target.read().meta?.id).toBe("my-board-id");
+    expect(target.read().records.length).toBe(1);
+  });
 });

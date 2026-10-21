@@ -2850,12 +2850,20 @@ const ExcalidrawWrapper = () => {
    * user has panned or zoomed, or after the window, so a first shape drawn on
    * an empty board never moves the view.
    */
+  const collabConnected = collabStatus === "connected";
   useEffect(() => {
     if (!excalidrawAPI) {
       return undefined;
     }
     let done = false;
+    // The window starts when the board connects, so a slow first sync still
+    // gets fitted. Any pointer or key input by the user ends it.
     const startedAt = Date.now();
+    const stop = () => {
+      done = true;
+    };
+    window.addEventListener("pointerdown", stop, true);
+    window.addEventListener("keydown", stop, true);
     const off = excalidrawAPI.onChange((elements, state) => {
       if (done) {
         return;
@@ -2871,8 +2879,14 @@ const ExcalidrawWrapper = () => {
       done = true;
       fitViewToElements(excalidrawAPI, live);
     });
-    return off;
-  }, [excalidrawAPI]);
+    return () => {
+      off();
+      window.removeEventListener("pointerdown", stop, true);
+      window.removeEventListener("keydown", stop, true);
+    };
+    // Re-arm once when the board connects: content that syncs in after the
+    // opening window is still framed, until the user touches the canvas.
+  }, [excalidrawAPI, collabConnected]);
 
   /*
    * A selection restored on load can sit under the docked Properties panel.
