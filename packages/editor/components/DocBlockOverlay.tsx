@@ -163,12 +163,50 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
 
   // Compute screen coordinates explicitly WITHOUT CSS transform: scale() per TRD-05
   const zoom = appState.zoom.value;
-  const screenLeft =
+  const rawLeft =
     (layout.x + appState.scrollX) * zoom + (appState.offsetLeft ?? 0);
-  const screenTop =
+  const rawTop =
     (layout.y + appState.scrollY) * zoom + (appState.offsetTop ?? 0);
-  const screenWidth = layout.width * zoom;
-  const screenHeight = layout.height * zoom;
+  const rawWidth = layout.width * zoom;
+  const rawHeight = layout.height * zoom;
+
+  /*
+   * Anchor the editing surface inside the visible viewport. The record's
+   * canvas layout is never touched; only this overlay shifts and caps so the
+   * title, the format bar and the body stay reachable on narrow screens.
+   * The mobile toolbars float over the canvas bottom edge, so the lower bound
+   * is the top of `.App-menu_bottom` when it is present.
+   */
+  const VIEWPORT_MARGIN = 8;
+  const viewportW =
+    window.visualViewport?.width ?? window.innerWidth ?? rawWidth;
+  const viewportH =
+    window.visualViewport?.height ?? window.innerHeight ?? rawHeight;
+  let bottomBarTop: number | undefined;
+  for (const el of document.querySelectorAll<HTMLElement>(
+    ".App-menu_bottom, .mobile-toolbar, .App-toolbar",
+  )) {
+    const top = el.getBoundingClientRect().top;
+    // Only bars docked to the bottom half of the screen count.
+    if (top > viewportH / 2) {
+      bottomBarTop = Math.min(bottomBarTop ?? top, top);
+    }
+  }
+  const bottomBound = Math.min(viewportH, bottomBarTop ?? viewportH);
+
+  const screenWidth = Math.min(rawWidth, viewportW - VIEWPORT_MARGIN * 2);
+  const screenHeight = Math.min(
+    rawHeight,
+    Math.max(bottomBound - VIEWPORT_MARGIN * 2, 120),
+  );
+  const screenLeft = Math.min(
+    Math.max(rawLeft, VIEWPORT_MARGIN),
+    viewportW - screenWidth - VIEWPORT_MARGIN,
+  );
+  const screenTop = Math.min(
+    Math.max(rawTop, VIEWPORT_MARGIN),
+    bottomBound - screenHeight - VIEWPORT_MARGIN,
+  );
 
   const styling = record.styling ?? {};
   const baseFontSize = styling.fontSize ?? 16;

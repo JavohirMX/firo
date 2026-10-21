@@ -34,7 +34,10 @@
 
     .DocBlockOverlay-title {
       font-weight: 600;
-      color: var(--color-on-surface, #1e1e1e);
+      /* Inherit the container's inline colour: the doc keeps its own surface
+         (default white) even inside dark chrome, so the title must follow the
+         record's text colour, not the theme's on-surface token. */
+      color: inherit;
       margin: 0;
       padding: 0;
       outline: none;
