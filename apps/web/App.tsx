@@ -80,6 +80,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
+import { getNormalizedZoom } from "@firo/editor/scene";
+import { getViewportForZoomWithScrollConstraints } from "@firo/editor/viewport";
 
 import { isElementLink } from "@firo/element";
 import {
@@ -1059,8 +1061,61 @@ export const WebNavToolbar = ({
   minimapVisible: boolean;
   onToggleMinimap: () => void;
 }) => {
+  const app = useApp();
   const actionManager = useExcalidrawActionManager();
   const zoomValue = useExcalidrawStateValue((state) => state.zoom.value) ?? 1;
+  const [isFullscreen, setIsFullscreen] = useState(
+    () => !!document.fullscreenElement,
+  );
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, []);
+
+  /*
+   * The zoom readout's menu stops run the same constrained viewport math as
+   * the editor's own zoom actions (centre-anchored, lock-aware), not a bare
+   * `zoom.value` write — see `actionResetZoom` for the pattern.
+   */
+  const onZoomTo = (nextZoomValue: number) => {
+    app.requestUnfollow();
+    const fullState = app.state;
+    app.setAppState({
+      ...getViewportForZoomWithScrollConstraints(
+        {
+          viewportX: fullState.width / 2 + fullState.offsetLeft,
+          viewportY: fullState.height / 2 + fullState.offsetTop,
+          nextZoom: getNormalizedZoom(nextZoomValue),
+        },
+        fullState,
+      ),
+    });
+  };
+
+  const onToggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void document.documentElement.requestFullscreen?.();
+    }
+  };
+
+  const selected = app.scene
+    .getNonDeletedElements()
+    .filter((element) => appState.selectedElementIds[element.id]);
+  const bounds = selected.length > 0 ? getCommonBounds(selected) : null;
+  const selectionSize = bounds
+    ? {
+        width: Math.round(bounds[2] - bounds[0]),
+        height: Math.round(bounds[3] - bounds[1]),
+      }
+    : null;
 
   return (
     <div className="firo-nav-wrapper">
@@ -1077,6 +1132,10 @@ export const WebNavToolbar = ({
         minimapEnabled={minimapVisible}
         isMinimapOpen={minimapVisible}
         onToggleMinimap={onToggleMinimap}
+        onZoomTo={onZoomTo}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={onToggleFullscreen}
+        selectionSize={selectionSize}
       />
     </div>
   );
