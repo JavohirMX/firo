@@ -487,6 +487,8 @@ export const DEFAULT_UI_OPTIONS: AppProps["UIOptions"] = {
     togglePresentation: true,
     nextSlide: true,
     previousSlide: true,
+    setupFacilitatorTimer: true,
+    bulkCreateStickyNotes: true,
   },
   tools: {
     image: true,

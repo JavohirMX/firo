@@ -35,6 +35,7 @@ import {
   adjustTimer,
   pauseTimer,
   resetTimer,
+  setDuration,
   startTimer,
   toggleReveal,
 } from "@firo/facilitation";
@@ -300,6 +301,13 @@ export const timerControls = (getDocument: () => FiroDoc) => {
     addMinute: () => withTimer((timer) => adjustTimer(timer, MINUTE_MS)),
     subtractMinute: () => withTimer((timer) => adjustTimer(timer, -MINUTE_MS)),
     reset: () => withTimer(() => resetTimer(TIMER_DEFAULT)),
+    /*
+     * Replace the duration outright, as the setup dialog's presets and stepper
+     * do. Goes through `setDuration`, which keeps a running clock's anchor and
+     * moves its end — so "make it ten minutes" mid-run never restarts the run.
+     */
+    setDurationMs: (durationMs: number) =>
+      withTimer((timer) => setDuration(timer, durationMs)),
   };
 };
 

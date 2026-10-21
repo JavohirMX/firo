@@ -9,6 +9,8 @@ import {
   actionChangeStickyNoteSize,
   getSelectionStickyNoteSize,
   getStickyNoteSizePreset,
+  STICKY_NOTE_SIZE_PRESETS,
+  stickyNoteSizeForKey,
 } from "./actionStickyNoteSize";
 
 const h = window.h;
@@ -149,5 +151,22 @@ describe("sticky-note size presets", () => {
       height: 250,
       baseHeight: 250,
     });
+  });
+});
+
+
+describe("stickyNoteSizeForKey", () => {
+  it("resolves each preset to its pixels", () => {
+    expect(stickyNoteSizeForKey("s")).toBe(STICKY_NOTE_SIZE_PRESETS.s);
+    expect(stickyNoteSizeForKey("m")).toBe(STICKY_NOTE_SIZE_PRESETS.m);
+    expect(stickyNoteSizeForKey("l")).toBe(STICKY_NOTE_SIZE_PRESETS.l);
+  });
+
+  it("falls back to m for junk from restored app state", () => {
+    // Restored localStorage is not proof of validity: a hand edit, an older
+    // build or a removed preset must create an ordinary note, not crash.
+    expect(stickyNoteSizeForKey("xl")).toBe(STICKY_NOTE_SIZE_PRESETS.m);
+    expect(stickyNoteSizeForKey(undefined)).toBe(STICKY_NOTE_SIZE_PRESETS.m);
+    expect(stickyNoteSizeForKey(250)).toBe(STICKY_NOTE_SIZE_PRESETS.m);
   });
 });

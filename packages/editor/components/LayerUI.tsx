@@ -94,6 +94,7 @@ interface LayerUIProps {
   langCode: Language["code"];
   renderTopLeftUI?: ExcalidrawProps["renderTopLeftUI"];
   renderTopRightUI?: ExcalidrawProps["renderTopRightUI"];
+  renderHelpDialogExtra?: ExcalidrawProps["renderHelpDialogExtra"];
   renderCustomStats?: ExcalidrawProps["renderCustomStats"];
   UIOptions: AppProps["UIOptions"];
   onExportImage: AppClassProperties["onExportImage"];
@@ -153,6 +154,7 @@ const LayerUI = ({
   showExitZenModeBtn,
   renderTopLeftUI,
   renderTopRightUI,
+  renderHelpDialogExtra,
   renderCustomStats,
   UIOptions,
   onExportImage,
@@ -590,6 +592,7 @@ const LayerUI = ({
           onClose={() => {
             setAppState({ openDialog: null });
           }}
+          extraSections={renderHelpDialogExtra?.()}
         />
       )}
       <ActiveConfirmDialog />

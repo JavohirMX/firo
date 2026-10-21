@@ -187,6 +187,9 @@ import {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
+import { TimerSetupDialog } from "./components/TimerSetupDialog";
+import { BulkStickyDialog } from "./components/BulkStickyDialog";
+import { subscribeToDialogRequests } from "./board/uiRequests";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { VersionHistoryModal } from "./components/VersionHistoryModal";
 import { ProjectionView } from "./components/ProjectionView";
@@ -242,7 +245,11 @@ import {
   refreshBoard,
 } from "./board/board";
 
-import { facilitatorCommandPaletteItems } from "./board/facilitatorActions";
+import {
+  facilitatorActions,
+  facilitatorCommandPaletteItems,
+  facilitatorHelpRows,
+} from "./board/facilitatorActions";
 import { recordCommandPaletteItems } from "./board/recordActions";
 import { getActiveBoard } from "./board/library";
 import { isMinimapShortcut } from "./board/chromeShortcuts";
@@ -545,6 +552,9 @@ const fitViewToElements = (
   });
 };
 
+/** The sticky size presets in flyout order: small to large. */
+const STICKY_SIZE_PRESET_KEYS = ["s", "m", "l"] as const;
+
 export const WebCreationRail = ({
   appState,
   commentMode = false,
@@ -553,6 +563,7 @@ export const WebCreationRail = ({
   onToggleDocBlockMode,
   onOpenTemplates,
   onOpenAI,
+  onOpenBulkSticky,
   readOnlyRole = null,
 }: {
   appState: UIAppState;
@@ -564,9 +575,11 @@ export const WebCreationRail = ({
   onToggleDocBlockMode?: () => void;
   onOpenTemplates?: () => void;
   onOpenAI?: () => void;
+  onOpenBulkSticky?: () => void;
 }) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
+  const setAppState = useExcalidrawSetAppState();
   const activeToolType = appState.activeTool.type as RailToolType;
 
   // Shapes and lines are one family (ADR-0031): the family's active member is
@@ -781,6 +794,35 @@ export const WebCreationRail = ({
               }),
             ),
           },
+          {
+            /*
+             * The default size for the *next* note (parity matrix row 20).
+             * The preset values are the selection toolbar's own, so the
+             * flyout and the toolbar can never disagree about how big "L" is.
+             */
+            id: "size",
+            label: "Size",
+            layout: "list",
+            items: STICKY_SIZE_PRESET_KEYS.map((key) => ({
+              id: `size-${key}`,
+              label: `${key.toUpperCase()} — ${
+                STICKY_NOTE_SIZE_PRESETS[key]
+              } px`,
+              selected: appState.currentItemStickynoteSize === key,
+            })),
+          },
+          {
+            id: "create",
+            label: "Create",
+            layout: "list",
+            items: [
+              {
+                id: "bulk-create",
+                label: "Bulk create…",
+                kind: "action" as const,
+              },
+            ],
+          },
         ],
       };
     }
@@ -979,17 +1021,52 @@ export const WebCreationRail = ({
         }
       }}
       onSelectOption={(tool, option) => {
-        if (tool !== "stickynote" || !option.color) {
+        if (tool !== "stickynote") {
           return;
         }
-        // The picker writes the sticky domain's default, which is exactly what
-        // a sticky placed next will read (`changeBackgroundColor` resolves the
-        // domain from the active tool). ADR-0031 row 19.
-        actionManager.executeAction(
-          actionManager.actions.changeBackgroundColor,
-          "ui",
-          { color: option.color },
-        );
+        if (option.color) {
+          // The picker writes the sticky domain's default, which is exactly what
+          // a sticky placed next will read (`changeBackgroundColor` resolves the
+          // domain from the active tool). ADR-0031 row 19.
+          actionManager.executeAction(
+            actionManager.actions.changeBackgroundColor,
+            "ui",
+            { color: option.color },
+          );
+          return;
+        }
+        if (option.id === "bulk-create") {
+          onOpenBulkSticky?.();
+          return;
+        }
+        if (option.id.startsWith("size-")) {
+          const key = option.id.slice("size-".length);
+          if (!STICKY_SIZE_PRESET_KEYS.includes(key as never)) {
+            return;
+          }
+          // Always the default for the next note…
+          setAppState({
+            currentItemStickynoteSize:
+              key as (typeof STICKY_SIZE_PRESET_KEYS)[number],
+          });
+          // …and, when sticky notes are selected, their size too — the same
+          // preset through the same action the selection toolbar uses, so
+          // the two paths cannot drift (one undo step, layout refit).
+          const selectedStickies = getSelectedElements(
+            app.scene.getNonDeletedElements(),
+            app.state,
+          ).filter(isStickyNoteElement);
+          if (
+            selectedStickies.length > 0 &&
+            actionManager.actions.changeStickyNoteSize
+          ) {
+            actionManager.executeAction(
+              actionManager.actions.changeStickyNoteSize,
+              "ui",
+              key,
+            );
+          }
+        }
       }}
       onUndo={() => {
         if (actionManager.actions.undo) {
@@ -1796,6 +1873,26 @@ const ExcalidrawWrapper = () => {
   }, []);
   const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [timerSetupOpen, setTimerSetupOpen] = useState(false);
+  const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
+
+  /*
+   * Registered actions live outside the React tree, so they ask for these
+   * dialogs by name and the shell turns the request into state. One
+   * subscription for the app's life; the unsubscribe keeps an unmounted app
+   * from being asked to open anything.
+   */
+  useEffect(
+    () =>
+      subscribeToDialogRequests((request) => {
+        if (request === "timerSetup") {
+          setTimerSetupOpen(true);
+        } else if (request === "bulkStickyNotes") {
+          setBulkStickyOpen(true);
+        }
+      }),
+    [],
+  );
   const [commentMode, setCommentMode] = useState(false);
   const [docBlockMode, setDocBlockMode] = useState(false);
   const [activeDocBlockId, setActiveDocBlockId] = useState<string | null>(null);
@@ -3470,6 +3567,7 @@ const ExcalidrawWrapper = () => {
             }}
             onOpenTemplates={() => setTemplateModalOpen(true)}
             onOpenAI={() => setAiModalOpen(true)}
+            onOpenBulkSticky={() => setBulkStickyOpen(true)}
           />
         )}
         renderNavigationUI={(_isMobile, appState) => (
@@ -3480,6 +3578,46 @@ const ExcalidrawWrapper = () => {
           />
         )}
         renderBoardMenuUI={() => <WebBoardMenu />}
+        renderHelpDialogExtra={() => {
+          if (!excalidrawAPI) {
+            return null;
+          }
+          /*
+           * The rows are built from the registered actions on every open, so
+           * the dialog can never advertise a chord the build no longer has
+           * (parity matrix row 9: Firo's own chords were absent here).
+           */
+          const rows = facilitatorHelpRows(
+            facilitatorActions(excalidrawAPI, boardDoc, refreshBoard),
+          );
+          if (rows.length === 0) {
+            return null;
+          }
+          return (
+            <>
+              <h3>Facilitation</h3>
+              <div className="HelpDialog__islands-container">
+                <div className="HelpDialog__island">
+                  <h4 className="HelpDialog__island-title">Running the room</h4>
+                  <div className="HelpDialog__island-content">
+                    {rows.map((row) => (
+                      <div className="HelpDialog__shortcut" key={row.name}>
+                        <div>{row.label}</div>
+                        <div className="HelpDialog__key-container">
+                          {row.chord.split("+").map((key) => (
+                            <kbd className="HelpDialog__key" key={key}>
+                              {key}
+                            </kbd>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        }}
         renderInspectorUI={(_isMobile, appState) => (
           <WebInspector appState={appState} />
         )}
@@ -3724,6 +3862,15 @@ const ExcalidrawWrapper = () => {
           onClose={closeAuthDialog}
           onSignIn={(u, p) => syncSession.signIn(u, p)}
           onRegister={(u, p) => syncSession.register(u, p)}
+        />
+        <TimerSetupDialog
+          isOpen={timerSetupOpen}
+          onClose={() => setTimerSetupOpen(false)}
+        />
+        <BulkStickyDialog
+          isOpen={bulkStickyOpen}
+          onClose={() => setBulkStickyOpen(false)}
+          excalidrawAPI={excalidrawAPI}
         />
         <TemplateModal
           isOpen={templateModalOpen}

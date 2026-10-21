@@ -86,6 +86,41 @@ describe("the timer", () => {
     expect(timer?.startedAt).toBeNull();
   });
 
+  it("takes a new duration outright, without restarting a running clock", () => {
+    // The setup dialog's write: "the next block is ten minutes" must move the
+    // clock's *end*, never its anchor — a setDuration that restarted the run
+    // would hand the room back time it already spent.
+    const { get } = setup();
+    const controls = timerControls(get);
+    const start = 1_700_000_000_000;
+    controls.start(start);
+    controls.setDurationMs(10 * 60_000);
+
+    const timer = getTimer(get);
+    expect(timer?.durationMs).toBe(10 * 60_000);
+    expect(timer?.startedAt).toBe(start);
+  });
+
+  it("applies a new duration to an idle clock", () => {
+    const { get } = setup();
+    const controls = timerControls(get);
+    controls.setDurationMs(3 * 60_000);
+
+    const timer = getTimer(get);
+    expect(timer?.durationMs).toBe(3 * 60_000);
+    expect(timer?.remainingMs).toBe(3 * 60_000);
+    expect(timer?.startedAt).toBeNull();
+  });
+
+  it("notifies subscribers when the duration changes", () => {
+    const { get } = setup();
+    const listener = vi.fn();
+    const off = subscribeToFacilitation(get, listener);
+    timerControls(get).setDurationMs(60_000);
+    expect(listener).toHaveBeenCalled();
+    off();
+  });
+
   it("adds a minute without restarting a running clock", () => {
     const { get } = setup();
     const controls = timerControls(get);

@@ -81,6 +81,12 @@ export interface RailOptionItem {
   icon?: React.ReactNode;
   shortcut?: string;
   selected?: boolean;
+  /**
+   * `option` (default) is a persisted setting and reads as a radio;
+   * `action` fires once — it opens a dialog or runs a command — so it reads
+   * as a plain menu item and never carries `aria-checked`.
+   */
+  kind?: "option" | "action";
 }
 
 export interface RailOptionGroup {
@@ -542,8 +548,16 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                           <button
                             key={item.id}
                             type="button"
-                            role="menuitemradio"
-                            aria-checked={item.selected ?? false}
+                            role={
+                              item.kind === "action"
+                                ? "menuitem"
+                                : "menuitemradio"
+                            }
+                            aria-checked={
+                              item.kind === "action"
+                                ? undefined
+                                : item.selected ?? false
+                            }
                             aria-label={item.label}
                             title={item.label}
                             className={`firo-rail__option-item${

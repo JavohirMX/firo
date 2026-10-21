@@ -1,0 +1,133 @@
+/*
+ * Timer setup dialog — @firo/ui token conventions (same as TemplateModal).
+ */
+
+.firo-timer-setup__overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--firo-color-scrim, rgba(0, 0, 0, 0.45));
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--firo-space-md, 16px);
+  animation: firo-fade-in var(--firo-motion-fast, 150ms) ease-out;
+}
+
+.firo-timer-setup {
+  background: var(--firo-color-panel, #ffffff);
+  border: 1px solid var(--firo-color-border, #e5e7eb);
+  border-radius: var(--firo-radius-lg, 12px);
+  box-shadow: var(
+    --firo-elevation-popover,
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1)
+  );
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--firo-space-md, 16px);
+  padding: var(--firo-space-lg, 24px);
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  color: var(--firo-color-text, #111827);
+  box-sizing: border-box;
+
+  &__title {
+    margin: 0;
+    font-size: var(--firo-font-size-lg, 18px);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    line-height: 1.3;
+  }
+
+  &__presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--firo-space-sm, 8px);
+  }
+
+  &__preset {
+    min-height: 44px;
+    border: 1px solid var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 8px);
+    background: var(--firo-color-surface, #f3f4f6);
+    color: var(--firo-color-text, #111827);
+    font: inherit;
+    font-weight: var(--firo-font-weight-medium, 500);
+    cursor: pointer;
+    transition: border-color var(--firo-motion-fast, 150ms) ease,
+      background-color var(--firo-motion-fast, 150ms) ease;
+
+    &:hover {
+      border-color: var(--firo-color-accent, #2563eb);
+    }
+
+    &--active {
+      border-color: var(--firo-color-accent, #2563eb);
+      background: var(--firo-color-accent-soft, #eff4ff);
+      color: var(--firo-color-accent, #2563eb);
+    }
+  }
+
+  &__custom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--firo-space-sm, 8px);
+  }
+
+  &__custom-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--firo-space-xs, 4px);
+  }
+
+  &__custom-text {
+    font-size: var(--firo-font-size-sm, 13px);
+    color: var(--firo-color-text-muted, #6b7280);
+  }
+
+  &__input {
+    width: 72px;
+    min-height: 44px;
+    text-align: center;
+    font: inherit;
+    font-size: var(--firo-font-size-lg, 18px);
+    border: 1px solid var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 8px);
+    background: var(--firo-color-panel, #ffffff);
+    color: var(--firo-color-text, #111827);
+  }
+
+  &__step {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 8px);
+    background: var(--firo-color-surface, #f3f4f6);
+    color: var(--firo-color-text, #111827);
+    font-size: 20px;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--firo-color-accent, #2563eb);
+    }
+  }
+
+  &__start {
+    min-height: 44px;
+    border: none;
+    border-radius: var(--firo-radius-md, 8px);
+    background: var(--firo-color-accent, #2563eb);
+    color: var(--firo-color-on-accent, #ffffff);
+    font: inherit;
+    font-weight: var(--firo-font-weight-semibold, 600);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--firo-color-accent-hover, #1d4ed8);
+    }
+  }
+}

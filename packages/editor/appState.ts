@@ -41,6 +41,9 @@ export const getDefaultAppState = (): Omit<
     currentItemStrokeColor: DEFAULT_ELEMENT_PROPS.strokeColor,
     currentItemStickynoteStrokeColor: DEFAULT_ELEMENT_PROPS.strokeColor,
     currentItemStickynoteBackgroundColor: DEFAULT_STICKY_NOTE_BG,
+    // The default size a fresh sticky is created at; "m" is the size Firo
+    // has always created, so nothing moves for an existing user.
+    currentItemStickynoteSize: "m",
     currentItemRoundness: isTestEnv() ? "sharp" : "round",
     currentItemArrowType: ARROW_TYPE.round,
     currentItemStrokeStyle: DEFAULT_ELEMENT_PROPS.strokeStyle,
@@ -195,6 +198,13 @@ const APP_STATE_STORAGE_CONF = (<
     server: false,
   },
   currentItemStickynoteBackgroundColor: {
+    browser: true,
+    export: false,
+    server: false,
+  },
+  // The size preset is a personal preference like the colours above it:
+  // kept on this machine, never written into a file or sent to a peer.
+  currentItemStickynoteSize: {
     browser: true,
     export: false,
     server: false,
