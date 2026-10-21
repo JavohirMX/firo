@@ -97,3 +97,59 @@ describe("layoutBulkStickyGrid", () => {
     expect(layoutBulkStickyGrid(-1, 100, center)).toEqual([]);
   });
 });
+
+describe("createBulkStickyNotes", () => {
+  const fakeApi = () => {
+    let captured: { elements: any[] } | null = null;
+    const api = {
+      getAppState: () => ({
+        currentItemStickynoteSize: "m",
+        currentItemStickynoteStrokeColor: "#1e1e1e",
+        currentItemStickynoteBackgroundColor: "#fff9b8",
+        currentItemFillStyle: "solid",
+        currentItemStrokeStyle: "solid",
+        currentItemRoughness: 0,
+        currentItemOpacity: 100,
+        width: 1280,
+        height: 800,
+        scrollX: 0,
+        scrollY: 0,
+        zoom: { value: 1 },
+      }),
+      getSceneElements: () => [],
+      updateScene: (arg: { elements: any[] }) => {
+        captured = arg;
+      },
+    };
+    return { api, captured: () => captured! };
+  };
+
+  it("gives every note a bound text label the renderer can paint", async () => {
+    const { createBulkStickyNotes } = await import("../stickyBulk");
+    const { api, captured } = fakeApi();
+    const notes = createBulkStickyNotes(api as any, ["Alpha", "Beta"]);
+    expect(notes).toHaveLength(2);
+    const elements = captured().elements;
+    expect(elements).toHaveLength(4); // note + label, twice
+    const texts = ["Alpha", "Beta"];
+    notes.forEach((note, i) => {
+      const binding = (note.boundElements ?? []).find(
+        (b: any) => b.type === "text",
+      );
+      expect(binding, `note ${i} binds a text label`).toBeTruthy();
+      const label = elements.find((el: any) => el.id === binding!.id);
+      expect(label, `label ${i} is part of the scene update`).toBeTruthy();
+      expect(label.type).toBe("text");
+      expect(label.containerId).toBe(note.id);
+      expect(label.originalText ?? label.text).toContain(texts[i]);
+    });
+  });
+
+  it("keeps the note-level text mirror for search and import readers", async () => {
+    const { createBulkStickyNotes } = await import("../stickyBulk");
+    const { api } = fakeApi();
+    const notes = createBulkStickyNotes(api as any, ["Alpha"]);
+    expect((notes[0] as any).text).toBe("Alpha");
+    expect((notes[0] as any).richText).toBeTruthy();
+  });
+});

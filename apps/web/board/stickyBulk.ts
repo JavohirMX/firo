@@ -20,7 +20,13 @@
  */
 
 import { stickyNoteSizeForKey } from "@firo/editor";
-import { CaptureUpdateAction, newStickyNoteElement } from "@firo/element";
+import {
+  CaptureUpdateAction,
+  getStickyNoteLayout,
+  newStickyNoteElement,
+  newTextElement,
+} from "@firo/element";
+import { DEFAULT_FONT_FAMILY } from "@firo/common";
 
 import type { ExcalidrawStickyNoteElement } from "@firo/element/types";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
@@ -132,7 +138,7 @@ export const createBulkStickyNotes = (
   const center = viewportCenter(api);
   const placements = layoutBulkStickyGrid(lines.length, size, center);
 
-  const notes = lines.map((text, index) => {
+  const pairs = lines.map((text, index) => {
     const note = newStickyNoteElement({
       type: "stickynote",
       x: placements[index].x,
@@ -152,11 +158,39 @@ export const createBulkStickyNotes = (
       frameId: null,
     }) as ExcalidrawStickyNoteElement;
     /*
-     * Text lives on the note itself — the merged-sticky shape the import path
-     * (board/excalidraw.ts) and the AI path (board/ai.ts) both write — with
-     * the rich-text mirror the renderer reads. No bound text element: binding
-     * one would make the note's own text and the bound copy two truths.
+     * The canvas paints a sticky's text from its bound label, never from the
+     * note's own text field: staticScene renders only the element returned by
+     * getBoundTextElement(). A note without a bound text element stays blank
+     * forever, so every bulk note gets a real label, laid out by the same
+     * sticky fit the wysiwyg editor uses (auto font size, wrapped text,
+     * fitted height). The note's own text/richText stay as mirrors for the
+     * import, search-index and AI paths that read them off the note.
      */
+    const label = newTextElement({
+      x: placements[index].x + size / 2,
+      y: placements[index].y + size / 2,
+      text,
+      strokeColor: note.strokeColor,
+      backgroundColor: "transparent",
+      fillStyle: note.fillStyle,
+      strokeWidth: note.strokeWidth,
+      strokeStyle: note.strokeStyle,
+      roughness: note.roughness,
+      opacity: note.opacity,
+      fontSize: 20,
+      baseFontSize: 20,
+      autoFontSize: true,
+      fontFamily: DEFAULT_FONT_FAMILY,
+      textAlign: "center",
+      verticalAlign: "middle",
+      containerId: note.id,
+    });
+    note.boundElements = [{ type: "text", id: label.id }];
+    const layout = getStickyNoteLayout(note, label);
+    Object.assign(note, layout.container);
+    if (layout.text) {
+      Object.assign(label, layout.text);
+    }
     const mutable = note as unknown as {
       text: string;
       richText: unknown;
@@ -166,16 +200,19 @@ export const createBulkStickyNotes = (
     };
     mutable.text = text;
     mutable.richText = stringToProseMirror(text);
-    // Same label defaults the import path gives a sticky, so a bulk note and
-    // a pasted note render identically.
     mutable.fontSize = 20;
     mutable.textAlign = "center";
     mutable.verticalAlign = "middle";
-    return note;
+    return { note, label };
   });
 
+  const notes = pairs.map(({ note }) => note);
+
   api.updateScene({
-    elements: [...api.getSceneElements(), ...notes],
+    elements: [
+      ...api.getSceneElements(),
+      ...pairs.flatMap(({ note, label }) => [note, label]),
+    ],
     appState: {
       selectedElementIds: Object.fromEntries(notes.map((n) => [n.id, true])),
     },
