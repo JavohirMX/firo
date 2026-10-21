@@ -189,6 +189,11 @@ import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
 import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { BulkStickyDialog } from "./components/BulkStickyDialog";
+import { StickyNoteOptionsDialog } from "./components/StickyNoteOptionsDialog";
+import {
+  applyStickyOption,
+  STICKY_SIZE_PRESET_KEYS,
+} from "./board/stickyNoteOptions";
 import { subscribeToDialogRequests } from "./board/uiRequests";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { VersionHistoryModal } from "./components/VersionHistoryModal";
@@ -553,7 +558,6 @@ const fitViewToElements = (
 };
 
 /** The sticky size presets in flyout order: small to large. */
-const STICKY_SIZE_PRESET_KEYS = ["s", "m", "l"] as const;
 
 export const WebCreationRail = ({
   appState,
@@ -1024,49 +1028,12 @@ export const WebCreationRail = ({
         if (tool !== "stickynote") {
           return;
         }
-        if (option.color) {
-          // The picker writes the sticky domain's default, which is exactly what
-          // a sticky placed next will read (`changeBackgroundColor` resolves the
-          // domain from the active tool). ADR-0031 row 19.
-          actionManager.executeAction(
-            actionManager.actions.changeBackgroundColor,
-            "ui",
-            { color: option.color },
-          );
-          return;
-        }
-        if (option.id === "bulk-create") {
-          onOpenBulkSticky?.();
-          return;
-        }
-        if (option.id.startsWith("size-")) {
-          const key = option.id.slice("size-".length);
-          if (!STICKY_SIZE_PRESET_KEYS.includes(key as never)) {
-            return;
-          }
-          // Always the default for the next note…
-          setAppState({
-            currentItemStickynoteSize:
-              key as (typeof STICKY_SIZE_PRESET_KEYS)[number],
-          });
-          // …and, when sticky notes are selected, their size too — the same
-          // preset through the same action the selection toolbar uses, so
-          // the two paths cannot drift (one undo step, layout refit).
-          const selectedStickies = getSelectedElements(
-            app.scene.getNonDeletedElements(),
-            app.state,
-          ).filter(isStickyNoteElement);
-          if (
-            selectedStickies.length > 0 &&
-            actionManager.actions.changeStickyNoteSize
-          ) {
-            actionManager.executeAction(
-              actionManager.actions.changeStickyNoteSize,
-              "ui",
-              key,
-            );
-          }
-        }
+        applyStickyOption(option, {
+          actionManager,
+          setAppState,
+          app,
+          onOpenBulkSticky,
+        });
       }}
       onUndo={() => {
         if (actionManager.actions.undo) {
@@ -1875,6 +1842,7 @@ const ExcalidrawWrapper = () => {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [timerSetupOpen, setTimerSetupOpen] = useState(false);
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
+  const [stickyOptionsOpen, setStickyOptionsOpen] = useState(false);
 
   /*
    * Registered actions live outside the React tree, so they ask for these
@@ -2923,6 +2891,21 @@ const ExcalidrawWrapper = () => {
           },
         },
         {
+          id: "stickyoptions",
+          label: "Sticky options…",
+          icon: RAIL_TOOL_ICONS.stickynote as JSX.Element,
+          onSelect: () => {
+            /*
+             * Mirror the desktop flyout: its options belong to the sticky
+             * slot, so the tool is always active when they show. The colour
+             * action resolves its domain from the active tool, so picking a
+             * colour here must mean "sticky" too, not whatever tool was up.
+             */
+            excalidrawAPI?.setActiveTool({ type: "stickynote" });
+            setStickyOptionsOpen(true);
+          },
+        },
+        {
           id: "templates",
           label: "Templates",
           icon: RAIL_TOOL_ICONS.templates as JSX.Element,
@@ -2937,7 +2920,7 @@ const ExcalidrawWrapper = () => {
       );
     }
     return tools;
-  }, [isReadOnlyShare, shareRole, commentMode, docBlockMode]);
+  }, [isReadOnlyShare, shareRole, commentMode, docBlockMode, excalidrawAPI]);
 
   /*
    * A board opens at scroll 0,0, which hides content that sits near the origin
@@ -4146,6 +4129,11 @@ const ExcalidrawWrapper = () => {
           onSuccess={() => {
             excalidrawAPI?.refresh();
           }}
+        />
+        <StickyNoteOptionsDialog
+          isOpen={stickyOptionsOpen}
+          onClose={() => setStickyOptionsOpen(false)}
+          onOpenBulkSticky={() => setBulkStickyOpen(true)}
         />
       </Excalidraw>
     </div>
