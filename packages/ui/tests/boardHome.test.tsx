@@ -320,7 +320,9 @@ describe("@firo/ui BoardHome", () => {
     const input = screen.getByRole("textbox", { name: "Rename Sprint retro" });
     expect(document.activeElement).toBe(input);
     fireEvent.keyDown(input, { key: "Escape" });
-    expect(screen.queryByRole("textbox", { name: "Rename Sprint retro" })).toBeNull();
+    expect(
+      screen.queryByRole("textbox", { name: "Rename Sprint retro" }),
+    ).toBeNull();
     expect(document.activeElement).toBe(renameBtn);
   });
 
