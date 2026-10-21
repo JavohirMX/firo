@@ -104,6 +104,17 @@
   --firo-color-border-hover: var(--firo-color-border-strong);
   --firo-color-text-subtle: var(--firo-color-text-muted);
 
+  /* Host dialogs (template gallery, save-template, share, auth, ...) were
+     written against the editor's `--color-*` surface names, but the editor
+     only defines some of them. The missing ones fell back to light literals
+     and kept those dialogs light in dark mode. The editor defines
+     `--color-on-surface`, `--color-surface-low`, `--color-primary` and
+     `--color-danger` itself; the four below are the ones nothing defined. */
+  --color-surface: var(--firo-color-panel);
+  --color-surface-hover: var(--firo-color-button-secondary);
+  --color-on-primary: var(--firo-color-on-accent);
+  --color-text-secondary: var(--firo-color-text-muted);
+
   /* Elevation */
   --firo-elevation-panel: 0 1px 2px var(--firo-color-shadow),
     0 4px 12px var(--firo-color-shadow);
@@ -149,6 +160,17 @@
   --firo-color-text-secondary: var(--firo-color-text-muted);
   --firo-color-border-hover: var(--firo-color-border-strong);
   --firo-color-text-subtle: var(--firo-color-text-muted);
+
+  /* Host dialogs (template gallery, save-template, share, auth, ...) were
+     written against the editor's `--color-*` surface names, but the editor
+     only defines some of them. The missing ones fell back to light literals
+     and kept those dialogs light in dark mode. The editor defines
+     `--color-on-surface`, `--color-surface-low`, `--color-primary` and
+     `--color-danger` itself; the four below are the ones nothing defined. */
+  --color-surface: var(--firo-color-panel);
+  --color-surface-hover: var(--firo-color-button-secondary);
+  --color-on-primary: var(--firo-color-on-accent);
+  --color-text-secondary: var(--firo-color-text-muted);
 }
 
 /**
