@@ -1073,6 +1073,12 @@ export interface ExcalidrawProps {
   autoFocus?: boolean;
   generateIdForFile?: (file: File) => string | Promise<string>;
   generateLinkForSelection?: (id: string, type: "element" | "group") => string;
+  /**
+   * Host hook for the object lane's **Save as template…** row: the editor
+   * owns the menu item, the host owns the dialog and the store
+   * (ADR-0038). When unset, the row and its palette entry stay hidden.
+   */
+  onSaveSelectionAsTemplate?: () => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{

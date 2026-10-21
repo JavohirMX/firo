@@ -315,6 +315,7 @@ import {
   actionSelectAllElementsInFrame,
   actionWrapSelectionInFrame,
 } from "../actions/actionFrame";
+import { actionSaveSelectionAsTemplate } from "../actions/actionSaveAsTemplate";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
@@ -12799,6 +12800,8 @@ class App extends React.Component<AppProps, AppState> {
       actionSelectAllElementsInFrame,
       actionRemoveAllElementsFromFrame,
       actionWrapSelectionInFrame,
+      CONTEXT_MENU_SEPARATOR,
+      actionSaveSelectionAsTemplate,
       CONTEXT_MENU_SEPARATOR,
       actionToggleCropEditor,
       CONTEXT_MENU_SEPARATOR,
