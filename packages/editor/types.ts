@@ -853,21 +853,6 @@ export type MobileExtraTool = {
   onSelect: () => void;
 };
 
-/**
- * Host-provided entries for the zoom cluster's navigation menu, for
- * navigation surfaces the generic editor does not know about (the host's
- * minimap, for example). Same injection pattern as `mobileExtraTools`.
- */
-export type ZoomMenuExtraItem = {
-  id: string;
-  label: string;
-  icon?: JSX.Element;
-  shortcut?: string;
-  checked?: boolean;
-  disabled?: boolean;
-  onSelect: () => void;
-};
-
 export interface ExcalidrawProps {
   className?: string;
   /**
@@ -980,12 +965,6 @@ export interface ExcalidrawProps {
    * tools the generic editor does not know about (the host's own rail tools).
    */
   mobileExtraTools?: readonly MobileExtraTool[];
-  /**
-   * Host-provided entries for the zoom cluster's navigation menu, for
-   * navigation surfaces the generic editor does not know about (the host's
-   * minimap, for example). Same injection pattern as `mobileExtraTools`.
-   */
-  zoomMenuExtraItems?: readonly ZoomMenuExtraItem[];
   renderNavigationUI?: (
     isMobile: boolean,
     appState: UIAppState,

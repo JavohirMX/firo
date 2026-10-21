@@ -41,10 +41,7 @@ const Footer = ({
           <Stack.Col gap={2}>
             <Section heading="canvasActions">
               {zoomUIEnabled && app.isNavigationEnabled() && (
-                <ZoomActions
-                  renderAction={actionManager.renderAction}
-                  actionManager={actionManager}
-                />
+                <ZoomActions renderAction={actionManager.renderAction} />
               )}
 
               {defaultUIEnabled && !appState.viewModeEnabled && (
