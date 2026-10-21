@@ -167,8 +167,17 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     (layout.x + appState.scrollX) * zoom + (appState.offsetLeft ?? 0);
   const rawTop =
     (layout.y + appState.scrollY) * zoom + (appState.offsetTop ?? 0);
-  const rawWidth = layout.width * zoom;
-  const rawHeight = layout.height * zoom;
+  /*
+   * Deep zoom-out would shrink the editor with the scene until neither the
+   * text nor the format bar is usable, so editing happens at a floored
+   * scale. Position still follows the element's true screen position; only
+   * the editing surface is enlarged. The record and its canvas size are
+   * untouched.
+   */
+  const EDIT_SCALE_FLOOR = 0.75;
+  const editScale = Math.max(zoom, EDIT_SCALE_FLOOR);
+  const rawWidth = layout.width * editScale;
+  const rawHeight = layout.height * editScale;
 
   /*
    * Anchor the editing surface inside the visible viewport. The record's
@@ -210,9 +219,9 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
 
   const styling = record.styling ?? {};
   const baseFontSize = styling.fontSize ?? 16;
-  const scaledFontSize = baseFontSize * zoom;
-  const scaledPadding = (styling.padding ?? 24) * zoom;
-  const scaledBorderRadius = (styling.borderRadius ?? 8) * zoom;
+  const scaledFontSize = baseFontSize * editScale;
+  const scaledPadding = (styling.padding ?? 24) * editScale;
+  const scaledBorderRadius = (styling.borderRadius ?? 8) * editScale;
 
   /**
    * Parse current DOM content into a ProseMirror Node.

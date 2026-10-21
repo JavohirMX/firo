@@ -123,6 +123,13 @@ describe("DocBlockOverlay", () => {
     const onCommit = vi.fn();
     const onDiscard = vi.fn();
 
+    // A wide viewport, so the viewport-anchoring clamp does not engage and
+    // the raw device-scale maths below is what the assertions see.
+    Object.defineProperty(window, "innerWidth", {
+      value: 2000,
+      configurable: true,
+    });
+
     const { container } = render(
       <DocBlockOverlay
         record={record}
@@ -155,6 +162,89 @@ describe("DocBlockOverlay", () => {
     // ProseMirror editor mount
     const editor = overlayEl.querySelector(".ProseMirror");
     expect(editor).toBeDefined();
+  });
+
+  it("anchors the overlay inside the viewport and floors the editing scale at deep zoom", () => {
+    const yDoc = new Y.Doc();
+    const fragment = yDoc.getXmlFragment("doc-block-test-clamp");
+
+    // Pin the jsdom default viewport: an earlier test widens it.
+    Object.defineProperty(window, "innerWidth", {
+      value: 1024,
+      configurable: true,
+    });
+
+    const record = createDocBlockRecord({
+      title: "Clamped Doc",
+      dimensions: { width: 400, height: 300 },
+    });
+
+    const { container } = render(
+      <DocBlockOverlay
+        record={record}
+        fragment={fragment}
+        layout={{ x: 2000, y: 100, width: 400, height: 300 }}
+        appState={{ zoom: { value: 0.1 }, scrollX: 0, scrollY: 0 }}
+      />,
+    );
+
+    const overlayEl = container.querySelector(
+      ".DocBlockOverlay",
+    ) as HTMLElement;
+
+    // Deep zoom floors the editing scale at 0.75, so the editor stays usable:
+    // width = 400 * 0.75 = 300px, height = 300 * 0.75 = 225px, font 16 * 0.75 = 12px.
+    expect(overlayEl.style.width).toBe("300px");
+    expect(overlayEl.style.height).toBe("225px");
+    // Raw left = 2000 * 0.1 = 200px fits the 1024px jsdom viewport unclamped.
+    expect(overlayEl.style.left).toBe("200px");
+    // Raw top = 100 * 0.1 = 10px, above the 8px margin.
+    expect(overlayEl.style.top).toBe("10px");
+    const editor = overlayEl.querySelector(".ProseMirror") as HTMLElement;
+    expect(editor.style.fontSize).toBe("12px");
+  });
+
+  it("clamps the overlay back into the viewport when it would overflow", () => {
+    const yDoc = new Y.Doc();
+    const fragment = yDoc.getXmlFragment("doc-block-test-clamp-edge");
+
+    // Pin the jsdom default viewport: an earlier test widens it.
+    Object.defineProperty(window, "innerWidth", {
+      value: 1024,
+      configurable: true,
+    });
+
+    const record = createDocBlockRecord({
+      title: "Overflow Doc",
+      dimensions: { width: 400, height: 300 },
+    });
+
+    const { container } = render(
+      <DocBlockOverlay
+        record={record}
+        fragment={fragment}
+        layout={{ x: 200, y: 100, width: 400, height: 300 }}
+        appState={{
+          zoom: { value: 1.5 },
+          scrollX: 100,
+          scrollY: 50,
+          offsetLeft: 10,
+          offsetTop: 20,
+        }}
+      />,
+    );
+
+    const overlayEl = container.querySelector(
+      ".DocBlockOverlay",
+    ) as HTMLElement;
+
+    // Raw left 460 + width 600 would overflow the 1024px jsdom viewport, so
+    // the left edge clamps to 1024 - 600 - 8 = 416px. Top 245 + height 450
+    // fits and stays.
+    expect(overlayEl.style.left).toBe("416px");
+    expect(overlayEl.style.top).toBe("245px");
+    expect(overlayEl.style.width).toBe("600px");
+    expect(overlayEl.style.height).toBe("450px");
   });
 
   it("is a writable element so canvas shortcuts do not eat typed keys", async () => {
