@@ -1028,6 +1028,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                           className="firo-board-sidebar__item firo-board-sidebar__folder-btn-select"
                           onClick={() => handleSelectSection(folder.id)}
                           aria-label={`Folder ${folder.name}`}
+                          title={folder.name}
                         >
                           <FolderIcon size={18} />
                           <span className="firo-board-sidebar__folder-name">

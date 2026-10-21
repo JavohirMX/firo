@@ -1624,3 +1624,24 @@
   line-height: 1.5;
   color: var(--firo-color-text-muted);
 }
+
+/*
+ * Touch: folder rename/delete cannot hide behind hover. Tapping a folder row
+ * navigates away, so on coarse pointers the actions are always visible and
+ * reach the 44px target, and the sheet option rows do the same.
+ */
+@media (pointer: coarse) {
+  .firo-board-sidebar__folder-actions {
+    opacity: 1;
+  }
+
+  .firo-board-sidebar__folder-action {
+    width: 44px;
+    height: 44px;
+  }
+
+  .firo-board-modal__folder-option {
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+}
