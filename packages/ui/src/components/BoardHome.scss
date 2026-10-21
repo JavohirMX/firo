@@ -1616,3 +1616,11 @@
     height: 44px;
   }
 }
+
+.firo-board-sidebar__folder-hint {
+  margin: 0;
+  padding: 0 var(--firo-space-md);
+  font-size: var(--firo-font-size-xs);
+  line-height: 1.5;
+  color: var(--firo-color-text-muted);
+}

@@ -735,15 +735,15 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
         : "No boards match that filter.";
     }
     if (currentSection === "recent") {
-      return "No recent boards yet.";
+      return "No recent boards yet. Boards you open show up here.";
     }
     if (currentSection === "starred") {
-      return "No starred boards yet.";
+      return "No starred boards yet. Use the star on a board to pin it here.";
     }
     if (currentSection === "trash") {
-      return "Trash is empty.";
+      return "Trash is empty. Boards you move to trash wait here until you delete them.";
     }
-    return "No boards in this folder.";
+    return "No boards in this folder. Use More actions on a board to move one here.";
   };
 
   return (
@@ -873,6 +873,11 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
               </div>
             )}
 
+            {currentFolders.length === 0 && !isCreatingFolder && (
+              <p className="firo-board-sidebar__folder-hint">
+                No folders yet. Use + to group boards.
+              </p>
+            )}
             <div className="firo-board-sidebar__folder-list">
               {currentFolders.map((folder) => {
                 const isEditing = editingFolderId === folder.id;
