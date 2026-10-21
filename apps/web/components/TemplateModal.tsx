@@ -182,20 +182,35 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
   };
 
   const allTags = useMemo(() => {
-    const tags = new Set<string>();
+    /*
+     * Chips dedupe case-insensitively ("workshop" and "Workshop" are one
+     * filter), keeping the first-seen spelling for the label.
+     */
+    const byLower = new Map<string, string>();
+    const add = (tag: string) => {
+      const key = tag.toLocaleLowerCase();
+      if (!byLower.has(key)) {
+        byLower.set(key, tag);
+      }
+    };
     for (const entry of entries) {
       if (entry.ok) {
-        entry.meta.tags.forEach((tag) => tags.add(tag));
+        entry.meta.tags.forEach(add);
       }
     }
     for (const tmpl of BOARD_TEMPLATES) {
-      tmpl.tags.forEach((tag) => tags.add(tag));
+      tmpl.tags.forEach(add);
     }
-    return [...tags].sort((a, b) => a.localeCompare(b));
+    return [...byLower.values()].sort((a, b) => a.localeCompare(b));
   }, [entries]);
 
   const matches = (name: string, description: string, tags: string[]) => {
-    if (activeTag && !tags.includes(activeTag)) {
+    if (
+      activeTag &&
+      !tags.some(
+        (tag) => tag.toLocaleLowerCase() === activeTag.toLocaleLowerCase(),
+      )
+    ) {
       return false;
     }
     const query = search.trim().toLocaleLowerCase();
