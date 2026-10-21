@@ -117,7 +117,7 @@ import {
   exportToSvg,
 } from "@firo/utils/export";
 
-import { mintBoardId, toEditorScene } from "@firo/board";
+import { mintBoardId } from "@firo/board";
 
 import {
   createFiroDoc,
@@ -141,7 +141,6 @@ import {
   isDocBlockRecord,
   serializeBoard,
   type DocBlockRecord,
-  type FiroElement,
 } from "@firo/schema";
 import { newElement } from "@firo/element";
 
@@ -3868,62 +3867,7 @@ const ExcalidrawWrapper = () => {
         <TemplateModal
           isOpen={templateModalOpen}
           onClose={() => setTemplateModalOpen(false)}
-          onInsertTemplate={(template) => {
-            if (!excalidrawAPI) {
-              setTemplateModalOpen(false);
-              return;
-            }
-            const elements = template.build();
-            if (!elements.length) {
-              setTemplateModalOpen(false);
-              return;
-            }
-            let minX = Infinity;
-            let minY = Infinity;
-            let maxX = -Infinity;
-            let maxY = -Infinity;
-            for (const el of elements) {
-              minX = Math.min(minX, el.x);
-              minY = Math.min(minY, el.y);
-              maxX = Math.max(maxX, el.x + el.width);
-              maxY = Math.max(maxY, el.y + el.height);
-            }
-            const state = excalidrawAPI.getAppState();
-            const viewportCenterX =
-              -state.scrollX + state.width / 2 / state.zoom.value;
-            const viewportCenterY =
-              -state.scrollY + state.height / 2 / state.zoom.value;
-            const templateCenterX = minX + (maxX - minX) / 2;
-            const templateCenterY = minY + (maxY - minY) / 2;
-            const dx = viewportCenterX - templateCenterX;
-            const dy = viewportCenterY - templateCenterY;
-            const placed = elements.map((el) => ({
-              ...el,
-              x: el.x + dx,
-              y: el.y + dy,
-            }));
-            const editorSceneElements = toEditorScene(
-              placed as unknown as readonly FiroElement[],
-            );
-            const current = excalidrawAPI.getSceneElements();
-            const selectedElementIds: Record<string, true> = {};
-            for (const el of editorSceneElements) {
-              if (el.type !== "text" || !el.containerId) {
-                selectedElementIds[el.id] = true;
-              }
-            }
-            excalidrawAPI.updateScene({
-              elements: [
-                ...current,
-                ...restoreElements(editorSceneElements, null, {
-                  refreshDimensions: true,
-                }),
-              ],
-              appState: { selectedElementIds },
-              captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-            });
-            setTemplateModalOpen(false);
-          }}
+          excalidrawAPI={excalidrawAPI}
         />
         <ActivityFeed
           isOpen={activityFeedOpen}

@@ -691,31 +691,23 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
       }
     });
 
-    it("supports TemplateModal keyboard focus trap, cycling, and escape dismissal", () => {
-      const onInsert = vi.fn();
+    it("supports TemplateModal keyboard focus trap, search focus, and escape dismissal", () => {
       const onClose = vi.fn();
 
       const { unmount } = render(
-        <TemplateModal
-          isOpen={true}
-          onClose={onClose}
-          onInsertTemplate={onInsert}
-        />,
+        <TemplateModal isOpen={true} onClose={onClose} excalidrawAPI={null} />,
       );
 
       const dialog = screen.getByRole("dialog");
       expect(dialog).toBeDefined();
       expect(dialog.getAttribute("aria-modal")).toBe("true");
 
-      const closeBtn = screen.getByTestId("template-modal-close");
-      expect(document.activeElement).toBe(closeBtn);
+      // Search is focused when the gallery opens (ADR-0038).
+      const search = screen.getByTestId("template-search");
+      expect(document.activeElement).toBe(search);
 
-      // Use retrospective template card via keyboard
-      const useRetroBtn = screen.getByTestId("template-use-retrospective");
-      fireEvent.click(useRetroBtn);
-      expect(onInsert).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "retrospective" }),
-      );
+      // The gallery still lists the curated built-ins without an editor.
+      expect(screen.getByTestId("template-use-retrospective")).toBeDefined();
 
       // Escape dismisses modal
       fireEvent.keyDown(dialog, { key: "Escape" });
