@@ -11,9 +11,8 @@
       font-weight: 700;
       font-size: 1.125rem;
     }
-  }
 
-  &__islands-container {
+    &__islands-container {
     display: grid;
     grid-column-gap: 1.5rem;
     grid-row-gap: 2rem;
@@ -82,4 +81,5 @@
     font-family: inherit;
     line-height: 1;
   }
+}
 }
