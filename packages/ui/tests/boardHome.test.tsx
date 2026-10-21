@@ -288,6 +288,42 @@ describe("@firo/ui BoardHome", () => {
     expect(document.activeElement).toBe(last);
   });
 
+  it("moves focus into the card menu and arrows through it", () => {
+    render(<BoardCard board={boards[0]} />);
+    const trigger = screen.getByRole("button", {
+      name: "More actions for Sprint retro",
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const menu = screen.getByRole("menu");
+    const items = Array.from(
+      menu.querySelectorAll("[role=menuitem]"),
+    ) as HTMLElement[];
+    expect(items.length).toBeGreaterThan(1);
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("returns focus to the rename button when rename ends", () => {
+    render(<BoardCard board={boards[0]} />);
+    const renameBtn = screen.getByRole("button", {
+      name: "Rename Sprint retro",
+    });
+    renameBtn.focus();
+    fireEvent.click(renameBtn);
+    const input = screen.getByRole("textbox", { name: "Rename Sprint retro" });
+    expect(document.activeElement).toBe(input);
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("textbox", { name: "Rename Sprint retro" })).toBeNull();
+    expect(document.activeElement).toBe(renameBtn);
+  });
+
   it("renders a card on its own", () => {
     const onOpen = vi.fn();
     render(<BoardCard board={boards[1]} onOpen={onOpen} />);

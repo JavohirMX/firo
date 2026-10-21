@@ -180,6 +180,18 @@ export const BoardCard: React.FC<BoardCardProps> = ({
   const [draft, setDraft] = React.useState(board.name);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const menuTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const renameBtnRef = React.useRef<HTMLButtonElement>(null);
+  const pendingRenameFocusRef = React.useRef(false);
+  // Focus returns to the rename button only after the editing state has
+  // committed: focusing synchronously inside the key handler would blur the
+  // input while the draft is still stale and commit it through onBlur.
+  React.useEffect(() => {
+    if (!editing && pendingRenameFocusRef.current) {
+      pendingRenameFocusRef.current = false;
+      renameBtnRef.current?.focus();
+    }
+  }, [editing]);
 
   React.useEffect(() => {
     if (!menuOpen) {
@@ -202,6 +214,14 @@ export const BoardCard: React.FC<BoardCardProps> = ({
       ownerDocument.removeEventListener("mousedown", handleDocumentClick);
       ownerDocument.removeEventListener("keydown", handleKeyDown);
     };
+  }, [menuOpen]);
+
+  // Keyboard contract for the card menu: opening it moves focus to the first
+  // item, arrows move between items, and Escape returns focus to the trigger.
+  React.useEffect(() => {
+    if (menuOpen) {
+      menuRef.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+    }
   }, [menuOpen]);
 
   // Keep the field in step with the board unless it is the thing being edited:
@@ -278,9 +298,11 @@ export const BoardCard: React.FC<BoardCardProps> = ({
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
+                pendingRenameFocusRef.current = true;
                 commit();
               }
               if (event.key === "Escape") {
+                pendingRenameFocusRef.current = true;
                 setDraft(board.name);
                 setEditing(false);
               }
@@ -350,6 +372,7 @@ export const BoardCard: React.FC<BoardCardProps> = ({
               className="firo-board-card__action"
               aria-label={`Rename ${board.name}`}
               title="Rename"
+              ref={renameBtnRef}
               onClick={() => {
                 setDraft(board.name);
                 setEditing(true);
@@ -383,6 +406,7 @@ export const BoardCard: React.FC<BoardCardProps> = ({
                 className="firo-board-card__action"
                 aria-label={`More actions for ${board.name}`}
                 title="More actions"
+                ref={menuTriggerRef}
                 onClick={(event) => {
                   event.stopPropagation();
                   setMenuOpen((prev) => !prev);
@@ -391,7 +415,33 @@ export const BoardCard: React.FC<BoardCardProps> = ({
                 <MoreVerticalIcon size={16} />
               </button>
               {menuOpen && (
-                <div className="firo-board-card__dropdown" role="menu">
+                <div
+                  className="firo-board-card__dropdown"
+                  role="menu"
+                  onKeyDown={(event) => {
+                    const items = Array.from(
+                      event.currentTarget.querySelectorAll<HTMLElement>(
+                        "[role=menuitem]",
+                      ),
+                    );
+                    const index = items.indexOf(
+                      document.activeElement as HTMLElement,
+                    );
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      items[(index + 1) % items.length]?.focus();
+                    }
+                    if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      items[(index - 1 + items.length) % items.length]?.focus();
+                    }
+                    if (event.key === "Escape") {
+                      event.stopPropagation();
+                      setMenuOpen(false);
+                      menuTriggerRef.current?.focus();
+                    }
+                  }}
+                >
                   <button
                     type="button"
                     className="firo-board-card__dropdown-item"
@@ -681,6 +731,15 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
         : null;
     setDeletingBoard({ id: target.id, name: target.name });
   };
+  const tableRenameBtnRefs = React.useRef(new Map<string, HTMLButtonElement>());
+  const pendingTableRenameFocusRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (renamingBoardId === null && pendingTableRenameFocusRef.current) {
+      const id = pendingTableRenameFocusRef.current;
+      pendingTableRenameFocusRef.current = null;
+      tableRenameBtnRefs.current.get(id)?.focus();
+    }
+  }, [renamingBoardId]);
   const closeDeleteDialog = () => {
     setDeletingBoard(null);
     deleteOpenerRef.current?.focus?.();
@@ -1275,9 +1334,13 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 }
                                 onKeyDown={(event) => {
                                   if (event.key === "Enter") {
+                                    pendingTableRenameFocusRef.current =
+                                      board.id;
                                     commitTableRename(board);
                                   }
                                   if (event.key === "Escape") {
+                                    pendingTableRenameFocusRef.current =
+                                      board.id;
                                     setRenamingBoardId(null);
                                   }
                                 }}
@@ -1351,6 +1414,14 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 className="firo-board-card__action"
                                 aria-label={`Rename ${board.name}`}
                                 title="Rename"
+                                ref={(el) => {
+                                  if (el) {
+                                    tableRenameBtnRefs.current.set(
+                                      board.id,
+                                      el,
+                                    );
+                                  }
+                                }}
                                 onClick={() => {
                                   setRenameBoardDraft(board.name);
                                   setRenamingBoardId(board.id);
