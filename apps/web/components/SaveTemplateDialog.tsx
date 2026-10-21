@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useFocusTrap } from "@firo/editor";
 import { CloseIcon } from "@firo/ui";
 
+import type { BinaryFiles, ExcalidrawImperativeAPI } from "@firo/editor/types";
+
 import { captureTemplateFragment } from "../board/templateFragment";
 import {
   parseTemplateTags,
@@ -15,8 +17,6 @@ import { saveTemplate } from "../board/templateStore";
 import "./SaveTemplateDialog.scss";
 
 import type { CapturedFragment } from "../board/templateFragment";
-
-import type { BinaryFiles, ExcalidrawImperativeAPI } from "@firo/editor/types";
 
 export interface SaveTemplateDialogProps {
   isOpen: boolean;
@@ -143,20 +143,14 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
 
   const onCloseRef = React.useRef(onClose);
   onCloseRef.current = onClose;
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
+  // On the element, not `window`: the dialog renders inside the editor's
+  // container, which would otherwise consume Escape first (see the gallery).
+  const handleDialogKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      onCloseRef.current();
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onCloseRef.current();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen]);
+  };
 
   if (!isOpen) {
     return null;
@@ -217,6 +211,7 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="save-template-title"
+        onKeyDown={handleDialogKeyDown}
         onClick={(event) => event.stopPropagation()}
         data-testid="save-template-dialog"
       >

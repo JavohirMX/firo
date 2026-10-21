@@ -156,31 +156,30 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
 
   const onCloseRef = React.useRef(onClose);
   onCloseRef.current = onClose;
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
+  /*
+   * Escape rungs, handled on the dialog element rather than `window`: the
+   * gallery renders inside the editor's container, whose own key handling
+   * would otherwise consume Escape (deselect) and stop propagation before a
+   * window listener ever ran. Handling it here keeps the rungs ordered —
+   * an open card menu or the edit dialog closes first, then the gallery —
+   * and stops the key from reaching the editor behind the modal at all.
+   */
+  const handleDialogKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key !== "Escape") {
+      return;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      // An open card menu is the innermost rung (ADR-0033); it closes first.
-      if (openMenuId) {
-        setOpenMenuId(null);
-        setConfirmDeleteId(null);
-        return;
-      }
-      if (editing) {
-        setEditing(null);
-        return;
-      }
-      onCloseRef.current();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, openMenuId, editing]);
+    event.stopPropagation();
+    if (openMenuId) {
+      setOpenMenuId(null);
+      setConfirmDeleteId(null);
+      return;
+    }
+    if (editing) {
+      setEditing(null);
+      return;
+    }
+    onCloseRef.current();
+  };
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -322,6 +321,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="template-modal-title"
+        onKeyDown={handleDialogKeyDown}
         onClick={(e) => e.stopPropagation()}
         data-testid="template-modal"
       >
@@ -631,18 +631,14 @@ const EditTemplateDetails: React.FC<{
   const [tagsRaw, setTagsRaw] = useState(meta.tags.join(", "));
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown, { capture: true });
-    };
-  }, [onClose]);
+  // Same reason as the gallery: handle Escape on the element, ahead of the
+  // editor's container, and keep it from closing the gallery behind us.
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      onClose();
+    }
+  };
 
   const validName = validateTemplateName(name);
   const validDescription = validateTemplateDescription(description);
@@ -678,6 +674,7 @@ const EditTemplateDetails: React.FC<{
         role="dialog"
         aria-modal="true"
         aria-labelledby="template-edit-title"
+        onKeyDown={handleKeyDown}
         onClick={(event) => event.stopPropagation()}
         data-testid="template-edit-dialog"
       >
