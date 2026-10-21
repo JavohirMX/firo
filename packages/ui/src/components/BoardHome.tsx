@@ -1001,50 +1001,54 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
           </button>
           <h1 className="firo-board-home__title">Boards</h1>
           <div className="firo-board-home__actions">
-            <label className="firo-board-home__search">
-              <SearchIcon size={16} />
-              <input
-                type="search"
-                value={query}
-                placeholder="Filter boards"
-                aria-label="Filter boards"
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-            <div
-              className="firo-board-home__view-toggle"
-              role="group"
-              aria-label="View mode"
-            >
-              <button
-                type="button"
-                className={`firo-board-home__view-btn ${
-                  currentViewMode === "grid"
-                    ? "firo-board-home__view-btn--active"
-                    : ""
-                }`}
-                aria-label="Grid view"
-                aria-pressed={currentViewMode === "grid"}
-                title="Grid view"
-                onClick={() => handleChangeViewMode("grid")}
+            {currentSection !== "activity" && (
+              <label className="firo-board-home__search">
+                <SearchIcon size={16} />
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Filter boards"
+                  aria-label="Filter boards"
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </label>
+            )}
+            {currentSection !== "activity" && (
+              <div
+                className="firo-board-home__view-toggle"
+                role="group"
+                aria-label="View mode"
               >
-                <GridViewIcon size={16} />
-              </button>
-              <button
-                type="button"
-                className={`firo-board-home__view-btn ${
-                  currentViewMode === "list"
-                    ? "firo-board-home__view-btn--active"
-                    : ""
-                }`}
-                aria-label="List view"
-                aria-pressed={currentViewMode === "list"}
-                title="List view"
-                onClick={() => handleChangeViewMode("list")}
-              >
-                <ListViewIcon size={16} />
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className={`firo-board-home__view-btn ${
+                    currentViewMode === "grid"
+                      ? "firo-board-home__view-btn--active"
+                      : ""
+                  }`}
+                  aria-label="Grid view"
+                  aria-pressed={currentViewMode === "grid"}
+                  title="Grid view"
+                  onClick={() => handleChangeViewMode("grid")}
+                >
+                  <GridViewIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={`firo-board-home__view-btn ${
+                    currentViewMode === "list"
+                      ? "firo-board-home__view-btn--active"
+                      : ""
+                  }`}
+                  aria-label="List view"
+                  aria-pressed={currentViewMode === "list"}
+                  title="List view"
+                  onClick={() => handleChangeViewMode("list")}
+                >
+                  <ListViewIcon size={16} />
+                </button>
+              </div>
+            )}
             {onToggleTheme && (
               <button
                 type="button"
@@ -1058,23 +1062,25 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
               </button>
             )}
-            <div className="firo-board-home__sort">
-              <SortIcon size={16} />
-              <select
-                className="firo-board-home__sort-select"
-                aria-label="Sort boards"
-                value={currentSortBy}
-                onChange={(event) =>
-                  handleChangeSortBy(
-                    event.target.value as "lastOpened" | "created" | "name",
-                  )
-                }
-              >
-                <option value="lastOpened">Last opened</option>
-                <option value="created">Recently created</option>
-                <option value="name">Name (A-Z)</option>
-              </select>
-            </div>
+            {currentSection !== "activity" && (
+              <div className="firo-board-home__sort">
+                <SortIcon size={16} />
+                <select
+                  className="firo-board-home__sort-select"
+                  aria-label="Sort boards"
+                  value={currentSortBy}
+                  onChange={(event) =>
+                    handleChangeSortBy(
+                      event.target.value as "lastOpened" | "created" | "name",
+                    )
+                  }
+                >
+                  <option value="lastOpened">Last opened</option>
+                  <option value="created">Recently created</option>
+                  <option value="name">Name (A-Z)</option>
+                </select>
+              </div>
+            )}
             {onImportBoard && (
               <button
                 type="button"
