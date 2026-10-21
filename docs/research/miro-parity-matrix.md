@@ -62,7 +62,7 @@ Code checked: `packages/ui/src/components/` (`BoardMenu`, `CollabBar`,
 | 8 | Command palette | `⌘K`; one list of apps and actions with key chips [live, deep pass] | partial — opens with Ctrl/Cmd+`/` and Ctrl/Cmd+Shift+`P`, not `⌘K`; registry-driven; text-to-diagram items ride the local AI flag (default on); `⌘K` belongs to the link action and moves to `⌥⌘K`, Miro's own link key, for the palette to take it | adapt | C2 |
 | 9 | Keyboard cheat-sheet (Help) | read-only modal, 78 rows captured [live, deep pass] | partial — the modal exists (the inherited Help dialog, opened by `?`, the Help menu and the palette), but its rows mix hardcoded keys with map lookups and Firo's later chords are absent; adopt = keep the read-only modal and generate its rows from the registries (corrected 19 Oct: the Wave-0 pass read this as *absent*) | adopt | C2 |
 | 10 | Zoom cluster — out, percentage, in | control strip bottom-right [live] | implemented — zoom out/percentage/in and fit | adopt *(met)* | — |
-| 11 | Zoom and navigation menu | full screen, minimap, grid, object dimensions, fit `⌥1`, stops 50/70/100/400 `⌘0` [live, deep pass] | partial — zoom and fit exist, grid and minimap toggles exist; no preset stops, no grid submenu, no object-dimensions toggle; full screen is declared but unwired | adapt | C10 |
+| 11 | Zoom and navigation menu | full screen, minimap, grid, object dimensions, fit `⌥1`, stops 50/70/100/400 `⌘0` [live, deep pass] | partial — zoom, fit, grid and minimap toggles exist in the nav readout menu; preset stops (50/70/100/400), full screen and in-menu selection dimensions added; no grid-variant submenu; no canvas object-dimensions toggle | adapt | C10 |
 | 12 | Context menu — empty canvas | item list with a checkable group (grid, comments, snapping, size hints); flips above the cursor near the bottom edge [live, deep pass] | partial — inherited menus | adapt | C3 |
 | 13 | Context menu — object | 16 items with separators; Arrange and Info submenus [live, deep pass; bundle] | partial — inherited menus | adapt | C3 |
 | 14 | Selection toolbar | 16 controls, centred above the object [live, deep pass] | partial — six controls (comment, tags, duplicate, lock, front, delete) | adapt | C5 |
@@ -152,8 +152,8 @@ Code checked: `packages/ui/src/components/BoardHome.tsx`,
 | 52 | Search and filters | search; owner filter [live, sidebar] | implemented | adopt *(met)* | — |
 | 53 | Board card actions | rename, duplicate, move, star, trash, export [live, sidebar row menu] | implemented | adopt *(met)* | — |
 | 54 | Shared-with-me and team surfaces | not observed on this account | absent | adapt — arrives when share links are wired (row 59) | C9 |
-| 55 | Template gallery | full-screen modal; categories, search, preview [live, deep pass] | partial — about four built-ins; no categories, search or preview art | adapt — our own templates only | C9 |
-| 56 | Save as template | object context menu [live, deep pass] | absent | adopt | C9 |
+| 55 | Template gallery | full-screen modal; categories, search, preview [live, deep pass] | partial — built-ins plus a My-templates tab with search, tag filters and rendered preview art; no category sidebar | adapt — our own templates only | C9 |
+| 56 | Save as template | object context menu [live, deep pass] | implemented *(met)* — object context-menu entry | adopt | — |
 
 ## Export and share
 
