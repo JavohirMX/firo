@@ -61,6 +61,7 @@ import {
   toggleStarBoard,
   trashBoard,
 } from "../library";
+import { listActivity } from "../activity";
 import { searchBoardsContent } from "../search";
 import { templateById } from "../templates";
 
@@ -119,6 +120,19 @@ describe("the board index", () => {
     const meta = await getBoardMeta("a");
     expect(meta?.trashedAt).toBeUndefined();
     expect(meta?.tags).toEqual(["keep"]);
+  });
+
+  it("has logged the trash and the restore by the time each call returns", async () => {
+    await putBoardMeta({ id: "act", name: "Act" });
+    await trashBoard("act");
+    await restoreTrashedBoard("act");
+
+    // Read at once, as the home does when it refreshes after the call.
+    const summaries = (await listActivity({ boardId: "act" })).map(
+      (item) => item.summary,
+    );
+    expect(summaries).toContain('Restored board "Act" from trash');
+    expect(summaries).toContain('Moved board "Act" to trash');
   });
 });
 

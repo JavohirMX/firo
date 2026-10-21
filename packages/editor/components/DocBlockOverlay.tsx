@@ -388,6 +388,29 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
     }
   };
 
+  const applyFormat = (command: string, value?: string) => {
+    const editor = editorRef.current;
+    if (!editor || readOnly) {
+      return;
+    }
+    editor.focus();
+    document.execCommand(command, false, value);
+    handleInput();
+  };
+
+  const formatButtons: Array<{
+    label: string;
+    title: string;
+    command: string;
+    value?: string;
+  }> = [
+    { label: "B", title: "Bold", command: "bold" },
+    { label: "I", title: "Italic", command: "italic" },
+    { label: "H", title: "Heading", command: "formatBlock", value: "h2" },
+    { label: "\u2022", title: "Bullet list", command: "insertUnorderedList" },
+    { label: "1.", title: "Numbered list", command: "insertOrderedList" },
+  ];
+
   return (
     <div
       ref={containerRef}
@@ -430,6 +453,29 @@ export const DocBlockOverlay: React.FC<DocBlockOverlayProps> = ({
           }}
         />
       </div>
+
+      {!readOnly && (
+        <div
+          className="DocBlockOverlay-format"
+          role="toolbar"
+          aria-label="Text formatting"
+        >
+          {formatButtons.map((b) => (
+            <button
+              key={b.title}
+              type="button"
+              className="DocBlockOverlay-formatButton"
+              title={b.title}
+              aria-label={b.title}
+              // Keep the text selection: a press must not steal focus.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => applyFormat(b.command, b.value)}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div
         ref={editorRef}

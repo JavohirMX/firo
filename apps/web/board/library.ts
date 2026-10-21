@@ -185,7 +185,7 @@ export const renameBoard = async (
     return getBoardMeta(id);
   }
   const result = await putBoardMeta({ id, name: trimmed });
-  void recordActivity({
+  await recordActivity({
     boardId: id,
     boardName: trimmed,
     kind: "board",
@@ -198,7 +198,7 @@ export const renameBoard = async (
 export const trashBoard = async (id: string): Promise<void> => {
   const meta = await getBoardMeta(id);
   await putBoardMeta({ id, trashedAt: Date.now() });
-  void recordActivity({
+  await recordActivity({
     boardId: id,
     boardName: meta?.name,
     kind: "delete",
@@ -216,7 +216,7 @@ export const restoreTrashedBoard = async (id: string): Promise<void> => {
   delete meta.trashedAt;
   index[id] = meta;
   await writeIndex(index);
-  void recordActivity({
+  await recordActivity({
     boardId: id,
     boardName: meta.name,
     kind: "board",
