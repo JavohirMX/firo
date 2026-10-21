@@ -60,6 +60,108 @@ describe("NavToolbar zoom navigation menu", () => {
     expect(screen.queryByTestId("nav-zoom-menu")).toBeNull();
   });
 
+  it("omits the grid section without onSelectGridType", () => {
+    render(
+      <NavToolbar
+        {...baseProps}
+        onZoomTo={vi.fn()}
+        gridEnabled
+        gridType="dots"
+        onToggleGrid={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("nav-zoom-trigger"));
+    expect(screen.queryByTestId("nav-zoom-grid-dots")).toBeNull();
+  });
+
+  it("lists the grid variants and marks the enabled one", () => {
+    render(
+      <NavToolbar
+        {...baseProps}
+        onZoomTo={vi.fn()}
+        gridEnabled
+        gridType="lines"
+        onToggleGrid={vi.fn()}
+        onSelectGridType={vi.fn()}
+        onHideGrid={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("nav-zoom-trigger"));
+    expect(screen.getByTestId("nav-zoom-grid-dots")).toBeDefined();
+    expect(screen.getByTestId("nav-zoom-grid-lines")).toBeDefined();
+    expect(screen.getByTestId("nav-zoom-grid-crosses")).toBeDefined();
+    expect(screen.getByTestId("nav-zoom-grid-isometric")).toBeDefined();
+    expect(
+      screen.getByTestId("nav-zoom-grid-lines").getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      screen.getByTestId("nav-zoom-grid-dots").getAttribute("aria-checked"),
+    ).toBe("false");
+    expect(screen.getByTestId("nav-zoom-grid-off")).toBeDefined();
+  });
+
+  it("selecting a variant reports it and closes the menu", () => {
+    const onSelectGridType = vi.fn();
+    render(
+      <NavToolbar
+        {...baseProps}
+        onZoomTo={vi.fn()}
+        gridEnabled={false}
+        gridType="dots"
+        onToggleGrid={vi.fn()}
+        onSelectGridType={onSelectGridType}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("nav-zoom-trigger"));
+    // no variant is current while the grid is off
+    expect(
+      screen.getByTestId("nav-zoom-grid-dots").getAttribute("aria-checked"),
+    ).toBe("false");
+    // and "Hide grid" only makes sense while the grid is on
+    expect(screen.queryByTestId("nav-zoom-grid-off")).toBeNull();
+    fireEvent.click(screen.getByTestId("nav-zoom-grid-isometric"));
+    expect(onSelectGridType).toHaveBeenCalledWith("isometric");
+    expect(screen.queryByTestId("nav-zoom-menu")).toBeNull();
+  });
+
+  it("hides the grid from the menu while it is enabled", () => {
+    // onHideGrid must be used, not onToggleGrid: the toggle cycles through
+    // the variants before switching off, so it would hide nothing.
+    const onHideGrid = vi.fn();
+    const onToggleGrid = vi.fn();
+    render(
+      <NavToolbar
+        {...baseProps}
+        onZoomTo={vi.fn()}
+        gridEnabled
+        gridType="dots"
+        onToggleGrid={onToggleGrid}
+        onSelectGridType={vi.fn()}
+        onHideGrid={onHideGrid}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("nav-zoom-trigger"));
+    fireEvent.click(screen.getByTestId("nav-zoom-grid-off"));
+    expect(onHideGrid).toHaveBeenCalledTimes(1);
+    expect(onToggleGrid).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("nav-zoom-menu")).toBeNull();
+  });
+
+  it("keeps the hide item absent without onHideGrid", () => {
+    render(
+      <NavToolbar
+        {...baseProps}
+        onZoomTo={vi.fn()}
+        gridEnabled
+        gridType="dots"
+        onToggleGrid={vi.fn()}
+        onSelectGridType={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("nav-zoom-trigger"));
+    expect(screen.queryByTestId("nav-zoom-grid-off")).toBeNull();
+  });
+
   it("closes on Escape without selecting anything", () => {
     const onZoomTo = vi.fn();
     render(<NavToolbar {...baseProps} onZoomTo={onZoomTo} />);

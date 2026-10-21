@@ -15,6 +15,19 @@ import "./NavToolbar.scss";
  */
 export const NAV_ZOOM_STOPS: readonly number[] = [0.5, 0.7, 1, 4];
 
+/**
+ * The canvas grid variants (parity matrix row 11, grid submenu). The editor
+ * cycles them with repeated `G` presses; the menu lists them directly.
+ */
+export const NAV_GRID_TYPES = [
+  "dots",
+  "lines",
+  "crosses",
+  "isometric",
+] as const;
+
+export type NavGridType = typeof NAV_GRID_TYPES[number];
+
 const ZOOM_STOP_EPSILON = 0.001;
 
 export interface NavToolbarProps {
@@ -24,8 +37,21 @@ export interface NavToolbarProps {
   onResetZoom: () => void;
   onZoomToFit: () => void;
   gridEnabled?: boolean;
-  gridType?: "dots" | "lines" | "crosses" | "isometric";
+  gridType?: NavGridType;
   onToggleGrid?: () => void;
+  /**
+   * When provided together with `onZoomTo`, the navigation menu lists the
+   * grid variants directly, so they are mouse-reachable instead of
+   * keyboard-only cycling. Selecting one enables the grid with it.
+   */
+  onSelectGridType?: (type: NavGridType) => void;
+  /**
+   * Explicit grid-off for the navigation menu. This must be a dedicated
+   * callback, not `onToggleGrid`: the toolbar's grid button cycles through
+   * the variants before switching off (same as repeated `G` presses), so
+   * reusing it here would hide nothing.
+   */
+  onHideGrid?: () => void;
   minimapEnabled?: boolean;
   isMinimapOpen?: boolean;
   onToggleMinimap?: () => void;
@@ -50,6 +76,8 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
   gridEnabled = false,
   gridType,
   onToggleGrid,
+  onSelectGridType,
+  onHideGrid,
   minimapEnabled = false,
   isMinimapOpen,
   onToggleMinimap,
@@ -88,6 +116,10 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
           isFullscreen={isFullscreen}
           onToggleFullscreen={onToggleFullscreen}
           selectionSize={selectionSize}
+          gridEnabled={gridEnabled}
+          gridType={gridType}
+          onSelectGridType={onSelectGridType}
+          onHideGrid={onHideGrid}
         />
       ) : (
         <button
@@ -171,13 +203,18 @@ interface ZoomMenuProps {
   isFullscreen: boolean;
   onToggleFullscreen?: () => void;
   selectionSize: { width: number; height: number } | null;
+  gridEnabled: boolean;
+  gridType?: NavGridType;
+  onSelectGridType?: (type: NavGridType) => void;
+  onHideGrid?: () => void;
 }
 
 /*
  * The navigation menu behind the zoom readout (Miro parity row 11). The
  * toolbar already surfaces fit, grid and minimap as first-class buttons —
  * better than Miro's buried menu rows — so the menu only carries what the
- * toolbar does not: the preset stops, full screen and the selection's
+ * toolbar does not: the preset stops, full screen, the grid variants
+ * (otherwise keyboard-only via repeated `G`) and the selection's
  * dimensions. Resetting stays one tap away as the 100% stop, and Ctrl+0
  * still resets directly.
  */
@@ -189,7 +226,13 @@ const ZoomMenu: React.FC<ZoomMenuProps> = ({
   isFullscreen,
   onToggleFullscreen,
   selectionSize,
+  gridEnabled,
+  gridType,
+  onSelectGridType,
+  onHideGrid,
 }) => {
+  const gridTypeLabel = (type: NavGridType) =>
+    type.charAt(0).toUpperCase() + type.slice(1);
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
 
@@ -257,6 +300,46 @@ const ZoomMenu: React.FC<ZoomMenuProps> = ({
               </button>
             );
           })}
+          {onSelectGridType && (
+            <>
+              <div className="firo-nav-toolbar__zoom-menu-separator" />
+              {gridEnabled && onHideGrid && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="firo-nav-toolbar__zoom-menu-item"
+                  data-testid="nav-zoom-grid-off"
+                  onClick={() => {
+                    onHideGrid();
+                    setOpen(false);
+                  }}
+                >
+                  Hide grid
+                </button>
+              )}
+              {NAV_GRID_TYPES.map((type) => {
+                const current = gridEnabled && gridType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={current}
+                    className={`firo-nav-toolbar__zoom-menu-item ${
+                      current ? "firo-nav-toolbar__zoom-menu-item--current" : ""
+                    }`}
+                    data-testid={`nav-zoom-grid-${type}`}
+                    onClick={() => {
+                      onSelectGridType(type);
+                      setOpen(false);
+                    }}
+                  >
+                    {`Grid: ${gridTypeLabel(type)}`}
+                  </button>
+                );
+              })}
+            </>
+          )}
           {onToggleFullscreen && (
             <>
               <div className="firo-nav-toolbar__zoom-menu-separator" />
