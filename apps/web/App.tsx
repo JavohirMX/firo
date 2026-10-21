@@ -579,6 +579,7 @@ export const WebCreationRail = ({
 }) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
+  const setAppState = useExcalidrawSetAppState();
   const activeToolType = appState.activeTool.type as RailToolType;
 
   // Shapes and lines are one family (ADR-0031): the family's active member is
@@ -1044,7 +1045,10 @@ export const WebCreationRail = ({
             return;
           }
           // Always the default for the next note…
-          app.setState({ currentItemStickynoteSize: key as never });
+          setAppState({
+            currentItemStickynoteSize:
+              key as (typeof STICKY_SIZE_PRESET_KEYS)[number],
+          });
           // …and, when sticky notes are selected, their size too — the same
           // preset through the same action the selection toolbar uses, so
           // the two paths cannot drift (one undo step, layout refit).

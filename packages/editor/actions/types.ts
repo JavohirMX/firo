@@ -181,6 +181,12 @@ export type ActionName =
   | "togglePresentation"
   | "nextSlide"
   | "previousSlide"
+  /*
+   * The two dialog-opening commands. Like the seven above they are registered
+   * by the host and individually disableable through `canvasActions`.
+   */
+  | "setupFacilitatorTimer"
+  | "bulkCreateStickyNotes"
   | "linkToElement"
   | "cropEditor"
   | "wrapSelectionInFrame"

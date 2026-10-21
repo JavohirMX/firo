@@ -1235,6 +1235,8 @@ export type CanvasActions = Partial<{
   togglePresentation: boolean;
   nextSlide: boolean;
   previousSlide: boolean;
+  setupFacilitatorTimer: boolean;
+  bulkCreateStickyNotes: boolean;
 }>;
 
 export type UIOptions = Partial<{
