@@ -118,6 +118,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     imageOptions,
     defaultChromeEnabled,
     renderCreationRailUI,
+    mobileExtraTools,
     renderNavigationUI,
     renderBoardMenuUI,
     renderInspectorUI,
@@ -266,6 +267,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           imageOptions={normalizedImageOptions}
           defaultChromeEnabled={defaultChromeEnabled}
           renderCreationRailUI={renderCreationRailUI}
+          mobileExtraTools={mobileExtraTools}
           renderNavigationUI={renderNavigationUI}
           renderBoardMenuUI={renderBoardMenuUI}
           renderInspectorUI={renderInspectorUI}
@@ -504,6 +506,7 @@ export type {
   ViewportStatusFrame,
   ElementRenderOverride,
   ElementRenderOverrides,
+  MobileExtraTool,
 } from "./types";
 
 export { zoomToFitBounds, DEFAULT_OVERSCROLL } from "./viewport";

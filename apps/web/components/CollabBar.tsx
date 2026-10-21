@@ -23,6 +23,8 @@ export interface CollabBarCollaborator {
 
 export interface CollabBarProps {
   connectionStatus?: ConnectionStatus;
+  /** Set for viewer/commenter share links so the bar can show a view-only badge. */
+  readOnlyRole?: string | null;
   collaborators?: readonly CollabBarCollaborator[];
   onOpenShare?: () => void;
   children?: React.ReactNode;
@@ -47,6 +49,7 @@ export const getInitials = (name?: string): string => {
 
 export const CollabBar: React.FC<CollabBarProps> = ({
   connectionStatus = "connected",
+  readOnlyRole = null,
   collaborators: explicitCollaborators,
   onOpenShare,
   children,
@@ -139,6 +142,7 @@ export const CollabBar: React.FC<CollabBarProps> = ({
         <div
           className="firo-connection-pill"
           data-testid="connection-status-pill"
+          data-status={connectionStatus}
           title={`Status: ${connectionStatus}`}
           role="status"
           aria-live="polite"
@@ -153,6 +157,18 @@ export const CollabBar: React.FC<CollabBarProps> = ({
             {connectionStatus === "offline" && "Offline"}
           </span>
         </div>
+
+        {readOnlyRole && (
+          <div
+            className="firo-connection-pill"
+            data-testid="view-only-badge"
+            title={`You have ${readOnlyRole} access to this board`}
+          >
+            <span className="firo-connection-pill__label">
+              {readOnlyRole === "commenter" ? "Comment only" : "View only"}
+            </span>
+          </div>
+        )}
 
         {/* Active collaborator avatars */}
         {activeCollaborators.length > 0 && (

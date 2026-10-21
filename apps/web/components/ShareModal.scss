@@ -122,6 +122,9 @@
 
   &__role-select {
     flex: 1;
+    // A select will not shrink below its longest option unless told it may,
+    // which pushed the Create button out of the dialog.
+    min-width: 0;
     height: 38px;
     padding: 0 var(--firo-space-sm, 12px);
     border: 1px solid var(--firo-color-border, #d1d5db);
@@ -141,6 +144,7 @@
   }
 
   &__create-btn {
+    flex-shrink: 0;
     height: 38px;
     padding: 0 var(--firo-space-md, 16px);
     background-color: var(--firo-color-accent, #0090ff);

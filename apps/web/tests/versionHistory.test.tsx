@@ -53,13 +53,13 @@ describe("SaveStatusIndicator Visual Sync Status", () => {
       mockSaveStatusListener?.("saving");
     });
     let indicator = screen.getByTestId("firo-save-status");
-    expect(indicator.textContent).toContain("Syncing...");
+    expect(indicator.textContent).toContain("Saving...");
 
     act(() => {
       mockSaveStatusListener?.("saved");
     });
     indicator = screen.getByTestId("firo-save-status");
-    expect(indicator.textContent).toContain("Synced to server");
+    expect(indicator.textContent).toContain("Saved on this device");
 
     act(() => {
       mockSaveStatusListener?.("error");
@@ -75,13 +75,13 @@ describe("SaveStatusIndicator Visual Sync Status", () => {
       mockSaveStatusListener?.("saving");
     });
     let indicator = screen.getByTestId("firo-save-status");
-    expect(indicator.textContent).toContain("Saving locally...");
+    expect(indicator.textContent).toContain("Saving...");
 
     act(() => {
       mockSaveStatusListener?.("saved");
     });
     indicator = screen.getByTestId("firo-save-status");
-    expect(indicator.textContent).toContain("Saved locally");
+    expect(indicator.textContent).toContain("Saved on this device");
 
     act(() => {
       mockSaveStatusListener?.("error");

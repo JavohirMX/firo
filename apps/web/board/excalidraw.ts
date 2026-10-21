@@ -145,6 +145,15 @@ export const isExcalidrawJson = (data: unknown): boolean => {
   if (obj.schemaVersion !== undefined) {
     return false;
   }
+  // A native Firo board file carries its own schema versions. Its elements
+  // look like drawing elements, but routing it through the Excalidraw
+  // converter drops its records (doc blocks, tables) and collections.
+  if (
+    obj.elementSchemaVersion !== undefined ||
+    obj.recordSchemaVersion !== undefined
+  ) {
+    return false;
+  }
   if (obj.type === "excalidraw") {
     return true;
   }

@@ -39,7 +39,10 @@ export class FiroServer {
     });
     const staticHandler = createStaticHandler(this.config.webDir);
 
-    this.httpServer = http.createServer(async (req, res) => {
+    const handleRequest = async (
+      req: http.IncomingMessage,
+      res: http.ServerResponse,
+    ): Promise<void> => {
       const parsedUrl = parseRequestUrl(req.url);
       if (!parsedUrl) {
         res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
@@ -62,6 +65,18 @@ export class FiroServer {
 
       // 3. Fallback to API handler (which returns 404)
       await apiHandler(req, res);
+    };
+
+    this.httpServer = http.createServer((req, res) => {
+      handleRequest(req, res).catch(() => {
+        // An unexpected throw must not take the whole server down.
+        if (!res.headersSent) {
+          res.writeHead(500, {
+            "Content-Type": "application/json; charset=utf-8",
+          });
+        }
+        res.end(JSON.stringify({ error: "Internal server error." }));
+      });
     });
 
     this.relay = new WebSocketRelay({

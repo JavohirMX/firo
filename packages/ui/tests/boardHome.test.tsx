@@ -130,6 +130,41 @@ describe("@firo/ui BoardHome", () => {
     expect(onRenameBoard).toHaveBeenCalledWith("roadmap", "Q3 roadmap");
   });
 
+  it("cancels the Enter default action when committing a rename", () => {
+    // Regression: after the commit moves focus back to the rename button,
+    // an unconsumed Enter activates that button and reopens the editor in a
+    // real browser (jsdom does not model button activation). The card and
+    // the table row must both swallow the key's default action.
+    render(<BoardHome boards={boards} onRenameBoard={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+    const cardInput = screen.getByRole("textbox", { name: "Rename Roadmap" });
+    expect(fireEvent.keyDown(cardInput, { key: "Enter" })).toBe(false);
+
+    render(
+      <BoardHome boards={boards} viewMode="list" onRenameBoard={vi.fn()} />,
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Rename Roadmap" })[1],
+    );
+    const rowInput = screen.getAllByRole("textbox", {
+      name: "Rename Roadmap",
+    })[0];
+    expect(fireEvent.keyDown(rowInput, { key: "Enter" })).toBe(false);
+  });
+
+  it("selects the whole name when rename starts, so typing replaces it", () => {
+    render(<BoardHome boards={[boards[1]]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+    const input = screen.getByRole("textbox", {
+      name: "Rename Roadmap",
+    }) as HTMLInputElement;
+    fireEvent.focus(input);
+
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("Roadmap".length);
+  });
+
   it("ignores a rename that only adds whitespace", () => {
     const onRenameBoard = vi.fn();
     render(<BoardHome boards={[boards[1]]} onRenameBoard={onRenameBoard} />);
@@ -173,10 +208,144 @@ describe("@firo/ui BoardHome", () => {
     fireEvent.click(screen.getByRole("button", { name: "Restore Old board" }));
     expect(onRestoreBoard).toHaveBeenCalledWith("gone");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Delete Old board permanently" }),
-    );
+    // Permanent delete is confirmed: Cancel and Escape keep the board.
+    const openDelete = () =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Delete Old board permanently" }),
+      );
+    openDelete();
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain("Old board");
+    expect(onDeleteBoard).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onDeleteBoard).not.toHaveBeenCalled();
+
+    openDelete();
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onDeleteBoard).not.toHaveBeenCalled();
+
+    openDelete();
+    fireEvent.click(screen.getByRole("button", { name: "Delete forever" }));
     expect(onDeleteBoard).toHaveBeenCalledWith("gone");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("hides board-only header controls in the Activity view", () => {
+    // The activity feed ignores the board filter, view mode and sort, so
+    // showing those controls there would promise an effect they do not have.
+    render(<BoardHome boards={boards} activeSection="activity" />);
+    expect(screen.queryByLabelText("Filter boards")).toBeNull();
+    expect(screen.queryByLabelText("Sort boards")).toBeNull();
+    expect(screen.queryByLabelText("Grid view")).toBeNull();
+    expect(screen.queryByLabelText("List view")).toBeNull();
+  });
+
+  it("keeps board header controls in the Trash view", () => {
+    render(
+      <BoardHome
+        boards={[{ id: "gone", name: "Old board", tags: [], trashed: true }]}
+        activeSection="trash"
+      />,
+    );
+    expect(screen.getByLabelText("Filter boards")).toBeDefined();
+    expect(screen.getByLabelText("Sort boards")).toBeDefined();
+    expect(screen.getByLabelText("Grid view")).toBeDefined();
+    expect(screen.getByLabelText("List view")).toBeDefined();
+  });
+
+  it("moves focus into the actions dialog and back to its opener", () => {
+    render(<BoardHome boards={boards} viewMode="list" />);
+    const opener = screen.getByRole("button", {
+      name: "More actions for Sprint retro",
+    });
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = screen.getByRole("dialog", {
+      name: "Actions for Sprint retro",
+    });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("keeps the original opener across the actions-to-move handoff", () => {
+    render(<BoardHome boards={boards} viewMode="list" />);
+    const opener = screen.getByRole("button", {
+      name: "More actions for Sprint retro",
+    });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole("button", { name: /Move to folder/ }));
+    const moveDialog = screen.getByRole("dialog", {
+      name: "Move Sprint retro to folder",
+    });
+    expect(moveDialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(moveDialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("cycles Tab within the move dialog instead of leaving it", () => {
+    render(<BoardHome boards={boards} viewMode="list" />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for Sprint retro" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Move to folder/ }));
+    const moveDialog = screen.getByRole("dialog", {
+      name: "Move Sprint retro to folder",
+    });
+    const buttons = Array.from(moveDialog.querySelectorAll("button")).filter(
+      (b) => !b.disabled,
+    );
+    const first = buttons[0] as HTMLElement;
+    const last = buttons[buttons.length - 1] as HTMLElement;
+    last.focus();
+    fireEvent.keyDown(moveDialog, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+    first.focus();
+    fireEvent.keyDown(moveDialog, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
+  it("moves focus into the card menu and arrows through it", () => {
+    render(<BoardCard board={boards[0]} />);
+    const trigger = screen.getByRole("button", {
+      name: "More actions for Sprint retro",
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const menu = screen.getByRole("menu");
+    const items = Array.from(
+      menu.querySelectorAll("[role=menuitem]"),
+    ) as HTMLElement[];
+    expect(items.length).toBeGreaterThan(1);
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("returns focus to the rename button when rename ends", () => {
+    render(<BoardCard board={boards[0]} />);
+    const renameBtn = screen.getByRole("button", {
+      name: "Rename Sprint retro",
+    });
+    renameBtn.focus();
+    fireEvent.click(renameBtn);
+    const input = screen.getByRole("textbox", { name: "Rename Sprint retro" });
+    expect(document.activeElement).toBe(input);
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(
+      screen.queryByRole("textbox", { name: "Rename Sprint retro" }),
+    ).toBeNull();
+    expect(document.activeElement).toBe(renameBtn);
   });
 
   it("renders a card on its own", () => {
@@ -351,6 +520,25 @@ describe("@firo/ui BoardHome", () => {
       expect(screen.queryByRole("table", { name: "Boards" })).toBeNull();
     });
 
+    it("renames a board in place from the list view", () => {
+      const onRenameBoard = vi.fn();
+      render(
+        <BoardHome
+          boards={[boards[1]]}
+          viewMode="list"
+          onRenameBoard={onRenameBoard}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+      const input = screen.getByRole("textbox", { name: "Rename Roadmap" });
+      fireEvent.change(input, { target: { value: "Q3 roadmap" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(onRenameBoard).toHaveBeenCalledTimes(1);
+      expect(onRenameBoard).toHaveBeenCalledWith("roadmap", "Q3 roadmap");
+    });
+
     it("creates a new folder via the sidebar prompt", () => {
       const onCreateFolder = vi.fn();
       render(
@@ -437,5 +625,193 @@ describe("@firo/ui BoardHome", () => {
       fireEvent.change(sortSelect, { target: { value: "name" } });
       expect(onChangeSortBy).toHaveBeenCalledWith("name");
     });
+  });
+});
+
+describe("filter ergonomics and content search", () => {
+  it("reports how many boards the filter keeps", () => {
+    render(<BoardHome boards={boards} />);
+    const filter = screen.getByRole("searchbox", { name: "Filter boards" });
+    fireEvent.change(filter, { target: { value: "road" } });
+    expect(screen.getByText("1 of 2 boards")).toBeDefined();
+    fireEvent.change(filter, { target: { value: "" } });
+    expect(screen.queryByText("1 of 2 boards")).toBeNull();
+  });
+
+  it("clears the filter with its clear button and with Escape", () => {
+    render(<BoardHome boards={boards} />);
+    const filter = screen.getByRole("searchbox", { name: "Filter boards" });
+    fireEvent.change(filter, { target: { value: "road" } });
+    expect(screen.queryByText("Sprint retro")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
+    expect(screen.getByText("Sprint retro")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Clear filter" })).toBeNull();
+
+    fireEvent.change(filter, { target: { value: "road" } });
+    fireEvent.keyDown(filter, { key: "Escape" });
+    expect(screen.getByText("Sprint retro")).toBeDefined();
+  });
+
+  it("focuses the filter on /, except while typing in a field", () => {
+    render(<BoardHome boards={boards} />);
+    const filter = screen.getByRole("searchbox", { name: "Filter boards" });
+
+    fireEvent.keyDown(document.body, { key: "/" });
+    expect(document.activeElement).toBe(filter);
+
+    // A rename in progress must receive the slash as text.
+    (filter as HTMLInputElement).blur();
+    fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+    const rename = screen.getByRole("textbox", { name: "Rename Roadmap" });
+    fireEvent.keyDown(rename, { key: "/" });
+    expect(document.activeElement).toBe(rename);
+    expect((rename as HTMLInputElement).value).toBe("Roadmap");
+  });
+
+  it("mirrors the filter text to the host for content search", () => {
+    const onFilterChange = vi.fn();
+    render(<BoardHome boards={boards} onFilterChange={onFilterChange} />);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "budget" },
+    });
+    expect(onFilterChange).toHaveBeenLastCalledWith("budget");
+  });
+
+  it("lists content matches and opens the board from one", () => {
+    const onOpenBoard = vi.fn();
+    render(
+      <BoardHome
+        boards={boards}
+        onOpenBoard={onOpenBoard}
+        contentMatches={[
+          {
+            boardId: "retro",
+            boardName: "Sprint retro",
+            snippet: "…the deploy checklist needs an owner…",
+            matchType: "stickynote",
+            matchCount: 2,
+          },
+        ]}
+      />,
+    );
+
+    // No section without a filter: the matches answer the filter text.
+    expect(screen.queryByRole("region", { name: "Inside boards" })).toBeNull();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "deploy" },
+    });
+    const section = screen.getByRole("region", { name: "Inside boards" });
+    expect(section.textContent).toContain(
+      "…the deploy checklist needs an owner…",
+    );
+    expect(section.textContent).toContain("Sticky note");
+    expect(section.textContent).toContain("2 matches");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Open Sprint retro, 2 matches inside",
+      }),
+    );
+    expect(onOpenBoard).toHaveBeenCalledWith("retro");
+  });
+
+  it("says while the content scan is still running", () => {
+    render(<BoardHome boards={boards} contentSearching={true} />);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "deploy" },
+    });
+    expect(screen.getByText("Searching board contents...")).toBeDefined();
+  });
+
+  it("keeps content matches out of the trash view", () => {
+    render(
+      <BoardHome
+        boards={[{ id: "gone", name: "Old board", tags: [], trashed: true }]}
+        activeSection="trash"
+        contentSearching={true}
+      />,
+    );
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "old" },
+    });
+    expect(screen.queryByRole("region", { name: "Inside boards" })).toBeNull();
+  });
+});
+
+describe("trash upkeep", () => {
+  const trashedBoards: BoardCardData[] = [
+    {
+      id: "gone",
+      name: "Old board",
+      tags: [],
+      trashed: true,
+      trashedLabel: "3 days ago",
+    },
+  ];
+
+  it("shows when a trashed board was deleted", () => {
+    render(<BoardHome boards={trashedBoards} activeSection="trash" />);
+    expect(screen.getByText("Deleted 3 days ago")).toBeDefined();
+  });
+
+  it("empties the trash only after confirmation", () => {
+    const onEmptyTrash = vi.fn();
+    render(
+      <BoardHome
+        boards={trashedBoards}
+        activeSection="trash"
+        onEmptyTrash={onEmptyTrash}
+      />,
+    );
+
+    const openDialog = () =>
+      fireEvent.click(screen.getByRole("button", { name: "Empty trash" }));
+
+    // Cancel keeps the trash.
+    openDialog();
+    const dialog = screen.getByRole("alertdialog", { name: "Empty trash?" });
+    expect(dialog.textContent).toContain("1 board");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onEmptyTrash).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+
+    // Escape keeps the trash.
+    openDialog();
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    expect(onEmptyTrash).not.toHaveBeenCalled();
+
+    // Confirm empties it.
+    openDialog();
+    fireEvent.click(screen.getAllByRole("button", { name: "Empty trash" })[1]);
+    expect(onEmptyTrash).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("offers Empty trash from the all-boards trash strip too", () => {
+    const onEmptyTrash = vi.fn();
+    render(<BoardHome boards={trashedBoards} onEmptyTrash={onEmptyTrash} />);
+    const trashStrip = screen.getByRole("region", { name: "Trash" });
+    const button = Array.from(trashStrip.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Empty trash"),
+    );
+    expect(button).toBeDefined();
+    fireEvent.click(button as HTMLElement);
+    expect(screen.getByRole("alertdialog", { name: "Empty trash?" }));
+  });
+
+  it("counts each folder's boards in the sidebar", () => {
+    render(
+      <BoardHome
+        boards={[
+          { id: "a", name: "Alpha", tags: [], folderId: "f1" },
+          { id: "b", name: "Beta", tags: [], folderId: "f1" },
+        ]}
+        folders={[{ id: "f1", name: "Work" }]}
+      />,
+    );
+    const folderButton = screen.getByRole("button", { name: "Folder Work" });
+    expect(folderButton.textContent).toContain("2");
   });
 });

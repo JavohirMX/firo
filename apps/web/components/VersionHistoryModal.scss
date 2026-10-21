@@ -390,3 +390,32 @@
     outline-offset: 1px;
   }
 }
+
+// Dark theme: the status pill and sync line used hardcoded light-theme
+// colors, which read as an inverted white badge and a near-invisible
+// gray line on the dark card.
+.theme--dark {
+  .firo-version-history__pill {
+    &--persisted {
+      background: rgba(79, 209, 142, 0.16);
+      color: var(--firo-color-success, #4fd18e);
+      border-color: rgba(79, 209, 142, 0.4);
+    }
+
+    &--standard {
+      background: var(--firo-color-surface, #151619);
+      color: var(--firo-color-text-muted, #9c9fab);
+      border-color: var(--firo-color-border, #34363d);
+    }
+  }
+
+  .firo-version-history__connection-status {
+    &--connected {
+      color: var(--firo-color-success, #4fd18e);
+    }
+
+    &--local {
+      color: var(--firo-color-text-muted, #9c9fab);
+    }
+  }
+}

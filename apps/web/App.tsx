@@ -18,6 +18,9 @@ import {
   actionZoomToFit,
   actionToggleGridMode,
   DocBlockOverlay,
+  renderDocBlock,
+  viewportCoordsToSceneCoords,
+  type MobileExtraTool,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -73,6 +76,7 @@ import {
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
 
@@ -91,7 +95,7 @@ import {
   restoreAppState,
   restoreElements,
 } from "@firo/editor/data/restore";
-import { newElementWith } from "@firo/element";
+import { newElementWith, setElementContentDrawer } from "@firo/element";
 import { isInitializedImageElement } from "@firo/element";
 import clsx from "clsx";
 import {
@@ -127,6 +131,9 @@ import {
   createDocBlockRecord,
   docBlockRecordToFiroRecord,
   docBlockRecordFromFiroRecord,
+  serializeDocBlockNode,
+  parseDocBlockJson,
+  createDefaultDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
 import {
@@ -160,6 +167,13 @@ import type {
 } from "@firo/editor/types";
 import type { ResolutionType } from "@firo/common/utility-types";
 import type { ResolvablePromise } from "@firo/common/utils";
+
+import { changedDocBlockIds } from "./board/docContentSync";
+import {
+  canAutoFit,
+  computeFitView,
+  selectionRevealScrollX,
+} from "./board/initialFit";
 
 import { clearActivity, listActivity } from "./board/activity";
 
@@ -268,6 +282,8 @@ import { createBoard } from "./board/library";
 import { boardUrl } from "./board/routes";
 
 import "./index.scss";
+
+import type { JSX } from "react";
 
 import type { RailLayout } from "./board/railLayout";
 
@@ -506,6 +522,29 @@ export const CREATION_TOOLS = new Set<RailToolType>([
   "docblock",
 ]);
 
+/**
+ * Fit the viewport to a set of elements, leaving room for the board chrome.
+ * Only the viewport changes, never the elements, so shared documents keep
+ * their world coordinates.
+ */
+const fitViewToElements = (
+  api: ExcalidrawImperativeAPI,
+  elements: readonly { x: number; y: number; width: number; height: number }[],
+) => {
+  const fit = computeFitView(api.getAppState(), elements);
+  if (!fit) {
+    return;
+  }
+  api.updateScene({
+    appState: {
+      zoom: { value: fit.zoom as never },
+      scrollX: fit.scrollX,
+      scrollY: fit.scrollY,
+    },
+    captureUpdate: CaptureUpdateAction.NEVER,
+  });
+};
+
 export const WebCreationRail = ({
   appState,
   commentMode = false,
@@ -514,8 +553,11 @@ export const WebCreationRail = ({
   onToggleDocBlockMode,
   onOpenTemplates,
   onOpenAI,
+  readOnlyRole = null,
 }: {
   appState: UIAppState;
+  /** viewer/commenter share links: only navigation (and, for commenters, comments). */
+  readOnlyRole?: string | null;
   commentMode?: boolean;
   onToggleCommentMode?: () => void;
   docBlockMode?: boolean;
@@ -787,18 +829,28 @@ export const WebCreationRail = ({
     id in TOOLS ||
     ["shapes", "pen", "templates", "comment", "docblock", "ai"].includes(id);
 
+  // Read-only roles only get tools that work for them (the pointer, and
+  // Comment for commenters), instead of buttons that silently do nothing.
+  const isAllowedForRole = (id: RailToolType) =>
+    !readOnlyRole || (readOnlyRole === "commenter" && id === "comment");
   const tools: RailToolItem[] = [
     pointerItem,
-    ...layout.order.filter(isKnownTool).map(buildRailTool),
+    ...layout.order
+      .filter(isKnownTool)
+      .filter(isAllowedForRole)
+      .map(buildRailTool),
   ];
-  const hiddenTools: RailToolItem[] = layout.unpinned
-    .filter(isKnownTool)
-    .map(buildRailTool);
+  const hiddenTools: RailToolItem[] = readOnlyRole
+    ? []
+    : layout.unpinned.filter(isKnownTool).map(buildRailTool);
 
   return (
     <CreationRail
       tools={tools}
       hiddenTools={hiddenTools}
+      showCatalog={!readOnlyRole}
+      canUndo={!readOnlyRole}
+      canRedo={!readOnlyRole}
       activeTool={
         commentMode ? "comment" : docBlockMode ? "docblock" : activeToolType
       }
@@ -825,6 +877,13 @@ export const WebCreationRail = ({
             pointerActive && live === "selection" ? "hand" : "selection";
           trackEvent("toolbar", next, "ui");
           app.setActiveTool({ type: next as any });
+          return;
+        }
+
+        if (
+          readOnlyRole &&
+          !(readOnlyRole === "commenter" && tool === "comment")
+        ) {
           return;
         }
 
@@ -1007,6 +1066,16 @@ const WebInspector = ({ appState }: { appState: UIAppState }) => {
   const elements = app.scene.getNonDeletedElements();
 
   if (!showSelectedShapeActions(appState, elements)) {
+    return null;
+  }
+
+  // A document block has no stroke, fill or text styling to edit, so the
+  // generic shape panel only gets in the way of it.
+  const selected = elements.filter((el) => appState.selectedElementIds[el.id]);
+  if (
+    selected.length > 0 &&
+    selected.every((el) => el.customData?.isDocBlock)
+  ) {
     return null;
   }
 
@@ -1616,9 +1685,27 @@ export const insertDocBlockOnBoard = (
     });
   }
 
-  const docBlock = createDocBlockRecord({
+  const created = createDocBlockRecord({
     title: "Untitled Document",
   });
+  // On a narrow screen a new block at its default width would run off the
+  // edge, or force a zoom where its text is tiny. Size the new block to the
+  // viewport instead (existing blocks are never resized).
+  const view = excalidrawAPI?.getAppState();
+  const fitWidth = view
+    ? Math.floor(view.width / view.zoom.value - 32)
+    : created.dimensions.width;
+  const fitHeight = view
+    ? Math.floor((view.height * 0.6) / view.zoom.value)
+    : created.dimensions.height;
+  const docBlock = {
+    ...created,
+    dimensions: {
+      ...created.dimensions,
+      width: Math.max(240, Math.min(created.dimensions.width, fitWidth)),
+      height: Math.max(200, Math.min(created.dimensions.height, fitHeight)),
+    },
+  };
   const firoRecord = docBlockRecordToFiroRecord(docBlock);
   mutations.push({
     kind: "createRecord",
@@ -1712,6 +1799,88 @@ const ExcalidrawWrapper = () => {
   const [commentMode, setCommentMode] = useState(false);
   const [docBlockMode, setDocBlockMode] = useState(false);
   const [activeDocBlockId, setActiveDocBlockId] = useState<string | null>(null);
+  /**
+   * The doc block the user just closed while it was still the selected
+   * element. Selecting a doc block opens its editor, so without this the
+   * editor reopens the instant Escape or a commit closes it.
+   */
+  const dismissedDocBlockIdRef = useRef<string | null>(null);
+  const activeDocBlockIdRef = useRef<string | null>(null);
+  activeDocBlockIdRef.current = activeDocBlockId;
+
+  // Paint committed doc block content on the canvas when it is not being
+  // edited. The overlay covers the block while editing, so draw the plain
+  // shape then.
+  useEffect(() => {
+    setElementContentDrawer((element, context) => {
+      const recordId = element.customData?.recordId as string | undefined;
+      if (!recordId || recordId === activeDocBlockIdRef.current) {
+        return false;
+      }
+      const firoRecord = boardDoc()
+        .read()
+        .records.find((r) => r.id === recordId);
+      if (!firoRecord) {
+        return false;
+      }
+      const typed = docBlockRecordFromFiroRecord(firoRecord);
+      let node = createDefaultDocBlockNode();
+      if (typed.contentJson) {
+        try {
+          node = parseDocBlockJson(JSON.parse(typed.contentJson));
+        } catch {
+          // unreadable content: show the empty document
+        }
+      }
+      renderDocBlock(context, typed, node, 0, 0, element.width, element.height);
+      return true;
+    });
+    return () => setElementContentDrawer(null);
+  }, []);
+  // A collaborator's committed doc content arrives as a record change, but the
+  // canvas caches each element's drawing by version. Touch the matching
+  // element when a doc block's stored content changes so it repaints.
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    const seen = new Map<string, string>();
+    const readContent = () => {
+      const out = new Map<string, string>();
+      for (const r of boardDoc().read().records) {
+        if (r.collectionId === DOC_BLOCK_COLLECTION_ID) {
+          out.set(
+            r.id,
+            String(docBlockRecordFromFiroRecord(r).contentJson ?? ""),
+          );
+        }
+      }
+      return out;
+    };
+    readContent().forEach((v, k) => seen.set(k, v));
+    return boardDoc().subscribe(() => {
+      const next = readContent();
+      const changed = changedDocBlockIds(
+        seen,
+        next,
+        activeDocBlockIdRef.current,
+      );
+      if (!changed.size) {
+        return;
+      }
+      excalidrawAPI.updateScene({
+        elements: excalidrawAPI.getSceneElementsIncludingDeleted().map((el) =>
+          changed.has(el.customData?.recordId as string)
+            ? newElementWith(el, {
+                customData: { ...el.customData, contentRev: Date.now() },
+              })
+            : el,
+        ),
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    });
+  }, [excalidrawAPI]);
+
   const lastCanvasClickRef = useRef<{
     time: number;
     x: number;
@@ -1719,7 +1888,7 @@ const ExcalidrawWrapper = () => {
   } | null>(null);
 
   const handleUpdateDocBlockRecord = useCallback(
-    (recordId: string, _updatedDoc: any, updatedTitle?: string) => {
+    (recordId: string, updatedDoc: any, updatedTitle?: string) => {
       const doc = boardDoc();
       const existing = doc.read().records.find((r) => r.id === recordId);
       if (!existing) {
@@ -1730,6 +1899,11 @@ const ExcalidrawWrapper = () => {
       const updatedTyped: DocBlockRecord = {
         ...typed,
         title: nextTitle,
+        ...(updatedDoc
+          ? {
+              contentJson: JSON.stringify(serializeDocBlockNode(updatedDoc)),
+            }
+          : {}),
         updated: Date.now(),
       };
       const updatedFiroRecord = docBlockRecordToFiroRecord(updatedTyped);
@@ -1760,6 +1934,17 @@ const ExcalidrawWrapper = () => {
         point,
       );
       setActiveDocBlockId(record.id);
+      // On a narrow screen the new block can be wider than the viewport. Fit
+      // the view to it rather than resizing the shared document.
+      if (excalidrawAPI) {
+        const view = excalidrawAPI.getAppState();
+        const needsFit =
+          element.width * view.zoom.value > view.width * 0.95 ||
+          element.height * view.zoom.value > view.height * 0.7;
+        if (needsFit) {
+          fitViewToElements(excalidrawAPI, [element]);
+        }
+      }
       return { record, element };
     },
     [excalidrawAPI],
@@ -1770,14 +1955,30 @@ const ExcalidrawWrapper = () => {
       if (activeDocBlockId) {
         handleUpdateDocBlockRecord(activeDocBlockId, updatedDoc, updatedTitle);
       }
+      dismissedDocBlockIdRef.current = activeDocBlockId;
+      // The canvas caches each element's drawing by version, so touch the
+      // element to make it repaint with the committed content.
+      if (activeDocBlockId && excalidrawAPI) {
+        excalidrawAPI.updateScene({
+          elements: excalidrawAPI.getSceneElementsIncludingDeleted().map((el) =>
+            el.customData?.recordId === activeDocBlockId
+              ? newElementWith(el, {
+                  customData: { ...el.customData, contentRev: Date.now() },
+                })
+              : el,
+          ),
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
       setActiveDocBlockId(null);
     },
-    [activeDocBlockId, handleUpdateDocBlockRecord],
+    [activeDocBlockId, handleUpdateDocBlockRecord, excalidrawAPI],
   );
 
   const handleDiscardDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const handleChangeDocBlock = useCallback(
     (updatedDoc: any, updatedTitle?: string) => {
@@ -1789,8 +1990,9 @@ const ExcalidrawWrapper = () => {
   );
 
   const handleCloseDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalTab, setExportModalTab] = useState<ExportTab>("image");
@@ -2503,6 +2705,9 @@ const ExcalidrawWrapper = () => {
     readonly CollaboratorInfo[]
   >([]);
 
+  const [shareRole, setShareRole] = useState<string | null>(null);
+  const isReadOnlyShare = shareRole === "viewer" || shareRole === "commenter";
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -2518,10 +2723,13 @@ const ExcalidrawWrapper = () => {
         getActiveBoard()?.id ||
         "default";
 
-      if (shareToken && (!boardId || boardId === "default")) {
+      if (shareToken) {
         const resolved = await resolveShareToken(shareToken);
-        if (resolved?.boardId) {
+        if (resolved?.boardId && (!boardId || boardId === "default")) {
           boardId = resolved.boardId;
+        }
+        if (resolved?.role && !isCancelled) {
+          setShareRole(resolved.role);
         }
       }
 
@@ -2559,6 +2767,199 @@ const ExcalidrawWrapper = () => {
       void cleanupPromise.then((cleanup) => cleanup?.());
     };
   }, []);
+
+  /*
+   * View mode swallows canvas pointer-downs, so the editor's own
+   * `onPointerDown` never fires for a commenter. Commenters may still place
+   * comments (server rule: they may write only the `comments` partition), so
+   * catch the click here while comment mode is armed.
+   */
+  useEffect(() => {
+    if (!commentMode || shareRole !== "commenter" || !excalidrawAPI) {
+      return undefined;
+    }
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest?.("canvas.interactive")) {
+        return;
+      }
+      const state = excalidrawAPI.getAppState();
+      const point = viewportCoordsToSceneCoords(event, state);
+      setCommentTarget({ point: { x: point.x, y: point.y } });
+      setCommentMode(false);
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [commentMode, shareRole, excalidrawAPI]);
+
+  /*
+   * The mobile toolbar is the generic editor's, so the board's own tools reach
+   * it as extra "More tools" entries. Same rules as the desktop rail: read-only
+   * share roles get no creation tools, commenters keep Comment.
+   */
+  const mobileExtraTools = useMemo(() => {
+    const canCreate = !isReadOnlyShare;
+    const canComment = canCreate || shareRole === "commenter";
+    const tools: MobileExtraTool[] = [];
+    if (canComment) {
+      tools.push({
+        id: "comment",
+        label: "Comment",
+        icon: RAIL_TOOL_ICONS.comment as JSX.Element,
+        selected: commentMode,
+        onSelect: () => {
+          setCommentMode((mode) => !mode);
+          setDocBlockMode(false);
+        },
+      });
+    }
+    if (canCreate) {
+      tools.push(
+        {
+          id: "docblock",
+          label: "Document",
+          icon: RAIL_TOOL_ICONS.docblock as JSX.Element,
+          selected: docBlockMode,
+          onSelect: () => {
+            setDocBlockMode((mode) => !mode);
+            setCommentMode(false);
+          },
+        },
+        {
+          id: "templates",
+          label: "Templates",
+          icon: RAIL_TOOL_ICONS.templates as JSX.Element,
+          onSelect: () => setTemplateModalOpen(true),
+        },
+        {
+          id: "ai",
+          label: "AI Assistant",
+          icon: RAIL_TOOL_ICONS.ai as JSX.Element,
+          onSelect: () => setAiModalOpen(true),
+        },
+      );
+    }
+    return tools;
+  }, [isReadOnlyShare, shareRole, commentMode, docBlockMode]);
+
+  /*
+   * A board opens at scroll 0,0, which hides content that sits near the origin
+   * behind the chrome or off the edge on a phone (templates start there). No
+   * view is stored per board, so fit the view once, when content first shows up
+   * in the opening seconds (local load or first sync). Stop as soon as the
+   * user has panned or zoomed, or after the window, so a first shape drawn on
+   * an empty board never moves the view.
+   */
+  const collabConnected = collabStatus === "connected";
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    let done = false;
+    // The window starts when the board connects, so a slow first sync still
+    // gets fitted. Any pointer or key input by the user ends it.
+    const startedAt = Date.now();
+    const stop = () => {
+      done = true;
+    };
+    window.addEventListener("pointerdown", stop, true);
+    window.addEventListener("keydown", stop, true);
+    const off = excalidrawAPI.onChange((elements, state) => {
+      if (done) {
+        return;
+      }
+      if (!canAutoFit(state, Date.now() - startedAt)) {
+        done = true;
+        return;
+      }
+      const live = elements.filter((el) => !el.isDeleted);
+      if (live.length === 0) {
+        return;
+      }
+      done = true;
+      fitViewToElements(excalidrawAPI, live);
+    });
+    return () => {
+      off();
+      window.removeEventListener("pointerdown", stop, true);
+      window.removeEventListener("keydown", stop, true);
+    };
+    // Re-arm once when the board connects: content that syncs in after the
+    // opening window is still framed, until the user touches the canvas.
+  }, [excalidrawAPI, collabConnected]);
+
+  /*
+   * A selection restored on load can sit under the docked Properties panel.
+   * In the opening seconds, and only until the user touches the canvas, slide
+   * the view sideways once so the selected shapes end up beside the panel. The
+   * selection is kept. Nothing moves during later manipulation.
+   */
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    let done = false;
+    const startedAt = Date.now();
+    const stop = () => {
+      done = true;
+    };
+    window.addEventListener("pointerdown", stop, true);
+    window.addEventListener("keydown", stop, true);
+    const off = excalidrawAPI.onChange((elements, state) => {
+      if (done) {
+        return;
+      }
+      if (
+        Date.now() - startedAt > 8000 ||
+        state.newElement ||
+        state.editingTextElement
+      ) {
+        done = true;
+        return;
+      }
+      const ids = state.selectedElementIds ?? {};
+      const picked = elements.filter((el) => !el.isDeleted && ids[el.id]);
+      const panel = document.querySelector(".firo-inspector");
+      if (picked.length === 0 || !panel) {
+        return;
+      }
+      const z = state.zoom.value;
+      const minX = Math.min(...picked.map((el) => el.x));
+      const maxX = Math.max(...picked.map((el) => el.x + el.width));
+      const minY = Math.min(...picked.map((el) => el.y));
+      const maxY = Math.max(...picked.map((el) => el.y + el.height));
+      const toX = (x: number) => (x + state.scrollX) * z + state.offsetLeft;
+      const toY = (y: number) => (y + state.scrollY) * z + state.offsetTop;
+      const rect = panel.getBoundingClientRect();
+      const dx = selectionRevealScrollX(
+        {
+          left: toX(minX),
+          right: toX(maxX),
+          top: toY(minY),
+          bottom: toY(maxY),
+        },
+        {
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+        },
+        z,
+      );
+      done = true;
+      if (dx !== 0) {
+        excalidrawAPI.updateScene({
+          appState: { scrollX: state.scrollX + dx },
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
+    });
+    return () => {
+      off();
+      window.removeEventListener("pointerdown", stop, true);
+      window.removeEventListener("keydown", stop, true);
+    };
+  }, [excalidrawAPI]);
 
   const isCollaborating = collabStatus === "connected";
   /**
@@ -2884,11 +3285,26 @@ const ExcalidrawWrapper = () => {
           (record.collectionId === DOC_BLOCK_COLLECTION_ID ||
             isDocBlockRecord(record))
         ) {
-          if (activeDocBlockId !== recordId) {
+          if (
+            activeDocBlockId !== recordId &&
+            dismissedDocBlockIdRef.current !== recordId
+          ) {
             setActiveDocBlockId(recordId);
           }
         }
       }
+    }
+    // Once the dismissed block is no longer the only selection, selecting it
+    // again should open it.
+    if (
+      dismissedDocBlockIdRef.current &&
+      !(
+        selectedIds.length === 1 &&
+        elements.find((el) => el.id === selectedIds[0])?.customData
+          ?.recordId === dismissedDocBlockIdRef.current
+      )
+    ) {
+      dismissedDocBlockIdRef.current = null;
     }
 
     if (appState.activeTool?.type) {
@@ -3041,6 +3457,7 @@ const ExcalidrawWrapper = () => {
         renderCreationRailUI={(_isMobile, appState) => (
           <WebCreationRail
             appState={appState}
+            readOnlyRole={isReadOnlyShare ? shareRole : null}
             commentMode={commentMode}
             onToggleCommentMode={() => {
               setCommentMode((mode) => !mode);
@@ -3075,6 +3492,7 @@ const ExcalidrawWrapper = () => {
         renderTopRightUI={() => (
           <CollabBar
             connectionStatus={isOffline ? "offline" : collabStatus}
+            readOnlyRole={isReadOnlyShare ? shareRole : null}
             collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
@@ -3152,6 +3570,8 @@ const ExcalidrawWrapper = () => {
                   (hit.customData?.recordId as string | undefined) ||
                   ((hit as any).recordId as string | undefined);
                 if (recordId) {
+                  // An explicit click on the block always opens it.
+                  dismissedDocBlockIdRef.current = null;
                   setActiveDocBlockId(recordId);
                 }
               }
@@ -3176,6 +3596,8 @@ const ExcalidrawWrapper = () => {
         onExport={onExport}
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
+        mobileExtraTools={mobileExtraTools}
+        viewModeEnabled={isReadOnlyShare}
         UIOptions={{
           canvasActions: {
             toggleTheme: true,

@@ -840,6 +840,16 @@ export type ElementRenderOffsets = ReadonlyMap<
   NonNullable<ElementRenderOverride["offset"]>
 >;
 
+/** A host-provided entry in the mobile toolbar's "More tools" menu. */
+export type MobileExtraTool = {
+  id: string;
+  label: string;
+  icon?: JSX.Element;
+  selected?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+};
+
 export interface ExcalidrawProps {
   className?: string;
   /**
@@ -940,6 +950,11 @@ export interface ExcalidrawProps {
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
+  /**
+   * Host-provided entries for the mobile toolbar's "More tools" menu, for
+   * tools the generic editor does not know about (the host's own rail tools).
+   */
+  mobileExtraTools?: readonly MobileExtraTool[];
   renderNavigationUI?: (
     isMobile: boolean,
     appState: UIAppState,
