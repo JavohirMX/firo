@@ -68,7 +68,9 @@ describe("@firo/ui BoardHome", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
       target: { value: "zzz" },
     });
-    expect(screen.getByText("No boards match that filter.")).toBeDefined();
+    expect(
+      screen.getByText("No board titles match that filter."),
+    ).toBeDefined();
   });
 
   it("invites a first board when there are none", () => {

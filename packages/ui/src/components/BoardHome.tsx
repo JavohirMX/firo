@@ -966,7 +966,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
 
   const emptyText = () => {
     if (needle) {
-      return "No boards match that filter.";
+      return "No board titles match that filter.";
     }
     if (currentSection === "all") {
       return live.length === 0
@@ -1712,7 +1712,12 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
               className="firo-board-home__section"
               aria-label="Inside boards"
             >
-              <h2 className="firo-board-home__section-title">Inside boards</h2>
+              <h2 className="firo-board-home__section-title">
+                Inside boards
+                {contentMatches && contentMatches.length > 0
+                  ? ` (${contentMatches.length})`
+                  : ""}
+              </h2>
               {contentMatches && contentMatches.length > 0 ? (
                 <ul className="firo-content-matches">
                   {contentMatches.map((match) => (
