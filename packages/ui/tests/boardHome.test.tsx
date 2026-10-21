@@ -233,6 +233,61 @@ describe("@firo/ui BoardHome", () => {
     expect(screen.getByLabelText("List view")).toBeDefined();
   });
 
+  it("moves focus into the actions dialog and back to its opener", () => {
+    render(<BoardHome boards={boards} viewMode="list" />);
+    const opener = screen.getByRole("button", {
+      name: "More actions for Sprint retro",
+    });
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = screen.getByRole("dialog", {
+      name: "Actions for Sprint retro",
+    });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("keeps the original opener across the actions-to-move handoff", () => {
+    render(<BoardHome boards={boards} viewMode="list" />);
+    const opener = screen.getByRole("button", {
+      name: "More actions for Sprint retro",
+    });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole("button", { name: /Move to folder/ }));
+    const moveDialog = screen.getByRole("dialog", {
+      name: "Move Sprint retro to folder",
+    });
+    expect(moveDialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(moveDialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("cycles Tab within the move dialog instead of leaving it", () => {
+    render(<BoardHome boards={boards} viewMode="list" />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for Sprint retro" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Move to folder/ }));
+    const moveDialog = screen.getByRole("dialog", {
+      name: "Move Sprint retro to folder",
+    });
+    const buttons = Array.from(moveDialog.querySelectorAll("button")).filter(
+      (b) => !b.disabled,
+    );
+    const first = buttons[0] as HTMLElement;
+    const last = buttons[buttons.length - 1] as HTMLElement;
+    last.focus();
+    fireEvent.keyDown(moveDialog, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+    first.focus();
+    fireEvent.keyDown(moveDialog, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
   it("renders a card on its own", () => {
     const onOpen = vi.fn();
     render(<BoardCard board={boards[1]} onOpen={onOpen} />);
