@@ -93,6 +93,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     theme,
     name,
     renderCustomStats,
+    renderHelpDialogExtra,
     onPaste,
     detectScroll = true,
     handleKeyboardGlobally = false,
@@ -242,6 +243,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           theme={theme}
           name={name}
           renderCustomStats={renderCustomStats}
+          renderHelpDialogExtra={renderHelpDialogExtra}
           UIOptions={UIOptions}
           onPaste={onPaste}
           detectScroll={detectScroll}
