@@ -627,3 +627,191 @@ describe("@firo/ui BoardHome", () => {
     });
   });
 });
+
+describe("filter ergonomics and content search", () => {
+  it("reports how many boards the filter keeps", () => {
+    render(<BoardHome boards={boards} />);
+    const filter = screen.getByRole("searchbox", { name: "Filter boards" });
+    fireEvent.change(filter, { target: { value: "road" } });
+    expect(screen.getByText("1 of 2 boards")).toBeDefined();
+    fireEvent.change(filter, { target: { value: "" } });
+    expect(screen.queryByText("1 of 2 boards")).toBeNull();
+  });
+
+  it("clears the filter with its clear button and with Escape", () => {
+    render(<BoardHome boards={boards} />);
+    const filter = screen.getByRole("searchbox", { name: "Filter boards" });
+    fireEvent.change(filter, { target: { value: "road" } });
+    expect(screen.queryByText("Sprint retro")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
+    expect(screen.getByText("Sprint retro")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Clear filter" })).toBeNull();
+
+    fireEvent.change(filter, { target: { value: "road" } });
+    fireEvent.keyDown(filter, { key: "Escape" });
+    expect(screen.getByText("Sprint retro")).toBeDefined();
+  });
+
+  it("focuses the filter on /, except while typing in a field", () => {
+    render(<BoardHome boards={boards} />);
+    const filter = screen.getByRole("searchbox", { name: "Filter boards" });
+
+    fireEvent.keyDown(document.body, { key: "/" });
+    expect(document.activeElement).toBe(filter);
+
+    // A rename in progress must receive the slash as text.
+    (filter as HTMLInputElement).blur();
+    fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+    const rename = screen.getByRole("textbox", { name: "Rename Roadmap" });
+    fireEvent.keyDown(rename, { key: "/" });
+    expect(document.activeElement).toBe(rename);
+    expect((rename as HTMLInputElement).value).toBe("Roadmap");
+  });
+
+  it("mirrors the filter text to the host for content search", () => {
+    const onFilterChange = vi.fn();
+    render(<BoardHome boards={boards} onFilterChange={onFilterChange} />);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "budget" },
+    });
+    expect(onFilterChange).toHaveBeenLastCalledWith("budget");
+  });
+
+  it("lists content matches and opens the board from one", () => {
+    const onOpenBoard = vi.fn();
+    render(
+      <BoardHome
+        boards={boards}
+        onOpenBoard={onOpenBoard}
+        contentMatches={[
+          {
+            boardId: "retro",
+            boardName: "Sprint retro",
+            snippet: "…the deploy checklist needs an owner…",
+            matchType: "stickynote",
+            matchCount: 2,
+          },
+        ]}
+      />,
+    );
+
+    // No section without a filter: the matches answer the filter text.
+    expect(screen.queryByRole("region", { name: "Inside boards" })).toBeNull();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "deploy" },
+    });
+    const section = screen.getByRole("region", { name: "Inside boards" });
+    expect(section.textContent).toContain(
+      "…the deploy checklist needs an owner…",
+    );
+    expect(section.textContent).toContain("Sticky note");
+    expect(section.textContent).toContain("2 matches");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Open Sprint retro, 2 matches inside",
+      }),
+    );
+    expect(onOpenBoard).toHaveBeenCalledWith("retro");
+  });
+
+  it("says while the content scan is still running", () => {
+    render(<BoardHome boards={boards} contentSearching={true} />);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "deploy" },
+    });
+    expect(screen.getByText("Searching board contents...")).toBeDefined();
+  });
+
+  it("keeps content matches out of the trash view", () => {
+    render(
+      <BoardHome
+        boards={[{ id: "gone", name: "Old board", tags: [], trashed: true }]}
+        activeSection="trash"
+        contentSearching={true}
+      />,
+    );
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter boards" }), {
+      target: { value: "old" },
+    });
+    expect(screen.queryByRole("region", { name: "Inside boards" })).toBeNull();
+  });
+});
+
+describe("trash upkeep", () => {
+  const trashedBoards: BoardCardData[] = [
+    {
+      id: "gone",
+      name: "Old board",
+      tags: [],
+      trashed: true,
+      trashedLabel: "3 days ago",
+    },
+  ];
+
+  it("shows when a trashed board was deleted", () => {
+    render(<BoardHome boards={trashedBoards} activeSection="trash" />);
+    expect(screen.getByText("Deleted 3 days ago")).toBeDefined();
+  });
+
+  it("empties the trash only after confirmation", () => {
+    const onEmptyTrash = vi.fn();
+    render(
+      <BoardHome
+        boards={trashedBoards}
+        activeSection="trash"
+        onEmptyTrash={onEmptyTrash}
+      />,
+    );
+
+    const openDialog = () =>
+      fireEvent.click(screen.getByRole("button", { name: "Empty trash" }));
+
+    // Cancel keeps the trash.
+    openDialog();
+    const dialog = screen.getByRole("alertdialog", { name: "Empty trash?" });
+    expect(dialog.textContent).toContain("1 board");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onEmptyTrash).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+
+    // Escape keeps the trash.
+    openDialog();
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    expect(onEmptyTrash).not.toHaveBeenCalled();
+
+    // Confirm empties it.
+    openDialog();
+    fireEvent.click(screen.getAllByRole("button", { name: "Empty trash" })[1]);
+    expect(onEmptyTrash).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("offers Empty trash from the all-boards trash strip too", () => {
+    const onEmptyTrash = vi.fn();
+    render(<BoardHome boards={trashedBoards} onEmptyTrash={onEmptyTrash} />);
+    const trashStrip = screen.getByRole("region", { name: "Trash" });
+    const button = Array.from(trashStrip.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Empty trash"),
+    );
+    expect(button).toBeDefined();
+    fireEvent.click(button as HTMLElement);
+    expect(screen.getByRole("alertdialog", { name: "Empty trash?" }));
+  });
+
+  it("counts each folder's boards in the sidebar", () => {
+    render(
+      <BoardHome
+        boards={[
+          { id: "a", name: "Alpha", tags: [], folderId: "f1" },
+          { id: "b", name: "Beta", tags: [], folderId: "f1" },
+        ]}
+        folders={[{ id: "f1", name: "Work" }]}
+      />,
+    );
+    const folderButton = screen.getByRole("button", { name: "Folder Work" });
+    expect(folderButton.textContent).toContain("2");
+  });
+});

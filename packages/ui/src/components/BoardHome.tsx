@@ -94,6 +94,8 @@ export interface BoardCardData {
   thumbnail?: string;
   /** Rendered in the trash section rather than the board grid. */
   trashed?: boolean;
+  /** Human wording for when it was trashed, e.g. "2 days ago". */
+  trashedLabel?: string;
   folderId?: string;
   folderName?: string;
   starred?: boolean;
@@ -108,6 +110,36 @@ export interface TemplateCardData {
   tags: string[];
   color: string;
 }
+
+/**
+ * One board whose contents matched the home's filter. The host computes these
+ * with the cross-board content search (`apps/web/board/search.ts`), grouped to
+ * one row per board; this component only draws them. Matches on a board's name
+ * or tags are excluded upstream, because those boards already show in the grid.
+ */
+export interface BoardContentMatchData {
+  boardId: string;
+  boardName: string;
+  /** Snippet of the matching content, e.g. a sticky note's text. */
+  snippet: string;
+  /** What matched: "stickynote", "text", "card" or "comment". */
+  matchType: string;
+  /** Total content matches inside this board for the current filter. */
+  matchCount: number;
+}
+
+/** Human label for a content match's type. */
+const contentMatchTypeLabel = (matchType: string): string =>
+  ((
+    {
+      stickynote: "Sticky note",
+      text: "Text",
+      card: "Card",
+      comment: "Comment",
+      tag: "Tag",
+      title: "Title",
+    } as Record<string, string>
+  )[matchType] ?? "Content");
 
 export interface BoardHomeProps {
   boards: BoardCardData[];
@@ -145,6 +177,14 @@ export interface BoardHomeProps {
   onChangeViewMode?: (mode: "grid" | "list") => void;
   onChangeSortBy?: (sort: "lastOpened" | "created" | "name") => void;
   onExportBoard?: (id: string, format: "firo" | "pdf") => void;
+  /** Content matches for the current filter text, one row per board. */
+  contentMatches?: BoardContentMatchData[];
+  /** True while the host is still scanning board contents for the filter. */
+  contentSearching?: boolean;
+  /** Reports the filter text so the host can search board contents with it. */
+  onFilterChange?: (query: string) => void;
+  /** Permanently deletes every trashed board, after the confirm dialog here. */
+  onEmptyTrash?: () => void;
 }
 
 export interface BoardCardProps {
@@ -343,6 +383,13 @@ export const BoardCard: React.FC<BoardCardProps> = ({
           <div className="firo-board-card__meta">
             <ClockIcon size={13} />
             <span>{board.lastOpenedLabel}</span>
+          </div>
+        )}
+
+        {board.trashedLabel && (
+          <div className="firo-board-card__meta">
+            <ClockIcon size={13} />
+            <span>Deleted {board.trashedLabel}</span>
           </div>
         )}
       </div>
@@ -605,6 +652,10 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   onChangeViewMode,
   onChangeSortBy,
   onExportBoard,
+  contentMatches,
+  contentSearching,
+  onFilterChange,
+  onEmptyTrash,
   activities,
   onClearActivity,
   isDark,
@@ -622,6 +673,42 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   >([]);
 
   const [query, setQuery] = React.useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // "/" focuses the filter from anywhere on the home, the convention GitHub
+  // and Miro share. It must not fire while the person is typing in a field:
+  // renaming a board and hitting "/" should type a slash.
+  React.useEffect(() => {
+    const focusFilter = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    };
+    document.addEventListener("keydown", focusFilter);
+    return () => document.removeEventListener("keydown", focusFilter);
+  }, []);
+
+  const applyQuery = (next: string) => {
+    setQuery(next);
+    onFilterChange?.(next);
+  };
+
+  const clearQuery = () => {
+    applyQuery("");
+    searchInputRef.current?.focus();
+  };
+
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // Close the mobile navigation overlay with Escape, and lock body scroll
@@ -723,6 +810,19 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
     id: string;
     name: string;
   } | null>(null);
+  const [emptyingTrash, setEmptyingTrash] = React.useState(false);
+  const emptyTrashOpenerRef = React.useRef<HTMLElement | null>(null);
+  const openEmptyTrash = () => {
+    emptyTrashOpenerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setEmptyingTrash(true);
+  };
+  const closeEmptyTrash = () => {
+    setEmptyingTrash(false);
+    emptyTrashOpenerRef.current?.focus?.();
+  };
   const deleteOpenerRef = React.useRef<HTMLElement | null>(null);
   const requestDelete = (id: string) => {
     const target = boards.find((board) => board.id === id);
@@ -774,6 +874,30 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   };
   const live = boards.filter((board) => !board.trashed);
   const trashed = boards.filter((board) => board.trashed);
+
+  const emptyTrashButton =
+    onEmptyTrash && trashed.length > 0 ? (
+      <button
+        type="button"
+        className="firo-board-home__empty-trash"
+        onClick={openEmptyTrash}
+      >
+        <TrashIcon size={14} />
+        Empty trash
+      </button>
+    ) : null;
+
+  // Sidebar folder rows carry the number of live boards inside them, so a
+  // folder that looks empty at a glance is not mistaken for a deleted one.
+  const folderBoardCounts = new Map<string, number>();
+  for (const board of live) {
+    if (board.folderId) {
+      folderBoardCounts.set(
+        board.folderId,
+        (folderBoardCounts.get(board.folderId) ?? 0) + 1,
+      );
+    }
+  }
 
   // Section filtering
   let sectionBoards: BoardCardData[];
@@ -1038,6 +1162,12 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                           <span className="firo-board-sidebar__folder-name">
                             {folder.name}
                           </span>
+                          <span
+                            className="firo-board-sidebar__folder-count"
+                            aria-hidden="true"
+                          >
+                            {folderBoardCounts.get(folder.id) ?? 0}
+                          </span>
                         </button>
                         <div className="firo-board-sidebar__folder-actions">
                           {onRenameFolder && (
@@ -1122,11 +1252,33 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 <SearchIcon size={16} />
                 <input
                   type="search"
+                  ref={searchInputRef}
                   value={query}
                   placeholder="Filter boards"
+                  title="Filter boards (press / to focus)"
                   aria-label="Filter boards"
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => applyQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      if (query) {
+                        applyQuery("");
+                      } else {
+                        event.currentTarget.blur();
+                      }
+                    }
+                  }}
                 />
+                {query && (
+                  <button
+                    type="button"
+                    className="firo-board-home__search-clear"
+                    aria-label="Clear filter"
+                    title="Clear filter"
+                    onClick={clearQuery}
+                  >
+                    <CloseIcon size={14} />
+                  </button>
+                )}
               </label>
             )}
             {currentSection !== "activity" && (
@@ -1239,7 +1391,19 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
         )}
 
         <section className="firo-board-home__section" aria-label={sectionTitle}>
-          <h2 className="firo-board-home__section-title">{sectionTitle}</h2>
+          {currentSection === "trash" ? (
+            <div className="firo-board-home__section-heading">
+              <h2 className="firo-board-home__section-title">{sectionTitle}</h2>
+              {emptyTrashButton}
+            </div>
+          ) : (
+            <h2 className="firo-board-home__section-title">{sectionTitle}</h2>
+          )}
+          {needle && currentSection !== "activity" && (
+            <p className="firo-board-home__filter-status" role="status">
+              {sortedBoards.length} of {sectionBoards.length} boards
+            </p>
+          )}
           {currentSection === "activity" ? (
             <ActivityFeed
               isOpen={true}
@@ -1392,7 +1556,9 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                           )}
                         </td>
                         <td className="firo-board-table__td firo-board-table__td--opened">
-                          {board.lastOpenedLabel ?? "—"}
+                          {board.trashed && board.trashedLabel
+                            ? `Deleted ${board.trashedLabel}`
+                            : board.lastOpenedLabel ?? "—"}
                         </td>
                         <td className="firo-board-table__td firo-board-table__td--actions">
                           {board.trashed ? (
@@ -1537,9 +1703,60 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
           )}
         </section>
 
+        {needle &&
+          currentSection !== "activity" &&
+          currentSection !== "trash" &&
+          (contentSearching ||
+            (contentMatches && contentMatches.length > 0)) && (
+            <section
+              className="firo-board-home__section"
+              aria-label="Inside boards"
+            >
+              <h2 className="firo-board-home__section-title">Inside boards</h2>
+              {contentMatches && contentMatches.length > 0 ? (
+                <ul className="firo-content-matches">
+                  {contentMatches.map((match) => (
+                    <li key={match.boardId}>
+                      <button
+                        type="button"
+                        className="firo-content-match"
+                        onClick={() => onOpenBoard?.(match.boardId)}
+                        aria-label={`Open ${match.boardName}, ${
+                          match.matchCount === 1
+                            ? "1 match"
+                            : `${match.matchCount} matches`
+                        } inside`}
+                      >
+                        <span className="firo-content-match__name">
+                          {match.boardName}
+                        </span>
+                        <span className="firo-content-match__snippet">
+                          {match.snippet}
+                        </span>
+                        <span className="firo-content-match__meta">
+                          {contentMatchTypeLabel(match.matchType)}
+                          {match.matchCount > 1
+                            ? ` · ${match.matchCount} matches`
+                            : ""}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="firo-board-home__content-status" role="status">
+                  Searching board contents...
+                </p>
+              )}
+            </section>
+          )}
+
         {currentSection === "all" && trashed.length > 0 && (
           <section className="firo-board-home__section" aria-label="Trash">
-            <h2 className="firo-board-home__section-title">Trash</h2>
+            <div className="firo-board-home__section-heading">
+              <h2 className="firo-board-home__section-title">Trash</h2>
+              {emptyTrashButton}
+            </div>
             <div className="firo-board-grid">
               {trashed.map((board) => (
                 <BoardCard
@@ -1711,6 +1928,59 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     <span>{f.name}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {emptyingTrash && (
+        <div className="firo-board-modal-overlay" onClick={closeEmptyTrash}>
+          <div
+            className="firo-board-modal firo-board-modal--confirm"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="firo-empty-trash-title"
+            aria-describedby="firo-empty-trash-desc"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => trapDialogKeyDown(event, closeEmptyTrash)}
+          >
+            <div className="firo-board-modal__header">
+              <h3
+                className="firo-board-modal__title"
+                id="firo-empty-trash-title"
+              >
+                Empty trash?
+              </h3>
+            </div>
+            <div className="firo-board-modal__body">
+              <p className="firo-board-modal__text" id="firo-empty-trash-desc">
+                This permanently deletes{" "}
+                {trashed.length === 1 ? "1 board" : `${trashed.length} boards`}{" "}
+                and their saved versions from this browser. It can&rsquo;t be
+                undone, so export anything you may need first.
+              </p>
+              <div className="firo-board-modal__actions">
+                <button
+                  type="button"
+                  className="firo-board-modal__btn"
+                  autoFocus
+                  onClick={closeEmptyTrash}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="firo-board-modal__btn firo-board-modal__btn--danger"
+                  onClick={() => {
+                    setEmptyingTrash(false);
+                    onEmptyTrash?.();
+                    if (emptyTrashOpenerRef.current?.isConnected) {
+                      emptyTrashOpenerRef.current.focus();
+                    }
+                  }}
+                >
+                  Empty trash
+                </button>
               </div>
             </div>
           </div>

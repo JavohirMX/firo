@@ -209,3 +209,42 @@ export const searchBoardsContent = async (
 
   return matches;
 };
+
+export interface GroupedContentMatch {
+  boardId: string;
+  boardName: string;
+  snippet: string;
+  matchType: SearchMatch["matchType"];
+  matchCount: number;
+}
+
+/**
+ * Collapse the raw match list to one row per board, for the home's "Inside
+ * boards" section. The first content hit's snippet leads the row and the count
+ * says whether more matched. Title and board-tag matches are dropped here, not
+ * in the search itself, because the grid above already lists boards whose name
+ * or tags match — repeating them as "content" would be noise, not signal.
+ */
+export const groupContentMatches = (
+  matches: SearchMatch[],
+): GroupedContentMatch[] => {
+  const byBoard = new Map<string, GroupedContentMatch>();
+  for (const match of matches) {
+    if (match.matchType === "title" || match.matchType === "tag") {
+      continue;
+    }
+    const existing = byBoard.get(match.boardId);
+    if (existing) {
+      existing.matchCount += 1;
+    } else {
+      byBoard.set(match.boardId, {
+        boardId: match.boardId,
+        boardName: match.boardName,
+        snippet: match.snippet,
+        matchType: match.matchType,
+        matchCount: 1,
+      });
+    }
+  }
+  return [...byBoard.values()];
+};

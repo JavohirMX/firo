@@ -345,6 +345,37 @@ export const deleteBoardForever = async (id: string): Promise<void> => {
 };
 
 /**
+ * Permanently delete every trashed board: metadata and bytes. The bulk form of
+ * `deleteBoardForever`, reached only through the home's confirm dialog — like
+ * that dialog, there is no undo, so it records what it did in the activity
+ * feed. Returns how many boards were deleted.
+ */
+export const emptyTrash = async (): Promise<number> => {
+  const index = await readIndex();
+  const trashedIds = Object.values(index)
+    .filter((meta) => Boolean(meta.trashedAt))
+    .map((meta) => meta.id);
+  if (trashedIds.length === 0) {
+    return 0;
+  }
+  for (const id of trashedIds) {
+    delete index[id];
+  }
+  await writeIndex(index);
+  for (const id of trashedIds) {
+    await deleteBoardPayload(id);
+  }
+  await recordActivity({
+    boardId: trashedIds[0],
+    kind: "delete",
+    summary: `Emptied trash (${trashedIds.length} board${
+      trashedIds.length === 1 ? "" : "s"
+    })`,
+  });
+  return trashedIds.length;
+};
+
+/**
  * Write a board's document and its index entry, for an id already decided.
  *
  * The id is required rather than minted here on purpose: it has to be stamped

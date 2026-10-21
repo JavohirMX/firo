@@ -75,6 +75,86 @@
       &::placeholder {
         color: var(--firo-color-text-muted);
       }
+
+      // The clear button below is the honest one; WebKit's own cancel control
+      // would duplicate it and ignores the chrome's colors.
+      &::-webkit-search-cancel-button {
+        appearance: none;
+        display: none;
+      }
+    }
+  }
+
+  &__search-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-right: calc(-1 * var(--firo-space-xs));
+    padding: 0;
+    border: none;
+    border-radius: var(--firo-radius-pill);
+    background: transparent;
+    color: var(--firo-color-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--firo-color-text);
+      background-color: var(--firo-color-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
+    }
+  }
+
+  &__filter-status {
+    margin: calc(-1 * var(--firo-space-sm)) 0 var(--firo-space-md);
+    font-size: var(--firo-font-size-sm);
+    color: var(--firo-color-text-muted);
+  }
+
+  &__content-status {
+    margin: 0;
+    font-size: var(--firo-font-size-sm);
+    color: var(--firo-color-text-muted);
+  }
+
+  &__section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--firo-space-md);
+
+    .firo-board-home__section-title {
+      margin-bottom: var(--firo-space-md);
+    }
+  }
+
+  &__empty-trash {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--firo-space-xs);
+    min-height: 32px;
+    padding: 0 var(--firo-space-md);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-pill);
+    background: transparent;
+    color: var(--firo-color-text-muted);
+    font: inherit;
+    font-size: var(--firo-font-size-sm);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--firo-color-danger);
+      border-color: var(--firo-color-danger);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
     }
   }
 
@@ -446,6 +526,18 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__folder-count {
+    flex-shrink: 0;
+    min-width: 20px;
+    margin-left: auto;
+    padding: 1px var(--firo-space-xs);
+    border-radius: var(--firo-radius-pill);
+    background-color: var(--firo-color-panel);
+    color: var(--firo-color-text-muted);
+    font-size: var(--firo-font-size-xs);
+    text-align: center;
   }
 
   &__folder-actions {
@@ -1643,5 +1735,82 @@
   .firo-board-modal__folder-option {
     min-height: 44px;
     box-sizing: border-box;
+  }
+}
+
+// "Inside boards": the home filter's content-search results. Rows rather than
+// cards — the grid above is boards; this list is evidence (what matched and
+// where), so the snippet gets the room.
+.firo-content-matches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--firo-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.firo-content-match {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr auto;
+  align-items: center;
+  gap: var(--firo-space-md);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--firo-space-sm) var(--firo-space-md);
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-md);
+  background-color: var(--firo-color-panel);
+  color: var(--firo-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--firo-motion-fast) var(--firo-motion-ease),
+    background-color var(--firo-motion-fast) var(--firo-motion-ease);
+
+  &:hover {
+    border-color: var(--firo-color-border-strong);
+    background-color: var(--firo-color-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--firo-color-focus-ring);
+    outline-offset: 1px;
+  }
+
+  &__name {
+    overflow: hidden;
+    font-weight: var(--firo-font-weight-medium);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__snippet {
+    overflow: hidden;
+    color: var(--firo-color-text-muted);
+    font-size: var(--firo-font-size-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__meta {
+    color: var(--firo-color-text-muted);
+    font-size: var(--firo-font-size-xs);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .firo-content-match {
+    grid-template-columns: 1fr auto;
+
+    &__snippet {
+      grid-column: 1 / -1;
+      white-space: normal;
+    }
+  }
+
+  .firo-board-home__section-heading {
+    flex-wrap: wrap;
   }
 }
