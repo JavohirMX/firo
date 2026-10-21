@@ -53,6 +53,8 @@ import type {
 } from "@firo/element";
 import type { GlobalPoint } from "@firo/math";
 
+import type { StickyNoteSizePreset } from "./actions/actionStickyNoteSize";
+
 import type { Action } from "./actions/types";
 import type { Spreadsheet } from "./charts";
 import type { ClipboardData } from "./clipboard";
@@ -450,6 +452,7 @@ export interface AppState {
   currentItemStrokeColor: string;
   currentItemStickynoteStrokeColor: string;
   currentItemStickynoteBackgroundColor: string;
+  currentItemStickynoteSize: StickyNoteSizePreset;
   currentItemBackgroundColor: string;
   currentItemFillStyle: ExcalidrawElement["fillStyle"];
   currentItemStrokeWidthKey: StrokeWidthKey;
@@ -939,6 +942,13 @@ export interface ExcalidrawProps {
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
+  /**
+   * Extra rows for the Help dialog (?), rendered after the editor's own
+   * shortcut sections. The host owns its chords (facilitation, records), so
+   * the host owns their rows — generated, not hardcoded, is the host's
+   * business; this is only the slot.
+   */
+  renderHelpDialogExtra?: () => React.ReactNode;
   renderTopRightUI?: (
     isMobile: boolean,
     appState: UIAppState,

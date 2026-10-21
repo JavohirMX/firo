@@ -52,7 +52,6 @@ import {
   DEFAULT_COLLISION_THRESHOLD,
   ARROW_TYPE,
   DEFAULT_REDUCED_GLOBAL_ALPHA,
-  DEFAULT_STICKY_NOTE_SIZE,
   ZEN_MODE_TRANSITION_DURATION,
   isLocalLink,
   normalizeLink,
@@ -305,6 +304,7 @@ import {
   actionToggleArrowBinding,
   actionToggleMidpointSnapping,
   actionToggleCropEditor,
+  stickyNoteSizeForKey,
 } from "../actions";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
@@ -2312,7 +2312,12 @@ class App extends React.Component<AppProps, AppState> {
 
   public render() {
     const selectedElements = this.scene.getSelectedElements(this.state);
-    const { renderTopRightUI, renderTopLeftUI, renderCustomStats } = this.props;
+    const {
+      renderTopRightUI,
+      renderTopLeftUI,
+      renderCustomStats,
+      renderHelpDialogExtra,
+    } = this.props;
 
     const {
       elementsMap: renderableElementsMap,
@@ -2458,6 +2463,7 @@ class App extends React.Component<AppProps, AppState> {
                             langCode={getLanguage().code}
                             renderTopLeftUI={renderTopLeftUI}
                             renderTopRightUI={renderTopRightUI}
+                            renderHelpDialogExtra={renderHelpDialogExtra}
                             renderCustomStats={renderCustomStats}
                             showExitZenModeBtn={
                               typeof this.props?.zenModeEnabled ===
@@ -10780,7 +10786,11 @@ class App extends React.Component<AppProps, AppState> {
           newElement.height * zoom < DRAGGING_THRESHOLD;
         let nextGeometry;
         if (isClick) {
-          const size = DEFAULT_STICKY_NOTE_SIZE;
+          // A click (not a drag) creates the preset size the user last picked
+          // in the sticky flyout; the key is junk-tolerant on restore.
+          const size = stickyNoteSizeForKey(
+            this.state.currentItemStickynoteSize,
+          );
           // Snap after centering: half the default size need not be on the grid.
           const [x, y] = getGridPoint(
             pointerDownState.origin.x - size / 2,

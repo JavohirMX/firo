@@ -30,6 +30,20 @@ export const STICKY_NOTE_SIZE_PRESETS = {
 
 export type StickyNoteSizePreset = keyof typeof STICKY_NOTE_SIZE_PRESETS;
 
+/**
+ * Resolve a stored preset id to pixels, tolerating junk.
+ *
+ * The key arrives from app state, which is restorable from localStorage and
+ * therefore not proof of validity: a value written by hand, by an older
+ * build, or for a preset that no longer exists must not crash creation or
+ * produce a zero-size note. Anything unreadable resolves to `m` — the note
+ * is the size it always was, which is the safe direction.
+ */
+export const stickyNoteSizeForKey = (key: unknown): number =>
+  typeof key === "string" && key in STICKY_NOTE_SIZE_PRESETS
+    ? STICKY_NOTE_SIZE_PRESETS[key as StickyNoteSizePreset]
+    : STICKY_NOTE_SIZE_PRESETS.m;
+
 export type StickyNoteSizeLabel = "S" | "M" | "L" | "—";
 
 const PRESET_KEYS = Object.keys(

@@ -593,6 +593,7 @@ export {
   actionChangeStickyNoteSize,
   STICKY_NOTE_SIZE_PRESETS,
   getSelectionStickyNoteSize,
+  stickyNoteSizeForKey,
 } from "./actions";
 export type { StickyNoteSizePreset, StickyNoteSizeLabel } from "./actions";
 

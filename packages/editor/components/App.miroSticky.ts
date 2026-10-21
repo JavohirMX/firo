@@ -1,4 +1,5 @@
-import { DEFAULT_STICKY_NOTE_SIZE, KEYS, getGridPoint } from "@firo/common";
+import { KEYS, getGridPoint } from "@firo/common";
+
 import {
   isStickyNoteElement,
   makeNextSelectedElementIds,
@@ -9,6 +10,8 @@ import type {
   ExcalidrawElement,
   ExcalidrawStickyNoteElement,
 } from "@firo/element/types";
+
+import { stickyNoteSizeForKey } from "../actions/actionStickyNoteSize";
 
 import type App from "./App";
 
@@ -42,7 +45,7 @@ export class AppMiroSticky {
       return false;
     }
 
-    const size = DEFAULT_STICKY_NOTE_SIZE;
+    const size = stickyNoteSizeForKey(this.app.state.currentItemStickynoteSize);
     const [x, y] = getGridPoint(
       sceneX - size / 2,
       sceneY - size / 2,

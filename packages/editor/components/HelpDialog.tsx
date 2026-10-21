@@ -98,7 +98,14 @@ const ShortcutKey = (props: { children: React.ReactNode }) => (
   <kbd className="HelpDialog__key" {...props} />
 );
 
-export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
+export const HelpDialog = ({
+  onClose,
+  extraSections,
+}: {
+  onClose?: () => void;
+  /** Host-supplied sections (facilitation, records) after the editor's own. */
+  extraSections?: React.ReactNode;
+}) => {
   const actionManager = useExcalidrawActionManager();
   const handleClose = React.useCallback(() => {
     if (onClose) {
@@ -488,6 +495,7 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
             />
           </ShortcutIsland>
         </Section>
+        {extraSections}
       </Dialog>
     </>
   );

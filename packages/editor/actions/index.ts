@@ -92,6 +92,7 @@ export {
   STICKY_NOTE_SIZE_PRESETS,
   getStickyNoteSizePreset,
   getSelectionStickyNoteSize,
+  stickyNoteSizeForKey,
 } from "./actionStickyNoteSize";
 export type {
   StickyNoteSizePreset,

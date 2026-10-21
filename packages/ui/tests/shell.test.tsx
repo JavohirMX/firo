@@ -295,6 +295,65 @@ describe("@firo/ui shell components", () => {
           );
         });
 
+        it("renders an action item as a menuitem, not a radio", () => {
+          // An action (Bulk create…) fires once and has no persisted state, so
+          // `aria-checked` on it would lie to a screen reader. Options stay
+          // radios; actions are plain menu items (parity matrix row 20).
+          const onSelectOption = vi.fn();
+          render(
+            <CreationRail
+              activeTool="selection"
+              onSelectTool={vi.fn()}
+              onSelectOption={onSelectOption}
+              tools={[
+                {
+                  id: "stickynote",
+                  label: "Sticky note",
+                  icon: RAIL_TOOL_ICONS.stickynote,
+                  kind: "options",
+                  optionGroups: [
+                    {
+                      id: "create",
+                      label: "Create",
+                      layout: "list",
+                      items: [
+                        {
+                          id: "bulk-create",
+                          label: "Bulk create…",
+                          kind: "action",
+                        },
+                        {
+                          id: "size-m",
+                          label: "M — 250 px",
+                          selected: true,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ]}
+            />,
+          );
+
+          fireEvent.click(screen.getByRole("button", { name: "Sticky note" }));
+
+          const action = screen.getByRole("menuitem", {
+            name: "Bulk create…",
+          });
+          expect(action).not.toHaveAttribute("aria-checked");
+          // The genuine option beside it is still a radio with its state.
+          expect(
+            screen.getByRole("menuitemradio", { name: "M — 250 px" }),
+          ).toHaveAttribute("aria-checked", "true");
+
+          fireEvent.click(action);
+          expect(onSelectOption).toHaveBeenCalledWith(
+            "stickynote",
+            expect.objectContaining({ id: "bulk-create", kind: "action" }),
+            expect.anything(),
+          );
+        });
+
         it("opens a surface instead of selecting a tool", () => {
           const onSelectTool = vi.fn();
           const onOpenSurface = vi.fn();

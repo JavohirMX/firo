@@ -149,6 +149,8 @@ describe("registration", () => {
       "addVoteToSelection",
       "removeVoteFromSelection",
       "readVoteTally",
+      "setupFacilitatorTimer",
+      "bulkCreateStickyNotes",
     ]);
   });
 
@@ -698,6 +700,8 @@ const FACILITATOR_CHORDS: readonly FacilitatorChord[] = [
   { code: "KeyD", shift: false, name: "addVoteToSelection" },
   { code: "KeyW", shift: false, name: "removeVoteFromSelection" },
   { code: "KeyL", shift: false, name: "readVoteTally" },
+  { code: "KeyM", shift: true, name: "setupFacilitatorTimer" },
+  { code: "KeyB", shift: false, name: "bulkCreateStickyNotes" },
 ];
 
 const keyEvent = (
@@ -1007,6 +1011,8 @@ describe("the command palette", () => {
       "Give the selection a dot",
       "Take back a dot from the selection",
       "Read the vote tally",
+      "Set up timer with a chosen duration",
+      "Bulk create sticky notes",
     ]);
   });
 

@@ -74,6 +74,8 @@ export type ShortcutName =
       | "togglePresentation"
       | "nextSlide"
       | "previousSlide"
+      | "setupFacilitatorTimer"
+      | "bulkCreateStickyNotes"
     >
   | "saveScene"
   | "imageExport"
@@ -169,6 +171,13 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   togglePresentation: [getShortcutKey("Alt+Return")],
   nextSlide: [getShortcutKey("Alt+Right")],
   previousSlide: [getShortcutKey("Alt+Left")],
+  /*
+   * `Alt+Shift+M` sits next to `Alt+M` the way `Alt+Shift+T` sits next to
+   * `Alt+T`: the shifted chord is the heavier, rarer operation on the same
+   * letter. `Alt+B` is B for bulk; nothing in the region claims it.
+   */
+  setupFacilitatorTimer: [getShortcutKey("Alt+Shift+M")],
+  bulkCreateStickyNotes: [getShortcutKey("Alt+B")],
 };
 
 export const getShortcutFromShortcutName = (name: ShortcutName, idx = 0) => {

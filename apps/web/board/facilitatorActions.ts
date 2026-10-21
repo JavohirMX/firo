@@ -93,6 +93,7 @@ import {
 } from "./facilitator";
 
 import { complain } from "./fileActions";
+import { requestDialog } from "./uiRequests";
 import {
   boardHasSlides,
   getPresentation,
@@ -137,6 +138,14 @@ const ALT_CODES = {
   present: "Enter",
   nextSlide: "ArrowRight",
   previousSlide: "ArrowLeft",
+  /*
+   * `Alt+Shift+M` sits next to `Alt+M` (add a minute) the way `Alt+Shift+T`
+   * sits next to `Alt+T`: the shifted chord is the heavier, rarer operation
+   * on the same letter. `Alt+B` for bulk: B for bulk, and no upstream chord
+   * claims it.
+   */
+  setup: "KeyM",
+  bulk: "KeyB",
 } as const;
 
 /**
@@ -172,13 +181,36 @@ const noCommandModifier = (event: KeyEvent): boolean =>
  * check, two actions would match one keystroke, and `handleKeyDown` answers that
  * by running **neither** — with a `console.warn` nobody in the room will see.
  */
-const altChord =
-  (code: string, shift: boolean) =>
-  (event: KeyEvent): boolean =>
-    event.altKey &&
-    event.shiftKey === shift &&
-    noCommandModifier(event) &&
-    event.code === code;
+/**
+ * How a `code` reads aloud, for the Help dialog. `KeyT` is "T"; the two
+ * non-letters get the glyph a key cap wears.
+ */
+const CHORD_KEY_LABELS: Record<string, string> = {
+  Enter: "↵",
+  ArrowRight: "→",
+  ArrowLeft: "←",
+};
+
+const chordKeyLabel = (code: string): string =>
+  CHORD_KEY_LABELS[code] ?? (code.startsWith("Key") ? code.slice(3) : code);
+
+/**
+ * A key test that can say what it matches.
+ *
+ * The label rides on the function itself so the Help dialog's rows are
+ * *derived from the registered chords* and cannot drift from them — a chord
+ * that changes here changes what the Help dialog prints, with no second table
+ * to forget (parity matrix row 9).
+ */
+const altChord = (code: string, shift: boolean) =>
+  Object.assign(
+    (event: KeyEvent): boolean =>
+      event.altKey &&
+      event.shiftKey === shift &&
+      noCommandModifier(event) &&
+      event.code === code,
+    { chord: `Alt+${shift ? "Shift+" : ""}${chordKeyLabel(code)}` },
+  );
 
 /**
  * The names a host may switch off.
@@ -191,6 +223,8 @@ type FacilitatorToggleName =
   | "toggleFacilitatorTimer"
   | "resetFacilitatorTimer"
   | "addMinuteToTimer"
+  | "setupFacilitatorTimer"
+  | "bulkCreateStickyNotes"
   | "toggleBoardReveal"
   | "addVoteToSelection"
   | "removeVoteFromSelection"
@@ -924,7 +958,114 @@ export const facilitatorActions = (
           );
         }),
     },
+
+    /*
+     * The timer's setup dialog: presets, a minute stepper, Start. The action
+     * itself does none of that work — actions are created outside the React
+     * tree, so it *requests* the dialog and the shell opens it. Parity matrix
+     * row 34: the clock exists but had no way to choose its length, which is
+     * the one decision a facilitator makes before every exercise. The music
+     * track row of Miro's popover is omitted on purpose (licensed audio — the
+     * matrix says so).
+     */
+    {
+      name: "setupFacilitatorTimer",
+      label: "Set up timer with a chosen duration",
+      keywords: [
+        "timer",
+        "clock",
+        "setup",
+        "duration",
+        "minutes",
+        "facilitate",
+        "countdown",
+      ],
+      trackEvent: { category: "facilitation", action: "setupTimer" },
+      viewMode: true,
+      predicate: enabledUnless("setupFacilitatorTimer"),
+      // Alt+Shift+M, next to Alt+M's "add a minute": the shifted chord is the
+      // heavier operation (choose the whole duration) on the same letter.
+      keyTest: altChord(ALT_CODES.setup, true),
+      perform: (): ActionResult =>
+        run(() => {
+          requestDialog("timerSetup");
+        }),
+    },
+
+    /*
+     * Bulk sticky creation: one line of text per note, laid out in a grid.
+     * Same request shape as the timer setup — the dialog owns the work, the
+     * action owns the discovery (palette, and AC-8's keyboard reachability).
+     * Parity matrix row 20: Miro's sticky flyout carries Bulk mode; a
+     * facilitator typing ten ideas into ten notes one at a time is the moment
+     * the tool loses the room.
+     */
+    {
+      name: "bulkCreateStickyNotes",
+      label: "Bulk create sticky notes",
+      keywords: [
+        "sticky",
+        "note",
+        "bulk",
+        "many",
+        "brainstorm",
+        "paste",
+        "list",
+      ],
+      trackEvent: { category: "facilitation", action: "bulkCreateStickyNotes" },
+      predicate: enabledUnless("bulkCreateStickyNotes"),
+      keyTest: altChord(ALT_CODES.bulk, false),
+      perform: (): ActionResult =>
+        run(() => {
+          requestDialog("bulkStickyNotes");
+        }),
+    },
   ];
+};
+
+/**
+ * One Help-dialog row per chorded facilitation command, derived from the
+ * actions themselves.
+ *
+ * The label is the action's own `label` (shortened: the palette phrasing
+ * "Start or pause the timer" is a command sentence, and a shortcut table
+ * reads "Timer — start / pause"), and the chord is the one the action's
+ * `keyTest` was built with, so the row cannot advertise a key that does not
+ * work. Commands without a chord (the two dialog openers) are omitted — a
+ * row without a key is how the palette, not this table, is discovered.
+ */
+export const facilitatorHelpRows = (
+  actions: readonly Action[],
+): { name: string; label: string; chord: string }[] => {
+  const rows: { name: string; label: string; chord: string }[] = [];
+  for (const action of actions) {
+    const chord = (action.keyTest as { chord?: string } | undefined)?.chord;
+    if (!chord) {
+      continue;
+    }
+    const label = HELP_ROW_LABELS[action.name];
+    if (!label) {
+      continue;
+    }
+    rows.push({ name: action.name, label, chord });
+  }
+  return rows;
+};
+
+/** Short Help-dialog phrasing per chorded command. */
+const HELP_ROW_LABELS: Record<string, string> = {
+  toggleFacilitatorTimer: "Timer — start / pause",
+  resetFacilitatorTimer: "Timer — reset",
+  addMinuteToTimer: "Timer — add a minute",
+  toggleBoardReveal: "Private mode — hide / reveal",
+  togglePresentation: "Present frames",
+  nextSlide: "Next slide",
+  previousSlide: "Previous slide",
+  setupFacilitatorTimer: "Timer — set up and start",
+  bulkCreateStickyNotes: "Bulk create sticky notes",
+  addVoteToSelection: "Vote on the selection",
+  removeVoteFromSelection: "Withdraw a vote",
+  readVoteTally: "Read the vote tally",
 };
 
 /**
