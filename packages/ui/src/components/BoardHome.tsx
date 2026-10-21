@@ -28,6 +28,34 @@ import {
 import { ActivityFeed, type ActivityFeedItem } from "./ActivityFeed";
 import "./BoardHome.scss";
 
+// Shared keyboard contract for the home's dialogs: Escape closes, and Tab
+// cycles through the dialog's own buttons instead of escaping into the page
+// behind it. Every dialog returns focus to its opener when it closes.
+const trapDialogKeyDown = (
+  event: React.KeyboardEvent<HTMLElement>,
+  onClose: () => void,
+) => {
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    onClose();
+    return;
+  }
+  if (event.key === "Tab") {
+    const buttons = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>("button"),
+    ).filter((b) => !b.disabled);
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+};
+
 /**
  * The board home, drawn from data the host supplies.
  *
@@ -656,6 +684,30 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   const closeDeleteDialog = () => {
     setDeletingBoard(null);
     deleteOpenerRef.current?.focus?.();
+  };
+  const moreOpenerRef = React.useRef<HTMLElement | null>(null);
+  const moveOpenerRef = React.useRef<HTMLElement | null>(null);
+  const openMore = (board: BoardCardData) => {
+    moreOpenerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setMoreBoard(board);
+  };
+  const closeMore = () => {
+    setMoreBoard(null);
+    moreOpenerRef.current?.focus?.();
+  };
+  const openMove = (board: BoardCardData) => {
+    moveOpenerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setMovingBoard(board);
+  };
+  const closeMove = () => {
+    setMovingBoard(null);
+    moveOpenerRef.current?.focus?.();
   };
   const live = boards.filter((board) => !board.trashed);
   const trashed = boards.filter((board) => board.trashed);
@@ -1322,7 +1374,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 className="firo-board-card__action"
                                 aria-label={`Move ${board.name} to folder`}
                                 title="Move to folder"
-                                onClick={() => setMovingBoard(board)}
+                                onClick={() => openMove(board)}
                               >
                                 <FolderIcon size={16} />
                               </button>
@@ -1358,7 +1410,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 aria-label={`More actions for ${board.name}`}
                                 title="More actions"
                                 aria-haspopup="dialog"
-                                onClick={() => setMoreBoard(board)}
+                                onClick={() => openMore(board)}
                               >
                                 <MoreVerticalIcon size={16} />
                               </button>
@@ -1394,7 +1446,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     onToggleStar={onToggleStarBoard}
                     onDuplicate={onDuplicateBoard}
                     onMoveToFolder={onMoveBoardToFolder}
-                    onOpenMoveDialog={(b) => setMovingBoard(b)}
+                    onOpenMoveDialog={(b) => openMove(b)}
                     onExportBoard={onExportBoard}
                   />
                 ))}
@@ -1422,7 +1474,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   onToggleStar={onToggleStarBoard}
                   onDuplicate={onDuplicateBoard}
                   onMoveToFolder={onMoveBoardToFolder}
-                  onOpenMoveDialog={(b) => setMovingBoard(b)}
+                  onOpenMoveDialog={(b) => openMove(b)}
                   onExportBoard={onExportBoard}
                 />
               ))}
@@ -1432,15 +1484,13 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
       </main>
 
       {moreBoard && (
-        <div
-          className="firo-board-modal-overlay"
-          onClick={() => setMoreBoard(null)}
-        >
+        <div className="firo-board-modal-overlay" onClick={closeMore}>
           <div
             className="firo-board-modal"
             role="dialog"
             aria-label={`Actions for ${moreBoard.name}`}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => trapDialogKeyDown(event, closeMore)}
           >
             <div className="firo-board-modal__header">
               <h3 className="firo-board-modal__title">{moreBoard.name}</h3>
@@ -1448,7 +1498,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 type="button"
                 className="firo-board-modal__close"
                 aria-label="Close dialog"
-                onClick={() => setMoreBoard(null)}
+                autoFocus
+                onClick={closeMore}
               >
                 <CloseIcon size={16} />
               </button>
@@ -1461,7 +1512,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   onClick={() => {
                     setRenameBoardDraft(moreBoard.name);
                     setRenamingBoardId(moreBoard.id);
-                    setMoreBoard(null);
+                    closeMore();
                   }}
                 >
                   <PencilIcon size={16} />
@@ -1473,7 +1524,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     className="firo-board-modal__folder-option"
                     onClick={() => {
                       onDuplicateBoard(moreBoard.id);
-                      setMoreBoard(null);
+                      closeMore();
                     }}
                   >
                     <DuplicateIcon size={16} />
@@ -1484,8 +1535,9 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   type="button"
                   className="firo-board-modal__folder-option"
                   onClick={() => {
+                    moveOpenerRef.current = moreOpenerRef.current;
                     setMovingBoard(moreBoard);
-                    setMoreBoard(null);
+                    closeMore();
                   }}
                 >
                   <FolderIcon size={16} />
@@ -1498,7 +1550,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                       className="firo-board-modal__folder-option"
                       onClick={() => {
                         onExportBoard(moreBoard.id, "firo");
-                        setMoreBoard(null);
+                        closeMore();
                       }}
                     >
                       <DownloadIcon size={16} />
@@ -1509,7 +1561,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                       className="firo-board-modal__folder-option"
                       onClick={() => {
                         onExportBoard(moreBoard.id, "pdf");
-                        setMoreBoard(null);
+                        closeMore();
                       }}
                     >
                       <FilePdfIcon size={16} />
@@ -1523,15 +1575,13 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
         </div>
       )}
       {movingBoard && (
-        <div
-          className="firo-board-modal-overlay"
-          onClick={() => setMovingBoard(null)}
-        >
+        <div className="firo-board-modal-overlay" onClick={closeMove}>
           <div
             className="firo-board-modal"
             role="dialog"
             aria-label={`Move ${movingBoard.name} to folder`}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => trapDialogKeyDown(event, closeMove)}
           >
             <div className="firo-board-modal__header">
               <h3 className="firo-board-modal__title">
@@ -1541,7 +1591,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                 type="button"
                 className="firo-board-modal__close"
                 aria-label="Close dialog"
-                onClick={() => setMovingBoard(null)}
+                autoFocus
+                onClick={closeMove}
               >
                 <CloseIcon size={16} />
               </button>
@@ -1557,7 +1608,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   }`}
                   onClick={() => {
                     onMoveBoardToFolder?.(movingBoard.id, undefined);
-                    setMovingBoard(null);
+                    closeMove();
                   }}
                 >
                   <span>No folder</span>
@@ -1573,7 +1624,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     }`}
                     onClick={() => {
                       onMoveBoardToFolder?.(movingBoard.id, f.id);
-                      setMovingBoard(null);
+                      closeMove();
                     }}
                   >
                     <FolderIcon size={16} />
@@ -1594,28 +1645,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
             aria-labelledby="firo-delete-title"
             aria-describedby="firo-delete-desc"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.stopPropagation();
-                closeDeleteDialog();
-              }
-              if (event.key === "Tab") {
-                const buttons = Array.from(
-                  event.currentTarget.querySelectorAll<HTMLButtonElement>(
-                    "button",
-                  ),
-                );
-                const first = buttons[0];
-                const last = buttons[buttons.length - 1];
-                if (event.shiftKey && document.activeElement === first) {
-                  event.preventDefault();
-                  last?.focus();
-                } else if (!event.shiftKey && document.activeElement === last) {
-                  event.preventDefault();
-                  first?.focus();
-                }
-              }
-            }}
+            onKeyDown={(event) => trapDialogKeyDown(event, closeDeleteDialog)}
           >
             <div className="firo-board-modal__header">
               <h3 className="firo-board-modal__title" id="firo-delete-title">
