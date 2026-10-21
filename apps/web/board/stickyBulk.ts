@@ -185,19 +185,23 @@ export const createBulkStickyNotes = (
       verticalAlign: "middle",
       containerId: note.id,
     });
-    note.boundElements = [{ type: "text", id: label.id }];
     const layout = getStickyNoteLayout(note, label);
     Object.assign(note, layout.container);
     if (layout.text) {
       Object.assign(label, layout.text);
     }
+    // The element type marks these read-only (immutability by convention);
+    // a freshly built note is not shared yet, so the one-time bind goes
+    // through the same deliberate cast the text mirror below uses.
     const mutable = note as unknown as {
+      boundElements: { type: "text"; id: string }[];
       text: string;
       richText: unknown;
       fontSize: number;
       textAlign: "center";
       verticalAlign: "middle";
     };
+    mutable.boundElements = [{ type: "text", id: label.id }];
     mutable.text = text;
     mutable.richText = stringToProseMirror(text);
     mutable.fontSize = 20;
