@@ -298,6 +298,10 @@ export const BoardCard: React.FC<BoardCardProps> = ({
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
+                // Cancel the key's default action: after the commit moves
+                // focus to the rename button, an unconsumed Enter would
+                // activate that button and reopen the editor.
+                event.preventDefault();
                 pendingRenameFocusRef.current = true;
                 commit();
               }
@@ -1335,6 +1339,10 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                                 }
                                 onKeyDown={(event) => {
                                   if (event.key === "Enter") {
+                                    // See BoardCard: an unconsumed Enter
+                                    // would activate the refocused rename
+                                    // button and reopen the editor.
+                                    event.preventDefault();
                                     pendingTableRenameFocusRef.current =
                                       board.id;
                                     commitTableRename(board);

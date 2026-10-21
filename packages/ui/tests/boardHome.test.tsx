@@ -130,6 +130,28 @@ describe("@firo/ui BoardHome", () => {
     expect(onRenameBoard).toHaveBeenCalledWith("roadmap", "Q3 roadmap");
   });
 
+  it("cancels the Enter default action when committing a rename", () => {
+    // Regression: after the commit moves focus back to the rename button,
+    // an unconsumed Enter activates that button and reopens the editor in a
+    // real browser (jsdom does not model button activation). The card and
+    // the table row must both swallow the key's default action.
+    render(<BoardHome boards={boards} onRenameBoard={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Rename Roadmap" }));
+    const cardInput = screen.getByRole("textbox", { name: "Rename Roadmap" });
+    expect(fireEvent.keyDown(cardInput, { key: "Enter" })).toBe(false);
+
+    render(
+      <BoardHome boards={boards} viewMode="list" onRenameBoard={vi.fn()} />,
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Rename Roadmap" })[1],
+    );
+    const rowInput = screen.getAllByRole("textbox", {
+      name: "Rename Roadmap",
+    })[0];
+    expect(fireEvent.keyDown(rowInput, { key: "Enter" })).toBe(false);
+  });
+
   it("selects the whole name when rename starts, so typing replaces it", () => {
     render(<BoardHome boards={[boards[1]]} />);
 
