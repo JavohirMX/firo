@@ -204,6 +204,7 @@ import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
 import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
 import { ConnectedShareModal } from "./components/ConnectedShareModal";
 import { TemplateModal } from "./components/TemplateModal";
+import { SaveTemplateDialog } from "./components/SaveTemplateDialog";
 import { AuthDialog } from "./components/AuthDialog";
 import { syncSession, useSyncSession } from "./sync/session";
 import { AIAssistantModal } from "./components/AIAssistantModal";
@@ -1833,6 +1834,7 @@ const ExcalidrawWrapper = () => {
     null,
   );
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const syncState = useSyncSession();
   useEffect(() => {
@@ -3534,6 +3536,9 @@ const ExcalidrawWrapper = () => {
     >
       <Excalidraw
         defaultChromeEnabled={false}
+        onSaveSelectionAsTemplate={
+          isReadOnlyShare ? undefined : () => setSaveTemplateOpen(true)
+        }
         renderCreationRailUI={(_isMobile, appState) => (
           <WebCreationRail
             appState={appState}
@@ -3853,6 +3858,11 @@ const ExcalidrawWrapper = () => {
         <BulkStickyDialog
           isOpen={bulkStickyOpen}
           onClose={() => setBulkStickyOpen(false)}
+          excalidrawAPI={excalidrawAPI}
+        />
+        <SaveTemplateDialog
+          isOpen={saveTemplateOpen}
+          onClose={() => setSaveTemplateOpen(false)}
           excalidrawAPI={excalidrawAPI}
         />
         <TemplateModal
