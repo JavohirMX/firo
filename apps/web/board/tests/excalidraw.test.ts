@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createStickyNote } from "@firo/board/defaults";
+import { setCustomTextMetricsProvider } from "@firo/element";
 
 import {
   isExcalidrawJson,
@@ -91,5 +92,80 @@ describe("Bidirectional Excalidraw converter", () => {
     expect(exportedNote.id).toBe("note-1");
     expect(exportedNote.type).toBe("stickynote");
     expect(exportedNote.text).toBe("Converted Note");
+  });
+
+  it("restores a sticky note's label already fitted inside the note", () => {
+    /*
+     * Regression: a note persisted at the auto-fit ceiling (fontSize 55 on a
+     * 250px note, the mirror's pre-fit value) used to come back with its
+     * label drawn raw — unwrapped, at 55, overflowing the note's left edge —
+     * until a post-mount reflow happened to win its race against the scene
+     * mount. The conversion now lays the note and label out itself, so the
+     * label is born wrapped and contained on every load.
+     *
+     * The test environment's default text metrics are font-size independent
+     * (character count times a constant), which would let any fontSize "fit"
+     * and defeat the shrink assertion. Approximate a real canvas instead:
+     * width proportional to the font size carried in the font string.
+     */
+    setCustomTextMetricsProvider({
+      getLineWidth: (text, fontString) => {
+        const px = Number(/(\d+(?:\.\d+)?)px/.exec(fontString)?.[1] ?? 20);
+        return text.length * px * 0.55;
+      },
+    });
+
+    const short = createStickyNote({
+      id: "note-fit",
+      x: 375,
+      y: 275,
+      width: 250,
+      height: 250,
+      text: "Manual one",
+      fontSize: 55,
+    });
+    const long = createStickyNote({
+      id: "note-shrink",
+      x: 675,
+      y: 275,
+      width: 250,
+      height: 250,
+      text: "Manual one two three four five six seven eight nine ten",
+      fontSize: 55,
+    });
+
+    const excalidrawScene = convertFiroToExcalidraw({
+      schemaVersion: 2,
+      elements: [short, long],
+    } as any);
+
+    const expectContained = (noteId: string) => {
+      const restoredNote = excalidrawScene.elements.find(
+        (el: any) => el.id === noteId,
+      );
+      const label = excalidrawScene.elements.find(
+        (el: any) => el.type === "text" && el.containerId === noteId,
+      );
+      expect(restoredNote).toBeTruthy();
+      expect(label).toBeTruthy();
+      expect(label.x).toBeGreaterThanOrEqual(restoredNote.x);
+      expect(label.x + label.width).toBeLessThanOrEqual(
+        restoredNote.x + restoredNote.width,
+      );
+      expect(label.y).toBeGreaterThanOrEqual(restoredNote.y);
+      expect(label.y + label.height).toBeLessThanOrEqual(
+        restoredNote.y + restoredNote.height,
+      );
+      return label;
+    };
+
+    // short text may keep its size by wrapping, but never spills (the bug)
+    const shortLabel = expectContained("note-fit");
+    expect(shortLabel.originalText).toBe("Manual one");
+    expect(shortLabel.width).toBeLessThanOrEqual(250 - 2 * 16);
+
+    // text that cannot fit at the ceiling even wrapped must shrink
+    const longLabel = expectContained("note-shrink");
+    expect(longLabel.fontSize).toBeLessThan(55);
   });
 });
