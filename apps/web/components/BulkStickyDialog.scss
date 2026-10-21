@@ -120,3 +120,12 @@
     }
   }
 }
+
+// The editor's global `.excalidraw textarea:not(.excalidraw-wysiwyg)` rule
+// sets white-space: nowrap, which flattens this field's multi-line
+// placeholder example and stops typed lines wrapping. Restore newline
+// rendering for this dialog only (extra classes win the specificity tie
+// without depending on stylesheet order).
+.excalidraw .firo-bulk-sticky .firo-bulk-sticky__input {
+  white-space: pre-line;
+}
