@@ -326,20 +326,16 @@ export const getEmbedLink = (
 
   if (RE_TWITTER.test(link)) {
     const postId = link.match(RE_TWITTER)![1];
-    // the embed srcdoc still supports twitter.com domain only.
-    // Note that we don't attempt to parse the username as it can consist of
-    // non-latin1 characters, and the username in the url can be set to anything
-    // without affecting the embed.
-    const safeURL = escapeDoubleQuotes(
-      `https://twitter.com/x/status/${postId}`,
-    );
-
+    // We don't parse the username: it can consist of non-latin1 characters
+    // and can be set to anything without affecting the embed - the post id
+    // is all the URL-embed endpoint needs.
+    // ADR-0036 §4: the srcdoc widget form needs same-origin to reach the
+    // tweet-result API, and no srcdoc frame may keep same-origin, so the
+    // tweet renders through Twitter's own URL embed endpoint instead - a
+    // cross-origin frame, which allow-same-origin cannot expose Firo to.
     const ret: IframeDataWithSandbox = {
-      type: "document",
-      srcdoc: (theme: string) =>
-        createSrcDoc(
-          `<blockquote class="twitter-tweet" data-dnt="true" data-theme="${theme}"><a href="${safeURL}"></a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`,
-        ),
+      type: "generic",
+      link: `https://platform.twitter.com/embed/Tweet.html?id=${postId}`,
       intrinsicSize: { w: 480, h: 480 },
       sandbox: { allowSameOrigin },
     };
@@ -349,15 +345,12 @@ export const getEmbedLink = (
 
   if (RE_REDDIT.test(link)) {
     const [, page, postId, title] = link.match(RE_REDDIT)!;
-    const safeURL = escapeDoubleQuotes(
-      `https://reddit.com/r/${page}/comments/${postId}/${title}`,
-    );
+    // ADR-0036 §4: same trade as Twitter above - the srcdoc widget form
+    // breaks in an opaque origin, so the post renders through Reddit's
+    // official URL embed endpoint instead.
     const ret: IframeDataWithSandbox = {
-      type: "document",
-      srcdoc: (theme: string) =>
-        createSrcDoc(
-          `<blockquote class="reddit-embed-bq" data-embed-theme="${theme}"><a href="${safeURL}"></a><br></blockquote><script async="" src="https://embed.reddit.com/widgets.js" charset="UTF-8"></script>`,
-        ),
+      type: "generic",
+      link: `https://www.redditmedia.com/r/${page}/comments/${postId}/${title}/?embed=true`,
       intrinsicSize: { w: 480, h: 480 },
       sandbox: { allowSameOrigin },
     };
@@ -535,4 +528,117 @@ export const embeddableURLValidator = (
   }
 
   return !!matchHostname(url, ALLOWED_DOMAINS);
+};
+
+// ---------------------------------------------------------------------------
+// Foreign-frame policy (ADR-0036 §4)
+//
+// Every embed frame is hostile by default: a provider can be compromised or
+// broken, and its frame must never be able to reach Firo's origin, storage or
+// DOM. The sandbox string, referrer policy and permissions policy are computed
+// here, in one pure place, so the renderer cannot drift from the rule.
+// ---------------------------------------------------------------------------
+
+/**
+ * Sandbox tokens for one resolved embed. Document (`srcdoc`) frames never
+ * receive `allow-same-origin`: they run in an opaque origin with scripts
+ * only, which closes the route a third-party widget script would otherwise
+ * have into the app's DOM and storage. URL frames keep scripting, forms,
+ * popups and presentation; `allow-same-origin` follows the per-provider list
+ * resolved by `getEmbedLink`. `allow-downloads` and
+ * `allow-popups-to-escape-sandbox` are gone everywhere.
+ */
+export const computeEmbedSandbox = (
+  src: Pick<IframeData, "type" | "sandbox"> | null | undefined,
+): string => {
+  if (src?.type === "document") {
+    return "allow-scripts";
+  }
+  const tokens = [
+    "allow-scripts",
+    "allow-forms",
+    "allow-popups",
+    "allow-presentation",
+  ];
+  if (src?.sandbox?.allowSameOrigin) {
+    tokens.unshift("allow-same-origin");
+  }
+  return tokens.join(" ");
+};
+
+/**
+ * ADR-0036 §4, adjusted by the provider re-verification the ADR requires:
+ * document (`srcdoc`) frames send no referrer at all. URL frames send the
+ * app *origin* only - never the full URL, which can carry a board id in its
+ * path - because the major players (YouTube, confirmed live) refuse to run
+ * with no referrer at all (error 153). `strict-origin-when-cross-origin` is
+ * the minimal policy that keeps those embeds working.
+ */
+export const computeEmbedReferrerPolicy = (
+  src: Pick<IframeData, "type"> | null | undefined,
+): "no-referrer" | "strict-origin-when-cross-origin" => {
+  return src?.type === "document"
+    ? "no-referrer"
+    : "strict-origin-when-cross-origin";
+};
+
+/**
+ * ADR-0036 §4: the minimal permissions list. Drops `autoplay`,
+ * `clipboard-write`, `accelerometer` and `gyroscope`; keeps `encrypted-media`
+ * and `picture-in-picture` (fullscreen is the separate `allowFullScreen`
+ * attribute).
+ */
+export const EMBED_PERMISSIONS_POLICY = "encrypted-media; picture-in-picture";
+
+const EMBED_PROVIDER_NAMES: Record<string, string> = {
+  "youtube.com": "YouTube",
+  "youtu.be": "YouTube",
+  "youtube-nocookie.com": "YouTube",
+  "vimeo.com": "Vimeo",
+  "player.vimeo.com": "Vimeo",
+  "drive.google.com": "Google Drive",
+  "figma.com": "Figma",
+  "gist.github.com": "GitHub Gist",
+  "twitter.com": "Twitter/X",
+  "x.com": "Twitter/X",
+  "val.town": "Val Town",
+  "giphy.com": "GIPHY",
+  "stackblitz.com": "StackBlitz",
+  "*.simplepdf.eu": "SimplePDF",
+  "forms.microsoft.com": "Microsoft Forms",
+  "reddit.com": "Reddit",
+  // the URL-embed endpoints the Twitter/X and Reddit branches resolve to
+  "platform.twitter.com": "Twitter/X",
+  "redditmedia.com": "Reddit",
+};
+
+/** Display name of the provider a link belongs to, or null when unknown. */
+export const getEmbedProviderName = (
+  link: string | null | undefined,
+): string | null => {
+  if (!link) {
+    return null;
+  }
+  let hostname: string;
+  try {
+    hostname = new URL(
+      link.startsWith("http") ? link : `https://${link}`,
+    ).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+  // the map keys are the provider universe: pasteable domains plus the
+  // embed endpoints branches above derive (platform.twitter.com, ...)
+  return (
+    EMBED_PROVIDER_NAMES[hostname] ??
+    EMBED_PROVIDER_NAMES[hostname.replace(/^([^.]+)/, "*")] ??
+    null
+  );
+};
+
+/** ADR-0036 §4: the frame title names the provider, not a vendor string. */
+export const getEmbedFrameTitle = (
+  provider: string | null | undefined,
+): string => {
+  return provider ? `Embedded content from ${provider}` : "Embedded content";
 };

@@ -156,6 +156,11 @@ import {
   createSrcDoc,
   embeddableURLValidator,
   getEmbedLink,
+  computeEmbedSandbox,
+  computeEmbedReferrerPolicy,
+  EMBED_PERMISSIONS_POLICY,
+  getEmbedProviderName,
+  getEmbedFrameTitle,
   getInitializedImageElements,
   normalizeSVG,
   updateImageCache as _updateImageCache,
@@ -662,6 +667,20 @@ class App extends React.Component<AppProps, AppState> {
   public files: BinaryFiles = {};
   public imageCache: AppClassProperties["imageCache"] = new Map();
   private iFrameRefs = new Map<ExcalidrawElement["id"], HTMLIFrameElement>();
+
+  /**
+   * Embeds whose frame failed to load, keyed by element id + link so a link
+   * edit retries. ADR-0036 §4: a failed frame is replaced by a visible
+   * fallback naming the provider and linking the original URL externally.
+   */
+  private failedEmbeddables = new Set<string>();
+
+  private markEmbeddableFailed = (key: string) => {
+    if (!this.failedEmbeddables.has(key)) {
+      this.failedEmbeddables.add(key);
+      this.forceUpdate();
+    }
+  };
   /**
    * Indicates whether the embeddable's url has been validated for rendering.
    * If value not set, indicates that the validation is pending.
@@ -2045,31 +2064,78 @@ class App extends React.Component<AppProps, AppState> {
                   >
                     {(isEmbeddableElement(el)
                       ? this.props.renderEmbeddable?.(el, this.state)
-                      : null) ?? (
-                      <iframe
-                        ref={(ref) => this.cacheEmbeddableRef(el, ref)}
-                        className="excalidraw__embeddable"
-                        srcDoc={
-                          src?.type === "document"
-                            ? src.srcdoc(this.state.theme)
-                            : undefined
-                        }
-                        src={
-                          src?.type !== "document" ? src?.link ?? "" : undefined
-                        }
-                        // https://stackoverflow.com/q/18470015
-                        scrolling="no"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Excalidraw Embedded Content"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen={true}
-                        sandbox={`${
-                          src?.sandbox?.allowSameOrigin
-                            ? "allow-same-origin"
-                            : ""
-                        } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads`}
-                      />
-                    )}
+                      : null) ??
+                      (this.failedEmbeddables.has(
+                        `${el.id}:${el.link ?? ""}`,
+                      ) ? (
+                        <div
+                          className="excalidraw__embeddable excalidraw__embeddable__fallback"
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "0.5em",
+                            width: "100%",
+                            height: "100%",
+                            fontFamily: "sans-serif",
+                            fontSize: "0.875rem",
+                            textAlign: "center",
+                            padding: "0.5em",
+                          }}
+                        >
+                          <span>
+                            {getEmbedFrameTitle(
+                              getEmbedProviderName(
+                                (src && "link" in src ? src.link : null) ??
+                                  el.link,
+                              ),
+                            )}{" "}
+                            failed to load.
+                          </span>
+                          {el.link ? (
+                            <a
+                              href={el.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Open link
+                            </a>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <iframe
+                          ref={(ref) => this.cacheEmbeddableRef(el, ref)}
+                          className="excalidraw__embeddable"
+                          srcDoc={
+                            src?.type === "document"
+                              ? src.srcdoc(this.state.theme)
+                              : undefined
+                          }
+                          src={
+                            src?.type !== "document"
+                              ? src?.link ?? ""
+                              : undefined
+                          }
+                          // https://stackoverflow.com/q/18470015
+                          scrolling="no"
+                          referrerPolicy={computeEmbedReferrerPolicy(src)}
+                          title={getEmbedFrameTitle(
+                            getEmbedProviderName(
+                              (src && "link" in src ? src.link : null) ??
+                                el.link,
+                            ),
+                          )}
+                          allow={EMBED_PERMISSIONS_POLICY}
+                          allowFullScreen={true}
+                          sandbox={computeEmbedSandbox(src)}
+                          onError={() =>
+                            this.markEmbeddableFailed(
+                              `${el.id}:${el.link ?? ""}`,
+                            )
+                          }
+                        />
+                      ))}
                   </div>
                 </div>
                 {isPendingGeneration && (
