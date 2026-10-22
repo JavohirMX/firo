@@ -106,7 +106,73 @@ export type EphemeralState = Readonly<{
    * watching see different boards.
    */
   presentation: EphemeralPresentation;
+
+  /**
+   * The session claim (ADR-0039 section 1), or null.
+   *
+   * `leader` is always the publishing awareness clientID: a claim naming
+   * another client is invalid on its face. The claim exists only while at
+   * least one live state (timer, private mode, presentation, open voting
+   * round) is present; a claim with no live state is ignored, so an expired
+   * round does not hold the room. The tie-break and the reading rule live in
+   * `@firo/facilitation` `resolveDriver`; this field is only the wire value.
+   *
+   * Ephemeral because the driver is a *client*, not an account: closing the
+   * tab ends the session, and a durable claim would hold the room for a
+   * facilitator who is no longer there.
+   */
+  session: EphemeralSessionClaim;
+
+  /**
+   * The live voting round, or null when none is running.
+   *
+   * The *settings and clock* of a round are session state (ADR-0039 section
+   * 2): a `.firo` file must not reopen mid-round, and the durable half -- the
+   * dots themselves -- already lives in the record store. Restated rather
+   * than imported for the reason given on [`EphemeralTimer`](#ephemeraltimer).
+   */
+  voting: EphemeralVoting | null;
+
+  /**
+   * This client's ballot key for the current round, or null.
+   *
+   * Published so a local "show names" display can resolve a ballot to the
+   * live awareness name while that client is connected (ADR-0039 section 3).
+   * The key is opaque, never an account id, and never written to the
+   * document; the vote records carry their own copy in the `voter` column.
+   */
+  ballot: EphemeralBallot | null;
 }>;
+
+/** The session claim. `null` is "this client is not driving". */
+export type EphemeralSessionClaim = Readonly<{ leader: number }> | null;
+
+/**
+ * The live voting round, restated from `@firo/facilitation` `VotingRound`
+ * for the reason given on [`EphemeralTimer`](#ephemeraltimer).
+ */
+export type EphemeralVoting = Readonly<{
+  settings: Readonly<{
+    votesPerPerson: number;
+    minutes: number;
+    oneVotePerObject: boolean;
+    showResults: boolean;
+    eligibleTypes: readonly string[] | null;
+  }>;
+  startsAt: number;
+  endsAt: number;
+  endedEarly: boolean;
+}>;
+
+/**
+ * This client's published ballot identity for name resolution.
+ * `sessionId` names the round the key belongs to, so a stale key from a
+ * previous round resolves to nothing rather than to the wrong person.
+ */
+export type EphemeralBallot = Readonly<{
+  sessionId: string;
+  key: string;
+}> | null;
 
 export type DragPreview = Readonly<{
   /** The element being dragged. */
@@ -245,6 +311,9 @@ export const EMPTY_EPHEMERAL_STATE: EphemeralState = Object.freeze({
   timer: null,
   reveal: REVEALED,
   presentation: NOT_PRESENTING,
+  session: null,
+  voting: null,
+  ballot: null,
 });
 
 /** The `y-protocols` awareness key. Not exported as a mutable binding. */
