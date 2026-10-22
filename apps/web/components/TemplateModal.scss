@@ -50,9 +50,26 @@
     white-space: nowrap;
   }
 
-  &__search {
+  &__search-wrap {
+    position: relative;
     flex: 1;
     min-width: 120px;
+    display: flex;
+    align-items: center;
+
+    /* matches the home board filter: magnifier leading the query */
+    > svg {
+      position: absolute;
+      left: 10px;
+      opacity: 0.55;
+      pointer-events: none;
+    }
+  }
+
+  &__search {
+    width: 100%;
+    min-width: 120px;
+    padding-left: 32px;
     font: inherit;
     color: inherit;
     padding: 8px 12px;

@@ -11,6 +11,7 @@ import {
   PlusIcon,
   SettingsIcon,
   UploadIcon,
+  HelpIcon,
 } from "@firo/ui";
 import { useI18n } from "@firo/editor/i18n";
 
@@ -200,7 +201,10 @@ export const AppMainMenu: React.FC<{
       </MainMenu.Sub>
 
       <MainMenu.Sub>
-        <MainMenu.Sub.Trigger data-testid="main-menu-help-submenu">
+        <MainMenu.Sub.Trigger
+          icon={<HelpIcon size={18} />}
+          data-testid="main-menu-help-submenu"
+        >
           Help
         </MainMenu.Sub.Trigger>
         <MainMenu.Sub.Content>

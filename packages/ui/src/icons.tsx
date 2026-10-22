@@ -11,6 +11,27 @@ export type IconProps = React.SVGProps<SVGSVGElement> & {
  * Uses currentColor to adapt to parent themes.
  */
 
+export const HelpIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.75" />
+    <path
+      d="M8.1 7.7A2.05 2.05 0 1 1 11 9.4c-.8.4-1 .8-1 1.6v.2"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="10" cy="13.9" r="0.9" fill="currentColor" />
+  </svg>
+);
+
 export const SelectIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
   <svg
     width={size}

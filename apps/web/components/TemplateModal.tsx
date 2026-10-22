@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useFocusTrap } from "@firo/editor";
 import { toEditorScene } from "@firo/board";
-import { CloseIcon, TemplateIcon } from "@firo/ui";
+import { CloseIcon, SearchIcon, TemplateIcon } from "@firo/ui";
 
 import type { FiroElement } from "@firo/schema";
 
@@ -352,16 +352,19 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
               Templates
             </h2>
           </div>
-          <input
-            ref={searchRef}
-            type="search"
-            className="firo-template-modal__search"
-            placeholder="Search templates"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            aria-label="Search templates"
-            data-testid="template-search"
-          />
+          <div className="firo-template-modal__search-wrap">
+            <SearchIcon size={16} aria-hidden />
+            <input
+              ref={searchRef}
+              type="search"
+              className="firo-template-modal__search"
+              placeholder="Search templates"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              aria-label="Search templates"
+              data-testid="template-search"
+            />
+          </div>
           <button
             type="button"
             className="firo-template-modal__close-btn"
