@@ -128,6 +128,7 @@ export type ActionName =
   | "bindText"
   | "unlockAllElements"
   | "toggleElementLock"
+  | "clearContent"
   | "toggleLinearEditor"
   | "selectAllElementsInFrame"
   | "removeAllElementsFromFrame"

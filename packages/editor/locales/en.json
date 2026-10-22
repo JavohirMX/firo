@@ -25,6 +25,7 @@
     "bringToFront": "Bring to front",
     "sendBackward": "Send backward",
     "delete": "Delete",
+    "clearContent": "Clear content",
     "copyStyles": "Copy styles",
     "pasteStyles": "Paste styles",
     "stroke": "Stroke",

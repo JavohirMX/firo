@@ -108,6 +108,7 @@ export type {
 } from "./actionStickyNoteSize";
 export { actionLink } from "./actionLink";
 export { actionToggleElementLock } from "./actionElementLock";
+export { actionClearContent } from "./actionClearContent";
 export { actionToggleLinearEditor } from "./actionLinearEditor";
 
 export { actionToggleSearchMenu } from "./actionToggleSearchMenu";

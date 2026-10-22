@@ -409,6 +409,16 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
           "category": "element",
         },
       },
+      {
+        "label": "labels.clearContent",
+        "name": "clearContent",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+        "viewMode": false,
+      },
       "separator",
       {
         "items": [
@@ -5703,6 +5713,16 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
           "category": "element",
         },
       },
+      {
+        "label": "labels.clearContent",
+        "name": "clearContent",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+        "viewMode": false,
+      },
       "separator",
       {
         "items": [
@@ -7361,6 +7381,16 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         "trackEvent": {
           "category": "element",
         },
+      },
+      {
+        "label": "labels.clearContent",
+        "name": "clearContent",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+        "viewMode": false,
       },
       "separator",
       {
@@ -9897,6 +9927,16 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
           "category": "element",
         },
       },
+      {
+        "label": "labels.clearContent",
+        "name": "clearContent",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+        "viewMode": false,
+      },
       "separator",
       {
         "items": [
@@ -11325,6 +11365,16 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "trackEvent": {
           "category": "element",
         },
+      },
+      {
+        "label": "labels.clearContent",
+        "name": "clearContent",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+        "viewMode": false,
       },
       "separator",
       {
