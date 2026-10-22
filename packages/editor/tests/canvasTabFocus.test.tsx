@@ -5,8 +5,6 @@ import { Excalidraw } from "../index";
 import { API } from "./helpers/api";
 import { fireEvent, render } from "./test-utils";
 
-const { h } = window;
-
 // Tab on the focused canvas switches the shape type of a convertible
 // selection. With nothing to convert it must keep its native job, moving
 // focus, so the canvas is not a keyboard trap (PRD NFR: focus never trapped).
