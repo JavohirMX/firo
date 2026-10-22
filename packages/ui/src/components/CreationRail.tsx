@@ -24,6 +24,7 @@ import {
   PlusIcon,
   DocIcon,
   SparklesIcon,
+  SmileIcon,
 } from "../icons";
 
 import { ToolsCatalog } from "./ToolsCatalog";
@@ -51,7 +52,8 @@ export type RailToolType =
   | "pen"
   | "more"
   | "docblock"
-  | "ai";
+  | "ai"
+  | "media";
 
 /**
  * What a rail slot *is*. A tool is a command; a family is a set of tools; an
@@ -159,6 +161,7 @@ export const RAIL_TOOL_ICONS: Record<RailToolType, React.ReactNode> = {
   more: <PlusIcon />,
   docblock: <DocIcon />,
   ai: <SparklesIcon />,
+  media: <SmileIcon />,
 };
 
 /** Default tool list and creation items including docblock (§10.5) */
@@ -193,6 +196,7 @@ export const DEFAULT_RAIL_TOOLS: RailToolItem[] = [
   // Miro's frame slot flies out size presets; Firo has no preset target yet,
   // so the slot stays a plain tool rather than growing a dead chevron.
   { id: "frame", label: "Frame", icon: <FrameIcon />, kind: "tool" },
+  { id: "media", label: "Emoji", icon: <SmileIcon />, kind: "surface" },
   { id: "comment", label: "Comment", icon: <CommentIcon />, kind: "tool" },
   { id: "docblock", label: "Document", icon: <DocIcon />, kind: "tool" },
 ];

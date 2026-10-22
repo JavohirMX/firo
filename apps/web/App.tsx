@@ -112,6 +112,7 @@ import {
 
 import {
   EmbedDialog,
+  EmojiPanel,
   ExportModal,
   ImportModal,
   type EmbedValidation,
@@ -579,6 +580,7 @@ export const WebCreationRail = ({
   onToggleDocBlockMode,
   onOpenTemplates,
   onOpenAI,
+  onToggleEmoji,
   onOpenBulkSticky,
   readOnlyRole = null,
 }: {
@@ -591,6 +593,7 @@ export const WebCreationRail = ({
   onToggleDocBlockMode?: () => void;
   onOpenTemplates?: () => void;
   onOpenAI?: () => void;
+  onToggleEmoji?: () => void;
   onOpenBulkSticky?: () => void;
 }) => {
   const app = useApp();
@@ -861,6 +864,16 @@ export const WebCreationRail = ({
       };
     }
 
+    if (id === "media") {
+      return {
+        id: "media",
+        kind: "surface",
+        label: "Emoji",
+        icon: RAIL_TOOL_ICONS.media,
+        activeOn: [],
+      };
+    }
+
     if (id === "ai") {
       return {
         id: "ai",
@@ -885,7 +898,15 @@ export const WebCreationRail = ({
 
   const isKnownTool = (id: RailToolType) =>
     id in TOOLS ||
-    ["shapes", "pen", "templates", "comment", "docblock", "ai"].includes(id);
+    [
+      "shapes",
+      "pen",
+      "templates",
+      "comment",
+      "docblock",
+      "ai",
+      "media",
+    ].includes(id);
 
   // Read-only roles only get tools that work for them (the pointer, and
   // Comment for commenters), instead of buttons that silently do nothing.
@@ -965,6 +986,11 @@ export const WebCreationRail = ({
           return;
         }
 
+        if (tool === "media") {
+          onToggleEmoji?.();
+          return;
+        }
+
         let targetTool: RailToolType = tool;
         if (tool === "shapes") {
           targetTool = subTools.shapes;
@@ -1034,6 +1060,8 @@ export const WebCreationRail = ({
           onOpenTemplates?.();
         } else if (surface === "ai") {
           onOpenAI?.();
+        } else if (surface === "media") {
+          onToggleEmoji?.();
         }
       }}
       onSelectOption={(tool, option) => {
@@ -1996,6 +2024,8 @@ const ExcalidrawWrapper = () => {
   const [votingPanelOpen, setVotingPanelOpen] = useState(false);
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const emojiPickCount = useRef(0);
   const [stickyOptionsOpen, setStickyOptionsOpen] = useState(false);
 
   /*
@@ -3714,6 +3744,7 @@ const ExcalidrawWrapper = () => {
             }}
             onOpenTemplates={() => setTemplateModalOpen(true)}
             onOpenAI={() => setAiModalOpen(true)}
+            onToggleEmoji={() => setEmojiOpen((open) => !open)}
             onOpenBulkSticky={() => setBulkStickyOpen(true)}
           />
         )}
@@ -4015,6 +4046,44 @@ const ExcalidrawWrapper = () => {
           isOpen={timerSetupOpen}
           onClose={() => setTimerSetupOpen(false)}
         />
+        <EmojiPanel
+          isOpen={emojiOpen && !isReadOnlyShare}
+          onClose={() => {
+            setEmojiOpen(false);
+            emojiPickCount.current = 0;
+            requestAnimationFrame(() =>
+              document
+                .querySelector<HTMLElement>(
+                  '.firo-rail__item[aria-label="Emoji"]',
+                )
+                ?.focus(),
+            );
+          }}
+          onPick={(emoji) => {
+            if (!excalidrawAPI) {
+              return;
+            }
+            // ADR-0036: visible canvas centre, 48px, cascading by 20px
+            const center = viewportCenter(excalidrawAPI);
+            // On phones the panel is a bottom sheet: centre the pick in the
+            // part of the canvas it leaves visible.
+            const panelTop = document
+              .querySelector(".firo-emoji-panel")
+              ?.getBoundingClientRect().top;
+            if (window.innerWidth <= 600 && panelTop) {
+              const st = excalidrawAPI.getAppState();
+              center.y = (-st.scrollY + panelTop / 2) / st.zoom.value;
+            }
+            const offset = (emojiPickCount.current % 10) * 20;
+            emojiPickCount.current += 1;
+            excalidrawAPI.insertTextElement({
+              sceneX: center.x + offset,
+              sceneY: center.y + offset,
+              text: emoji,
+              fontSize: 48,
+            });
+          }}
+        />
         <EmbedDialog
           isOpen={embedDialogOpen}
           onClose={() => setEmbedDialogOpen(false)}
@@ -4047,19 +4116,17 @@ const ExcalidrawWrapper = () => {
             const w = inserted.width * scale;
             const h = inserted.height * scale;
             excalidrawAPI.updateScene({
-              elements: excalidrawAPI
-                .getSceneElements()
-                .map((el) =>
-                  el.id === inserted.id
-                    ? {
-                        ...el,
-                        x: center.x - w / 2,
-                        y: center.y - h / 2,
-                        width: w,
-                        height: h,
-                      }
-                    : el,
-                ) as any,
+              elements: excalidrawAPI.getSceneElements().map((el) =>
+                el.id === inserted.id
+                  ? {
+                      ...el,
+                      x: center.x - w / 2,
+                      y: center.y - h / 2,
+                      width: w,
+                      height: h,
+                    }
+                  : el,
+              ) as any,
               captureUpdate: CaptureUpdateAction.IMMEDIATELY,
             });
           }}
@@ -4200,6 +4267,14 @@ const ExcalidrawWrapper = () => {
              * These entries are derived from the same `Action` objects the chords
              * come from, so the palette entry and the keystroke cannot drift.
              */
+            {
+              // ADR-0036 §1: the emoji flyout, also reachable on phone where
+              // the rail is hidden
+              label: "Emoji…",
+              category: DEFAULT_CATEGORIES.app,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: () => setEmojiOpen((open) => !open),
+            },
             {
               // ADR-0036 §3: the in-app embed affordance
               label: "Add embed…",

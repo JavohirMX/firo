@@ -1468,3 +1468,24 @@ export const TextAlignRightIcon: React.FC<IconProps> = ({
     />
   </svg>
 );
+
+export const SmileIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="10" cy="10" r="7.25" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M6.75 11.75C7.5 13 8.6 13.75 10 13.75C11.4 13.75 12.5 13 13.25 11.75"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <circle cx="7.5" cy="8" r="1" fill="currentColor" />
+    <circle cx="12.5" cy="8" r="1" fill="currentColor" />
+  </svg>
+);

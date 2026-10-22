@@ -118,6 +118,7 @@ import {
   newFrameElement,
   newFreeDrawElement,
   newEmbeddableElement,
+  newTextElement,
   newMagicFrameElement,
   newStickyNoteElement,
   newIframeElement,
@@ -852,6 +853,7 @@ class App extends React.Component<AppProps, AppState> {
       id: this.id,
       setActiveTool: this.setActiveTool,
       insertEmbeddableElement: this.insertEmbeddableElement,
+      insertTextElement: this.insertTextElement,
       setCursor: this.cursor.set,
       resetCursor: this.cursor.reset,
       getEditorInterface: () => this.editorInterface,
@@ -9093,6 +9095,53 @@ class App extends React.Component<AppProps, AppState> {
     this.insertNewElement(element);
 
     return element;
+  };
+
+  /**
+   * Insert a text element centred on a scene point, select it and return the
+   * tool to selection. Built through the same constructor the text tool uses,
+   * so the text pipeline sees an ordinary text element. Used by host chrome
+   * (e.g. the emoji picker); it does nothing for empty text.
+   */
+  public insertTextElement = ({
+    sceneX,
+    sceneY,
+    text,
+    fontSize,
+  }: {
+    sceneX: number;
+    sceneY: number;
+    text: string;
+    fontSize?: number;
+  }) => {
+    if (!text) {
+      return;
+    }
+    const element = newTextElement({
+      x: sceneX,
+      y: sceneY,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: "transparent",
+      fillStyle: this.state.currentItemFillStyle,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      roughness: this.state.currentItemRoughness,
+      opacity: this.state.currentItemOpacity,
+      text,
+      fontSize: fontSize ?? this.state.currentItemFontSize,
+      fontFamily: this.state.currentItemFontFamily,
+      textAlign: "center",
+      verticalAlign: "middle",
+      locked: false,
+    });
+    // centre on the requested point once the metrics are known
+    const centred = newElementWith(element, {
+      x: sceneX - element.width / 2,
+      y: sceneY - element.height / 2,
+    });
+    this.insertNewElement(centred);
+    this.setState({ selectedElementIds: { [centred.id]: true } });
+    this.setActiveTool({ type: "selection" });
+    return centred;
   };
 
   private newImagePlaceholder = ({

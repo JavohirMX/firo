@@ -1340,6 +1340,7 @@ export type AppClassProperties = {
   setActiveTool: App["setActiveTool"];
   setOpenDialog: App["setOpenDialog"];
   insertEmbeddableElement: App["insertEmbeddableElement"];
+  insertTextElement: App["insertTextElement"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];
   dismissLinearEditor: App["dismissLinearEditor"];
@@ -1523,6 +1524,7 @@ export interface ExcalidrawImperativeAPI {
   id: string;
   setActiveTool: InstanceType<typeof App>["setActiveTool"];
   insertEmbeddableElement: InstanceType<typeof App>["insertEmbeddableElement"];
+  insertTextElement: InstanceType<typeof App>["insertTextElement"];
   setCursor: InstanceType<typeof App>["cursor"]["set"];
   resetCursor: InstanceType<typeof App>["cursor"]["reset"];
   toggleSidebar: InstanceType<typeof App>["toggleSidebar"];

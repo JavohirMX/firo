@@ -1,0 +1,142 @@
+/*
+ * The emoji flyout (ADR-0036). Geometry: left edge = rail right edge (56) + 8,
+ * top = the menu line (64), height to the 8px bottom inset, 368 wide. Emoji
+ * render in the system emoji font; no font is bundled.
+ */
+.firo-emoji-panel {
+  position: fixed;
+  top: 64px;
+  left: 64px;
+  bottom: 8px;
+  z-index: var(--firo-z-menu, 20);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 368px;
+  max-height: 746px;
+  padding: var(--firo-space-sm, 8px);
+  gap: var(--firo-space-sm, 8px);
+  background-color: var(--firo-color-panel-raised, #fff);
+  border: 1px solid var(--firo-color-border, #d0d0d0);
+  border-radius: var(--firo-radius-lg, 12px);
+  box-shadow: var(--firo-elevation-floating, 0 8px 24px rgba(0, 0, 0, 0.16));
+  color: var(--firo-color-text, #1b1b1f);
+  font-family: var(--firo-font-ui, inherit);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--firo-space-xs, 4px);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--firo-font-size-lg, 1rem);
+    font-weight: var(--firo-font-weight-semibold, 600);
+  }
+
+  &__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--firo-color-hover, rgba(0, 0, 0, 0.06));
+    }
+  }
+
+  &__search {
+    box-sizing: border-box;
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--firo-color-border, #d0d0d0);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus, #5b5bd6);
+      outline-offset: 1px;
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    gap: 2px;
+  }
+
+  &__tab {
+    flex: 1;
+    height: 32px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+
+    &--active {
+      border-bottom-color: var(--firo-color-focus, #5b5bd6);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus, #5b5bd6);
+      outline-offset: -2px;
+    }
+  }
+
+  &__grid {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    align-content: start;
+    gap: 2px;
+  }
+
+  &__cell {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
+      sans-serif;
+
+    &:hover {
+      background: var(--firo-color-hover, rgba(0, 0, 0, 0.06));
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-focus, #5b5bd6);
+      outline-offset: -2px;
+    }
+  }
+
+  &__empty {
+    margin: var(--firo-space-lg, 16px) var(--firo-space-xs, 4px);
+    color: var(--firo-color-text-muted, #6b6b76);
+  }
+
+  @media (max-width: 600px) {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 132px;
+    width: auto;
+    height: min(42vh, 360px);
+  }
+}
