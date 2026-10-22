@@ -81,7 +81,7 @@ Code checked: `packages/element/src/` (`types`, `embeddable`),
 | # | Surface | Miro (observed) | Firo at `a425018` | Decision | Cluster |
 | --- | --- | --- | --- | --- | --- |
 | 19 | Sticky colour palette (tool flyout) | 16 swatches, 50 px cells [live, deep pass] | full — the Sticky slot's options flyout carries the 16 colour swatches (and the S / M / L size group, row 20) | adapt | C1 |
-| 20 | Sticky size presets and bulk mode | S / M / L; Stack; Templates; Bulk mode [live, deep pass] | partial — one 250 px default, resizable; no presets, no bulk create | adapt | C5 |
+| 20 | Sticky size presets and bulk mode | S / M / L; Stack; Templates; Bulk mode [live, deep pass] | partial — S / M / L presets (M is the 250 px default) and bulk create through the sticky options dialog (also the phone route); no Stack, no sticky-flyout templates | adapt | C5 |
 | 21 | Text tool | canvas text with an in-place editor [live] | implemented | adopt *(met)* | — |
 | 22 | Shapes and connectors — basics | shape strip; lines and arrows with binding [live] | implemented — rectangle, diamond, ellipse; arrow and line with binding and snapping | adopt *(met)* | — |
 | 23 | Shape libraries (diagramming sets) | diagramming panel; flow/UML sets [live; contents per bundle] | absent | adapt — our own drawings; no Miro assets | C1 |
@@ -104,7 +104,7 @@ Code checked: `packages/facilitation/src/` (`timer`, `voting`, `reveal`,
 | # | Surface | Miro (observed) | Firo at `a425018` | Decision | Cluster |
 | --- | --- | --- | --- | --- | --- |
 | 33 | Reactions | six quick reactions above the facilitation menu [live, deep pass] | absent | adopt — ephemeral, so the awareness lane (rule 1), never the document | C7 |
-| 34 | Timer | setup popover: minute stepper, music, Start [live, deep pass] | partial — command and readout in the FacilitatorBar; no setup dialog | adapt — the music tracks are omitted (licensed audio) | C7 |
+| 34 | Timer | setup popover: minute stepper, music, Start [live, deep pass] | partial — command and readout in the FacilitatorBar plus a timer setup dialog (TimerSetupDialog); no music | adapt — the music tracks are omitted (licensed audio) | C7 |
 | 35 | Voting | 380 px panel: votes per person, minutes, toggles, type filter, transient voting area [live, deep pass] | partial — dot voting via Alt-chord commands with records storage; no settings or results panel | adapt | C7 |
 | 36 | Private mode and reveal | private-mode item; per-object flow [live, listed only] | partial — a reveal command; no per-object toggle UI | adapt | C7 |
 | 37 | Presentation mode | overlay; navigation; laser; hidden objects [live; start and exit verified] | partial — frames-as-slides, slide readout, start/next/end; no deck reorder, no hidden-object authoring | adapt | C7 |
