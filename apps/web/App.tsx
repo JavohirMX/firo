@@ -4024,10 +4024,43 @@ const ExcalidrawWrapper = () => {
               return;
             }
             const center = viewportCenter(excalidrawAPI);
-            excalidrawAPI.insertEmbeddableElement({
+            const inserted = excalidrawAPI.insertEmbeddableElement({
               sceneX: center.x,
               sceneY: center.y,
               link: url,
+            });
+            if (!inserted) {
+              return;
+            }
+            // Fit the new frame inside the visible canvas (keeping its aspect
+            // ratio, never enlarging) and centre it on the viewport so it is
+            // visible and selectable on small screens.
+            const appState = excalidrawAPI.getAppState();
+            const zoom = appState.zoom.value || 1;
+            const maxW = (appState.width * 0.85) / zoom;
+            const maxH = (appState.height * 0.6) / zoom;
+            const scale = Math.min(
+              1,
+              maxW / inserted.width,
+              maxH / inserted.height,
+            );
+            const w = inserted.width * scale;
+            const h = inserted.height * scale;
+            excalidrawAPI.updateScene({
+              elements: excalidrawAPI
+                .getSceneElements()
+                .map((el) =>
+                  el.id === inserted.id
+                    ? {
+                        ...el,
+                        x: center.x - w / 2,
+                        y: center.y - h / 2,
+                        width: w,
+                        height: h,
+                      }
+                    : el,
+                ) as any,
+              captureUpdate: CaptureUpdateAction.IMMEDIATELY,
             });
           }}
         />
