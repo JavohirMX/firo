@@ -45,6 +45,17 @@ export class AppMiroSticky {
       return false;
     }
 
+    this.createStickyNoteAt(sceneX, sceneY);
+
+    return true;
+  }
+
+  /**
+   * Creates a sticky centred on a scene point and lands in edit mode, the
+   * double-click behaviour factored out so the canvas lane's **Add sticky
+   * note** row (ADR-0033) creates the same object the same way.
+   */
+  public createStickyNoteAt(sceneX: number, sceneY: number): void {
     const size = stickyNoteSizeForKey(this.app.state.currentItemStickynoteSize);
     const [x, y] = getGridPoint(
       sceneX - size / 2,
@@ -78,8 +89,6 @@ export class AppMiroSticky {
       sceneY: y + size / 2,
       container: note,
     });
-
-    return true;
   }
 
   public maybeHandleRapidCreation(

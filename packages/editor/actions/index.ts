@@ -80,6 +80,12 @@ export {
 export { actionToggleGridMode } from "./actionToggleGridMode";
 export { actionToggleZenMode } from "./actionToggleZenMode";
 export { actionToggleObjectsSnapMode } from "./actionToggleObjectsSnapMode";
+export {
+  actionAddTextAtAnchor,
+  actionAddStickyNoteAtAnchor,
+  actionAddCommentAtAnchor,
+  actionToggleSelectionDimensions,
+} from "./actionCanvasAnchor";
 export { actionToggleArrowBinding } from "./actionToggleArrowBinding";
 export { actionToggleMidpointSnapping } from "./actionToggleMidpointSnapping";
 export { actionToggleShowHints } from "./actionToggleShowHints";

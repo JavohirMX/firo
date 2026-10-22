@@ -23,6 +23,8 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
     "stickyNoteStroke": null,
   },
   "contextMenu": {
+    "anchorX": 30,
+    "anchorY": 40,
     "items": [
       "separator",
       {
@@ -1001,6 +1003,7 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -1210,6 +1213,7 @@ exports[`contextMenu element > selecting 'Add to library' in context menu adds e
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -1440,6 +1444,7 @@ exports[`contextMenu element > selecting 'Bring forward' in context menu brings 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -1789,6 +1794,7 @@ exports[`contextMenu element > selecting 'Bring to front' in context menu brings
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -2138,6 +2144,7 @@ exports[`contextMenu element > selecting 'Copy styles' in context menu copies st
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -2366,6 +2373,7 @@ exports[`contextMenu element > selecting 'Delete' in context menu deletes elemen
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -2625,6 +2633,7 @@ exports[`contextMenu element > selecting 'Duplicate' in context menu duplicates 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -2946,6 +2955,7 @@ exports[`contextMenu element > selecting 'Group selection' in context menu group
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -3331,6 +3341,7 @@ exports[`contextMenu element > selecting 'Paste styles' in context menu pastes s
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -3869,6 +3880,7 @@ exports[`contextMenu element > selecting 'Send backward' in context menu sends e
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -4210,6 +4222,7 @@ exports[`contextMenu element > selecting 'Send to back' in context menu sends el
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -4554,6 +4567,7 @@ exports[`contextMenu element > selecting 'Ungroup selection' in context menu ung
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -4892,6 +4906,8 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
     "stickyNoteStroke": null,
   },
   "contextMenu": {
+    "anchorX": -17,
+    "anchorY": -7,
     "items": [
       "separator",
       {
@@ -5867,6 +5883,7 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -6137,6 +6154,8 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
     "stickyNoteStroke": null,
   },
   "contextMenu": {
+    "anchorX": -17,
+    "anchorY": -7,
     "items": [
       "separator",
       {
@@ -7114,6 +7133,7 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -7433,6 +7453,8 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
     "stickyNoteStroke": null,
   },
   "contextMenu": {
+    "anchorX": -19,
+    "anchorY": -9,
     "items": [
       {
         "keyTest": undefined,
@@ -7442,206 +7464,6 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         "trackEvent": {
           "category": "element",
         },
-      },
-      "separator",
-      {
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.25000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M14 3v4a1 1 0 0 0 1 1h4"
-            />
-            <path
-              d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"
-            />
-            <path
-              d="M20 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3"
-            />
-            <path
-              d="M5 18h1.5a1.5 1.5 0 0 0 0 -3h-1.5v6"
-            />
-            <path
-              d="M11 21v-6l3 6v-6"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "png",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyAsPng",
-        "name": "copyAsPng",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.25000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M14 3v4a1 1 0 0 0 1 1h4"
-            />
-            <path
-              d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"
-            />
-            <path
-              d="M4 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75"
-            />
-            <path
-              d="M10 15l2 6l2 -6"
-            />
-            <path
-              d="M20 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3"
-            />
-          </g>
-        </svg>,
-        "keywords": [
-          "svg",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyAsSvg",
-        "name": "copyAsSvg",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "keywords": [
-          "text",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyText",
-        "name": "copyText",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      "separator",
-      {
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g>
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z"
-            />
-            <path
-              d="M12 20v.01"
-            />
-            <path
-              d="M16 20v.01"
-            />
-            <path
-              d="M8 20v.01"
-            />
-            <path
-              d="M4 20v.01"
-            />
-            <path
-              d="M4 16v.01"
-            />
-            <path
-              d="M4 12v.01"
-            />
-            <path
-              d="M4 8v.01"
-            />
-            <path
-              d="M4 4v.01"
-            />
-            <path
-              d="M8 4v.01"
-            />
-            <path
-              d="M12 4v.01"
-            />
-            <path
-              d="M16 4v.01"
-            />
-            <path
-              d="M20 4v.01"
-            />
-            <path
-              d="M20 8v.01"
-            />
-            <path
-              d="M20 12v.01"
-            />
-            <path
-              d="M20 16v.01"
-            />
-            <path
-              d="M20 20v.01"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "label": "labels.selectAll",
-        "name": "selectAll",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "canvas",
-        },
-        "viewMode": false,
       },
       {
         "icon": <svg
@@ -7698,6 +7520,52 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         </svg>,
         "label": "labels.elementLock.unlockAll",
         "name": "unlockAllElements",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
+      },
+      "separator",
+      {
+        "keywords": [
+          "text",
+          "create",
+          "insert",
+        ],
+        "label": "labels.addTextAtAnchor",
+        "name": "addTextAtAnchor",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
+      },
+      {
+        "keywords": [
+          "sticky",
+          "note",
+          "create",
+          "insert",
+        ],
+        "label": "labels.addStickyNoteAtAnchor",
+        "name": "addStickyNoteAtAnchor",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
+      },
+      {
+        "keywords": [
+          "comment",
+          "pin",
+          "create",
+          "insert",
+        ],
+        "label": "labels.addCommentAtAnchor",
+        "name": "addCommentAtAnchor",
         "perform": [Function],
         "predicate": [Function],
         "trackEvent": {
@@ -7828,6 +7696,279 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         },
         "viewMode": false,
       },
+      {
+        "checked": [Function],
+        "keywords": [
+          "dimensions",
+          "size",
+          "selection",
+          "measure",
+        ],
+        "label": "labels.toggleSelectionDimensions",
+        "name": "toggleSelectionDimensions",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+          "predicate": [Function],
+        },
+        "viewMode": true,
+      },
+      "separator",
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.25000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M15 15m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"
+            />
+            <path
+              d="M22 22l-3 -3"
+            />
+            <path
+              d="M6 18h-1a2 2 0 0 1 -2 -2v-1"
+            />
+            <path
+              d="M3 11v-1"
+            />
+            <path
+              d="M3 6v-1a2 2 0 0 1 2 -2h1"
+            />
+            <path
+              d="M10 3h1"
+            />
+            <path
+              d="M15 3h1a2 2 0 0 1 2 2v1"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "helpDialog.zoomToFit",
+        "name": "zoomToFit",
+        "navigation": true,
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": true,
+      },
+      "separator",
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z"
+            />
+            <path
+              d="M12 20v.01"
+            />
+            <path
+              d="M16 20v.01"
+            />
+            <path
+              d="M8 20v.01"
+            />
+            <path
+              d="M4 20v.01"
+            />
+            <path
+              d="M4 16v.01"
+            />
+            <path
+              d="M4 12v.01"
+            />
+            <path
+              d="M4 8v.01"
+            />
+            <path
+              d="M4 4v.01"
+            />
+            <path
+              d="M8 4v.01"
+            />
+            <path
+              d="M12 4v.01"
+            />
+            <path
+              d="M16 4v.01"
+            />
+            <path
+              d="M20 4v.01"
+            />
+            <path
+              d="M20 8v.01"
+            />
+            <path
+              d="M20 12v.01"
+            />
+            <path
+              d="M20 16v.01"
+            />
+            <path
+              d="M20 20v.01"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "labels.selectAll",
+        "name": "selectAll",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.25000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M14 3v4a1 1 0 0 0 1 1h4"
+            />
+            <path
+              d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"
+            />
+            <path
+              d="M20 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3"
+            />
+            <path
+              d="M5 18h1.5a1.5 1.5 0 0 0 0 -3h-1.5v6"
+            />
+            <path
+              d="M11 21v-6l3 6v-6"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "keywords": [
+          "png",
+          "clipboard",
+          "copy",
+        ],
+        "label": "labels.copyAsPng",
+        "name": "copyAsPng",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.25000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M14 3v4a1 1 0 0 0 1 1h4"
+            />
+            <path
+              d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"
+            />
+            <path
+              d="M4 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75"
+            />
+            <path
+              d="M10 15l2 6l2 -6"
+            />
+            <path
+              d="M20 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3"
+            />
+          </g>
+        </svg>,
+        "keywords": [
+          "svg",
+          "clipboard",
+          "copy",
+        ],
+        "label": "labels.copyAsSvg",
+        "name": "copyAsSvg",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "keywords": [
+          "text",
+          "clipboard",
+          "copy",
+        ],
+        "label": "labels.copyText",
+        "name": "copyText",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
       {
         "checked": [Function],
         "icon": <svg
@@ -8085,6 +8226,7 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -8136,6 +8278,8 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
     "stickyNoteStroke": null,
   },
   "contextMenu": {
+    "anchorX": -17,
+    "anchorY": -7,
     "items": [
       "separator",
       {
@@ -9108,6 +9252,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -9151,6 +9296,8 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
     "stickyNoteStroke": null,
   },
   "contextMenu": {
+    "anchorX": 80,
+    "anchorY": 90,
     "items": [
       "separator",
       {
@@ -10126,6 +10273,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {

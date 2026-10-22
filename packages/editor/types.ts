@@ -334,6 +334,13 @@ export interface AppState {
     items: ContextMenuItems;
     top: number;
     left: number;
+    /**
+     * The menu anchor in scene coordinates, resolved when the menu opens:
+     * the canvas lane's creation rows act here (ADR-0033). Kept on the state
+     * because the menu clears `contextMenu` before the row's action runs.
+     */
+    anchorX: number;
+    anchorY: number;
   } | null;
   showWelcomeScreen: boolean;
   isLoading: boolean;
@@ -1081,6 +1088,13 @@ export interface ExcalidrawProps {
    * (ADR-0038). When unset, the row and its palette entry stay hidden.
    */
   onSaveSelectionAsTemplate?: () => void;
+  /**
+   * Host hook for the canvas lane's **Add comment** row (ADR-0033): the
+   * editor owns the menu item and resolves the menu anchor to scene
+   * coordinates, the host owns the comment composer. When unset, the row
+   * stays hidden.
+   */
+  onAddCommentAtPoint?: (point: { x: number; y: number }) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{
@@ -1328,6 +1342,8 @@ export type AppClassProperties = {
   drawShape: App["drawShape"];
   arrowText: App["arrowText"];
   textTool: App["textTool"];
+  text: App["text"];
+  miroSticky: App["miroSticky"];
   cursor: App["cursor"];
   bucketFill: App["bucketFill"];
   duplicate: App["duplicate"];

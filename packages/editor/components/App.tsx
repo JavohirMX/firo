@@ -291,6 +291,11 @@ import {
   actionSelectAll,
   actionSendBackward,
   actionSendToBack,
+  actionAddTextAtAnchor,
+  actionAddStickyNoteAtAnchor,
+  actionAddCommentAtAnchor,
+  actionToggleSelectionDimensions,
+  actionZoomToFit,
   actionToggleGridMode,
   actionToggleStats,
   actionToggleZenMode,
@@ -12357,7 +12362,13 @@ class App extends React.Component<AppProps, AppState> {
       },
       () => {
         this.setState({
-          contextMenu: { top, left, items: this.getContextMenuItems(type) },
+          contextMenu: {
+            top,
+            left,
+            anchorX: x,
+            anchorY: y,
+            items: this.getContextMenuItems(type),
+          },
         });
       },
     );
@@ -12751,20 +12762,32 @@ class App extends React.Component<AppProps, AppState> {
         ];
       }
 
+      /*
+       * The canvas lane (ADR-0033): creation, display and navigation. The
+       * checkable group is where snapping lives; Firo's extras with no Miro
+       * counterpart keep their home at the tail.
+       */
       return [
         actionPaste,
-        CONTEXT_MENU_SEPARATOR,
-        actionCopyAsPng,
-        actionCopyAsSvg,
-        copyText,
-        CONTEXT_MENU_SEPARATOR,
-        actionSelectAll,
         actionUnlockAllElements,
+        CONTEXT_MENU_SEPARATOR,
+        actionAddTextAtAnchor,
+        actionAddStickyNoteAtAnchor,
+        actionAddCommentAtAnchor,
         CONTEXT_MENU_SEPARATOR,
         actionToggleGridMode,
         actionToggleObjectsSnapMode,
         actionToggleArrowBinding,
         actionToggleMidpointSnapping,
+        actionToggleSelectionDimensions,
+        CONTEXT_MENU_SEPARATOR,
+        actionZoomToFit,
+        CONTEXT_MENU_SEPARATOR,
+        actionSelectAll,
+        actionCopyAsPng,
+        actionCopyAsSvg,
+        copyText,
+        CONTEXT_MENU_SEPARATOR,
         actionToggleZenMode,
         actionToggleViewMode,
         actionToggleStats,

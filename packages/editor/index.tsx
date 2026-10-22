@@ -103,6 +103,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onLinkOpen,
     generateLinkForSelection,
     onSaveSelectionAsTemplate,
+    onAddCommentAtPoint,
     onPointerDown,
     onPointerUp,
     onScrollChange,
@@ -255,6 +256,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           onLinkOpen={onLinkOpen}
           generateLinkForSelection={generateLinkForSelection}
           onSaveSelectionAsTemplate={onSaveSelectionAsTemplate}
+          onAddCommentAtPoint={onAddCommentAtPoint}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
           onScrollChange={onScrollChange}

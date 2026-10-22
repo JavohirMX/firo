@@ -2,6 +2,7 @@ import clsx from "clsx";
 import React from "react";
 
 import { getShortcutFromShortcutName } from "../actions/shortcuts";
+import { CONTEXT_MENU_ANCHOR_ACTIONS } from "../actions/actionCanvasAnchor";
 import { t } from "../i18n";
 
 import { useExcalidrawAppState, useExcalidrawElements } from "./App";
@@ -103,8 +104,17 @@ export const ContextMenu = React.memo(
                   // we need update state before executing the action in case
                   // the action uses the appState it's being passed (that still
                   // contains a defined contextMenu) to return the next state.
+                  const anchor = appState.contextMenu;
                   onClose(() => {
-                    actionManager.executeAction(item, "contextMenu");
+                    actionManager.executeAction(
+                      item,
+                      "contextMenu",
+                      // the canvas lane's anchor rows get the scene anchor as
+                      // form data; every other row's form data stays null
+                      anchor && CONTEXT_MENU_ANCHOR_ACTIONS.has(item.name)
+                        ? { x: anchor.anchorX, y: anchor.anchorY }
+                        : null,
+                    );
                   });
                 }}
               >

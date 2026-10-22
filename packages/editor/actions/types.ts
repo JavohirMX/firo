@@ -140,6 +140,15 @@ export type ActionName =
   | "searchMenu"
   | "copyElementLink"
   /*
+   * The canvas lane's creation and display rows (ADR-0033). They act at the
+   * context menu's anchor rather than at the pointer, so they are their own
+   * actions instead of reusing the tool handlers.
+   */
+  | "addTextAtAnchor"
+  | "addStickyNoteAtAnchor"
+  | "addCommentAtAnchor"
+  | "toggleSelectionDimensions"
+  /*
    * Firo's own actions, registered by the host through
    * `excalidrawAPI.registerAction`.
    *
