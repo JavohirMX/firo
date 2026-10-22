@@ -1489,3 +1489,37 @@ export const SmileIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     <circle cx="12.5" cy="8" r="1" fill="currentColor" />
   </svg>
 );
+
+export const HighlighterIcon: React.FC<IconProps> = ({
+  size = 20,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M12 3.5L16.5 8L9 15.5L4.5 11L12 3.5Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M4.5 11L3.5 15.5L8 14.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M10 17H17"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      opacity="0.45"
+    />
+  </svg>
+);

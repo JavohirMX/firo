@@ -200,6 +200,8 @@ import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { VotingPanel } from "./components/VotingPanel";
 import { BulkStickyDialog } from "./components/BulkStickyDialog";
 import { viewportCenter } from "./board/stickyBulk";
+import { createHighlighterSession } from "./board/highlighter";
+
 import { StickyNoteOptionsDialog } from "./components/StickyNoteOptionsDialog";
 import {
   applyStickyOption,
@@ -307,6 +309,8 @@ import { createBoard } from "./board/library";
 import { boardUrl } from "./board/routes";
 
 import "./index.scss";
+
+import type { PenStyle } from "./board/highlighter";
 
 import type { JSX } from "react";
 
@@ -607,7 +611,7 @@ export const WebCreationRail = ({
   // Highlighter, smart pen and precision eraser are not Firo tools, and a
   // flyout member ships only with its target (ADR-0031) — so the family stops
   // at the four modes the registry actually has.
-  type PenSubTool = "freedraw" | "eraser" | "laser" | "lasso";
+  type PenSubTool = "freedraw" | "highlighter" | "eraser" | "laser" | "lasso";
 
   interface SubToolsState {
     shapes: ShapeSubTool;
@@ -619,9 +623,36 @@ export const WebCreationRail = ({
     pen: "freedraw",
   });
 
+  // The highlighter is a freedraw preset (apps/web/board/highlighter.ts).
+  // While it is on, the live tool is "freedraw" and the next stroke defaults
+  // are overridden; leaving it restores the user's own pen style.
+  const highlighterRef = useRef(createHighlighterSession());
+  const endHighlighter = () => {
+    const restore = highlighterRef.current.leave();
+    if (restore) {
+      setAppState(restore as any);
+    }
+  };
+  const startHighlighter = () => {
+    const style = highlighterRef.current.enter(
+      app.state as unknown as PenStyle,
+    );
+    setAppState(style as any);
+    setSubTools((prev) => ({ ...prev, pen: "highlighter" }));
+    app.setActiveTool({ type: "freedraw" });
+  };
+
   // Keep subTools synchronized with live activeTool
   useEffect(() => {
     const live = appState.activeTool.type;
+    if (highlighterRef.current.active && live !== "freedraw") {
+      // another tool was chosen (keyboard, rail or palette): give the user's
+      // own pen settings back so they don't leak into other tools
+      endHighlighter();
+    }
+    if (highlighterRef.current.active && live === "freedraw") {
+      return;
+    }
     if (
       live === "rectangle" ||
       live === "diamond" ||
@@ -642,6 +673,7 @@ export const WebCreationRail = ({
         prev.pen === live ? prev : { ...prev, pen: live },
       );
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appState.activeTool.type]);
 
   const lastClickRef = useRef<{ tool: RailToolType; time: number } | null>(
@@ -735,12 +767,16 @@ export const WebCreationRail = ({
 
     if (id === "pen") {
       const activeSub = subTools.pen ?? "freedraw";
-      const activeLabel = capitalizeString(t(`toolBar.${activeSub}`));
+      const activeLabel =
+        activeSub === "highlighter"
+          ? "Highlighter"
+          : capitalizeString(t(`toolBar.${activeSub}`));
       // Lasso is the one member without a key yet; `getToolShortcut` renders
       // the absence as the string "undefined", so ask the registry first.
-      const activeShortcut = TOOLS[activeSub].letterKey
-        ? getToolShortcut(activeSub)
-        : "";
+      const activeShortcut =
+        activeSub !== "highlighter" && TOOLS[activeSub].letterKey
+          ? getToolShortcut(activeSub)
+          : "";
       return {
         id: "pen",
         kind: "family",
@@ -748,7 +784,14 @@ export const WebCreationRail = ({
           ? `${activeLabel} (${activeShortcut})`
           : activeLabel,
         icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.pen,
-        activeOn: ["pen", "freedraw", "eraser", "laser", "lasso"],
+        activeOn: [
+          "pen",
+          "freedraw",
+          "eraser",
+          "laser",
+          "lasso",
+          "highlighter",
+        ],
         activeSubTool: activeSub,
         flyoutItems: [
           {
@@ -756,6 +799,11 @@ export const WebCreationRail = ({
             label: capitalizeString(t("toolBar.freedraw")),
             icon: RAIL_TOOL_ICONS.freedraw,
             shortcut: getToolShortcut("freedraw"),
+          },
+          {
+            id: "highlighter",
+            label: "Highlighter",
+            icon: RAIL_TOOL_ICONS.highlighter,
           },
           {
             id: "eraser",
@@ -976,6 +1024,18 @@ export const WebCreationRail = ({
           return;
         }
 
+        if (tool === "highlighter") {
+          trackEvent("toolbar", "highlighter", "ui");
+          startHighlighter();
+          return;
+        }
+
+        if (tool === "freedraw" && highlighterRef.current.active) {
+          // the ordinary pen was chosen explicitly: back to the user's style
+          endHighlighter();
+          setSubTools((prev) => ({ ...prev, pen: "freedraw" }));
+        }
+
         if (tool === "templates") {
           onOpenTemplates?.();
           return;
@@ -1043,11 +1103,18 @@ export const WebCreationRail = ({
         }
       }}
       onPointerDownTool={(tool, event) => {
+        if (
+          tool === "highlighter" ||
+          (tool === "pen" && subTools.pen === "highlighter")
+        ) {
+          // the highlighter starts on click (a style preset), not on drag
+          return;
+        }
         let targetTool = tool;
         if (tool === "shapes") {
           targetTool = subTools.shapes ?? "rectangle";
         } else if (tool === "pen") {
-          targetTool = subTools.pen ?? "freedraw";
+          targetTool = (subTools.pen ?? "freedraw") as typeof tool;
         }
         isShiftPressedRef.current = event.shiftKey;
         app.toolDrag.handleButtonPointerDown(

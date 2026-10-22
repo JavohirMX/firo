@@ -25,6 +25,7 @@ import {
   DocIcon,
   SparklesIcon,
   SmileIcon,
+  HighlighterIcon,
 } from "../icons";
 
 import { ToolsCatalog } from "./ToolsCatalog";
@@ -53,7 +54,8 @@ export type RailToolType =
   | "more"
   | "docblock"
   | "ai"
-  | "media";
+  | "media"
+  | "highlighter";
 
 /**
  * What a rail slot *is*. A tool is a command; a family is a set of tools; an
@@ -162,6 +164,7 @@ export const RAIL_TOOL_ICONS: Record<RailToolType, React.ReactNode> = {
   docblock: <DocIcon />,
   ai: <SparklesIcon />,
   media: <SmileIcon />,
+  highlighter: <HighlighterIcon />,
 };
 
 /** Default tool list and creation items including docblock (§10.5) */

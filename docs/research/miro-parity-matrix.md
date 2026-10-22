@@ -80,12 +80,12 @@ Code checked: `packages/element/src/` (`types`, `embeddable`),
 
 | # | Surface | Miro (observed) | Firo at `a425018` | Decision | Cluster |
 | --- | --- | --- | --- | --- | --- |
-| 19 | Sticky colour palette (tool flyout) | 16 swatches, 50 px cells [live, deep pass] | partial — sticky colours exist in the colour UI, not on the tool | adapt | C1 |
+| 19 | Sticky colour palette (tool flyout) | 16 swatches, 50 px cells [live, deep pass] | full — the Sticky slot's options flyout carries the 16 colour swatches (and the S / M / L size group, row 20) | adapt | C1 |
 | 20 | Sticky size presets and bulk mode | S / M / L; Stack; Templates; Bulk mode [live, deep pass] | partial — one 250 px default, resizable; no presets, no bulk create | adapt | C5 |
 | 21 | Text tool | canvas text with an in-place editor [live] | implemented | adopt *(met)* | — |
 | 22 | Shapes and connectors — basics | shape strip; lines and arrows with binding [live] | implemented — rectangle, diamond, ellipse; arrow and line with binding and snapping | adopt *(met)* | — |
 | 23 | Shape libraries (diagramming sets) | diagramming panel; flow/UML sets [live; contents per bundle] | absent | adapt — our own drawings; no Miro assets | C1 |
-| 24 | Pen family depth | pen, highlighter, smart pen, eraser, precision eraser, presets [live, deep pass] | partial — freedraw, eraser, laser | adapt | C1 |
+| 24 | Pen family depth | pen, highlighter, smart pen, eraser, precision eraser, presets [live, deep pass] | partial — freedraw, eraser, laser, lasso, and a highlighter that is a freedraw preset (restores the user's own pen style on leaving); no smart pen or precision eraser | adapt | C1 |
 | 25 | Frames as objects | create, name, resize; frames drive presentation [live] | implemented — creatable; they drive the deck | adopt *(met)* | — |
 | 26 | Frames panel | frame list, order, per-frame actions [live, deep pass of the entry point] | absent | adopt | C8 |
 | 27 | Cards | card element with fields; drag into a kanban [live; object depth unobserved] | adapted by model — records and their projections are Firo's card vocabulary ([`ADR-0003`](../adr/0003-records-with-switchable-projections.md); [TRD-06](../trd/06-records-and-projections.md)); no card element, by design | adapt | C5 |
@@ -119,10 +119,10 @@ Code checked: `packages/editor/data/` (`image`, `blob`), `packages/element/src/e
 | --- | --- | --- | --- | --- | --- |
 | 39 | Images — upload, URL, library | image placing and replacement [live] | implemented | adopt *(met)* | — |
 | 40 | Media library panel | full-height 368 × 746 library [live, deep pass] | absent | adopt — the panel; content classes decided in rows 41–43 | C6 |
-| 41 | Emoji | picker with search and categories [live] | partial — a font fallback only; no picker | adopt — picking is unicode; nothing is licensed | C6 |
+| 41 | Emoji | picker with search and categories [live] | full — the emoji flyout (search, categories, vendored Unicode 16.0 data) opened from the rail's media slot and the palette; picks insert text elements | adopt — picking is unicode; nothing is licensed | C6 |
 | 42 | Stickers | art sets [live] | absent | omit — Miro's art is licensed and the clean-room guardrail forbids it; shipping our own set is a content decision, not parity work | — |
 | 43 | GIFs | picker [live] | absent | omit — needs an external search service and its content licence; not the local-first shape | — |
-| 44 | Embeds | embed panel; inline playback of supported links [live; bundle] | partial — the embeddable element type and the paste/URL path exist; no panel, no in-app affordance | adapt | C6 |
+| 44 | Embeds | embed panel; inline playback of supported links [live; bundle] | partial — an Add embed dialog (palette) validates against the allow-list and inserts; frames are sandboxed per provider; provider rendering verified for YouTube, Gist and X/Twitter, Reddit not verified | adapt | C6 |
 | 45 | Calls and screen sharing | Talk and huddles [out of scope] | absent | omit — vision non-goal (real-time video, audio and screen sharing) | — |
 | 46 | Talktracks | record and watch a walkthrough; the people-bar entry [live, listed; recording out of bounds] | absent | **defer** — explicit call: needs a recording and durable playback lane the document model does not have; revisit after the media lane (C6), only if demand appears | — |
 
