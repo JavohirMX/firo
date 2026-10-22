@@ -12,7 +12,9 @@ const { h } = window;
 // focus, so the canvas is not a keyboard trap (PRD NFR: focus never trapped).
 describe("canvas Tab key", () => {
   const pressTab = (shiftKey = false) => {
-    const container = h.app.excalidrawContainerRef.current!;
+    const container = document.querySelector<HTMLElement>(
+      ".excalidraw-container",
+    )!;
     container.focus();
     // fireEvent returns false when the event was default-prevented
     return fireEvent.keyDown(container, { key: KEYS.TAB, shiftKey });
@@ -46,9 +48,12 @@ describe("canvas Tab key", () => {
     API.setElements([rectangle]);
     API.setSelectedElements([rectangle]);
     expect(pressTab()).toBe(false);
-    fireEvent.keyDown(h.app.excalidrawContainerRef.current!, {
-      key: KEYS.ESCAPE,
-    });
+    fireEvent.keyDown(
+      document.querySelector<HTMLElement>(".excalidraw-container")!,
+      {
+        key: KEYS.ESCAPE,
+      },
+    );
     API.setSelectedElements([]);
     expect(pressTab()).toBe(true);
   });
@@ -57,7 +62,9 @@ describe("canvas Tab key", () => {
 describe("canvas Tab key in view mode", () => {
   it("does not trap Tab in view mode", async () => {
     await render(<Excalidraw handleKeyboardGlobally={true} viewModeEnabled />);
-    const container = h.app.excalidrawContainerRef.current!;
+    const container = document.querySelector<HTMLElement>(
+      ".excalidraw-container",
+    )!;
     container.focus();
     expect(fireEvent.keyDown(container, { key: KEYS.TAB })).toBe(true);
     expect(
