@@ -119,7 +119,12 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   copyAsPng: [getShortcutKey("Shift+Alt+C")],
   group: [getShortcutKey("CtrlOrCmd+G")],
   ungroup: [getShortcutKey("CtrlOrCmd+Shift+G")],
-  gridMode: [getShortcutKey("CtrlOrCmd+'")],
+  /*
+   * Plain \`G\`, matching \`actionToggleGridMode\`'s keyTest (Miro parity:
+   * Firo's old \`Ctrl+'\` is not a Miro chord). The map and the keyTest are
+   * two views of one entry; this is the printable view.
+   */
+  gridMode: [getShortcutKey("G")],
   zenMode: [getShortcutKey("Alt+Z")],
   objectsSnapMode: [getShortcutKey("Alt+S")],
   stats: [getShortcutKey("Alt+/")],
