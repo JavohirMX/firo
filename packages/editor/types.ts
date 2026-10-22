@@ -1089,12 +1089,16 @@ export interface ExcalidrawProps {
    */
   onSaveSelectionAsTemplate?: () => void;
   /**
-   * Host hook for the canvas lane's **Add comment** row (ADR-0033): the
-   * editor owns the menu item and resolves the menu anchor to scene
-   * coordinates, the host owns the comment composer. When unset, the row
-   * stays hidden.
+   * Host hook for the two lanes' **Add comment** rows (ADR-0033): the editor
+   * owns the menu items and resolves the target — the menu anchor's scene
+   * coordinates for the canvas lane, the single selected element for the
+   * object lane — and the host owns the comment composer. When unset, the
+   * rows stay hidden.
    */
-  onAddCommentAtPoint?: (point: { x: number; y: number }) => void;
+  onAddComment?: (target: {
+    elementId?: string;
+    point?: { x: number; y: number };
+  }) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{

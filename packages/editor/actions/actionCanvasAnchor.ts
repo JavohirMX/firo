@@ -1,5 +1,7 @@
 import { CaptureUpdateAction } from "@firo/element";
 
+import { getSelectedElements } from "../scene";
+
 import { register } from "./register";
 
 import type { AppState } from "../types";
@@ -86,14 +88,34 @@ export const actionAddCommentAtAnchor = register({
   viewMode: false,
   trackEvent: { category: "canvas" },
   predicate: (elements, appState, appProps) =>
-    typeof appProps.onAddCommentAtPoint === "function",
+    typeof appProps.onAddComment === "function",
   perform: (elements, appState, formData, app) => {
     const anchor = resolveAnchor(formData, appState);
     if (!anchor) {
       return false;
     }
     // the host owns the composer; the editor only hands over the anchor
-    app.props.onAddCommentAtPoint?.(anchor);
+    app.props.onAddComment?.({ point: anchor });
+    return false;
+  },
+});
+
+export const actionAddCommentOnElement = register({
+  name: "addCommentOnElement",
+  label: "labels.addCommentAtAnchor",
+  keywords: ["comment", "pin", "create", "insert"],
+  viewMode: false,
+  trackEvent: { category: "element" },
+  // a thread anchors to one element — the quick lane's rule (ADR-0033)
+  predicate: (elements, appState, appProps) =>
+    typeof appProps.onAddComment === "function" &&
+    getSelectedElements(elements, appState).length === 1,
+  perform: (elements, appState, _formData, app) => {
+    const selected = getSelectedElements(elements, appState);
+    if (selected.length !== 1) {
+      return false;
+    }
+    app.props.onAddComment?.({ elementId: selected[0].id });
     return false;
   },
 });

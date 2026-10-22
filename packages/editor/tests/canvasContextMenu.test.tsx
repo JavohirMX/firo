@@ -1,6 +1,9 @@
 import React from "react";
+import { vi } from "vitest";
 
 import { reseed } from "@firo/common";
+
+import { actionAddCommentOnElement } from "../actions/actionCanvasAnchor";
 
 import {
   actionAddCommentAtAnchor,
@@ -8,7 +11,8 @@ import {
 } from "../actions/actionCanvasAnchor";
 import { Excalidraw } from "../index";
 
-import { UI } from "./helpers/ui";
+import { API } from "./helpers/api";
+import { UI, Pointer } from "./helpers/ui";
 import {
   render,
   fireEvent,
@@ -155,7 +159,7 @@ describe("canvas context menu lane (ADR-0033)", () => {
     const spy = vi.fn();
     expect(
       actionAddCommentAtAnchor.predicate?.([], h.state, {
-        onAddCommentAtPoint: spy,
+        onAddComment: spy,
       } as any),
     ).toBe(true);
   });
@@ -165,12 +169,11 @@ describe("canvas context menu lane (ADR-0033)", () => {
     expect(h.state.contextMenu).not.toBeNull();
     const spy = vi.fn();
     actionAddCommentAtAnchor.perform(h.elements as any, h.state, undefined, {
-      props: { onAddCommentAtPoint: spy },
+      props: { onAddComment: spy },
     } as any);
     // default view: zoom 1, no scroll -> scene is client minus the offsets
     expect(spy).toHaveBeenCalledWith({
-      x: 100 - h.state.offsetLeft,
-      y: 100 - h.state.offsetTop,
+      point: { x: 100 - h.state.offsetLeft, y: 100 - h.state.offsetTop },
     });
     expect(menu).not.toBeNull();
   });
@@ -182,5 +185,111 @@ describe("canvas context menu lane (ADR-0033)", () => {
     clickRow(menu, "toggleSelectionDimensions");
     expect(h.state.showSelectionDimensions).toBe(true);
     expect(actionToggleSelectionDimensions.checked?.(h.state)).toBe(true);
+  });
+});
+
+describe("object context menu lane (ADR-0033)", () => {
+  const mouse = new Pointer("mouse");
+  const hostComment = vi.fn();
+
+  beforeAll(() => {
+    mockBoundingClientRect();
+  });
+
+  afterAll(() => {
+    restoreOriginalGetBoundingClientRect();
+  });
+
+  beforeEach(async () => {
+    hostComment.mockClear();
+    await render(
+      <Excalidraw handleKeyboardGlobally={true} onAddComment={hostComment} />,
+    );
+  });
+
+  afterEach(() => {
+    mouse.reset();
+  });
+
+  const drawSelectedRectangle = () => {
+    UI.clickTool("rectangle");
+    mouse.down(60, 60);
+    mouse.up(160, 160);
+  };
+
+  const openElementMenu = () => {
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 100,
+      clientY: 100,
+    });
+    const menu = UI.queryContextMenu();
+    expect(menu).not.toBeNull();
+    return menu!;
+  };
+
+  it("composes the object lane per ADR-0033", () => {
+    drawSelectedRectangle();
+    const menu = openElementMenu();
+    const rows = Array.from(menu.querySelectorAll("li")).map((li) =>
+      li.getAttribute("data-testid"),
+    );
+    const order: ActionName[] = [
+      "copy",
+      "cut",
+      "paste",
+      "copyElementLink",
+      "duplicateSelection",
+      "deleteSelectedElements",
+      "addCommentOnElement",
+      "copyStyles",
+      "pasteStyles",
+      "hyperlink",
+      "toggleElementLock",
+      "wrapSelectionInFrame",
+    ];
+    let at = 0;
+    for (const name of order) {
+      let index = -1;
+      for (let i = at; i < rows.length; i++) {
+        if (rows[i] === name) {
+          index = i;
+          break;
+        }
+      }
+      // -1 means the row never rendered at or after the previous row
+      expect(index).toBeGreaterThanOrEqual(at);
+      at = index;
+    }
+  });
+
+  it("offers Add comment only for a single-element selection", () => {
+    drawSelectedRectangle();
+    const menu = openElementMenu();
+    expect(
+      menu.querySelector('li[data-testid="addCommentOnElement"]'),
+    ).not.toBeNull();
+    // a two-element selection hides the row: a thread anchors to one element
+    const first = API.createElement({ type: "rectangle" });
+    const second = API.createElement({ type: "rectangle", x: 300, y: 300 });
+    expect(
+      actionAddCommentOnElement.predicate?.(
+        [first, second],
+        {
+          ...h.state,
+          selectedElementIds: { [first.id]: true, [second.id]: true },
+        } as any,
+        { onAddComment: () => {} } as any,
+      ),
+    ).toBe(false);
+  });
+
+  it("hands the selected element to the host comment hook", () => {
+    drawSelectedRectangle();
+    const menu = openElementMenu();
+    const selected = h.elements[0];
+    const row = menu.querySelector('li[data-testid="addCommentOnElement"]');
+    fireEvent.click(row!);
+    expect(hostComment).toHaveBeenCalledWith({ elementId: selected.id });
   });
 });

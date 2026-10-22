@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { CheckIcon, CommentIcon, TrashIcon } from "@firo/ui";
 
@@ -45,6 +51,34 @@ const clampPopoverLeft = (left: number) =>
       (typeof window === "undefined" ? 1024 : window.innerWidth) - 326,
     ),
   );
+
+const POPOVER_MARGIN = 8;
+const POPOVER_ANCHOR_GAP = 12;
+
+/**
+ * The chrome a floating popover must not slide under: the inspector dock on
+ * the right and the navigation toolbar at the bottom. Read live, because
+ * both come and go (the inspector opens with a selection).
+ */
+const chromeLimits = () => {
+  let right = window.innerWidth - POPOVER_MARGIN;
+  let bottom = window.innerHeight - POPOVER_MARGIN;
+  const inspector = document.querySelector<HTMLElement>(".firo-inspector");
+  if (inspector) {
+    const rect = inspector.getBoundingClientRect();
+    if (rect.width > 0) {
+      right = Math.min(right, rect.left - POPOVER_MARGIN);
+    }
+  }
+  const navToolbar = document.querySelector<HTMLElement>(".firo-nav-toolbar");
+  if (navToolbar) {
+    const rect = navToolbar.getBoundingClientRect();
+    if (rect.height > 0) {
+      bottom = Math.min(bottom, rect.top - POPOVER_MARGIN);
+    }
+  }
+  return { right, bottom };
+};
 
 const pinPosition = (
   thread: CommentThread,
@@ -209,6 +243,47 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
       }
     : null;
 
+  const composerRef = useRef<HTMLDivElement | null>(null);
+  const [composerPlacement, setComposerPlacement] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  /*
+   * Measure the composer after it renders, then keep it clear of the chrome:
+   * clamped left of the inspector and above the navigation toolbar, flipped
+   * over its anchor when it would not fit below. The unmeasured first frame
+   * uses the anchor position, so there is no flash of a worse placement.
+   */
+  useLayoutEffect(() => {
+    const node = composerRef.current;
+    if (!node || !composerPosition) {
+      setComposerPlacement(null);
+      return;
+    }
+    const rect = node.getBoundingClientRect();
+    const { right, bottom } = chromeLimits();
+    let left = rect.left;
+    let top = rect.top;
+    if (left + rect.width > right) {
+      left = right - rect.width;
+    }
+    if (left < POPOVER_MARGIN) {
+      left = POPOVER_MARGIN;
+    }
+    if (top + rect.height > bottom) {
+      const flipped = composerPosition.top - POPOVER_ANCHOR_GAP - rect.height;
+      top = flipped >= POPOVER_MARGIN ? flipped : bottom - rect.height;
+    }
+    if (top < POPOVER_MARGIN) {
+      top = POPOVER_MARGIN;
+    }
+    setComposerPlacement({ left, top });
+    // the placement depends on the measured size, which the draft's line
+    // count can change between opens — remeasure per target, not per keystroke
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composerTarget]);
+
   const submitComposer = () => {
     if (!composerTarget) {
       return;
@@ -277,10 +352,17 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
 
       {composerTarget && composerPosition && (
         <div
+          ref={composerRef}
           className="firo-comment-popover"
           style={{
-            left: clampPopoverLeft(composerPosition.left),
-            top: composerPosition.top,
+            left: composerPlacement
+              ? composerPlacement.left
+              : clampPopoverLeft(composerPosition.left),
+            top: composerPlacement
+              ? composerPlacement.top
+              : composerPosition.top,
+            // the CSS anchor gap is folded into the measured placement
+            transform: composerPlacement ? "none" : undefined,
           }}
           role="dialog"
           aria-label="New comment"

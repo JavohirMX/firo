@@ -3629,10 +3629,10 @@ const ExcalidrawWrapper = () => {
         onSaveSelectionAsTemplate={
           isReadOnlyShare ? undefined : () => setSaveTemplateOpen(true)
         }
-        onAddCommentAtPoint={
+        onAddComment={
           isReadOnlyShare && shareRole !== "commenter"
             ? undefined
-            : (point) => setCommentTarget({ point })
+            : (target) => setCommentTarget(target)
         }
         renderCreationRailUI={(_isMobile, appState) => (
           <WebCreationRail

@@ -294,6 +294,7 @@ import {
   actionAddTextAtAnchor,
   actionAddStickyNoteAtAnchor,
   actionAddCommentAtAnchor,
+  actionAddCommentOnElement,
   actionToggleSelectionDimensions,
   actionZoomToFit,
   actionToggleGridMode,
@@ -12814,47 +12815,50 @@ class App extends React.Component<AppProps, AppState> {
           ]
         : [];
 
+    /*
+     * The object lane (ADR-0033): commands on the selection. Clipboard and
+     * Duplicate/Delete lead, a single-element Add comment follows, then
+     * styles, Link to, Lock and Create frame. Firo's commands with no Miro
+     * counterpart keep their home at the tail. The Arrange and Info submenus
+     * wait for the menu's structure kinds — until then the z-order, group
+     * and align commands stay flat in the tail.
+     */
     return [
-      CONTEXT_MENU_SEPARATOR,
-      actionCut,
       actionCopy,
+      actionCut,
       actionPaste,
       CONTEXT_MENU_SEPARATOR,
-      actionSelectAllElementsInFrame,
-      actionRemoveAllElementsFromFrame,
-      actionWrapSelectionInFrame,
-      CONTEXT_MENU_SEPARATOR,
-      actionSaveSelectionAsTemplate,
-      CONTEXT_MENU_SEPARATOR,
-      actionToggleCropEditor,
+      actionCopyElementLink,
       CONTEXT_MENU_SEPARATOR,
       ...options,
+      CONTEXT_MENU_SEPARATOR,
+      actionDuplicateSelection,
+      actionDeleteSelected,
+      CONTEXT_MENU_SEPARATOR,
+      actionAddCommentOnElement,
       CONTEXT_MENU_SEPARATOR,
       actionCopyStyles,
       actionPasteStyles,
       CONTEXT_MENU_SEPARATOR,
-      actionGroup,
+      actionLink,
+      actionToggleElementLock,
+      actionWrapSelectionInFrame,
+      CONTEXT_MENU_SEPARATOR,
+      actionSaveSelectionAsTemplate,
+      actionSelectAllElementsInFrame,
+      actionRemoveAllElementsFromFrame,
+      actionToggleCropEditor,
       actionTextAutoResize,
       actionUnbindText,
       actionBindText,
       actionWrapTextInContainer,
+      actionGroup,
       actionUngroup,
-      CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,
-      CONTEXT_MENU_SEPARATOR,
       actionFlipHorizontal,
       actionFlipVertical,
-      CONTEXT_MENU_SEPARATOR,
       actionToggleLinearEditor,
-      CONTEXT_MENU_SEPARATOR,
-      actionLink,
-      actionCopyElementLink,
-      CONTEXT_MENU_SEPARATOR,
-      actionDuplicateSelection,
-      actionToggleElementLock,
-      CONTEXT_MENU_SEPARATOR,
-      actionDeleteSelected,
     ];
   };
 

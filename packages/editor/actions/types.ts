@@ -147,6 +147,7 @@ export type ActionName =
   | "addTextAtAnchor"
   | "addStickyNoteAtAnchor"
   | "addCommentAtAnchor"
+  | "addCommentOnElement"
   | "toggleSelectionDimensions"
   /*
    * Firo's own actions, registered by the host through

@@ -84,6 +84,7 @@ export {
   actionAddTextAtAnchor,
   actionAddStickyNoteAtAnchor,
   actionAddCommentAtAnchor,
+  actionAddCommentOnElement,
   actionToggleSelectionDimensions,
 } from "./actionCanvasAnchor";
 export { actionToggleArrowBinding } from "./actionToggleArrowBinding";
