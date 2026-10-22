@@ -200,6 +200,7 @@ import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { VotingPanel } from "./components/VotingPanel";
 import { BulkStickyDialog } from "./components/BulkStickyDialog";
 import { viewportCenter } from "./board/stickyBulk";
+import { createStickyStack } from "./board/stickyStack";
 import { createHighlighterSession } from "./board/highlighter";
 
 import { StickyNoteOptionsDialog } from "./components/StickyNoteOptionsDialog";
@@ -587,6 +588,7 @@ export const WebCreationRail = ({
   onToggleEmoji,
   highlighterSession,
   onOpenBulkSticky,
+  onCreateStickyStack,
   readOnlyRole = null,
 }: {
   appState: UIAppState;
@@ -602,6 +604,7 @@ export const WebCreationRail = ({
   /** Shared with the palette commands (the phone path: no rail there). */
   highlighterSession?: ReturnType<typeof createHighlighterSession>;
   onOpenBulkSticky?: () => void;
+  onCreateStickyStack?: () => void;
 }) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
@@ -896,6 +899,11 @@ export const WebCreationRail = ({
                 label: "Bulk create…",
                 kind: "action" as const,
               },
+              {
+                id: "stack-create",
+                label: "Sticky stack",
+                kind: "action" as const,
+              },
             ],
           },
         ],
@@ -1148,6 +1156,7 @@ export const WebCreationRail = ({
           setAppState,
           app,
           onOpenBulkSticky,
+          onCreateStickyStack,
         });
       }}
       onUndo={() => {
@@ -3071,6 +3080,11 @@ const ExcalidrawWrapper = () => {
 
   const [shareRole, setShareRole] = useState<string | null>(null);
   const isReadOnlyShare = shareRole === "viewer" || shareRole === "commenter";
+  const createStack = useCallback(() => {
+    if (excalidrawAPI && !isReadOnlyShare) {
+      createStickyStack(excalidrawAPI);
+    }
+  }, [excalidrawAPI, isReadOnlyShare]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -3860,6 +3874,7 @@ const ExcalidrawWrapper = () => {
             onToggleEmoji={() => setEmojiOpen((open) => !open)}
             highlighterSession={highlighterSession}
             onOpenBulkSticky={() => setBulkStickyOpen(true)}
+            onCreateStickyStack={createStack}
           />
         )}
         renderNavigationUI={(_isMobile, appState) => (
@@ -4390,6 +4405,13 @@ const ExcalidrawWrapper = () => {
               perform: startHighlighterFromPalette,
             },
             {
+              // Miro's sticky Stack, also the phone path (no rail there)
+              label: "Sticky stack",
+              category: DEFAULT_CATEGORIES.tools,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: createStack,
+            },
+            {
               label: "Pen (your style)",
               category: DEFAULT_CATEGORIES.tools,
               predicate: () => !!excalidrawAPI && !isReadOnlyShare,
@@ -4513,6 +4535,7 @@ const ExcalidrawWrapper = () => {
           isOpen={stickyOptionsOpen}
           onClose={() => setStickyOptionsOpen(false)}
           onOpenBulkSticky={() => setBulkStickyOpen(true)}
+          onCreateStickyStack={createStack}
         />
       </Excalidraw>
     </div>

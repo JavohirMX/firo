@@ -20,6 +20,7 @@ export interface StickyNoteOptionsDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenBulkSticky: () => void;
+  onCreateStickyStack: () => void;
 }
 
 /**
@@ -34,7 +35,7 @@ export interface StickyNoteOptionsDialogProps {
  */
 export const StickyNoteOptionsDialog: React.FC<
   StickyNoteOptionsDialogProps
-> = ({ isOpen, onClose, onOpenBulkSticky }) => {
+> = ({ isOpen, onClose, onOpenBulkSticky, onCreateStickyStack }) => {
   const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen);
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
@@ -87,6 +88,10 @@ export const StickyNoteOptionsDialog: React.FC<
       onOpenBulkSticky: () => {
         onCloseRef.current();
         onOpenBulkSticky();
+      },
+      onCreateStickyStack: () => {
+        onCloseRef.current();
+        onCreateStickyStack();
       },
     });
     if (option.color) {
@@ -159,6 +164,13 @@ export const StickyNoteOptionsDialog: React.FC<
           onClick={() => pick({ id: "bulk-create" })}
         >
           Bulk create…
+        </button>
+        <button
+          type="button"
+          className="firo-sticky-options__bulk"
+          onClick={() => pick({ id: "stack-create" })}
+        >
+          Sticky stack
         </button>
       </div>
     </div>

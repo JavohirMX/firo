@@ -32,6 +32,7 @@ export interface StickyOptionDeps {
   setAppState: ReturnType<typeof useExcalidrawSetAppState>;
   app: ReturnType<typeof useApp>;
   onOpenBulkSticky?: () => void;
+  onCreateStickyStack?: () => void;
 }
 
 /**
@@ -41,7 +42,13 @@ export interface StickyOptionDeps {
  */
 export const applyStickyOption = (
   option: StickyOptionChoice,
-  { actionManager, setAppState, app, onOpenBulkSticky }: StickyOptionDeps,
+  {
+    actionManager,
+    setAppState,
+    app,
+    onOpenBulkSticky,
+    onCreateStickyStack,
+  }: StickyOptionDeps,
 ): boolean => {
   if (option.color) {
     // The picker writes the sticky domain's default, which is exactly what a
@@ -52,6 +59,10 @@ export const applyStickyOption = (
       "ui",
       { color: option.color },
     );
+    return true;
+  }
+  if (option.id === "stack-create") {
+    onCreateStickyStack?.();
     return true;
   }
   if (option.id === "bulk-create") {

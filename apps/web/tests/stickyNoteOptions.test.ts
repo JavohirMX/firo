@@ -54,6 +54,18 @@ describe("applyStickyOption", () => {
     expect(onOpenBulkSticky).toHaveBeenCalledTimes(1);
   });
 
+  it("creates a sticky stack for the stack choice", () => {
+    const { deps } = makeDeps();
+    const onCreateStickyStack = vi.fn();
+    expect(
+      applyStickyOption({ id: "stack-create" }, {
+        ...deps,
+        onCreateStickyStack,
+      } as StickyOptionDeps),
+    ).toBe(true);
+    expect(onCreateStickyStack).toHaveBeenCalledTimes(1);
+  });
+
   it("sets the size default without a resize action when nothing is selected", () => {
     const { deps, executeAction, setAppState } = makeDeps();
     expect(applyStickyOption({ id: "size-l" }, deps)).toBe(true);

@@ -81,7 +81,7 @@ Code checked: `packages/element/src/` (`types`, `embeddable`),
 | # | Surface | Miro (observed) | Firo at `a425018` | Decision | Cluster |
 | --- | --- | --- | --- | --- | --- |
 | 19 | Sticky colour palette (tool flyout) | 16 swatches, 50 px cells [live, deep pass] | full — the Sticky slot's options flyout carries the 16 colour swatches (and the S / M / L size group, row 20) | adapt | C1 |
-| 20 | Sticky size presets and bulk mode | S / M / L; Stack; Templates; Bulk mode [live, deep pass] | partial — S / M / L presets (M is the 250 px default) and bulk create through the sticky options dialog (also the phone route); no Stack, no sticky-flyout templates | adapt | C5 |
+| 20 | Sticky size presets and bulk mode | S / M / L; Stack; Templates; Bulk mode [live, deep pass] | partial — S / M / L presets (M is the 250 px default) and bulk create through the sticky options dialog (also the phone route); Stack added (6 blank stickies at view centre), no sticky-flyout templates | adapt | C5 |
 | 21 | Text tool | canvas text with an in-place editor [live] | implemented | adopt *(met)* | — |
 | 22 | Shapes and connectors — basics | shape strip; lines and arrows with binding [live] | implemented — rectangle, diamond, ellipse; arrow and line with binding and snapping | adopt *(met)* | — |
 | 23 | Shape libraries (diagramming sets) | diagramming panel; flow/UML sets [live; contents per bundle] | absent | adapt — our own drawings; no Miro assets | C1 |
