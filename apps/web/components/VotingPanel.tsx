@@ -38,11 +38,12 @@ import {
 
 import { visibleElements } from "@firo/facilitation";
 
+import { getCommonBounds } from "@firo/element/bounds";
+
+import { zoomToFitBounds } from "@firo/editor/viewport";
+
 import type { VotingSettings } from "@firo/facilitation";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
-
-import { getCommonBounds } from "@firo/element/bounds";
-import { zoomToFitBounds } from "@firo/editor/viewport";
 
 import { boardDoc } from "../board/board";
 import { getReveal, subscribeToFacilitation } from "../board/facilitator";
