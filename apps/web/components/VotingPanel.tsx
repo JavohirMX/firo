@@ -267,9 +267,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
        * an element, does not scope the round, and never enters undo or export.
        */}
       <div className="voting-area-outline" aria-hidden="true" />
-      <aside
+      {/*
+       * A div, not an aside: `.excalidraw--mobile aside { display: none }`
+       * hides every aside inside the editor on phone, panel included.
+       * `role="complementary"` keeps the landmark. */}
+      <div
         className="voting-panel"
         data-testid="voting-panel"
+        role="complementary"
         aria-label="Voting"
       >
         <div className="voting-panel__header">
@@ -515,7 +520,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             )}
           </div>
         )}
-      </aside>
+      </div>
     </>
   );
 };
