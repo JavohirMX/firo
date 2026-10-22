@@ -80,6 +80,69 @@ const chromeLimits = () => {
   return { right, bottom };
 };
 
+/**
+ * A floating comment popover that keeps clear of the chrome: clamped left of
+ * the inspector dock and above the navigation toolbar, flipped over its
+ * anchor when it would not fit below. The unmeasured first frame renders at
+ * the anchor (with the CSS gap), the measured frame applies the placement.
+ */
+const AvoidingPopover: React.FC<
+  React.HTMLAttributes<HTMLDivElement> & {
+    anchorLeft: number;
+    anchorTop: number;
+  }
+> = ({ anchorLeft, anchorTop, style, children, ...rest }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [placement, setPlacement] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) {
+      setPlacement(null);
+      return;
+    }
+    const rect = node.getBoundingClientRect();
+    const { right, bottom } = chromeLimits();
+    let left = rect.left;
+    let top = rect.top;
+    if (left + rect.width > right) {
+      left = right - rect.width;
+    }
+    if (left < POPOVER_MARGIN) {
+      left = POPOVER_MARGIN;
+    }
+    if (top + rect.height > bottom) {
+      const flipped = anchorTop - POPOVER_ANCHOR_GAP - rect.height;
+      top = flipped >= POPOVER_MARGIN ? flipped : bottom - rect.height;
+    }
+    if (top < POPOVER_MARGIN) {
+      top = POPOVER_MARGIN;
+    }
+    setPlacement({ left, top });
+    // remeasure when the anchor moves, not on our own placement update
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Math.round(anchorLeft), Math.round(anchorTop)]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        ...style,
+        left: placement ? placement.left : clampPopoverLeft(anchorLeft),
+        top: placement ? placement.top : anchorTop,
+        // the CSS anchor gap is folded into the measured placement
+        transform: placement ? "none" : undefined,
+      }}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+};
+
 const pinPosition = (
   thread: CommentThread,
   elements: readonly FiroElement[],
@@ -243,47 +306,6 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
       }
     : null;
 
-  const composerRef = useRef<HTMLDivElement | null>(null);
-  const [composerPlacement, setComposerPlacement] = useState<{
-    left: number;
-    top: number;
-  } | null>(null);
-
-  /*
-   * Measure the composer after it renders, then keep it clear of the chrome:
-   * clamped left of the inspector and above the navigation toolbar, flipped
-   * over its anchor when it would not fit below. The unmeasured first frame
-   * uses the anchor position, so there is no flash of a worse placement.
-   */
-  useLayoutEffect(() => {
-    const node = composerRef.current;
-    if (!node || !composerPosition) {
-      setComposerPlacement(null);
-      return;
-    }
-    const rect = node.getBoundingClientRect();
-    const { right, bottom } = chromeLimits();
-    let left = rect.left;
-    let top = rect.top;
-    if (left + rect.width > right) {
-      left = right - rect.width;
-    }
-    if (left < POPOVER_MARGIN) {
-      left = POPOVER_MARGIN;
-    }
-    if (top + rect.height > bottom) {
-      const flipped = composerPosition.top - POPOVER_ANCHOR_GAP - rect.height;
-      top = flipped >= POPOVER_MARGIN ? flipped : bottom - rect.height;
-    }
-    if (top < POPOVER_MARGIN) {
-      top = POPOVER_MARGIN;
-    }
-    setComposerPlacement({ left, top });
-    // the placement depends on the measured size, which the draft's line
-    // count can change between opens — remeasure per target, not per keystroke
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composerTarget]);
-
   const submitComposer = () => {
     if (!composerTarget) {
       return;
@@ -351,19 +373,10 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
       })}
 
       {composerTarget && composerPosition && (
-        <div
-          ref={composerRef}
+        <AvoidingPopover
+          anchorLeft={composerPosition.left}
+          anchorTop={composerPosition.top}
           className="firo-comment-popover"
-          style={{
-            left: composerPlacement
-              ? composerPlacement.left
-              : clampPopoverLeft(composerPosition.left),
-            top: composerPlacement
-              ? composerPlacement.top
-              : composerPosition.top,
-            // the CSS anchor gap is folded into the measured placement
-            transform: composerPlacement ? "none" : undefined,
-          }}
           role="dialog"
           aria-label="New comment"
           data-testid="comment-composer"
@@ -397,7 +410,7 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
               Comment
             </button>
           </div>
-        </div>
+        </AvoidingPopover>
       )}
 
       {openThreadId && (
@@ -449,9 +462,10 @@ const ThreadPopover: React.FC<ThreadPopoverProps> = ({
   };
 
   return (
-    <div
+    <AvoidingPopover
+      anchorLeft={position.left}
+      anchorTop={position.top}
       className="firo-comment-popover firo-comment-thread"
-      style={{ left: clampPopoverLeft(position.left), top: position.top }}
       role="dialog"
       aria-label="Comment thread"
       data-testid={`comment-thread-${thread.id}`}
@@ -542,7 +556,7 @@ const ThreadPopover: React.FC<ThreadPopoverProps> = ({
           <TrashIcon size={16} />
         </button>
       </div>
-    </div>
+    </AvoidingPopover>
   );
 };
 
