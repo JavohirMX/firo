@@ -52,7 +52,7 @@ Code checked: `packages/ui/src/components/` (`BoardMenu`, `CollabBar`,
 
 | # | Surface | Miro (observed) | Firo at `a425018` | Decision | Cluster |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Board bar — sidebar toggle, Home, thumbnail, title, main menu | 311 × 48; the title is click-to-rename [live, deep pass] | partial — title shown, routes home; rename exists only on home cards | adapt | C10 |
+| 1 | Board bar — sidebar toggle, Home, thumbnail, title, main menu | 311 × 48; the title is click-to-rename [live, deep pass] | partial — title is click-to-rename inline, home moved to a boards button; no thumbnail | adapt | C10 |
 | 2 | People bar | facilitation · activity · talktracks · avatar · present · share [live, deep pass] | partial — connection pill, static avatars, Share; presentation lives in the FacilitatorBar; no facilitation menu | adapt | C10 |
 | 3 | Creation rail — entries, groups, separators | per-user arrangement; 13–15 slots across two reads; separators between groups [live, deep pass] | partial — ten tool entries (select/hand merged) plus undo/redo; no stickers, diagramming or catalog entry; `+` opens a popover with no target | adapt | C1 |
 | 4 | Rail flyouts — one slot, a family of tools | shapes and lines (`O R L S`), pen family (`P E` and three more), sticky colours, frames presets, media [live, deep pass; bundle] | partial — shapes, connectors and pen only | adapt | C1 |
