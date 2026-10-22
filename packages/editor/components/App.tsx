@@ -9093,6 +9093,7 @@ class App extends React.Component<AppProps, AppState> {
     });
 
     this.insertNewElement(element);
+    this.store.scheduleCapture();
 
     return element;
   };
@@ -9101,7 +9102,7 @@ class App extends React.Component<AppProps, AppState> {
    * Insert a text element centred on a scene point, select it and return the
    * tool to selection. Built through the same constructor the text tool uses,
    * so the text pipeline sees an ordinary text element. Used by host chrome
-   * (e.g. the emoji picker); it does nothing for empty text.
+   * (e.g. the emoji picker); it does nothing for empty text or in view mode.
    */
   public insertTextElement = ({
     sceneX,
@@ -9114,7 +9115,7 @@ class App extends React.Component<AppProps, AppState> {
     text: string;
     fontSize?: number;
   }) => {
-    if (!text) {
+    if (!text || this.state.viewModeEnabled) {
       return;
     }
     const element = newTextElement({
@@ -9140,6 +9141,8 @@ class App extends React.Component<AppProps, AppState> {
     });
     this.insertNewElement(centred);
     this.setState({ selectedElementIds: { [centred.id]: true } });
+    // one undoable step
+    this.store.scheduleCapture();
     this.setActiveTool({ type: "selection" });
     return centred;
   };

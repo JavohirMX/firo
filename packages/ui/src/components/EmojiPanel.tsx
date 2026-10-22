@@ -25,7 +25,7 @@ const CATEGORY_GLYPHS: Record<string, string> = {
   "travel-places": "🚗",
   activities: "⚽",
   objects: "💡",
-  symbols: "❤",
+  symbols: "❤\uFE0F",
   flags: "🏁",
 };
 
