@@ -42,6 +42,8 @@ import { getCommonBounds } from "@firo/element/bounds";
 
 import { zoomToFitBounds } from "@firo/editor/viewport";
 
+import { useExcalidrawActionManager } from "@firo/editor";
+
 import type { VotingSettings } from "@firo/facilitation";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 
@@ -137,6 +139,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     };
   }, [isOpen]);
 
+  const actionManager = useExcalidrawActionManager();
   const session = isOpen ? readSession(boardDoc) : null;
   const round = session?.round ?? null;
   const open = round !== null && isVotingOpen(round, Date.now());
@@ -323,6 +326,42 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 ) : (
                   <>Session ended. Results stay readable below.</>
                 )}
+              </div>
+            )}
+
+            {round && open && (
+              /*
+               * Cast and withdraw as buttons, not only Alt+D/Alt+W: on a phone
+               * there is no Alt key, so the keyboard chords alone made voting
+               * desktop-only. These run the very same actions, so every rule
+               * and every refusal toast is identical.
+               */
+              <div className="voting-panel__cast">
+                <p className="voting-panel__hint">
+                  Tap a note on the canvas, then:
+                </p>
+                <div className="voting-panel__cast-buttons">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      actionManager.executeAction(
+                        actionManager.actions.addVoteToSelection,
+                      )
+                    }
+                  >
+                    Give a dot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      actionManager.executeAction(
+                        actionManager.actions.removeVoteFromSelection,
+                      )
+                    }
+                  >
+                    Take back a dot
+                  </button>
+                </div>
               </div>
             )}
 

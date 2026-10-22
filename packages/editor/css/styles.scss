@@ -606,6 +606,13 @@ body.excalidraw-cursor-resize * {
     align-items: center;
     gap: 0.5rem;
     pointer-events: none;
+    /*
+     * Above the bottom chrome (zoom pill, undo bar: --zIndex-ui-bottom = 60)
+     * so a toast's text is never half-hidden behind it; deliberately far
+     * below menus (90+) and dialogs, since the stack only ever holds
+     * transient readouts.
+     */
+    z-index: calc(var(--zIndex-ui-bottom) + 1);
 
     .scroll-back-to-content {
       position: static;

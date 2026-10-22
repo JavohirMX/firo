@@ -11,6 +11,13 @@ export class ClientConnection {
   public role: Role;
   private readonly storage: Storage;
   public isClosed: boolean = false;
+  /*
+   * The awareness clientIDs this connection has published. Tracked so a
+   * disconnect can drop them immediately (ADR-0039: the relay drops a
+   * peer's awareness on disconnect) instead of leaving them for the
+   * 30-second y-protocols stale timeout.
+   */
+  public readonly awarenessIds: Set<number> = new Set();
 
   constructor(options: {
     ws: WebSocket;

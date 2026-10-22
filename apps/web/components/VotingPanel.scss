@@ -252,3 +252,52 @@
     bottom: 50vh;
   }
 }
+
+/* Cast/withdraw: the touch path for the Alt+D/Alt+W chords. */
+.voting-panel__cast {
+  padding: 10px 16px 0;
+
+  .voting-panel__hint {
+    margin: 0 0 6px;
+    font-size: 12px;
+    opacity: 0.65;
+  }
+
+  .voting-panel__cast-buttons {
+    display: flex;
+    gap: 8px;
+
+    button {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid var(--color-border, #e0e0e6);
+      border-radius: 8px;
+      background: var(--color-surface, #fff);
+      color: inherit;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--color-hover, rgb(0 0 0 / 6%));
+      }
+    }
+  }
+}
+
+/*
+ * Phone: the editor's floating bottom toolbars stack at z-index 60 and would
+ * cover the panel's own bottom actions (Start / End session). The panel is a
+ * near-fullscreen dock there, so it goes above them and below the context
+ * menu (90); full-width, since a 380px dock on a 390px screen is fiction.
+ */
+@media (max-width: 730px) {
+  .voting-panel {
+    /* top bar is z-index 100 and stays reachable: start below it */
+    top: 64px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    z-index: 70;
+  }
+}
