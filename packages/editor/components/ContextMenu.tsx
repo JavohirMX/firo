@@ -364,7 +364,9 @@ export const ContextMenu = React.memo(
                 aria-expanded={open}
                 data-submenu={item.key}
                 className="context-menu-item context-menu-item--submenu-parent"
-                onClick={() => setOpenSubmenu(open ? null : item.key)}
+                // open only: on touch the tap's pointerenter opens the
+                // submenu first, so a toggling click would close it again
+                onClick={() => setOpenSubmenu(item.key)}
               >
                 <div className="context-menu-item__label">{t(item.label)}</div>
                 <div className="context-menu-item__chevron">{chevronRight}</div>
