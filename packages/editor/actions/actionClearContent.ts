@@ -24,7 +24,7 @@ const getClearable = (
   const elementsMap = arrayToMap(elements);
   const pairs: { container: ExcalidrawElement; text: ExcalidrawElement }[] = [];
   for (const container of selected) {
-    if (container.type === "text") {
+    if (container.type === "text" || container.locked) {
       continue;
     }
     const text = getBoundTextElement(container, elementsMap);
