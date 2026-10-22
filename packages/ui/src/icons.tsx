@@ -1174,13 +1174,16 @@ export const LinkIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     xmlns="http://www.w3.org/2000/svg"
     {...props}
   >
-    <path
-      d="M8.5 11.5L11.5 8.5M7 13L5.5 14.5C4.11929 15.8807 4.11929 18.1193 5.5 19.5C6.88071 20.8807 9.11929 20.8807 10.5 19.5L12 18M8 2L9.5 3.5C10.8807 4.88071 10.8807 7.11929 9.5 8.5L8 10"
+    <g
+      transform="scale(0.833333)"
       stroke="currentColor"
-      strokeWidth="1.75"
+      strokeWidth="2.1"
       strokeLinecap="round"
       strokeLinejoin="round"
-    />
+    >
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </g>
   </svg>
 );
 
@@ -1331,13 +1334,16 @@ export const SettingsIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     xmlns="http://www.w3.org/2000/svg"
     {...props}
   >
-    <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.75" />
-    <path
-      d="M10 2V4M10 16V18M2 10H4M16 10H18M4.34 4.34L5.75 5.75M14.25 14.25L15.66 15.66M4.34 15.66L5.75 14.25M14.25 5.75L15.66 4.34"
+    <g
+      transform="scale(0.833333)"
       stroke="currentColor"
-      strokeWidth="1.75"
+      strokeWidth="2.1"
       strokeLinecap="round"
-    />
+      strokeLinejoin="round"
+    >
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </g>
   </svg>
 );
 

@@ -2517,10 +2517,9 @@ export const pencilIcon = createIcon(
 );
 
 export const chevronLeftIcon = createIcon(
-  <g strokeWidth={1}>
+  <g strokeWidth={1.5}>
     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-    <path d="M11 7l-5 5l5 5" />
-    <path d="M17 7l-5 5l5 5" />
+    <path d="M15 6l-6 6l6 6" />
   </g>,
   tablerIconProps,
 );
