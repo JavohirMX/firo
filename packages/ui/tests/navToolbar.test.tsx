@@ -162,6 +162,30 @@ describe("NavToolbar zoom navigation menu", () => {
     expect(screen.queryByTestId("nav-zoom-grid-off")).toBeNull();
   });
 
+  it("toggles the object-dimensions overlay from the menu", () => {
+    const onToggleSelectionDimensions = vi.fn();
+    render(
+      <NavToolbar
+        {...baseProps}
+        onZoomTo={vi.fn()}
+        showSelectionDimensions
+        onToggleSelectionDimensions={onToggleSelectionDimensions}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("nav-zoom-trigger"));
+    const item = screen.getByTestId("nav-zoom-dimensions-toggle");
+    expect(item.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(item);
+    expect(onToggleSelectionDimensions).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("nav-zoom-menu")).toBeNull();
+  });
+
+  it("omits the dimensions toggle without a handler", () => {
+    render(<NavToolbar {...baseProps} onZoomTo={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("nav-zoom-trigger"));
+    expect(screen.queryByTestId("nav-zoom-dimensions-toggle")).toBeNull();
+  });
+
   it("closes on Escape without selecting anything", () => {
     const onZoomTo = vi.fn();
     render(<NavToolbar {...baseProps} onZoomTo={onZoomTo} />);

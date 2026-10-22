@@ -236,6 +236,7 @@ export type InteractiveCanvasAppState = Readonly<
     isBindingEnabled: AppState["isBindingEnabled"];
     isMidpointSnappingEnabled: AppState["isMidpointSnappingEnabled"];
     gridModeEnabled: AppState["gridModeEnabled"];
+    showSelectionDimensions: AppState["showSelectionDimensions"];
     suggestedBinding: AppState["suggestedBinding"];
     textToolHover: AppState["textToolHover"];
     isRotating: AppState["isRotating"];
@@ -524,6 +525,7 @@ export interface AppState {
   gridSize: number;
   gridStep: number;
   gridModeEnabled: boolean;
+  showSelectionDimensions: boolean;
   gridType?: GridType;
   viewModeEnabled: boolean;
 

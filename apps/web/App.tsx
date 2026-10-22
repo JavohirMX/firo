@@ -1134,6 +1134,12 @@ export const WebNavToolbar = ({
         onHideGrid={() =>
           actionManager.executeAction(actionToggleGridMode, "ui", false)
         }
+        showSelectionDimensions={appState.showSelectionDimensions}
+        onToggleSelectionDimensions={() =>
+          app.setAppState({
+            showSelectionDimensions: !appState.showSelectionDimensions,
+          })
+        }
         minimapEnabled={minimapVisible}
         isMinimapOpen={minimapVisible}
         onToggleMinimap={onToggleMinimap}

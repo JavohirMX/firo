@@ -46,6 +46,12 @@ export interface NavToolbarProps {
    */
   onSelectGridType?: (type: NavGridType) => void;
   /**
+   * Canvas object-dimensions overlay toggle (Miro parity row 11, View menu):
+   * when on, the selection's W x H draws on the board itself.
+   */
+  showSelectionDimensions?: boolean;
+  onToggleSelectionDimensions?: () => void;
+  /**
    * Explicit grid-off for the navigation menu. This must be a dedicated
    * callback, not `onToggleGrid`: the toolbar's grid button cycles through
    * the variants before switching off (same as repeated `G` presses), so
@@ -77,6 +83,8 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
   gridType,
   onToggleGrid,
   onSelectGridType,
+  showSelectionDimensions = false,
+  onToggleSelectionDimensions,
   onHideGrid,
   minimapEnabled = false,
   isMinimapOpen,
@@ -119,6 +127,8 @@ export const NavToolbar: React.FC<NavToolbarProps> = ({
           gridEnabled={gridEnabled}
           gridType={gridType}
           onSelectGridType={onSelectGridType}
+          showSelectionDimensions={showSelectionDimensions}
+          onToggleSelectionDimensions={onToggleSelectionDimensions}
           onHideGrid={onHideGrid}
         />
       ) : (
@@ -206,6 +216,8 @@ interface ZoomMenuProps {
   gridEnabled: boolean;
   gridType?: NavGridType;
   onSelectGridType?: (type: NavGridType) => void;
+  showSelectionDimensions: boolean;
+  onToggleSelectionDimensions?: () => void;
   onHideGrid?: () => void;
 }
 
@@ -229,6 +241,8 @@ const ZoomMenu: React.FC<ZoomMenuProps> = ({
   gridEnabled,
   gridType,
   onSelectGridType,
+  showSelectionDimensions,
+  onToggleSelectionDimensions,
   onHideGrid,
 }) => {
   const gridTypeLabel = (type: NavGridType) =>
@@ -354,6 +368,28 @@ const ZoomMenu: React.FC<ZoomMenuProps> = ({
                 }}
               >
                 {isFullscreen ? "Exit full screen" : "Full screen"}
+              </button>
+            </>
+          )}
+          {onToggleSelectionDimensions && (
+            <>
+              <div className="firo-nav-toolbar__zoom-menu-separator" />
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={showSelectionDimensions}
+                className={`firo-nav-toolbar__zoom-menu-item ${
+                  showSelectionDimensions
+                    ? "firo-nav-toolbar__zoom-menu-item--current"
+                    : ""
+                }`}
+                data-testid="nav-zoom-dimensions-toggle"
+                onClick={() => {
+                  onToggleSelectionDimensions();
+                  setOpen(false);
+                }}
+              >
+                Object dimensions
               </button>
             </>
           )}
