@@ -82,6 +82,19 @@
   }
 
   @include isMobile {
+    /* narrow viewports: a submenu drills in over the lane instead of
+       opening beside it, where it would overflow the right edge */
+    .context-menu-item--has-submenu {
+      position: static;
+    }
+
+    .context-menu-item__submenu {
+      position: absolute;
+      inset: 0;
+      min-width: 0;
+      z-index: 2;
+    }
+
     .context-menu-item {
       display: block;
 
