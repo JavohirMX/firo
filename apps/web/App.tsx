@@ -585,6 +585,7 @@ export const WebCreationRail = ({
   onOpenTemplates,
   onOpenAI,
   onToggleEmoji,
+  highlighterSession,
   onOpenBulkSticky,
   readOnlyRole = null,
 }: {
@@ -598,6 +599,8 @@ export const WebCreationRail = ({
   onOpenTemplates?: () => void;
   onOpenAI?: () => void;
   onToggleEmoji?: () => void;
+  /** Shared with the palette commands (the phone path: no rail there). */
+  highlighterSession?: ReturnType<typeof createHighlighterSession>;
   onOpenBulkSticky?: () => void;
 }) => {
   const app = useApp();
@@ -626,7 +629,9 @@ export const WebCreationRail = ({
   // The highlighter is a freedraw preset (apps/web/board/highlighter.ts).
   // While it is on, the live tool is "freedraw" and the next stroke defaults
   // are overridden; leaving it restores the user's own pen style.
-  const highlighterRef = useRef(createHighlighterSession());
+  const highlighterRef = useRef(
+    highlighterSession ?? createHighlighterSession(),
+  );
   const endHighlighter = () => {
     const restore = highlighterRef.current.leave();
     if (restore) {
@@ -651,6 +656,9 @@ export const WebCreationRail = ({
       endHighlighter();
     }
     if (highlighterRef.current.active && live === "freedraw") {
+      setSubTools((prev) =>
+        prev.pen === "highlighter" ? prev : { ...prev, pen: "highlighter" },
+      );
       return;
     }
     if (
@@ -673,8 +681,8 @@ export const WebCreationRail = ({
         prev.pen === live ? prev : { ...prev, pen: live },
       );
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appState.activeTool.type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState.activeTool.type, appState.currentItemOpacity]);
 
   const lastClickRef = useRef<{ tool: RailToolType; time: number } | null>(
     null,
@@ -2092,6 +2100,44 @@ const ExcalidrawWrapper = () => {
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  // The highlighter freedraw preset; shared by the rail flyout and the palette
+  // commands (the phone path, where the rail is not mounted).
+  const highlighterSession = useMemo(() => createHighlighterSession(), []);
+  const startHighlighterFromPalette = () => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    const style = highlighterSession.enter(
+      excalidrawAPI.getAppState() as unknown as PenStyle,
+    );
+    excalidrawAPI.updateScene({ appState: style as any });
+    excalidrawAPI.setActiveTool({ type: "freedraw" });
+  };
+  const endHighlighterFromPalette = () => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    const restore = highlighterSession.leave();
+    if (restore) {
+      excalidrawAPI.updateScene({ appState: restore as any });
+    }
+    excalidrawAPI.setActiveTool({ type: "freedraw" });
+  };
+  // Leaving freedraw by any route (tool key, mobile toolbar, palette) hands the
+  // user's own pen style back, so the preset never leaks into other tools.
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    return excalidrawAPI.onChange((_els, st) => {
+      if (highlighterSession.active && st.activeTool.type !== "freedraw") {
+        const restore = highlighterSession.leave();
+        if (restore) {
+          excalidrawAPI.updateScene({ appState: restore as any });
+        }
+      }
+    });
+  }, [excalidrawAPI, highlighterSession]);
   const emojiPickCount = useRef(0);
   const [stickyOptionsOpen, setStickyOptionsOpen] = useState(false);
 
@@ -3812,6 +3858,7 @@ const ExcalidrawWrapper = () => {
             onOpenTemplates={() => setTemplateModalOpen(true)}
             onOpenAI={() => setAiModalOpen(true)}
             onToggleEmoji={() => setEmojiOpen((open) => !open)}
+            highlighterSession={highlighterSession}
             onOpenBulkSticky={() => setBulkStickyOpen(true)}
           />
         )}
@@ -4334,6 +4381,20 @@ const ExcalidrawWrapper = () => {
              * These entries are derived from the same `Action` objects the chords
              * come from, so the palette entry and the keystroke cannot drift.
              */
+            {
+              // the highlighter is a freedraw preset; the palette is the phone
+              // path since the rail is hidden there
+              label: "Highlighter",
+              category: DEFAULT_CATEGORIES.tools,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: startHighlighterFromPalette,
+            },
+            {
+              label: "Pen (your style)",
+              category: DEFAULT_CATEGORIES.tools,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: endHighlighterFromPalette,
+            },
             {
               // ADR-0036 §1: the emoji flyout, also reachable on phone where
               // the rail is hidden
