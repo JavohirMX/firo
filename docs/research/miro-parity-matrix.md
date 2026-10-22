@@ -92,7 +92,7 @@ Code checked: `packages/element/src/` (`types`, `embeddable`),
 | 28 | Mind maps | auto-layout map format [palette entry observed; object body unobserved] | absent | adopt — as a projection over records, not a new element type | C5 |
 | 29 | Tables and charts | table format; charts [palette] | partial — table and grid projections implemented; charts are paste-driven (bar, line, radar) | adapt | C5 |
 | 30 | Kanban and timeline | formats [palette] | implemented — projections over the record store | adopt *(met)* | — |
-| 31 | Grid and snapping | show grid; snap to grid; snap objects; size hints; alignment guides [live, deep pass] | partial — grid toggle, object and midpoint snapping, snap lines; size-hint toggles to confirm at build | adapt | C5 |
+| 31 | Grid and snapping | show grid; snap to grid; snap objects; size hints; alignment guides [live, deep pass] | partial — grid, object (Alt+S), midpoint and arrow-binding toggles plus a selection-dimensions (size hint) toggle, all in the canvas context menu; snap lines; Miro's live spacing hints not compared | adapt | C5 |
 | 32 | Inspector / styling surface | styling lives on the toolbar's popovers; no persistent inspector | implemented — persistent Inspector, host-owned property controls ([`ADR-0025`](../adr/0025-the-host-reuses-the-editors-property-controls.md)) | diverge — keep the Inspector; the toolbar still adapts (row 14) | C5 |
 
 ## Facilitation and presentation
