@@ -258,7 +258,7 @@ import {
   facilitatorHelpRows,
 } from "./board/facilitatorActions";
 import { recordCommandPaletteItems } from "./board/recordActions";
-import { getActiveBoard } from "./board/library";
+import { getActiveBoard, renameBoard, setActiveBoard } from "./board/library";
 import { isMinimapShortcut } from "./board/chromeShortcuts";
 import {
   readRailLayout,
@@ -1148,12 +1148,32 @@ export const WebNavToolbar = ({
 
 const WebBoardMenu = () => {
   const setAppState = useExcalidrawSetAppState();
+  /*
+   * The active board is resolved once at routing and cached in the library
+   * module, so the name lives in local state here; a rename refreshes both
+   * the cache (exports and the home list read it) and this label.
+   */
+  const [boardName, setBoardName] = useState(
+    () => getActiveBoard()?.name ?? "Untitled",
+  );
+  const onRenameBoard = async (name: string) => {
+    const active = getActiveBoard();
+    if (!active) {
+      return;
+    }
+    const updated = await renameBoard(active.id, name);
+    if (updated) {
+      setActiveBoard(updated);
+      setBoardName(updated.name ?? name);
+    }
+  };
   return (
     <BoardMenu
-      boardName={getActiveBoard()?.name ?? "Untitled"}
+      boardName={boardName}
       onOpenHome={() => {
         window.location.assign(homeUrl());
       }}
+      onRenameBoard={getActiveBoard() ? onRenameBoard : undefined}
       onOpenMenu={() => {
         setAppState((prevState) => ({
           openMenu: prevState.openMenu === "canvas" ? null : "canvas",
