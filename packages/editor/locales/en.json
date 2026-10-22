@@ -217,7 +217,8 @@
     "created": "Created",
     "lastModified": "Last modified",
     "wordCount": "Word count",
-    "openContextMenu": "Open context menu"
+    "openContextMenu": "Open context menu",
+    "back": "Back"
   },
   "elementLink": {
     "title": "Link to object",

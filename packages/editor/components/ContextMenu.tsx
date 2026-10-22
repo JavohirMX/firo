@@ -10,7 +10,7 @@ import { CONTEXT_MENU_ANCHOR_ACTIONS } from "../actions/actionCanvasAnchor";
 import { t } from "../i18n";
 
 import { useExcalidrawAppState, useExcalidrawElements } from "./App";
-import { chevronRight } from "./icons";
+import { chevronLeftIcon, chevronRight } from "./icons";
 import { Popover } from "./Popover";
 
 import "./ContextMenu.scss";
@@ -88,6 +88,9 @@ export const ContextMenu = React.memo(
   ({ actionManager, items, top, left, onClose }: ContextMenuProps) => {
     const appState = useExcalidrawAppState();
     const elements = useExcalidrawElements();
+    // the same condition App uses for the .excalidraw--mobile class the
+    // drill-in styles key on
+    const isPhone = actionManager.app.editorInterface.formFactor === "phone";
     const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
     const listRef = useRef<HTMLUListElement | null>(null);
     const focusRequestRef = useRef<FocusRequest | null>({ kind: "first" });
@@ -387,6 +390,28 @@ export const ContextMenu = React.memo(
                   role="menu"
                   data-submenu-parent={item.key}
                 >
+                  {isPhone && (
+                    <li role="none">
+                      <button
+                        type="button"
+                        className="context-menu-item context-menu-item--back"
+                        onClick={() => {
+                          focusRequestRef.current = {
+                            kind: "parent",
+                            key: item.key,
+                          };
+                          setOpenSubmenu(null);
+                        }}
+                      >
+                        <div className="context-menu-item__chevron context-menu-item__chevron--left">
+                          {chevronLeftIcon}
+                        </div>
+                        <div className="context-menu-item__label">
+                          {t("labels.back")}
+                        </div>
+                      </button>
+                    </li>
+                  )}
                   {renderItems(filterItems(item.items), true)}
                 </ul>
               )}

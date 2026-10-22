@@ -90,8 +90,15 @@
 
     .context-menu-item__submenu {
       position: absolute;
-      inset: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: auto;
+      width: auto;
       min-width: 0;
+      max-width: none;
+      max-height: 100%;
+      overflow-y: auto;
       z-index: 2;
     }
 
@@ -123,7 +130,9 @@
     position: absolute;
     left: 100%;
     top: -0.5rem;
+    width: max-content;
     min-width: 100%;
+    max-width: 22rem;
     z-index: 1;
   }
 
@@ -139,7 +148,11 @@
     }
   }
 
+  /* facts size to the lane: the label keeps its width, the value shrinks
+     with an ellipsis instead of overflowing the menu border */
   .context-menu-item__fact {
+    display: flex;
+    gap: 1rem;
     cursor: default;
 
     &:hover {
@@ -147,13 +160,31 @@
       background-color: transparent;
     }
 
+    .context-menu-item__label {
+      flex: none;
+      margin-inline-end: 0;
+    }
+
     .context-menu-item__fact-value {
-      justify-self: end;
-      opacity: 0.6;
-      font-size: 0.8rem;
-      max-width: 12rem;
+      flex: 1 1 auto;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: end;
+      opacity: 0.6;
+      font-size: 0.8rem;
     }
+  }
+
+  .context-menu-item--back {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+  }
+
+  .context-menu-item__chevron--left {
+    opacity: 1;
   }
 }

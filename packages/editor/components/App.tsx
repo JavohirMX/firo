@@ -12898,7 +12898,10 @@ class App extends React.Component<AppProps, AppState> {
               .map((element) => element.created)
               .filter((ts): ts is number => typeof ts === "number");
             return created.length
-              ? new Date(Math.min(...created)).toLocaleString()
+              ? new Date(Math.min(...created)).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })
               : "—";
           },
         },
@@ -12911,7 +12914,10 @@ class App extends React.Component<AppProps, AppState> {
             return selected.length
               ? new Date(
                   Math.max(...selected.map((element) => element.updated)),
-                ).toLocaleString()
+                ).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })
               : "—";
           },
         },
