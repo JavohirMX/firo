@@ -178,7 +178,11 @@
     }
   }
 
-  .context-menu-item--back {
+  /* The doubled class keeps this above the phone `display: block` override
+     (`.excalidraw--mobile.excalidraw .context-menu-item`, same specificity,
+     earlier in the sheet): the back row must stay a flex row or its chevron
+     and label stack on two lines. */
+  .context-menu-item--back.context-menu-item {
     display: flex;
     align-items: center;
     gap: 0.25rem;
