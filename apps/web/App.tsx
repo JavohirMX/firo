@@ -99,6 +99,11 @@ import {
 } from "@firo/editor/data/restore";
 import { newElementWith, setElementContentDrawer } from "@firo/element";
 import { isInitializedImageElement } from "@firo/element";
+import {
+  embeddableURLValidator,
+  getEmbedLink,
+  getEmbedProviderName,
+} from "@firo/element";
 import clsx from "clsx";
 import {
   parseLibraryTokensFromUrl,
@@ -106,8 +111,10 @@ import {
 } from "@firo/editor/data/library";
 
 import {
+  EmbedDialog,
   ExportModal,
   ImportModal,
+  type EmbedValidation,
   type ExportTab,
   type ImportFileInfo,
 } from "@firo/ui";
@@ -191,6 +198,7 @@ import { FacilitatorBar } from "./components/FacilitatorBar";
 import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { VotingPanel } from "./components/VotingPanel";
 import { BulkStickyDialog } from "./components/BulkStickyDialog";
+import { viewportCenter } from "./board/stickyBulk";
 import { StickyNoteOptionsDialog } from "./components/StickyNoteOptionsDialog";
 import {
   applyStickyOption,
@@ -1154,6 +1162,56 @@ export const WebNavToolbar = ({
   );
 };
 
+/**
+ * ADR-0036 §3: the embed dialog's validation rules. Add is enabled only for
+ * an https URL on the provider allow-list; raw HTML is never accepted; an
+ * unsupported web URL earns the reason plus an "Open link" action.
+ */
+const validateEmbedUrl = (raw: string): EmbedValidation => {
+  const input = raw.trim();
+  if (/[<>]/.test(input)) {
+    return {
+      ok: false,
+      reason:
+        "Raw HTML can't be embedded - paste the provider's page URL instead.",
+    };
+  }
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return { ok: false, reason: "Enter a full https URL." };
+  }
+  if (url.protocol !== "https:") {
+    return {
+      ok: false,
+      isWebUrl: url.protocol === "http:",
+      reason: "Only https URLs can be embedded.",
+    };
+  }
+  if (!embeddableURLValidator(input, undefined)) {
+    return {
+      ok: false,
+      isWebUrl: true,
+      reason: "That provider isn't supported.",
+    };
+  }
+  const resolved = getEmbedLink(input);
+  if (!resolved) {
+    return {
+      ok: false,
+      isWebUrl: true,
+      reason: "That link can't be embedded.",
+    };
+  }
+  return {
+    ok: true,
+    provider: getEmbedProviderName(
+      ("link" in resolved ? resolved.link : null) ?? input,
+    ),
+  };
+};
+
 const WebBoardMenu = () => {
   const setAppState = useExcalidrawSetAppState();
   /*
@@ -1937,6 +1995,7 @@ const ExcalidrawWrapper = () => {
   const [timerSetupOpen, setTimerSetupOpen] = useState(false);
   const [votingPanelOpen, setVotingPanelOpen] = useState(false);
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
+  const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
   const [stickyOptionsOpen, setStickyOptionsOpen] = useState(false);
 
   /*
@@ -3956,6 +4015,22 @@ const ExcalidrawWrapper = () => {
           isOpen={timerSetupOpen}
           onClose={() => setTimerSetupOpen(false)}
         />
+        <EmbedDialog
+          isOpen={embedDialogOpen}
+          onClose={() => setEmbedDialogOpen(false)}
+          validateUrl={validateEmbedUrl}
+          onAdd={(url) => {
+            if (!excalidrawAPI) {
+              return;
+            }
+            const center = viewportCenter(excalidrawAPI);
+            excalidrawAPI.insertEmbeddableElement({
+              sceneX: center.x,
+              sceneY: center.y,
+              link: url,
+            });
+          }}
+        />
         <VotingPanel
           isOpen={votingPanelOpen}
           onClose={() => setVotingPanelOpen(false)}
@@ -4092,6 +4167,13 @@ const ExcalidrawWrapper = () => {
              * These entries are derived from the same `Action` objects the chords
              * come from, so the palette entry and the keystroke cannot drift.
              */
+            {
+              // ADR-0036 §3: the in-app embed affordance
+              label: "Add embed…",
+              category: DEFAULT_CATEGORIES.app,
+              predicate: () => !!excalidrawAPI,
+              perform: () => setEmbedDialogOpen(true),
+            },
             ...(excalidrawAPI
               ? facilitatorCommandPaletteItems(
                   excalidrawAPI,

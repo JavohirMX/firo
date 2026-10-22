@@ -1522,6 +1522,7 @@ export interface ExcalidrawImperativeAPI {
   addFiles: (data: BinaryFileData[]) => void;
   id: string;
   setActiveTool: InstanceType<typeof App>["setActiveTool"];
+  insertEmbeddableElement: InstanceType<typeof App>["insertEmbeddableElement"];
   setCursor: InstanceType<typeof App>["cursor"]["set"];
   resetCursor: InstanceType<typeof App>["cursor"]["reset"];
   toggleSidebar: InstanceType<typeof App>["toggleSidebar"];

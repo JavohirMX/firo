@@ -851,6 +851,7 @@ class App extends React.Component<AppProps, AppState> {
       setToast: this.setToast,
       id: this.id,
       setActiveTool: this.setActiveTool,
+      insertEmbeddableElement: this.insertEmbeddableElement,
       setCursor: this.cursor.set,
       resetCursor: this.cursor.reset,
       getEditorInterface: () => this.editorInterface,
