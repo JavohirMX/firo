@@ -59,6 +59,37 @@ export {
   type Vote,
 } from "./voting.js";
 
+/*
+ * Voting sessions (ADR-0039): the live round around the durable dots above.
+ * Pure functions only -- the awareness plumbing and the ballot-key store are
+ * the host's, so every rule here is testable without a room.
+ */
+export {
+  DEFAULT_VOTING_SETTINGS,
+  VOTES_PER_PERSON_MIN,
+  VOTES_PER_PERSON_MAX,
+  MINUTES_MIN,
+  MINUTES_MAX,
+  clampSettings,
+  startRound,
+  endRound,
+  isVotingOpen,
+  remainingRoundMs,
+  roundId,
+  resolveDriver,
+  mintBallotKey,
+  ballotDots,
+  planPlacement,
+  filterLiveVotes,
+  resultsRows,
+  type VotingSettings,
+  type VotingRound,
+  type SessionEntry,
+  type PlacementTarget,
+  type PlacementPlan,
+  type ResultRow,
+} from "./session.js";
+
 export {
   DEFAULT_REVEAL_STATE,
   setRevealMode,

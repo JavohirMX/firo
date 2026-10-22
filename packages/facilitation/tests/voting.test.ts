@@ -177,7 +177,10 @@ describe("dot voting", () => {
       ]);
     });
 
-    it("moves a voter's dot rather than adding a second", () => {
+    it("never archives an existing dot (auto-move is retired, ADR-0039)", () => {
+      // The old behaviour archived a named voter's previous dot when they
+      // placed a new one. That made a "votes per person" allowance greater
+      // than one impossible; moving a vote is now take-back plus place.
       const votes = [
         vote({ recordId: "r1", elementId: "note-a", voterId: "ada" }),
       ];
@@ -188,8 +191,10 @@ describe("dot voting", () => {
         true,
       );
 
-      const archived = mutations.filter((m) => m.kind === "archiveRecords");
-      expect(archived).toEqual([{ kind: "archiveRecords", ids: ["r1"] }]);
+      expect(mutations.some((m) => m.kind === "archiveRecords")).toBe(false);
+      expect(mutations.filter((m) => m.kind === "createRecord")).toHaveLength(
+        1,
+      );
     });
 
     it("does not let one anonymous participant archive another's dot", () => {
@@ -222,9 +227,9 @@ describe("dot voting", () => {
       );
     });
 
-    it("still moves a named voter's dot when anonymous votes exist", () => {
-      // The other direction: excluding anonymous votes from the move must not
-      // disable the move for everyone else.
+    it("leaves anonymous and named dots alike untouched", () => {
+      // With auto-move retired there is no voter filtering at all: every
+      // placement writes exactly one record and archives nothing.
       const votes = [
         vote({ recordId: "r-anon", elementId: "note-x", voterId: "" }),
         vote({ recordId: "r-ada", elementId: "note-a", voterId: "ada" }),
@@ -237,21 +242,10 @@ describe("dot voting", () => {
         true,
       );
 
-      const archived = mutations.find((m) => m.kind === "archiveRecords");
-      expect(archived).toEqual({ kind: "archiveRecords", ids: ["r-ada"] });
-    });
-
-    it("does not archive the record it is about to write", () => {
-      // Re-voting the same element with the same record id would otherwise
-      // archive the record it just created, leaving no vote at all.
-      const votes = [vote({ recordId: "r1", voterId: "ada" })];
-      const mutations = placeVote(
-        votes,
-        { elementId: "note-a", voterId: "ada", placedAt: 3000 },
-        { record: "r1", order: "a0", board: "board-1" },
-        true,
-      );
       expect(mutations.some((m) => m.kind === "archiveRecords")).toBe(false);
+      expect(mutations.filter((m) => m.kind === "createRecord")).toHaveLength(
+        1,
+      );
     });
 
     it("creates the collection before the record that references it", () => {
