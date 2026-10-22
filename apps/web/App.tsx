@@ -189,6 +189,7 @@ import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
 import { TimerSetupDialog } from "./components/TimerSetupDialog";
+import { VotingPanel } from "./components/VotingPanel";
 import { BulkStickyDialog } from "./components/BulkStickyDialog";
 import { StickyNoteOptionsDialog } from "./components/StickyNoteOptionsDialog";
 import {
@@ -200,6 +201,7 @@ import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { VersionHistoryModal } from "./components/VersionHistoryModal";
 import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
+import { VoteBadges } from "./components/VoteBadges";
 import { TagLayer } from "./components/TagLayer";
 import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
 import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
@@ -1933,6 +1935,7 @@ const ExcalidrawWrapper = () => {
   const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [timerSetupOpen, setTimerSetupOpen] = useState(false);
+  const [votingPanelOpen, setVotingPanelOpen] = useState(false);
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
   const [stickyOptionsOpen, setStickyOptionsOpen] = useState(false);
 
@@ -1949,6 +1952,8 @@ const ExcalidrawWrapper = () => {
           setTimerSetupOpen(true);
         } else if (request === "bulkStickyNotes") {
           setBulkStickyOpen(true);
+        } else if (request === "votingPanel") {
+          setVotingPanelOpen(true);
         }
       }),
     [],
@@ -3923,6 +3928,7 @@ const ExcalidrawWrapper = () => {
           composerTarget={commentTarget}
           onCloseComposer={() => setCommentTarget(null)}
         />
+        <VoteBadges />
         <RemoteCursorLayer
           excalidrawAPI={excalidrawAPI}
           collaborators={collaborators}
@@ -3949,6 +3955,11 @@ const ExcalidrawWrapper = () => {
         <TimerSetupDialog
           isOpen={timerSetupOpen}
           onClose={() => setTimerSetupOpen(false)}
+        />
+        <VotingPanel
+          isOpen={votingPanelOpen}
+          onClose={() => setVotingPanelOpen(false)}
+          excalidrawAPI={excalidrawAPI}
         />
         <BulkStickyDialog
           isOpen={bulkStickyOpen}

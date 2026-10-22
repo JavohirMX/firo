@@ -1,0 +1,27 @@
+/*
+ * Vote badges: absolutely positioned over the canvas inside the layer-ui
+ * wrapper, like the comment pins. Never interactive: a badge is a readout,
+ * and a clickable chip would be a second voting path that drifts from Alt+D.
+ */
+.vote-badges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+
+  &__badge {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 10px;
+    background: var(--color-primary, #6965db);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
+  }
+}

@@ -24,7 +24,7 @@
  */
 
 /** The dialogs an action can ask the shell to open. Closed union, on purpose. */
-export type UiDialogRequest = "timerSetup" | "bulkStickyNotes";
+export type UiDialogRequest = "timerSetup" | "bulkStickyNotes" | "votingPanel";
 
 type Listener = (request: UiDialogRequest) => void;
 

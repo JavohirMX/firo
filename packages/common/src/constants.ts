@@ -483,6 +483,7 @@ export const DEFAULT_UI_OPTIONS: AppProps["UIOptions"] = {
     toggleBoardReveal: true,
     addVoteToSelection: true,
     removeVoteFromSelection: true,
+    openVotingPanel: true,
     readVoteTally: true,
     togglePresentation: true,
     nextSlide: true,

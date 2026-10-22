@@ -189,6 +189,7 @@ export type ActionName =
   | "toggleBoardReveal"
   | "addVoteToSelection"
   | "removeVoteFromSelection"
+  | "openVotingPanel"
   | "readVoteTally"
   | "togglePresentation"
   | "nextSlide"

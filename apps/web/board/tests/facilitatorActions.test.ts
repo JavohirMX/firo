@@ -7,6 +7,7 @@ import { randomId, reseed } from "@firo/common";
 import { FiroDoc } from "@firo/doc";
 import {
   formatRemaining,
+  placeVote,
   remainingMs,
   votesFromRecords,
   voteCollection,
@@ -122,6 +123,19 @@ const select = (...ids: string[]) => {
   });
 };
 
+/** Another ballot's dot, committed straight into the document. */
+const foreignVote = (document: FiroDoc, elementId: string, voterId: string) => {
+  const recordId = randomId();
+  document.commit(
+    placeVote(
+      votesFromRecords(document.read().records),
+      { elementId, voterId, placedAt: 1000 },
+      { record: recordId, order: `a${recordId}`, board: "board-1" },
+      document.read().collections.some((c) => c.id === VOTE_COLLECTION_ID),
+    ),
+  );
+};
+
 /** A note in the document, selected. Returns its id. */
 const note = (document: FiroDoc, text: string): string => {
   const element = createStickyNote({ id: randomId(), x: 0, y: 0, text });
@@ -146,6 +160,7 @@ describe("registration", () => {
       "togglePresentation",
       "nextSlide",
       "previousSlide",
+      "openVotingPanel",
       "addVoteToSelection",
       "removeVoteFromSelection",
       "readVoteTally",
@@ -160,7 +175,14 @@ describe("registration", () => {
     // in it.
     const { actions } = setup();
     for (const action of actions) {
-      expect(typeof action.keyTest, action.name).toBe("function");
+      /*
+       * `openVotingPanel` is the deliberate exception: ADR-0039 gives the
+       * panel no single-key shortcut (the palette and the facilitation menu
+       * are the paths), so it has no `keyTest` to assert.
+       */
+      if (action.name !== "openVotingPanel") {
+        expect(typeof action.keyTest, action.name).toBe("function");
+      }
       expect(action.keywords?.length ?? 0, action.name).toBeGreaterThan(0);
     }
   });
@@ -430,18 +452,32 @@ describe("placing a dot", () => {
     expect(toasts.at(-1)?.message).toContain(bob);
   });
 
-  it("accumulates, one dot per press", () => {
-    // Anonymous dots add up. A constant voter *name* would make `placeVote` move a
-    // single dot instead, so five presses would leave one — and the tally would be a
-    // lie nobody could see the cause of.
+  it("accumulates, one dot per press per target", () => {
+    // Outside a round the rule is one dot per ballot per target (ADR-0039
+    // section 3), so three presses on three notes are three dots.
     const { document, run } = setup();
-    note(document, "popular");
-
+    note(document, "one");
     run("addVoteToSelection");
+    note(document, "two");
     run("addVoteToSelection");
+    note(document, "three");
     run("addVoteToSelection");
 
     expect(votesFromRecords(document.read().records)).toHaveLength(3);
+  });
+
+  it("refuses a second dot on the same target outside a round, and says why", () => {
+    // The whole-press refusal: nothing is written, and the facilitator is told
+    // how to move the dot instead of wondering why the tally did not change.
+    const { document, run, toasts } = setup();
+    note(document, "popular");
+    run("addVoteToSelection");
+    const before = document.durableUpdates;
+
+    run("addVoteToSelection");
+
+    expect(document.durableUpdates).toBe(before);
+    expect(lastToast(toasts)).toMatch(/already on/i);
   });
 
   it("gives every dot a distinct record id and a distinct order", () => {
@@ -449,10 +485,11 @@ describe("placing a dot", () => {
     // nothing on the board to explain it. A shared order key is two rows claiming
     // the same place in a table projection.
     const { document, run } = setup();
-    note(document, "busy");
-
+    note(document, "busy one");
     run("addVoteToSelection");
+    note(document, "busy two");
     run("addVoteToSelection");
+    note(document, "busy three");
     run("addVoteToSelection");
 
     const records = document.read().records;
@@ -466,6 +503,7 @@ describe("placing a dot", () => {
     run("addVoteToSelection");
     const first = document.read().records[0].order;
 
+    note(document, "two");
     run("addVoteToSelection");
     const second = document.read().records.at(-1)!.order;
 
@@ -558,19 +596,23 @@ describe("taking a dot back", () => {
     expect(votesFromRecords(document.read().records)).toEqual([]);
   });
 
-  it("takes back one dot at a time", () => {
-    // "Take back a dot", singular. Anonymous dots are indistinguishable from each
-    // other, so removing all of them would throw away other people's votes.
-    const { document, run } = setup();
-    note(document, "triple");
+  it("takes back only the caller's own dots, never anyone else's", () => {
+    // `Alt+W` matches the caller's ballot key, so a dot someone else placed on
+    // the same note is never theirs to remove — and pressing again, once their
+    // own dot is gone, refuses rather than eating a vote that is not theirs.
+    const { document, toasts, run } = setup();
+    const target = note(document, "contested");
     run("addVoteToSelection");
-    run("addVoteToSelection");
-    run("addVoteToSelection");
+    foreignVote(document, target, "someone-else");
 
     run("removeVoteFromSelection");
-    expect(votesFromRecords(document.read().records)).toHaveLength(2);
+
+    const remaining = votesFromRecords(document.read().records);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].voterId).toBe("someone-else");
 
     run("removeVoteFromSelection");
+    expect(lastToast(toasts)).toMatch(/no dot/i);
     expect(votesFromRecords(document.read().records)).toHaveLength(1);
   });
 
@@ -609,10 +651,14 @@ describe("reading the tally", () => {
     note(document, "this one");
     run("addVoteToSelection");
 
-    note(document, "everyone said this");
+    const winner = note(document, "everyone said this");
     run("addVoteToSelection");
-    run("addVoteToSelection");
-    run("addVoteToSelection");
+    // The two extra dots are other ballots' votes, committed straight into the
+    // document: one ballot can never stack a second dot on the same target
+    // outside a round (ADR-0039 section 3), so piling them up through the
+    // action itself is no longer a way to reach this state.
+    foreignVote(document, winner, "someone-else");
+    foreignVote(document, winner, "a-third-voice");
     run("readVoteTally");
 
     const message = lastToast(toasts);
@@ -1008,6 +1054,7 @@ describe("the command palette", () => {
       "Start or stop presenting",
       "Next slide",
       "Previous slide",
+      "Open the voting panel",
       "Give the selection a dot",
       "Take back a dot from the selection",
       "Read the vote tally",
@@ -1097,7 +1144,12 @@ describe("the command palette", () => {
      * no shortcut in the palette, which is the "a shortcut nobody discovers" case
      * the field's own comment describes. One item is not a check on a list.
      */
-    const missing = all.filter((item) => !item.shortcut).map((i) => i.label);
+    const missing = all
+      .filter((item) => !item.shortcut)
+      // The panel opener prints no chord because it has none (ADR-0039: no
+      // new single-key shortcut; the palette is the keyboard path).
+      .filter((item) => item.label !== "Open the voting panel")
+      .map((i) => i.label);
     expect(missing).toEqual([]);
   });
 

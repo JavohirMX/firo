@@ -1,0 +1,254 @@
+/*
+ * The voting panel: the right dock's wide slot (ADR-0035's measured 380px),
+ * fixed to the shell's right edge. Non-modal: it never traps focus and never
+ * blocks the canvas, because a facilitator votes while it is open.
+ */
+.voting-panel {
+  position: fixed;
+  top: 64px;
+  right: 8px;
+  bottom: 8px;
+  width: 380px;
+  max-width: calc(100vw - 16px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface, #fff);
+  color: var(--color-on-surface, #1b1b1f);
+  border: 1px solid var(--color-border, #e0e0e6);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 14%);
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border, #e0e0e6);
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+    }
+  }
+
+  &__close {
+    border: 0;
+    background: transparent;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: inherit;
+    padding: 4px 8px;
+    border-radius: 6px;
+
+    &:hover {
+      background: var(--color-hover, rgb(0 0 0 / 6%));
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px 0;
+
+    button {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+      padding: 8px 4px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+
+      &.is-active {
+        border-bottom-color: var(--color-primary, #6965db);
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    fieldset {
+      border: 0;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+
+      &:disabled {
+        opacity: 0.75;
+      }
+    }
+  }
+
+  &__status {
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--color-primary-light, #e4e2fb);
+  }
+
+  &__stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+
+    &-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+
+      button {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid var(--color-border, #e0e0e6);
+        background: var(--color-surface, #fff);
+        color: inherit;
+        cursor: pointer;
+        font-size: 14px;
+
+        &:disabled {
+          opacity: 0.45;
+          cursor: default;
+        }
+      }
+
+      strong {
+        min-width: 2ch;
+        text-align: center;
+      }
+    }
+  }
+
+  &__switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  &__filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    > span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-secondary, #62626e);
+    }
+  }
+
+  &__note {
+    font-size: 12px;
+    color: var(--color-text-secondary, #62626e);
+    margin: 0;
+  }
+
+  &__footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  &__start,
+  &__end {
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  &__start {
+    background: var(--color-primary, #6965db);
+    color: #fff;
+  }
+
+  &__end {
+    background: transparent;
+    border: 1px solid var(--color-border, #e0e0e6);
+    color: inherit;
+  }
+
+  &__results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border: 1px solid var(--color-border, #e0e0e6);
+      background: var(--color-surface, #fff);
+      color: inherit;
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: left;
+
+      &:hover {
+        background: var(--color-hover, rgb(0 0 0 / 6%));
+      }
+    }
+  }
+
+  &__result-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__result-count {
+    font-weight: 700;
+    min-width: 2ch;
+    text-align: right;
+  }
+}
+
+/*
+ * The transient voting area: the viewport at open time, marked while the
+ * panel is open. Inset from the shell's edges and clear of the panel itself.
+ */
+.voting-area-outline {
+  position: fixed;
+  top: 64px;
+  left: 8px;
+  right: 396px;
+  bottom: 8px;
+  border: 2px dashed var(--color-primary, #6965db);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@media (max-width: 720px) {
+  /* The panel is full-width on a phone, so the outline marks only the top. */
+  .voting-area-outline {
+    right: 8px;
+    bottom: 50vh;
+  }
+}

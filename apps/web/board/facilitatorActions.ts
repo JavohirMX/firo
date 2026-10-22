@@ -55,20 +55,15 @@
  * file this module does not own, so it is named here rather than made.
  */
 
-import { randomId } from "@firo/common";
 import { getShortcutFromShortcutName } from "@firo/editor/actions/shortcuts";
 import { getSelectedElements } from "@firo/editor/scene";
 import {
   isRunning,
   leaders,
   boardIdConflict,
-  placeVote,
-  removeVote,
   votesFromRecords,
   VOTE_COLLECTION_ID,
 } from "@firo/facilitation";
-import { generateKeyBetween } from "@firo/fractional-indexing";
-import { isFractionalIndex } from "@firo/schema";
 
 import { mintBoardId, peekBoardId } from "@firo/board";
 
@@ -83,7 +78,8 @@ import type {
   ExcalidrawProps,
 } from "@firo/editor/types";
 import type { Vote } from "@firo/facilitation";
-import type { FiroRecord } from "@firo/schema";
+
+import { planCast, withdrawDots } from "./votingSession";
 
 import {
   getTimer,
@@ -228,6 +224,7 @@ type FacilitatorToggleName =
   | "toggleBoardReveal"
   | "addVoteToSelection"
   | "removeVoteFromSelection"
+  | "openVotingPanel"
   | "readVoteTally"
   | "togglePresentation"
   | "nextSlide"
@@ -269,27 +266,6 @@ const enabledUnless =
 /* -------------------------------------------------------------------------- */
 /* Vocabulary                                                                  */
 /* -------------------------------------------------------------------------- */
-
-/**
- * Every vote these commands place is anonymous, and the reason is not privacy.
- *
- * `phase-5-facilitation.md` §5.1 says it outright: *"In single-player v1,
- * 'anonymous' is meaningless. Say so in the UI rather than offering a mode that
- * does not work."* So there is no toggle and nothing to type — an empty `voterId`
- * is the whole mechanism, and the labels say "dot" rather than "your vote".
- *
- * A constant *name* would be worse than nothing, and `placeVote` is where that
- * breaks. For a non-empty `voterId` it **moves** that voter's dot instead of adding
- * one; that is right for a person, who has exactly one dot. A facilitator casting
- * five dots by hand has five, and a fixed name would archive four of them on the
- * fifth press — the board would show a single dot and the tally would be a lie.
- * Anonymous dots accumulate, and `findVote` matches only the *first* anonymous dot
- * on an element, which is precisely "take one of mine back".
- *
- * This becomes wrong the moment a second participant exists and there is an
- * identity to record, which is the v2 the plan defers it to.
- */
-const ANONYMOUS_VOTER = "";
 
 /*
  * `Collection.boardId` comes from the board's own identity.
@@ -334,51 +310,6 @@ const FACILITATOR_CATEGORY = "Facilitation";
  */
 const votesOn = (getDocument: () => FiroDoc): Vote[] =>
   getVotes(getDocument, votesFromRecords);
-
-/**
- * `count` order keys for records being added to the votes collection, ascending.
- *
- * Each is one past the greatest order already used, by **code unit**. Not
- * `localeCompare`, for the reason `leaders` gives: `localeCompare` takes the
- * runtime's default locale, so two clients in one room would derive different keys
- * from the same record store. A fractional index is defined by code-unit order, so
- * `<` compares the thing itself rather than an approximation of it.
- *
- * Three details, each of which is a bug the obvious version has:
- *
- * - **Archived records are included.** Their order key is spent. Reusing one is how
- *   a table projection ends up with two rows that claim the same place.
- * - **Corrupt keys are skipped, not repaired.** `generateKeyBetween` *throws* on an
- *   invalid key, so one record whose `order` came out of a hand-edited file would
- *   turn a keyboard shortcut into a stack trace. Skipping it still yields a key
- *   that is valid and sorts after every good one, which is the honest degradation
- *   — and the same reason `voteFromRecord` skips a record it cannot read rather
- *   than taking the whole tally down.
- * - **They are distinct from each other.** Dots placed on a multi-selection in one
- *   press are several votes, and two records sharing an order key is exactly the
- *   ambiguity this exists to avoid.
- */
-const voteOrders = (
-  records: readonly FiroRecord[],
-  count: number,
-): string[] => {
-  const keys: string[] = [];
-  let last = records
-    .filter((record) => record.collectionId === VOTE_COLLECTION_ID)
-    .map((record) => record.order)
-    .filter(isFractionalIndex)
-    .reduce((max, key) => (key > max ? key : max), "");
-
-  for (let i = 0; i < count; i += 1) {
-    // `generateKeyBetween(null, null)` is `"a0"`, which is also the order
-    // `voteCollection` gives itself — so a first record sorts after the collection
-    // holding it rather than colliding with it.
-    last = generateKeyBetween(last === "" ? null : last, null);
-    keys.push(last);
-  }
-
-  return keys;
-};
 
 /* -------------------------------------------------------------------------- */
 /* The selection                                                               */
@@ -727,6 +658,24 @@ export const facilitatorActions = (
     },
 
     {
+      name: "openVotingPanel",
+      label: "Open the voting panel",
+      keywords: ["voting", "session", "results", "dots", "workshop", "rank"],
+      trackEvent: { category: "facilitation", action: "openVotingPanel" },
+      viewMode: true,
+      predicate: enabledUnless("openVotingPanel"),
+      /*
+       * No single-key shortcut, deliberately (ADR-0039 section 9): the palette
+       * and the facilitation menu are the paths, and the alt-chord space is
+       * crowded enough that a panel this occasional does not earn one.
+       */
+      perform: (): ActionResult =>
+        run(() => {
+          requestDialog("votingPanel");
+        }),
+    },
+
+    {
       name: "addVoteToSelection",
       label: "Give the selection a dot",
       keywords: ["vote", "dot", "ballot", "favourites", "rank", "priority"],
@@ -763,30 +712,14 @@ export const facilitatorActions = (
 
           const document = getDocument();
           const snapshot = document.read();
-          const orders = voteOrders(snapshot.records, targets.length);
           const hasCollection = snapshot.collections.some(
             (collection) => collection.id === VOTE_COLLECTION_ID,
           );
 
           /*
-           * One `commit`, so one undo step.
-           *
-           * The first vote creates the collection *and* the record. Split across two
-           * commits they would be two undos, and history stops at a real change —
-           * so one press of undo would leave a votes collection containing nothing,
-           * and the second would be needed to remove a thing nobody can see.
-           *
-           * Every selected element gets its own dot. A facilitator putting five dots
-           * on a five-note selection is casting five votes; collapsing them into one
-           * would make the tally disagree with the thing they just did.
-           */
-          /*
            * The conflict check runs *before* anything is committed, so a refusal
-           * leaves the board exactly as it was. Checking after would mean undoing a
-           * partial write, and "the vote did not save" is a worse thing to explain
-           * than "these votes are from another board".
-           */
-          /*
+           * leaves the board exactly as it was.
+           *
            * The identity is *minted* rather than committed here, so that it can go
            * into the same transaction as the dots. A separate commit would make the
            * first vote of a board two undo steps, and undo stops at a real change --
@@ -813,26 +746,32 @@ export const facilitatorActions = (
             return;
           }
 
+          /*
+           * The press is planned against the live session: the ballot is this
+           * client's opaque key, and the round's rules -- allowance,
+           * one-vote-per-object, eligibility, the deadline -- are
+           * `planPlacement`'s (ADR-0039). A refusal writes nothing, so a press
+           * that breaks a rule leaves the board exactly as it was and says why.
+           */
+          const plan = planCast(
+            getDocument,
+            targets.map((elementId) => ({
+              id: elementId,
+              type:
+                elements.find((element) => element.id === elementId)?.type ??
+                "unknown",
+            })),
+            board,
+            hasCollection,
+          );
+          if (!plan.ok) {
+            complain(api, plan.reason);
+            return;
+          }
+
           document.commit([
             ...(minted ? [minted.mutation] : []),
-            ...targets.flatMap((elementId, index) =>
-              placeVote(
-                votesFromRecords(snapshot.records),
-                { elementId, voterId: ANONYMOUS_VOTER, placedAt: Date.now() },
-                {
-                  /*
-                   * `randomId`, not a counter and not a timestamp. Two dots placed in
-                   * the same millisecond must not share an id, and a colliding id is
-                   * one record overwriting another — a tally short by one, with
-                   * nothing on the board to explain it.
-                   */
-                  record: randomId(),
-                  order: orders[index],
-                  board,
-                },
-                hasCollection,
-              ),
-            ),
+            ...plan.mutations,
           ]);
 
           /*
@@ -870,36 +809,22 @@ export const facilitatorActions = (
             return;
           }
 
-          const document = getDocument();
-          const votes = votesFromRecords(document.read().records);
-
           /*
-           * One commit for the whole selection, and it is empty when nothing
-           * matches: `removeVote` returns no mutation rather than archiving an id it
-           * did not find. That is right on its side — `archiveRecords` silently skips
-           * an absent id, which is precisely how "remove my vote" would have looked
-           * like it worked — so the *reporting* is here instead. A key that did
-           * nothing has to say so.
-           *
-           * For an anonymous voter `findVote` matches the first dot on the element,
-           * so one press takes back one of several rather than all of them. That is
-           * the intended reading of "take back a dot", and it is the only reading
-           * available while anonymous dots are indistinguishable from each other.
+           * The ballot resolves the dots as *mine*: only this client's key
+           * matches, so one press can never take back a stranger's dot -- the
+           * failure the empty anonymous voter made possible. A board with no
+           * identity yet has no votes at all, so "default" is safe here.
            */
-          const mutations = targets.flatMap((elementId) =>
-            removeVote(votes, elementId, ANONYMOUS_VOTER),
-          );
+          const board = peekBoardId(getDocument) ?? "default";
+          const withdrawn = withdrawDots(getDocument, targets, board);
 
-          if (mutations.length === 0) {
+          if (withdrawn === 0) {
             complain(
               api,
-              "There is no dot on what is selected to take back. Give it one with " +
-                "Alt+D first.",
+              "There is no dot of yours on what is selected to take back. " +
+                "Give it one with Alt+D first.",
             );
-            return;
           }
-
-          document.commit(mutations);
         }),
     },
 
