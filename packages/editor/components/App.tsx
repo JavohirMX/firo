@@ -5260,24 +5260,28 @@ class App extends React.Component<AppProps, AppState> {
               CLASSES.CONVERT_ELEMENT_TYPE_POPUP,
             ))
         ) {
-          event.preventDefault();
-
           const conversionType =
             getConversionTypeFromElements(selectedElements);
 
-          if (
-            editorJotaiStore.get(convertElementTypePopupAtom)?.type === "panel"
-          ) {
-            if (
-              convertElementTypes(this, {
-                conversionType,
-                direction: event.shiftKey ? "left" : "right",
-              })
-            ) {
-              this.store.scheduleCapture();
-            }
-          }
+          // Only take Tab when there is something to convert. With an empty
+          // or non-convertible selection Tab and Shift+Tab keep their native
+          // job (moving focus), so the canvas is not a keyboard trap.
           if (conversionType) {
+            event.preventDefault();
+
+            if (
+              editorJotaiStore.get(convertElementTypePopupAtom)?.type ===
+              "panel"
+            ) {
+              if (
+                convertElementTypes(this, {
+                  conversionType,
+                  direction: event.shiftKey ? "left" : "right",
+                })
+              ) {
+                this.store.scheduleCapture();
+              }
+            }
             this.updateEditorAtom(convertElementTypePopupAtom, {
               type: "panel",
             });
