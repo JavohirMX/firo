@@ -103,7 +103,17 @@ export const ContextMenu = React.memo(
         }
         if (item === CONTEXT_MENU_SEPARATOR) {
           acc.push(item);
-        } else if (isSubmenu(item) || isFact(item)) {
+        } else if (isSubmenu(item)) {
+          // a submenu whose rows all hide at open has no row of its own
+          if (
+            passes(item.predicate) &&
+            filterItems(item.items).some(
+              (child) => child !== CONTEXT_MENU_SEPARATOR,
+            )
+          ) {
+            acc.push(item);
+          }
+        } else if (isFact(item)) {
           if (passes(item.predicate)) {
             acc.push(item);
           }
