@@ -67,47 +67,68 @@ describe("AppMainMenu", () => {
     fireEvent.click(menuButton!);
   };
 
-  it("renders all 5 logical sections and items", async () => {
+  // Radix opens a submenu on ArrowRight, mirroring keyboard use.
+  const openSubmenu = (testid: string) => {
+    fireEvent.keyDown(screen.getByTestId(testid), { key: "ArrowRight" });
+  };
+
+  it("renders the five top-level groups (Miro parity row 7)", async () => {
     await renderMainMenu();
 
-    // Section 1: Board Navigation
+    // Board - Edit - View - Preferences - Help; Firo keeps Help where Miro
+    // has Accessibility, whose options live inside Preferences here.
+    expect(screen.getByTestId("main-menu-board-submenu")).not.toBeNull();
+    expect(screen.getByTestId("main-menu-edit-submenu")).not.toBeNull();
+    expect(screen.getByTestId("main-menu-view-submenu")).not.toBeNull();
+    expect(screen.getByTestId("main-menu-preferences-submenu")).not.toBeNull();
+    expect(screen.getByTestId("main-menu-help-submenu")).not.toBeNull();
+  });
+
+  it("groups board navigation and file operations under Board", async () => {
+    await renderMainMenu();
+    openSubmenu("main-menu-board-submenu");
+
     expect(screen.getByTestId("main-menu-all-boards")).not.toBeNull();
     expect(screen.getByTestId("main-menu-new-board")).not.toBeNull();
-
-    // Section 2: File Operations
     expect(screen.getByTestId("main-menu-version-history")).not.toBeNull();
     expect(screen.getByText("Import")).not.toBeNull();
     expect(screen.getByText("Export")).not.toBeNull();
+  });
 
-    // Section 3: Canvas & Tools
+  it("groups canvas tools under Edit", async () => {
+    await renderMainMenu();
+    openSubmenu("main-menu-edit-submenu");
+
     expect(screen.getByTestId("command-palette-button")).not.toBeNull();
     expect(screen.getByTestId("search-menu-button")).not.toBeNull();
     expect(screen.getByTestId("clear-canvas-button")).not.toBeNull();
+  });
 
-    // Section 4: Settings & Appearance
-    expect(screen.getByText("Preferences")).not.toBeNull();
+  it("groups appearance under View and settings under Preferences", async () => {
+    await renderMainMenu();
+    openSubmenu("main-menu-view-submenu");
+
     expect(document.querySelector('input[name="theme"]')).not.toBeNull();
     expect(screen.getByTestId("canvas-background-label")).not.toBeNull();
+
+    openSubmenu("main-menu-preferences-submenu");
+    // the group trigger and the item share the name
+    expect(screen.getAllByText("Preferences").length).toBeGreaterThanOrEqual(2);
     expect(document.querySelector(".main-menu-language-row")).not.toBeNull();
     expect(screen.getByText("Language")).not.toBeNull();
     expect(document.querySelector(".dropdown-select__language")).not.toBeNull();
-
-    // Section 5: Help & Diagnostics
-    expect(screen.getByTestId("help-menu-item")).not.toBeNull();
   });
 
-  it("separates the 5 sections with separators", async () => {
+  it("groups help under Help", async () => {
     await renderMainMenu();
+    openSubmenu("main-menu-help-submenu");
 
-    const mainMenu = document.querySelector(".dropdown-menu.main-menu");
-    expect(mainMenu).not.toBeNull();
-
-    const separators = mainMenu!.querySelectorAll(".dropdown-menu-separator");
-    expect(separators.length).toBe(4);
+    expect(screen.getByTestId("help-menu-item")).not.toBeNull();
   });
 
   it("navigates to all boards when clicking 'All boards'", async () => {
     await renderMainMenu();
+    openSubmenu("main-menu-board-submenu");
 
     const allBoardsItem = screen.getByTestId("main-menu-all-boards");
     fireEvent.click(allBoardsItem);
@@ -116,6 +137,7 @@ describe("AppMainMenu", () => {
 
   it("creates a new board and navigates to it when clicking 'New board'", async () => {
     await renderMainMenu();
+    openSubmenu("main-menu-board-submenu");
 
     const newBoardItem = screen.getByTestId("main-menu-new-board");
     fireEvent.click(newBoardItem);
@@ -129,6 +151,7 @@ describe("AppMainMenu", () => {
 
   it("renders file operations import and export submenus", async () => {
     await renderMainMenu();
+    openSubmenu("main-menu-board-submenu");
 
     const importTrigger = screen
       .getByText("Import")
@@ -143,6 +166,7 @@ describe("AppMainMenu", () => {
 
   it("toggles theme via Theme radio selection", async () => {
     await renderMainMenu();
+    openSubmenu("main-menu-view-submenu");
 
     const themeRadios = document.querySelectorAll<HTMLInputElement>(
       'input[name="theme"]',
@@ -159,6 +183,7 @@ describe("AppMainMenu", () => {
 
   it("renders the language selector inside polished row and handles language changes", async () => {
     await renderMainMenu();
+    openSubmenu("main-menu-preferences-submenu");
 
     const select = document.querySelector<HTMLSelectElement>(
       ".dropdown-select__language",
