@@ -1,3 +1,4 @@
+import { KEYS } from "@firo/common";
 import { CaptureUpdateAction } from "@firo/element";
 
 import { getSelectedElements } from "../scene";
@@ -137,4 +138,32 @@ export const actionToggleSelectionDimensions = register({
     captureUpdate: CaptureUpdateAction.EVENTUALLY,
   }),
   checked: (appState) => appState.showSelectionDimensions,
+});
+
+/**
+ * The object lane's keyboard trigger (ADR-0033): `⌘ + Enter` opens the lane
+ * for the current selection, anchored at the selection's top-left corner in
+ * screen coordinates. With nothing selected it does nothing; while text is
+ * being edited the editor's own binding wins, so the sticky quick-add keeps
+ * working — the two uses are mode-scoped.
+ */
+export const actionOpenSelectionContextMenu = register({
+  name: "openSelectionContextMenu",
+  label: "labels.openContextMenu",
+  keywords: ["context", "menu", "selection"],
+  viewMode: false,
+  trackEvent: { category: "element" },
+  predicate: (elements, appState) =>
+    getSelectedElements(elements, appState).length > 0,
+  perform: (elements, appState, _formData, app) => {
+    app.openSelectionContextMenu();
+    return false;
+  },
+  keyTest: (event, appState, elements) =>
+    event[KEYS.CTRL_OR_CMD] &&
+    event.key === KEYS.ENTER &&
+    !event.shiftKey &&
+    !event.altKey &&
+    !appState.editingTextElement &&
+    getSelectedElements(elements, appState).length > 0,
 });

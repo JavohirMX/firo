@@ -86,6 +86,7 @@ export {
   actionAddCommentAtAnchor,
   actionAddCommentOnElement,
   actionToggleSelectionDimensions,
+  actionOpenSelectionContextMenu,
 } from "./actionCanvasAnchor";
 export { actionToggleArrowBinding } from "./actionToggleArrowBinding";
 export { actionToggleMidpointSnapping } from "./actionToggleMidpointSnapping";

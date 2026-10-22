@@ -250,20 +250,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
           "category": "element",
         },
       },
-      {
-        "keywords": [
-          "text",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyText",
-        "name": "copyText",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -425,6 +411,526 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
+        "items": [
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringToFront",
+            "name": "bringToFront",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringForward",
+            "name": "bringForward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendBackward",
+            "name": "sendBackward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendToBack",
+            "name": "sendToBack",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v7.083c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V8.125c0-.92-.746-1.667-1.666-1.667ZM6.875 6.458h-.417c-.92 0-1.666.747-1.666 1.667v3.75c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667v-3.75c0-.92-.747-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignTop",
+            "name": "alignTop",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 16.667h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M6.875 3.125h-.417c-.92 0-1.666.746-1.666 1.667v7.083c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667V4.792c0-.92-.747-1.667-1.667-1.667ZM13.542 5.817h-.417c-.92 0-1.667.747-1.667 1.667v4.391c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V7.484c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignBottom",
+            "name": "alignBottom",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M15.208 4.792H8.125c-.92 0-1.667.746-1.667 1.666v.417c0 .92.747 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM12.516 11.458H8.125c-.92 0-1.667.746-1.667 1.667v.417c0 .92.747 1.666 1.667 1.666h4.391c.92 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignLeft",
+            "name": "alignLeft",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M16.667 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M11.875 4.792H4.792c-.92 0-1.667.746-1.667 1.666v.417c0 .92.746 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM11.683 11.458H7.292c-.92 0-1.667.746-1.667 1.667v.417c0 .92.746 1.666 1.667 1.666h4.39c.921 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignRight",
+            "name": "alignRight",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M1.667 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8.333 10h3.334"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15.417 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6.875 4.792h-.417c-.92 0-1.666.746-1.666 1.666v7.084c0 .92.746 1.666 1.666 1.666h.417c.92 0 1.667-.746 1.667-1.666V6.458c0-.92-.747-1.666-1.667-1.666ZM13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v3.75c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667v-3.75c0-.92-.746-1.667-1.666-1.667Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerVertically",
+            "name": "alignVerticallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M10 18.333v-2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 11.667V8.333"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 4.583V1.667"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4.792 13.125v.417c0 .92.746 1.666 1.666 1.666h7.084c.92 0 1.666-.746 1.666-1.666v-.417c0-.92-.746-1.667-1.666-1.667H6.458c-.92 0-1.666.746-1.666 1.667ZM6.458 6.458v.417c0 .92.747 1.667 1.667 1.667h3.75c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666h-3.75c-.92 0-1.667.746-1.667 1.666Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerHorizontally",
+            "name": "alignHorizontallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.group",
+            "name": "group",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.ungroup",
+            "name": "ungroup",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "arrange",
+        "kind": "submenu",
+        "label": "labels.arrange",
+      },
+      "separator",
+      {
         "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
@@ -477,6 +983,47 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         "trackEvent": {
           "category": "element",
         },
+      },
+      "separator",
+      {
+        "items": [
+          {
+            "key": "created",
+            "kind": "fact",
+            "label": "labels.created",
+            "value": [Function],
+          },
+          {
+            "key": "lastModified",
+            "kind": "fact",
+            "label": "labels.lastModified",
+            "value": [Function],
+          },
+          {
+            "key": "wordCount",
+            "kind": "fact",
+            "label": "labels.wordCount",
+            "value": [Function],
+          },
+          "separator",
+          {
+            "keywords": [
+              "text",
+              "clipboard",
+              "copy",
+            ],
+            "label": "labels.copyText",
+            "name": "copyText",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "info",
+        "kind": "submenu",
+        "label": "labels.info",
       },
       "separator",
       {
@@ -587,235 +1134,8 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.group",
-        "name": "group",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.ungroup",
-        "name": "ungroup",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
         "label": "labels.addToLibrary",
         "name": "addToLibrary",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      "separator",
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendBackward",
-        "name": "sendBackward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringForward",
-        "name": "bringForward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendToBack",
-        "name": "sendToBack",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringToFront",
-        "name": "bringToFront",
         "perform": [Function],
         "trackEvent": {
           "category": "element",
@@ -914,6 +1234,87 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         "trackEvent": {
           "category": "element",
         },
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z"
+            />
+            <path
+              d="M12 20v.01"
+            />
+            <path
+              d="M16 20v.01"
+            />
+            <path
+              d="M8 20v.01"
+            />
+            <path
+              d="M4 20v.01"
+            />
+            <path
+              d="M4 16v.01"
+            />
+            <path
+              d="M4 12v.01"
+            />
+            <path
+              d="M4 8v.01"
+            />
+            <path
+              d="M4 4v.01"
+            />
+            <path
+              d="M8 4v.01"
+            />
+            <path
+              d="M12 4v.01"
+            />
+            <path
+              d="M16 4v.01"
+            />
+            <path
+              d="M20 4v.01"
+            />
+            <path
+              d="M20 8v.01"
+            />
+            <path
+              d="M20 12v.01"
+            />
+            <path
+              d="M20 16v.01"
+            />
+            <path
+              d="M20 20v.01"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "labels.selectAll",
+        "name": "selectAll",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
       },
     ],
     "left": 30,
@@ -5143,20 +5544,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
           "category": "element",
         },
       },
-      {
-        "keywords": [
-          "text",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyText",
-        "name": "copyText",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -5318,6 +5705,526 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
+        "items": [
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringToFront",
+            "name": "bringToFront",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringForward",
+            "name": "bringForward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendBackward",
+            "name": "sendBackward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendToBack",
+            "name": "sendToBack",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v7.083c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V8.125c0-.92-.746-1.667-1.666-1.667ZM6.875 6.458h-.417c-.92 0-1.666.747-1.666 1.667v3.75c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667v-3.75c0-.92-.747-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignTop",
+            "name": "alignTop",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 16.667h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M6.875 3.125h-.417c-.92 0-1.666.746-1.666 1.667v7.083c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667V4.792c0-.92-.747-1.667-1.667-1.667ZM13.542 5.817h-.417c-.92 0-1.667.747-1.667 1.667v4.391c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V7.484c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignBottom",
+            "name": "alignBottom",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M15.208 4.792H8.125c-.92 0-1.667.746-1.667 1.666v.417c0 .92.747 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM12.516 11.458H8.125c-.92 0-1.667.746-1.667 1.667v.417c0 .92.747 1.666 1.667 1.666h4.391c.92 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignLeft",
+            "name": "alignLeft",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M16.667 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M11.875 4.792H4.792c-.92 0-1.667.746-1.667 1.666v.417c0 .92.746 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM11.683 11.458H7.292c-.92 0-1.667.746-1.667 1.667v.417c0 .92.746 1.666 1.667 1.666h4.39c.921 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignRight",
+            "name": "alignRight",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M1.667 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8.333 10h3.334"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15.417 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6.875 4.792h-.417c-.92 0-1.666.746-1.666 1.666v7.084c0 .92.746 1.666 1.666 1.666h.417c.92 0 1.667-.746 1.667-1.666V6.458c0-.92-.747-1.666-1.667-1.666ZM13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v3.75c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667v-3.75c0-.92-.746-1.667-1.666-1.667Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerVertically",
+            "name": "alignVerticallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M10 18.333v-2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 11.667V8.333"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 4.583V1.667"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4.792 13.125v.417c0 .92.746 1.666 1.666 1.666h7.084c.92 0 1.666-.746 1.666-1.666v-.417c0-.92-.746-1.667-1.666-1.667H6.458c-.92 0-1.666.746-1.666 1.667ZM6.458 6.458v.417c0 .92.747 1.667 1.667 1.667h3.75c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666h-3.75c-.92 0-1.667.746-1.667 1.666Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerHorizontally",
+            "name": "alignHorizontallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.group",
+            "name": "group",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.ungroup",
+            "name": "ungroup",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "arrange",
+        "kind": "submenu",
+        "label": "labels.arrange",
+      },
+      "separator",
+      {
         "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
@@ -5370,6 +6277,47 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         "trackEvent": {
           "category": "element",
         },
+      },
+      "separator",
+      {
+        "items": [
+          {
+            "key": "created",
+            "kind": "fact",
+            "label": "labels.created",
+            "value": [Function],
+          },
+          {
+            "key": "lastModified",
+            "kind": "fact",
+            "label": "labels.lastModified",
+            "value": [Function],
+          },
+          {
+            "key": "wordCount",
+            "kind": "fact",
+            "label": "labels.wordCount",
+            "value": [Function],
+          },
+          "separator",
+          {
+            "keywords": [
+              "text",
+              "clipboard",
+              "copy",
+            ],
+            "label": "labels.copyText",
+            "name": "copyText",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "info",
+        "kind": "submenu",
+        "label": "labels.info",
       },
       "separator",
       {
@@ -5480,235 +6428,8 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.group",
-        "name": "group",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.ungroup",
-        "name": "ungroup",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
         "label": "labels.addToLibrary",
         "name": "addToLibrary",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      "separator",
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendBackward",
-        "name": "sendBackward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringForward",
-        "name": "bringForward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendToBack",
-        "name": "sendToBack",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringToFront",
-        "name": "bringToFront",
         "perform": [Function],
         "trackEvent": {
           "category": "element",
@@ -5807,6 +6528,87 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         "trackEvent": {
           "category": "element",
         },
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z"
+            />
+            <path
+              d="M12 20v.01"
+            />
+            <path
+              d="M16 20v.01"
+            />
+            <path
+              d="M8 20v.01"
+            />
+            <path
+              d="M4 20v.01"
+            />
+            <path
+              d="M4 16v.01"
+            />
+            <path
+              d="M4 12v.01"
+            />
+            <path
+              d="M4 8v.01"
+            />
+            <path
+              d="M4 4v.01"
+            />
+            <path
+              d="M8 4v.01"
+            />
+            <path
+              d="M12 4v.01"
+            />
+            <path
+              d="M16 4v.01"
+            />
+            <path
+              d="M20 4v.01"
+            />
+            <path
+              d="M20 8v.01"
+            />
+            <path
+              d="M20 12v.01"
+            />
+            <path
+              d="M20 16v.01"
+            />
+            <path
+              d="M20 20v.01"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "labels.selectAll",
+        "name": "selectAll",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
       },
     ],
     "left": -17,
@@ -6401,20 +7203,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
           "category": "element",
         },
       },
-      {
-        "keywords": [
-          "text",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyText",
-        "name": "copyText",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -6576,6 +7364,526 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
+        "items": [
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringToFront",
+            "name": "bringToFront",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringForward",
+            "name": "bringForward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendBackward",
+            "name": "sendBackward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendToBack",
+            "name": "sendToBack",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v7.083c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V8.125c0-.92-.746-1.667-1.666-1.667ZM6.875 6.458h-.417c-.92 0-1.666.747-1.666 1.667v3.75c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667v-3.75c0-.92-.747-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignTop",
+            "name": "alignTop",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 16.667h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M6.875 3.125h-.417c-.92 0-1.666.746-1.666 1.667v7.083c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667V4.792c0-.92-.747-1.667-1.667-1.667ZM13.542 5.817h-.417c-.92 0-1.667.747-1.667 1.667v4.391c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V7.484c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignBottom",
+            "name": "alignBottom",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M15.208 4.792H8.125c-.92 0-1.667.746-1.667 1.666v.417c0 .92.747 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM12.516 11.458H8.125c-.92 0-1.667.746-1.667 1.667v.417c0 .92.747 1.666 1.667 1.666h4.391c.92 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignLeft",
+            "name": "alignLeft",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M16.667 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M11.875 4.792H4.792c-.92 0-1.667.746-1.667 1.666v.417c0 .92.746 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM11.683 11.458H7.292c-.92 0-1.667.746-1.667 1.667v.417c0 .92.746 1.666 1.667 1.666h4.39c.921 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignRight",
+            "name": "alignRight",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M1.667 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8.333 10h3.334"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15.417 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6.875 4.792h-.417c-.92 0-1.666.746-1.666 1.666v7.084c0 .92.746 1.666 1.666 1.666h.417c.92 0 1.667-.746 1.667-1.666V6.458c0-.92-.747-1.666-1.667-1.666ZM13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v3.75c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667v-3.75c0-.92-.746-1.667-1.666-1.667Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerVertically",
+            "name": "alignVerticallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M10 18.333v-2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 11.667V8.333"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 4.583V1.667"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4.792 13.125v.417c0 .92.746 1.666 1.666 1.666h7.084c.92 0 1.666-.746 1.666-1.666v-.417c0-.92-.746-1.667-1.666-1.667H6.458c-.92 0-1.666.746-1.666 1.667ZM6.458 6.458v.417c0 .92.747 1.667 1.667 1.667h3.75c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666h-3.75c-.92 0-1.667.746-1.667 1.666Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerHorizontally",
+            "name": "alignHorizontallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.group",
+            "name": "group",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.ungroup",
+            "name": "ungroup",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "arrange",
+        "kind": "submenu",
+        "label": "labels.arrange",
+      },
+      "separator",
+      {
         "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
@@ -6628,6 +7936,47 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         "trackEvent": {
           "category": "element",
         },
+      },
+      "separator",
+      {
+        "items": [
+          {
+            "key": "created",
+            "kind": "fact",
+            "label": "labels.created",
+            "value": [Function],
+          },
+          {
+            "key": "lastModified",
+            "kind": "fact",
+            "label": "labels.lastModified",
+            "value": [Function],
+          },
+          {
+            "key": "wordCount",
+            "kind": "fact",
+            "label": "labels.wordCount",
+            "value": [Function],
+          },
+          "separator",
+          {
+            "keywords": [
+              "text",
+              "clipboard",
+              "copy",
+            ],
+            "label": "labels.copyText",
+            "name": "copyText",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "info",
+        "kind": "submenu",
+        "label": "labels.info",
       },
       "separator",
       {
@@ -6738,235 +8087,8 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.group",
-        "name": "group",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.ungroup",
-        "name": "ungroup",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
         "label": "labels.addToLibrary",
         "name": "addToLibrary",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      "separator",
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendBackward",
-        "name": "sendBackward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringForward",
-        "name": "bringForward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendToBack",
-        "name": "sendToBack",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringToFront",
-        "name": "bringToFront",
         "perform": [Function],
         "trackEvent": {
           "category": "element",
@@ -7065,6 +8187,87 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         "trackEvent": {
           "category": "element",
         },
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z"
+            />
+            <path
+              d="M12 20v.01"
+            />
+            <path
+              d="M16 20v.01"
+            />
+            <path
+              d="M8 20v.01"
+            />
+            <path
+              d="M4 20v.01"
+            />
+            <path
+              d="M4 16v.01"
+            />
+            <path
+              d="M4 12v.01"
+            />
+            <path
+              d="M4 8v.01"
+            />
+            <path
+              d="M4 4v.01"
+            />
+            <path
+              d="M8 4v.01"
+            />
+            <path
+              d="M12 4v.01"
+            />
+            <path
+              d="M16 4v.01"
+            />
+            <path
+              d="M20 4v.01"
+            />
+            <path
+              d="M20 8v.01"
+            />
+            <path
+              d="M20 12v.01"
+            />
+            <path
+              d="M20 16v.01"
+            />
+            <path
+              d="M20 20v.01"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "labels.selectAll",
+        "name": "selectAll",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
       },
     ],
     "left": -17,
@@ -8535,20 +9738,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
           "category": "element",
         },
       },
-      {
-        "keywords": [
-          "text",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyText",
-        "name": "copyText",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -8710,6 +9899,526 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
+        "items": [
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringToFront",
+            "name": "bringToFront",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringForward",
+            "name": "bringForward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendBackward",
+            "name": "sendBackward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendToBack",
+            "name": "sendToBack",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v7.083c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V8.125c0-.92-.746-1.667-1.666-1.667ZM6.875 6.458h-.417c-.92 0-1.666.747-1.666 1.667v3.75c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667v-3.75c0-.92-.747-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignTop",
+            "name": "alignTop",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 16.667h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M6.875 3.125h-.417c-.92 0-1.666.746-1.666 1.667v7.083c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667V4.792c0-.92-.747-1.667-1.667-1.667ZM13.542 5.817h-.417c-.92 0-1.667.747-1.667 1.667v4.391c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V7.484c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignBottom",
+            "name": "alignBottom",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M15.208 4.792H8.125c-.92 0-1.667.746-1.667 1.666v.417c0 .92.747 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM12.516 11.458H8.125c-.92 0-1.667.746-1.667 1.667v.417c0 .92.747 1.666 1.667 1.666h4.391c.92 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignLeft",
+            "name": "alignLeft",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M16.667 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M11.875 4.792H4.792c-.92 0-1.667.746-1.667 1.666v.417c0 .92.746 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM11.683 11.458H7.292c-.92 0-1.667.746-1.667 1.667v.417c0 .92.746 1.666 1.667 1.666h4.39c.921 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignRight",
+            "name": "alignRight",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M1.667 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8.333 10h3.334"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15.417 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6.875 4.792h-.417c-.92 0-1.666.746-1.666 1.666v7.084c0 .92.746 1.666 1.666 1.666h.417c.92 0 1.667-.746 1.667-1.666V6.458c0-.92-.747-1.666-1.667-1.666ZM13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v3.75c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667v-3.75c0-.92-.746-1.667-1.666-1.667Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerVertically",
+            "name": "alignVerticallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M10 18.333v-2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 11.667V8.333"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 4.583V1.667"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4.792 13.125v.417c0 .92.746 1.666 1.666 1.666h7.084c.92 0 1.666-.746 1.666-1.666v-.417c0-.92-.746-1.667-1.666-1.667H6.458c-.92 0-1.666.746-1.666 1.667ZM6.458 6.458v.417c0 .92.747 1.667 1.667 1.667h3.75c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666h-3.75c-.92 0-1.667.746-1.667 1.666Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerHorizontally",
+            "name": "alignHorizontallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.group",
+            "name": "group",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.ungroup",
+            "name": "ungroup",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "arrange",
+        "kind": "submenu",
+        "label": "labels.arrange",
+      },
+      "separator",
+      {
         "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
@@ -8762,6 +10471,47 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "trackEvent": {
           "category": "element",
         },
+      },
+      "separator",
+      {
+        "items": [
+          {
+            "key": "created",
+            "kind": "fact",
+            "label": "labels.created",
+            "value": [Function],
+          },
+          {
+            "key": "lastModified",
+            "kind": "fact",
+            "label": "labels.lastModified",
+            "value": [Function],
+          },
+          {
+            "key": "wordCount",
+            "kind": "fact",
+            "label": "labels.wordCount",
+            "value": [Function],
+          },
+          "separator",
+          {
+            "keywords": [
+              "text",
+              "clipboard",
+              "copy",
+            ],
+            "label": "labels.copyText",
+            "name": "copyText",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "info",
+        "kind": "submenu",
+        "label": "labels.info",
       },
       "separator",
       {
@@ -8872,235 +10622,8 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.group",
-        "name": "group",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.ungroup",
-        "name": "ungroup",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
         "label": "labels.addToLibrary",
         "name": "addToLibrary",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      "separator",
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendBackward",
-        "name": "sendBackward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringForward",
-        "name": "bringForward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendToBack",
-        "name": "sendToBack",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringToFront",
-        "name": "bringToFront",
         "perform": [Function],
         "trackEvent": {
           "category": "element",
@@ -9199,6 +10722,87 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "trackEvent": {
           "category": "element",
         },
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z"
+            />
+            <path
+              d="M12 20v.01"
+            />
+            <path
+              d="M16 20v.01"
+            />
+            <path
+              d="M8 20v.01"
+            />
+            <path
+              d="M4 20v.01"
+            />
+            <path
+              d="M4 16v.01"
+            />
+            <path
+              d="M4 12v.01"
+            />
+            <path
+              d="M4 8v.01"
+            />
+            <path
+              d="M4 4v.01"
+            />
+            <path
+              d="M8 4v.01"
+            />
+            <path
+              d="M12 4v.01"
+            />
+            <path
+              d="M16 4v.01"
+            />
+            <path
+              d="M20 4v.01"
+            />
+            <path
+              d="M20 8v.01"
+            />
+            <path
+              d="M20 12v.01"
+            />
+            <path
+              d="M20 16v.01"
+            />
+            <path
+              d="M20 20v.01"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "labels.selectAll",
+        "name": "selectAll",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
       },
     ],
     "left": -17,
@@ -9563,20 +11167,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
           "category": "element",
         },
       },
-      {
-        "keywords": [
-          "text",
-          "clipboard",
-          "copy",
-        ],
-        "label": "labels.copyText",
-        "name": "copyText",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -9738,6 +11328,526 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
+        "items": [
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringToFront",
+            "name": "bringToFront",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move up",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.bringForward",
+            "name": "bringForward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 5l0 14"
+                />
+                <path
+                  d="M16 9l-4 -4"
+                />
+                <path
+                  d="M8 9l4 -4"
+                />
+              </g>
+            </svg>,
+            "keyPriority": 40,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendBackward",
+            "name": "sendBackward",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                {
+                  "transform": "rotate(180deg)",
+                }
+              }
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeWidth={"1.50000"}
+              >
+                <path
+                  d="M0 0h24v24H0z"
+                  fill="none"
+                  stroke="none"
+                />
+                <path
+                  d="M12 10l0 10"
+                />
+                <path
+                  d="M12 10l4 4"
+                />
+                <path
+                  d="M12 10l-4 4"
+                />
+                <path
+                  d="M4 4l16 0"
+                />
+              </g>
+            </svg>,
+            "keyTest": [Function],
+            "keywords": [
+              "move down",
+              "zindex",
+              "layer",
+            ],
+            "label": "labels.sendToBack",
+            "name": "sendToBack",
+            "perform": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v7.083c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V8.125c0-.92-.746-1.667-1.666-1.667ZM6.875 6.458h-.417c-.92 0-1.666.747-1.666 1.667v3.75c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667v-3.75c0-.92-.747-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignTop",
+            "name": "alignTop",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 16.667h13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M6.875 3.125h-.417c-.92 0-1.666.746-1.666 1.667v7.083c0 .92.746 1.667 1.666 1.667h.417c.92 0 1.667-.746 1.667-1.667V4.792c0-.92-.747-1.667-1.667-1.667ZM13.542 5.817h-.417c-.92 0-1.667.747-1.667 1.667v4.391c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667V7.484c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignBottom",
+            "name": "alignBottom",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M3.333 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M15.208 4.792H8.125c-.92 0-1.667.746-1.667 1.666v.417c0 .92.747 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM12.516 11.458H8.125c-.92 0-1.667.746-1.667 1.667v.417c0 .92.747 1.666 1.667 1.666h4.391c.92 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.667-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignLeft",
+            "name": "alignLeft",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <React.Fragment>
+                <g
+                  clipPath="url(#a)"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                >
+                  <path
+                    d="M16.667 3.333v13.334"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M11.875 4.792H4.792c-.92 0-1.667.746-1.667 1.666v.417c0 .92.746 1.667 1.667 1.667h7.083c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666ZM11.683 11.458H7.292c-.92 0-1.667.746-1.667 1.667v.417c0 .92.746 1.666 1.667 1.666h4.39c.921 0 1.667-.746 1.667-1.666v-.417c0-.92-.746-1.667-1.666-1.667Z"
+                  />
+                </g>
+                <defs>
+                  <clipPath
+                    id="a"
+                  >
+                    <path
+                      d="M0 0h20v20H0z"
+                      fill="#fff"
+                    />
+                  </clipPath>
+                </defs>
+              </React.Fragment>
+            </svg>,
+            "keyTest": [Function],
+            "label": "labels.alignRight",
+            "name": "alignRight",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M1.667 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8.333 10h3.334"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15.417 10h2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6.875 4.792h-.417c-.92 0-1.666.746-1.666 1.666v7.084c0 .92.746 1.666 1.666 1.666h.417c.92 0 1.667-.746 1.667-1.666V6.458c0-.92-.747-1.666-1.667-1.666ZM13.542 6.458h-.417c-.92 0-1.667.747-1.667 1.667v3.75c0 .92.746 1.667 1.667 1.667h.417c.92 0 1.666-.746 1.666-1.667v-3.75c0-.92-.746-1.667-1.666-1.667Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerVertically",
+            "name": "alignVerticallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": <svg
+              aria-hidden="true"
+              className=""
+              fill="none"
+              focusable="false"
+              role="img"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 20 20"
+            >
+              <g
+                stroke="currentColor"
+                strokeWidth="1.25"
+              >
+                <path
+                  d="M10 18.333v-2.916"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 11.667V8.333"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 4.583V1.667"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4.792 13.125v.417c0 .92.746 1.666 1.666 1.666h7.084c.92 0 1.666-.746 1.666-1.666v-.417c0-.92-.746-1.667-1.666-1.667H6.458c-.92 0-1.666.746-1.666 1.667ZM6.458 6.458v.417c0 .92.747 1.667 1.667 1.667h3.75c.92 0 1.667-.747 1.667-1.667v-.417c0-.92-.746-1.666-1.667-1.666h-3.75c-.92 0-1.667.746-1.667 1.666Z"
+                />
+              </g>
+            </svg>,
+            "label": "labels.centerHorizontally",
+            "name": "alignHorizontallyCentered",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          "separator",
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.group",
+            "name": "group",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+          {
+            "PanelComponent": [Function],
+            "icon": [Function],
+            "keyTest": [Function],
+            "label": "labels.ungroup",
+            "name": "ungroup",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "arrange",
+        "kind": "submenu",
+        "label": "labels.arrange",
+      },
+      "separator",
+      {
         "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
@@ -9790,6 +11900,47 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "trackEvent": {
           "category": "element",
         },
+      },
+      "separator",
+      {
+        "items": [
+          {
+            "key": "created",
+            "kind": "fact",
+            "label": "labels.created",
+            "value": [Function],
+          },
+          {
+            "key": "lastModified",
+            "kind": "fact",
+            "label": "labels.lastModified",
+            "value": [Function],
+          },
+          {
+            "key": "wordCount",
+            "kind": "fact",
+            "label": "labels.wordCount",
+            "value": [Function],
+          },
+          "separator",
+          {
+            "keywords": [
+              "text",
+              "clipboard",
+              "copy",
+            ],
+            "label": "labels.copyText",
+            "name": "copyText",
+            "perform": [Function],
+            "predicate": [Function],
+            "trackEvent": {
+              "category": "element",
+            },
+          },
+        ],
+        "key": "info",
+        "kind": "submenu",
+        "label": "labels.info",
       },
       "separator",
       {
@@ -9900,235 +12051,8 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.group",
-        "name": "group",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": [Function],
-        "keyTest": [Function],
-        "label": "labels.ungroup",
-        "name": "ungroup",
-        "perform": [Function],
-        "predicate": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
         "label": "labels.addToLibrary",
         "name": "addToLibrary",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      "separator",
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendBackward",
-        "name": "sendBackward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 5l0 14"
-            />
-            <path
-              d="M16 9l-4 -4"
-            />
-            <path
-              d="M8 9l4 -4"
-            />
-          </g>
-        </svg>,
-        "keyPriority": 40,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringForward",
-        "name": "bringForward",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          style={
-            {
-              "transform": "rotate(180deg)",
-            }
-          }
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move down",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.sendToBack",
-        "name": "sendToBack",
-        "perform": [Function],
-        "trackEvent": {
-          "category": "element",
-        },
-      },
-      {
-        "PanelComponent": [Function],
-        "icon": <svg
-          aria-hidden="true"
-          className=""
-          fill="none"
-          focusable="false"
-          role="img"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <g
-            strokeWidth={"1.50000"}
-          >
-            <path
-              d="M0 0h24v24H0z"
-              fill="none"
-              stroke="none"
-            />
-            <path
-              d="M12 10l0 10"
-            />
-            <path
-              d="M12 10l4 4"
-            />
-            <path
-              d="M12 10l-4 4"
-            />
-            <path
-              d="M4 4l16 0"
-            />
-          </g>
-        </svg>,
-        "keyTest": [Function],
-        "keywords": [
-          "move up",
-          "zindex",
-          "layer",
-        ],
-        "label": "labels.bringToFront",
-        "name": "bringToFront",
         "perform": [Function],
         "trackEvent": {
           "category": "element",
@@ -10227,6 +12151,87 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "trackEvent": {
           "category": "element",
         },
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g>
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z"
+            />
+            <path
+              d="M12 20v.01"
+            />
+            <path
+              d="M16 20v.01"
+            />
+            <path
+              d="M8 20v.01"
+            />
+            <path
+              d="M4 20v.01"
+            />
+            <path
+              d="M4 16v.01"
+            />
+            <path
+              d="M4 12v.01"
+            />
+            <path
+              d="M4 8v.01"
+            />
+            <path
+              d="M4 4v.01"
+            />
+            <path
+              d="M8 4v.01"
+            />
+            <path
+              d="M12 4v.01"
+            />
+            <path
+              d="M16 4v.01"
+            />
+            <path
+              d="M20 4v.01"
+            />
+            <path
+              d="M20 8v.01"
+            />
+            <path
+              d="M20 12v.01"
+            />
+            <path
+              d="M20 16v.01"
+            />
+            <path
+              d="M20 20v.01"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "labels.selectAll",
+        "name": "selectAll",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": false,
       },
     ],
     "left": 80,

@@ -149,6 +149,7 @@ export type ActionName =
   | "addCommentAtAnchor"
   | "addCommentOnElement"
   | "toggleSelectionDimensions"
+  | "openSelectionContextMenu"
   /*
    * Firo's own actions, registered by the host through
    * `excalidrawAPI.registerAction`.

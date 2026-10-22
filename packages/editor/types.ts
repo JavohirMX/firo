@@ -1377,6 +1377,8 @@ export type AppClassProperties = {
 
   isInteractionEnabled: App["isInteractionEnabled"];
   isNavigationEnabled: App["isNavigationEnabled"];
+
+  openSelectionContextMenu: App["openSelectionContextMenu"];
 };
 
 export type PointerDownState = Readonly<{

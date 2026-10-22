@@ -293,3 +293,125 @@ describe("object context menu lane (ADR-0033)", () => {
     expect(hostComment).toHaveBeenCalledWith({ elementId: selected.id });
   });
 });
+
+describe("context menu structure and keyboard (ADR-0033)", () => {
+  beforeAll(() => {
+    mockBoundingClientRect();
+  });
+
+  afterAll(() => {
+    restoreOriginalGetBoundingClientRect();
+  });
+
+  beforeEach(async () => {
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+  });
+
+  const openObjectMenu = () => {
+    const rect = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rect]);
+    API.setSelectedElements([rect]);
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 50,
+      clientY: 50,
+    });
+    const menu = UI.queryContextMenu();
+    expect(menu).not.toBeNull();
+    return menu!;
+  };
+
+  it("renders menu roles and submenu parents with aria attributes", () => {
+    const menu = openObjectMenu();
+    expect(menu.getAttribute("role")).toBe("menu");
+    expect(
+      menu.querySelector('button[role="menuitem"][aria-haspopup="menu"]'),
+    ).not.toBeNull();
+    const arrange = menu.querySelector('button[data-submenu="arrange"]')!;
+    expect(arrange.getAttribute("aria-expanded")).toBe("false");
+    // checkable rows expose the checkbox role
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 500,
+      clientY: 500,
+    });
+  });
+
+  it("opens the Arrange submenu by click and the Info submenu shows facts", () => {
+    const menu = openObjectMenu();
+    fireEvent.click(menu.querySelector('button[data-submenu="arrange"]')!);
+    expect(menu.querySelector('li[data-testid="sendToBack"]')).not.toBeNull();
+
+    fireEvent.click(menu.querySelector('button[data-submenu="info"]')!);
+    expect(menu.textContent).toContain("Created");
+    expect(menu.textContent).toContain("Last modified");
+    expect(menu.textContent).toContain("Word count");
+  });
+
+  it("focuses the first row on open and ArrowDown walks rows", () => {
+    const menu = openObjectMenu();
+    const rows = Array.from(
+      menu.querySelectorAll<HTMLElement>(
+        ":scope > li > button.context-menu-item",
+      ),
+    );
+    expect(document.activeElement).toBe(rows[0]);
+    fireEvent.keyDown(rows[0], { key: "ArrowDown" });
+    expect(document.activeElement).toBe(rows[1]);
+    fireEvent.keyDown(rows[1], { key: "End" });
+    expect(document.activeElement).toBe(rows[rows.length - 1]);
+    fireEvent.keyDown(rows[rows.length - 1], { key: "Home" });
+    expect(document.activeElement).toBe(rows[0]);
+  });
+
+  it("ArrowRight opens the submenu, ArrowLeft closes it, Escape closes the lane and keeps the selection", () => {
+    const menu = openObjectMenu();
+    const arrange = menu.querySelector<HTMLElement>(
+      'button[data-submenu="arrange"]',
+    )!;
+    arrange.focus();
+    fireEvent.keyDown(arrange, { key: "ArrowRight" });
+    const firstSubRow = menu.querySelector<HTMLElement>(
+      ".context-menu-item__submenu button.context-menu-item",
+    );
+    expect(firstSubRow).not.toBeNull();
+    expect(document.activeElement).toBe(firstSubRow);
+
+    fireEvent.keyDown(firstSubRow!, { key: "ArrowLeft" });
+    expect(menu.querySelector(".context-menu-item__submenu")).toBeNull();
+    expect(document.activeElement).toBe(arrange);
+
+    // Escape rung: the lane closes, the selection stays
+    fireEvent.keyDown(arrange, { key: "Escape" });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(Object.keys(h.state.selectedElementIds).length).toBe(1);
+  });
+
+  it("opens the object lane with Ctrl+Enter for the selection", () => {
+    const rect = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rect]);
+    API.setSelectedElements([rect]);
+    expect(UI.queryContextMenu()).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    const menu = UI.queryContextMenu();
+    expect(menu).not.toBeNull();
+    expect(
+      menu!.querySelector('button[data-submenu="arrange"]'),
+    ).not.toBeNull();
+  });
+});

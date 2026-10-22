@@ -100,3 +100,47 @@
     border-top: 1px solid $color-gray-5;
   }
 }
+
+.excalidraw {
+  .context-menu-item--has-submenu {
+    position: relative;
+  }
+
+  .context-menu-item__submenu {
+    position: absolute;
+    left: 100%;
+    top: -0.5rem;
+    min-width: 100%;
+    z-index: 1;
+  }
+
+  .context-menu-item__chevron {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    opacity: 0.6;
+
+    svg {
+      width: 0.9rem;
+      height: 0.9rem;
+    }
+  }
+
+  .context-menu-item__fact {
+    cursor: default;
+
+    &:hover {
+      color: inherit;
+      background-color: transparent;
+    }
+
+    .context-menu-item__fact-value {
+      justify-self: end;
+      opacity: 0.6;
+      font-size: 0.8rem;
+      max-width: 12rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}

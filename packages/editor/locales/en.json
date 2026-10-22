@@ -194,7 +194,7 @@
     "copyElementLink": "Copy link to object",
     "linkToElement": "Link to object",
     "wrapSelectionInFrame": "Wrap selection in frame",
-    "saveSelectionAsTemplate": "Save as template\u2026",
+    "saveSelectionAsTemplate": "Save as template…",
     "tab": "Tab",
     "shapeSwitch": "Switch shape",
     "stickyNoteSize": "Sticky note size",
@@ -211,7 +211,13 @@
     "showHints": "Show hints",
     "inputDevice": "Input",
     "inputDeviceTrackpad": "Trackpad",
-    "inputDeviceMouse": "Mouse"
+    "inputDeviceMouse": "Mouse",
+    "arrange": "Arrange",
+    "info": "Info",
+    "created": "Created",
+    "lastModified": "Last modified",
+    "wordCount": "Word count",
+    "openContextMenu": "Open context menu"
   },
   "elementLink": {
     "title": "Link to object",

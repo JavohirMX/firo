@@ -107,6 +107,7 @@ import {
 import {
   getObservedAppState,
   getCommonBounds,
+  getTextFromElements,
   getElementAbsoluteCoords,
   bindOrUnbindBindingElements,
   getHoveredElementForBinding,
@@ -273,6 +274,12 @@ import type { Mutable, ValueOf } from "@firo/common/utility-types";
 
 import {
   actionAddToLibrary,
+  actionAlignBottom,
+  actionAlignHorizontallyCentered,
+  actionAlignLeft,
+  actionAlignRight,
+  actionAlignTop,
+  actionAlignVerticallyCentered,
   actionBringForward,
   actionBringToFront,
   actionCopy,
@@ -460,7 +467,7 @@ import type {
 } from "../scene/types";
 
 import type { ExportedElements } from "../data";
-import type { ContextMenuItems } from "./ContextMenu";
+import type { ContextMenuItems, ContextMenuSubmenu } from "./ContextMenu";
 
 import type {
   AppClassProperties,
@@ -12375,6 +12382,45 @@ class App extends React.Component<AppProps, AppState> {
     );
   };
 
+  /**
+   * Opens the object lane for the current selection, anchored at the
+   * selection's top-left corner in screen coordinates (ADR-0033's `⌘ +
+   * Enter` path). With nothing selected it does nothing; while text is being
+   * edited the editor's own binding wins.
+   */
+  public openSelectionContextMenu = () => {
+    if (!this.isInteractionEnabled()) {
+      return;
+    }
+    const selectedElements = this.scene.getSelectedElements(this.state);
+    if (!selectedElements.length || this.state.editingTextElement) {
+      return;
+    }
+    const container = this.excalidrawContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const [minX, minY] = getCommonBounds(selectedElements);
+    const { x, y } = sceneCoordsToViewportCoords(
+      { sceneX: minX, sceneY: minY },
+      this.state,
+    );
+    const { top: offsetTop, left: offsetLeft } =
+      container.getBoundingClientRect();
+
+    trackEvent("contextMenu", "openContextMenu", "element");
+
+    this.setState({
+      contextMenu: {
+        top: y - offsetTop,
+        left: x - offsetLeft,
+        anchorX: minX,
+        anchorY: minY,
+        items: this.getContextMenuItems("element"),
+      },
+    });
+  };
+
   public maybeDragNewGenericElement = (
     pointerDownState: PointerDownState,
     event: MouseEvent | KeyboardEvent,
@@ -12804,25 +12850,90 @@ class App extends React.Component<AppProps, AppState> {
       return [actionCopy, ...options];
     }
 
-    const zIndexActions: ContextMenuItems =
-      this.editorInterface.formFactor === "desktop"
-        ? [
-            CONTEXT_MENU_SEPARATOR,
-            actionSendBackward,
-            actionBringForward,
-            actionSendToBack,
-            actionBringToFront,
-          ]
-        : [];
-
     /*
      * The object lane (ADR-0033): commands on the selection. Clipboard and
      * Duplicate/Delete lead, a single-element Add comment follows, then
-     * styles, Link to, Lock and Create frame. Firo's commands with no Miro
-     * counterpart keep their home at the tail. The Arrange and Info submenus
-     * wait for the menu's structure kinds — until then the z-order, group
-     * and align commands stay flat in the tail.
+     * styles, the Arrange and Info submenus, Link to, Lock and Create frame.
+     * Firo's commands with no Miro counterpart keep their home at the tail.
+     * Arrange's composition is ours — order, align, group and ungroup built
+     * from the actions Firo has; Info's facts come from the selection.
      */
+    const arrangeSubmenu: ContextMenuSubmenu = {
+      kind: "submenu",
+      key: "arrange",
+      label: "labels.arrange",
+      items: [
+        ...(this.editorInterface.formFactor === "desktop"
+          ? [
+              actionBringToFront,
+              actionBringForward,
+              actionSendBackward,
+              actionSendToBack,
+              CONTEXT_MENU_SEPARATOR,
+            ]
+          : []),
+        actionAlignTop,
+        actionAlignBottom,
+        actionAlignLeft,
+        actionAlignRight,
+        actionAlignVerticallyCentered,
+        actionAlignHorizontallyCentered,
+        CONTEXT_MENU_SEPARATOR,
+        actionGroup,
+        actionUngroup,
+      ] as ContextMenuItems,
+    };
+
+    const infoSubmenu: ContextMenuSubmenu = {
+      kind: "submenu",
+      key: "info",
+      label: "labels.info",
+      items: [
+        {
+          kind: "fact",
+          key: "created",
+          label: "labels.created",
+          value: (elements, appState) => {
+            const created = getSelectedElements(elements, appState)
+              .map((element) => element.created)
+              .filter((ts): ts is number => typeof ts === "number");
+            return created.length
+              ? new Date(Math.min(...created)).toLocaleString()
+              : "—";
+          },
+        },
+        {
+          kind: "fact",
+          key: "lastModified",
+          label: "labels.lastModified",
+          value: (elements, appState) => {
+            const selected = getSelectedElements(elements, appState);
+            return selected.length
+              ? new Date(
+                  Math.max(...selected.map((element) => element.updated)),
+                ).toLocaleString()
+              : "—";
+          },
+        },
+        {
+          kind: "fact",
+          key: "wordCount",
+          label: "labels.wordCount",
+          value: (elements, appState, app) => {
+            const text = getTextFromElements(
+              app.scene.getSelectedElements({
+                selectedElementIds: appState.selectedElementIds,
+                includeBoundTextElement: true,
+              }),
+            ).trim();
+            return String(text ? text.split(/\s+/).length : 0);
+          },
+        },
+        CONTEXT_MENU_SEPARATOR,
+        copyText,
+      ],
+    };
+
     return [
       actionCopy,
       actionCut,
@@ -12830,7 +12941,8 @@ class App extends React.Component<AppProps, AppState> {
       CONTEXT_MENU_SEPARATOR,
       actionCopyElementLink,
       CONTEXT_MENU_SEPARATOR,
-      ...options,
+      actionCopyAsPng,
+      actionCopyAsSvg,
       CONTEXT_MENU_SEPARATOR,
       actionDuplicateSelection,
       actionDeleteSelected,
@@ -12840,9 +12952,13 @@ class App extends React.Component<AppProps, AppState> {
       actionCopyStyles,
       actionPasteStyles,
       CONTEXT_MENU_SEPARATOR,
+      arrangeSubmenu,
+      CONTEXT_MENU_SEPARATOR,
       actionLink,
       actionToggleElementLock,
       actionWrapSelectionInFrame,
+      CONTEXT_MENU_SEPARATOR,
+      infoSubmenu,
       CONTEXT_MENU_SEPARATOR,
       actionSaveSelectionAsTemplate,
       actionSelectAllElementsInFrame,
@@ -12852,13 +12968,11 @@ class App extends React.Component<AppProps, AppState> {
       actionUnbindText,
       actionBindText,
       actionWrapTextInContainer,
-      actionGroup,
-      actionUngroup,
       actionAddToLibrary,
-      ...zIndexActions,
       actionFlipHorizontal,
       actionFlipVertical,
       actionToggleLinearEditor,
+      actionSelectAll,
     ];
   };
 
