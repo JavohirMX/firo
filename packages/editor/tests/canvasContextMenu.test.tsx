@@ -3,18 +3,26 @@ import { vi } from "vitest";
 
 import { reseed } from "@firo/common";
 
+import { pointFrom } from "@firo/math";
+
+import { LinearElementEditor } from "@firo/element";
+
+import type { LocalPoint } from "@firo/math";
+
 import { actionAddCommentOnElement } from "../actions/actionCanvasAnchor";
 
 import {
   actionAddCommentAtAnchor,
   actionToggleSelectionDimensions,
 } from "../actions/actionCanvasAnchor";
+
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
 import { UI, Pointer } from "./helpers/ui";
 import {
   render,
+  act,
   fireEvent,
   mockBoundingClientRect,
   restoreOriginalGetBoundingClientRect,
@@ -413,5 +421,97 @@ describe("context menu structure and keyboard (ADR-0033)", () => {
     expect(
       menu!.querySelector('button[data-submenu="arrange"]'),
     ).not.toBeNull();
+  });
+
+  // c0faab8: the lane's keyTest must yield to the editor's own binding for a
+  // single selected line or arrow, which enters the line editor instead
+  it("keeps Ctrl+Enter line editing for a selected line, with no lane", () => {
+    const line = API.createElement({
+      type: "line",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(100, 100)],
+    });
+    API.setElements([line]);
+    API.setSelectedElements([line]);
+    // pointer selection seeds this state in the real flow; Enter then toggles
+    // the editor on (actionToggleLinearEditor toggles, it does not create)
+    act(() => {
+      h.setState({
+        selectedLinearElement: new LinearElementEditor(
+          line,
+          h.app.scene.getNonDeletedElementsMap(),
+        ),
+      });
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(h.state.selectedLinearElement?.isEditing).toBe(true);
+    expect(h.state.selectedLinearElement?.elementId).toEqual(line.id);
+  });
+
+  it("keeps Ctrl+Enter line editing for a selected arrow, with no lane", () => {
+    const arrow = API.createElement({
+      type: "arrow",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(100, 100)],
+    });
+    API.setElements([arrow]);
+    API.setSelectedElements([arrow]);
+    // pointer selection seeds this state in the real flow; Enter then toggles
+    // the editor on (actionToggleLinearEditor toggles, it does not create)
+    act(() => {
+      h.setState({
+        selectedLinearElement: new LinearElementEditor(
+          arrow,
+          h.app.scene.getNonDeletedElementsMap(),
+        ),
+      });
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(h.state.selectedLinearElement?.isEditing).toBe(true);
+    expect(h.state.selectedLinearElement?.elementId).toEqual(arrow.id);
+  });
+
+  it("opens the lane with Ctrl+Enter for a linear multi-selection", () => {
+    const first = API.createElement({
+      type: "line",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(100, 100)],
+    });
+    const second = API.createElement({
+      type: "line",
+      x: 200,
+      y: 0,
+      width: 100,
+      height: 100,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(100, 100)],
+    });
+    API.setElements([first, second]);
+    API.setSelectedElements([first, second]);
+    expect(UI.queryContextMenu()).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(UI.queryContextMenu()).not.toBeNull();
+    expect(h.state.selectedLinearElement?.isEditing ?? false).toBe(false);
   });
 });
