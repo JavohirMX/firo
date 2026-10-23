@@ -292,6 +292,22 @@ describe("object context menu lane (ADR-0033)", () => {
     ).toBe(false);
   });
 
+  // c0faab8 narrowed only the keyboard keyTest for single linears; the
+  // pointer path (App.openContextMenu's element branch, not
+  // openSelectionContextMenu) must still open the lane for a selected line,
+  // and must not enter the line editor
+  it("opens the lane via right-click for a selected line, without line editing", () => {
+    UI.clickTool("line");
+    mouse.down(60, 60);
+    mouse.up(160, 160);
+    expect(h.elements.length).toBe(1);
+    const menu = openElementMenu();
+    expect(
+      menu.querySelector('li[data-testid="deleteSelectedElements"]'),
+    ).not.toBeNull();
+    expect(h.state.selectedLinearElement?.isEditing ?? false).toBe(false);
+  });
+
   it("hands the selected element to the host comment hook", () => {
     drawSelectedRectangle();
     const menu = openElementMenu();
