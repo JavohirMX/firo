@@ -308,6 +308,31 @@ describe("object context menu lane (ADR-0033)", () => {
     expect(h.state.selectedLinearElement?.isEditing ?? false).toBe(false);
   });
 
+  // right-clicking an unselected line selects it through openContextMenu's
+  // selection branch, which also constructs a LinearElementEditor (not yet
+  // editing) before the lane opens
+  it("selects an unselected line on right-click and opens the lane, not editing", () => {
+    UI.clickTool("line");
+    mouse.down(60, 60);
+    mouse.up(160, 160);
+    const line = h.elements[0];
+    act(() => {
+      h.setState({
+        selectedElementIds: {},
+        selectedLinearElement: null,
+      });
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    const menu = openElementMenu();
+    expect(
+      menu.querySelector('li[data-testid="deleteSelectedElements"]'),
+    ).not.toBeNull();
+    expect(h.state.selectedElementIds[line.id]).toBe(true);
+    expect(h.state.selectedLinearElement).not.toBeNull();
+    expect(h.state.selectedLinearElement?.isEditing).toBe(false);
+    expect(h.state.selectedLinearElement?.elementId).toEqual(line.id);
+  });
+
   it("hands the selected element to the host comment hook", () => {
     drawSelectedRectangle();
     const menu = openElementMenu();
