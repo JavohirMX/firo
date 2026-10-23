@@ -172,7 +172,8 @@
   &:focus {
     outline: none;
     border-color: var(--firo-color-accent, #5b4bff);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--firo-color-accent, #5b4bff) 18%, transparent);
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--firo-color-accent, #5b4bff) 18%, transparent);
   }
 }
 

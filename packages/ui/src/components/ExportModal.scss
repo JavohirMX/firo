@@ -135,7 +135,11 @@
 
 .firo-export-modal__badge {
   font-size: 10px;
-  background: color-mix(in srgb, var(--firo-color-accent, #5b4bff) 12%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--firo-color-accent, #5b4bff) 12%,
+    transparent
+  );
   color: var(--firo-color-accent, #5b4bff);
   padding: 1px 6px;
   border-radius: var(--firo-radius-pill, 999px);
@@ -283,11 +287,19 @@
 
   &--active {
     border-color: var(--firo-color-accent, #5b4bff);
-    background: color-mix(in srgb, var(--firo-color-accent, #5b4bff) 4%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--firo-color-accent, #5b4bff) 4%,
+      transparent
+    );
     box-shadow: 0 0 0 1px var(--firo-color-accent, #5b4bff);
 
     &:hover {
-      background: color-mix(in srgb, var(--firo-color-accent, #5b4bff) 6%, transparent);
+      background: color-mix(
+        in srgb,
+        var(--firo-color-accent, #5b4bff) 6%,
+        transparent
+      );
     }
   }
 
