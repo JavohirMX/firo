@@ -19,7 +19,7 @@ import {
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
-import { UI, Pointer } from "./helpers/ui";
+import { Keyboard, UI, Pointer } from "./helpers/ui";
 import {
   render,
   act,
@@ -331,6 +331,25 @@ describe("object context menu lane (ADR-0033)", () => {
     expect(h.state.selectedLinearElement).not.toBeNull();
     expect(h.state.selectedLinearElement?.isEditing).toBe(false);
     expect(h.state.selectedLinearElement?.elementId).toEqual(line.id);
+  });
+
+  // lane actions run for real on a linear selection: delete soft-deletes
+  // through the action layer and Ctrl+Z restores the same line
+  it("deletes a selected line through the lane and restores it with undo", () => {
+    UI.clickTool("line");
+    mouse.down(60, 60);
+    mouse.up(160, 160);
+    const line = h.elements[0];
+    const menu = openElementMenu();
+    const row = menu.querySelector('li[data-testid="deleteSelectedElements"]');
+    fireEvent.click(row!);
+    expect(h.elements).toHaveLength(1);
+    expect(h.elements[0].isDeleted).toBe(true);
+    Keyboard.undo();
+    expect(h.elements).toHaveLength(1);
+    expect(h.elements[0]).toEqual(
+      expect.objectContaining({ id: line.id, isDeleted: false }),
+    );
   });
 
   it("hands the selected element to the host comment hook", () => {
