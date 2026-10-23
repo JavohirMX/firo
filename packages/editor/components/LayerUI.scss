@@ -207,7 +207,8 @@
     z-index: 10;
     pointer-events: var(--ui-pointerEvents);
     // Keep the strip clickable when the inspector opens: see below.
-    transition: right var(--firo-motion-base, 180ms) var(--firo-motion-ease, ease);
+    transition: right var(--firo-motion-base, 180ms)
+      var(--firo-motion-ease, ease);
   }
 
   /*

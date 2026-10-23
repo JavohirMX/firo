@@ -36,6 +36,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   "currentItemRoundness": "sharp",
   "currentItemStartArrowhead": null,
   "currentItemStickynoteBackgroundColor": "#FFF9B1",
+  "currentItemStickynoteSize": "m",
   "currentItemStickynoteStrokeColor": "#1e1e1e",
   "currentItemStrokeColor": "#1e1e1e",
   "currentItemStrokeStyle": "solid",
@@ -109,6 +110,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": false,
   "snapLines": [],
   "stats": {

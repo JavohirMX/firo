@@ -154,7 +154,6 @@ describe("sticky-note size presets", () => {
   });
 });
 
-
 describe("stickyNoteSizeForKey", () => {
   it("resolves each preset to its pixels", () => {
     expect(stickyNoteSizeForKey("s")).toBe(STICKY_NOTE_SIZE_PRESETS.s);

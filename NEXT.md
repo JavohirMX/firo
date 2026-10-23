@@ -3,6 +3,7 @@
 Base: integration/firo-combined @ 14e63fa (PR #50 head). Branch: feat/editor-features. PR stacked on integration/firo-combined; no merges/deploys.
 
 Scope (grounded in docs/research/miro-parity-matrix.md):
+
 1. Row 20 (C5): sticky S/M/L size presets + Bulk create mode.
    - STICKY_NOTE_SIZES s=150/m=250/l=400 in packages/common constants; default stays 250.
    - appState.currentItemStickynoteSize ("s"|"m"|"l", browser-persisted).

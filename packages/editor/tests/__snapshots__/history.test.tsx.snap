@@ -110,6 +110,7 @@ exports[`history > multiplayer undo/redo > conflicts in arrows and their bindabl
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -764,6 +765,7 @@ exports[`history > multiplayer undo/redo > conflicts in arrows and their bindabl
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -1344,6 +1346,7 @@ exports[`history > multiplayer undo/redo > conflicts in arrows and their bindabl
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -1723,6 +1726,7 @@ exports[`history > multiplayer undo/redo > conflicts in arrows and their bindabl
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -2103,6 +2107,7 @@ exports[`history > multiplayer undo/redo > conflicts in arrows and their bindabl
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -2383,6 +2388,7 @@ exports[`history > multiplayer undo/redo > conflicts in arrows and their bindabl
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -2857,6 +2863,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -3182,6 +3189,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -3525,6 +3533,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -3840,6 +3849,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -4145,6 +4155,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -4398,6 +4409,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -4674,6 +4686,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -4966,6 +4979,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -5213,6 +5227,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -5460,6 +5475,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -5726,6 +5742,7 @@ exports[`history > multiplayer undo/redo > conflicts in bound text elements and 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -6003,6 +6020,7 @@ exports[`history > multiplayer undo/redo > conflicts in frames and their childre
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -6277,6 +6295,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -6624,6 +6643,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -7074,6 +7094,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -7474,6 +7495,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -7793,6 +7815,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -7829,7 +7852,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "height": 10,
   "id": "id0",
   "index": "a0",
-  "isDeleted": true,
+  "isDeleted": false,
   "link": null,
   "locked": false,
   "opacity": 100,
@@ -7854,7 +7877,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "strokeWidth": 2,
   "type": "arrow",
   "updated": 1,
-  "version": 7,
+  "version": 4,
   "width": 10,
   "x": 0,
   "y": 0,
@@ -7863,7 +7886,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
 
 exports[`history > multiplayer undo/redo > should iterate through the history when selected or editing linear element was remotely deleted > [end of test] number of elements 1`] = `1`;
 
-exports[`history > multiplayer undo/redo > should iterate through the history when selected or editing linear element was remotely deleted > [end of test] number of renders 1`] = `12`;
+exports[`history > multiplayer undo/redo > should iterate through the history when selected or editing linear element was remotely deleted > [end of test] number of renders 1`] = `8`;
 
 exports[`history > multiplayer undo/redo > should iterate through the history when selected or editing linear element was remotely deleted > [end of test] redo stack 1`] = `[]`;
 
@@ -7889,8 +7912,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
     },
     "elements": {
       "added": {},
-      "removed": {},
-      "updated": {
+      "removed": {
         "id0": {
           "deleted": {
             "angle": 0,
@@ -7906,7 +7928,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
             "groupIds": [],
             "height": 10,
             "index": "a0",
-            "isDeleted": true,
+            "isDeleted": false,
             "link": null,
             "locked": false,
             "opacity": 100,
@@ -7930,30 +7952,32 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
             "strokeStyle": "solid",
             "strokeWidth": 2,
             "type": "arrow",
-            "version": 7,
+            "version": 4,
             "width": 10,
             "x": 0,
             "y": 0,
           },
           "inserted": {
             "isDeleted": true,
-            "version": 6,
+            "version": 3,
           },
         },
       },
+      "updated": {},
     },
-    "id": "id10",
+    "id": "id2",
   },
   {
     "appState": AppStateDelta {
       "delta": Delta {
         "deleted": {
-          "selectedLinearElement": {
-            "elementId": "id0",
-            "isEditing": true,
-          },
+          "selectedElementIds": {},
+          "selectedLinearElement": null,
         },
         "inserted": {
+          "selectedElementIds": {
+            "id0": true,
+          },
           "selectedLinearElement": {
             "elementId": "id0",
             "isEditing": false,
@@ -7966,31 +7990,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
       "removed": {},
       "updated": {},
     },
-    "id": "id11",
-  },
-  {
-    "appState": AppStateDelta {
-      "delta": Delta {
-        "deleted": {
-          "selectedLinearElement": {
-            "elementId": "id0",
-            "isEditing": false,
-          },
-        },
-        "inserted": {
-          "selectedLinearElement": {
-            "elementId": "id0",
-            "isEditing": true,
-          },
-        },
-      },
-    },
-    "elements": {
-      "added": {},
-      "removed": {},
-      "updated": {},
-    },
-    "id": "id12",
+    "id": "id4",
   },
 ]
 `;
@@ -8101,6 +8101,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -8347,6 +8348,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -8719,6 +8721,7 @@ exports[`history > multiplayer undo/redo > should iterate through the history wh
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -9097,6 +9100,7 @@ exports[`history > multiplayer undo/redo > should not let remote changes to inte
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -9516,6 +9520,7 @@ exports[`history > multiplayer undo/redo > should not let remote changes to inte
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -9822,6 +9827,7 @@ exports[`history > multiplayer undo/redo > should not let remote changes to inte
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -10103,6 +10109,7 @@ exports[`history > multiplayer undo/redo > should not override remote changes on
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -10385,6 +10392,7 @@ exports[`history > multiplayer undo/redo > should not override remote changes on
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -10634,6 +10642,7 @@ exports[`history > multiplayer undo/redo > should override remotely added groups
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -10948,6 +10957,7 @@ exports[`history > multiplayer undo/redo > should override remotely added points
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -11279,6 +11289,7 @@ exports[`history > multiplayer undo/redo > should redistribute deltas when eleme
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -11534,6 +11545,7 @@ exports[`history > multiplayer undo/redo > should redraw arrows on undo > [end o
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -12478,6 +12490,7 @@ exports[`history > multiplayer undo/redo > should update history entries after r
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -12752,6 +12765,7 @@ exports[`history > singleplayer undo/redo > remounting undo/redo buttons should 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": false,
   "snapLines": [],
   "stats": {
@@ -13006,6 +13020,7 @@ exports[`history > singleplayer undo/redo > should clear the redo stack on eleme
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -13258,6 +13273,7 @@ exports[`history > singleplayer undo/redo > should create entry when selecting f
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -13685,6 +13701,7 @@ exports[`history > singleplayer undo/redo > should create new history entry on e
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -13908,6 +13925,7 @@ exports[`history > singleplayer undo/redo > should create new history entry on e
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -14135,6 +14153,7 @@ exports[`history > singleplayer undo/redo > should create new history entry on i
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -14451,6 +14470,7 @@ exports[`history > singleplayer undo/redo > should create new history entry on i
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -14767,6 +14787,7 @@ exports[`history > singleplayer undo/redo > should create new history entry on s
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": false,
   "snapLines": [],
   "stats": {
@@ -15032,6 +15053,7 @@ exports[`history > singleplayer undo/redo > should disable undo/redo buttons whe
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": false,
   "snapLines": [],
   "stats": {
@@ -15286,6 +15308,7 @@ exports[`history > singleplayer undo/redo > should end up with no history entry 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": false,
   "snapLines": [],
   "stats": {
@@ -15540,6 +15563,7 @@ exports[`history > singleplayer undo/redo > should iterate through the history w
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -15803,6 +15827,7 @@ exports[`history > singleplayer undo/redo > should not clear the redo stack on s
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -16153,6 +16178,7 @@ exports[`history > singleplayer undo/redo > should not collapse when applying co
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -16340,6 +16366,7 @@ exports[`history > singleplayer undo/redo > should not end up with history entry
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -16640,6 +16667,7 @@ exports[`history > singleplayer undo/redo > should not end up with history entry
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -16921,6 +16949,7 @@ exports[`history > singleplayer undo/redo > should not modify anything on unrela
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": false,
   "snapLines": [],
   "stats": {
@@ -17090,6 +17119,7 @@ exports[`history > singleplayer undo/redo > should not override appstate changes
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -17387,6 +17417,7 @@ exports[`history > singleplayer undo/redo > should support appstate name or view
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -17564,6 +17595,7 @@ exports[`history > singleplayer undo/redo > should support bidirectional binding
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -18338,6 +18370,7 @@ exports[`history > singleplayer undo/redo > should support bidirectional binding
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -19010,6 +19043,7 @@ exports[`history > singleplayer undo/redo > should support bidirectional binding
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -19680,6 +19714,7 @@ exports[`history > singleplayer undo/redo > should support bidirectional binding
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -20458,6 +20493,7 @@ exports[`history > singleplayer undo/redo > should support bidirectional binding
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -21252,6 +21288,7 @@ exports[`history > singleplayer undo/redo > should support changes in elements' 
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -21754,6 +21791,7 @@ exports[`history > singleplayer undo/redo > should support duplication of groups
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -22284,6 +22322,7 @@ exports[`history > singleplayer undo/redo > should support element creation, del
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -22756,15 +22795,14 @@ exports[`history > singleplayer undo/redo > should support linear element creati
   "scrollX": 0,
   "scrollY": 0,
   "searchMatches": null,
-  "selectedElementIds": {
-    "id0": true,
-  },
+  "selectedElementIds": {},
   "selectedElementsAreBeingDragged": false,
   "selectedGroupIds": {},
   "selectionElement": null,
   "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
+  "showSelectionDimensions": false,
   "showWelcomeScreen": true,
   "snapLines": [],
   "stats": {
@@ -22830,7 +22868,7 @@ exports[`history > singleplayer undo/redo > should support linear element creati
   "strokeWidth": 2,
   "type": "arrow",
   "updated": 1,
-  "version": 12,
+  "version": 6,
   "width": 20,
   "x": 0,
   "y": 0,
@@ -22839,7 +22877,7 @@ exports[`history > singleplayer undo/redo > should support linear element creati
 
 exports[`history > singleplayer undo/redo > should support linear element creation and points manipulation through the editor > [end of test] number of elements 1`] = `1`;
 
-exports[`history > singleplayer undo/redo > should support linear element creation and points manipulation through the editor > [end of test] number of renders 1`] = `24`;
+exports[`history > singleplayer undo/redo > should support linear element creation and points manipulation through the editor > [end of test] number of renders 1`] = `11`;
 
 exports[`history > singleplayer undo/redo > should support linear element creation and points manipulation through the editor > [end of test] redo stack 1`] = `[]`;
 
@@ -22905,20 +22943,20 @@ exports[`history > singleplayer undo/redo > should support linear element creati
             "strokeStyle": "solid",
             "strokeWidth": 2,
             "type": "arrow",
-            "version": 10,
+            "version": 4,
             "width": 10,
             "x": 0,
             "y": 0,
           },
           "inserted": {
             "isDeleted": true,
-            "version": 9,
+            "version": 3,
           },
         },
       },
       "updated": {},
     },
-    "id": "id20",
+    "id": "id2",
   },
   {
     "appState": AppStateDelta {
@@ -22947,7 +22985,7 @@ exports[`history > singleplayer undo/redo > should support linear element creati
                 0,
               ],
             ],
-            "version": 11,
+            "version": 5,
             "width": 20,
           },
           "inserted": {
@@ -22961,37 +22999,13 @@ exports[`history > singleplayer undo/redo > should support linear element creati
                 10,
               ],
             ],
-            "version": 10,
+            "version": 4,
             "width": 10,
           },
         },
       },
     },
-    "id": "id21",
-  },
-  {
-    "appState": AppStateDelta {
-      "delta": Delta {
-        "deleted": {
-          "selectedLinearElement": {
-            "elementId": "id0",
-            "isEditing": true,
-          },
-        },
-        "inserted": {
-          "selectedLinearElement": {
-            "elementId": "id0",
-            "isEditing": false,
-          },
-        },
-      },
-    },
-    "elements": {
-      "added": {},
-      "removed": {},
-      "updated": {},
-    },
-    "id": "id22",
+    "id": "id4",
   },
   {
     "appState": AppStateDelta {
@@ -23021,7 +23035,7 @@ exports[`history > singleplayer undo/redo > should support linear element creati
                 20,
               ],
             ],
-            "version": 12,
+            "version": 6,
           },
           "inserted": {
             "height": 10,
@@ -23039,26 +23053,27 @@ exports[`history > singleplayer undo/redo > should support linear element creati
                 0,
               ],
             ],
-            "version": 11,
+            "version": 5,
           },
         },
       },
     },
-    "id": "id23",
+    "id": "id7",
   },
   {
     "appState": AppStateDelta {
       "delta": Delta {
         "deleted": {
+          "selectedElementIds": {},
+          "selectedLinearElement": null,
+        },
+        "inserted": {
+          "selectedElementIds": {
+            "id0": true,
+          },
           "selectedLinearElement": {
             "elementId": "id0",
             "isEditing": false,
-          },
-        },
-        "inserted": {
-          "selectedLinearElement": {
-            "elementId": "id0",
-            "isEditing": true,
           },
         },
       },
@@ -23068,7 +23083,7 @@ exports[`history > singleplayer undo/redo > should support linear element creati
       "removed": {},
       "updated": {},
     },
-    "id": "id24",
+    "id": "id9",
   },
 ]
 `;
