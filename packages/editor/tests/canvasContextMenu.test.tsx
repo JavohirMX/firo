@@ -352,6 +352,27 @@ describe("object context menu lane (ADR-0033)", () => {
     );
   });
 
+  // the lane's lock row runs the real lock action on a linear selection and
+  // history undoes it (action-level lock semantics live in
+  // actionElementLock.test.tsx; this guards the lane wiring end to end)
+  it("locks a selected line through the lane and unlocks it with undo", () => {
+    UI.clickTool("line");
+    mouse.down(60, 60);
+    mouse.up(160, 160);
+    const line = h.elements[0];
+    expect(line.locked).toBe(false);
+    const menu = openElementMenu();
+    const row = menu.querySelector('li[data-testid="toggleElementLock"]');
+    fireEvent.click(row!);
+    expect(h.elements[0]).toEqual(
+      expect.objectContaining({ id: line.id, locked: true }),
+    );
+    Keyboard.undo();
+    expect(h.elements[0]).toEqual(
+      expect.objectContaining({ id: line.id, locked: false }),
+    );
+  });
+
   it("hands the selected element to the host comment hook", () => {
     drawSelectedRectangle();
     const menu = openElementMenu();
