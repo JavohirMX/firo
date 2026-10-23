@@ -514,4 +514,72 @@ describe("context menu structure and keyboard (ADR-0033)", () => {
     expect(UI.queryContextMenu()).not.toBeNull();
     expect(h.state.selectedLinearElement?.isEditing ?? false).toBe(false);
   });
+
+  it("ignores Ctrl+Shift+Enter for the selection, with no lane", () => {
+    const rect = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rect]);
+    API.setSelectedElements([rect]);
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(Object.keys(h.state.selectedElementIds)).toEqual([rect.id]);
+  });
+
+  it("ignores Ctrl+Alt+Enter for the selection, with no lane", () => {
+    const rect = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rect]);
+    API.setSelectedElements([rect]);
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+      altKey: true,
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(Object.keys(h.state.selectedElementIds)).toEqual([rect.id]);
+  });
+
+  // two layers keep the lane closed while text is being edited: the lane
+  // keyTest's editingTextElement branch and App.openSelectionContextMenu's
+  // own guard; the open-path guard is what bites here
+  it("ignores Ctrl+Enter while a text element is being edited", () => {
+    const rect = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    const text = API.createElement({
+      type: "text",
+      x: 300,
+      y: 0,
+      text: "hello",
+    });
+    API.setElements([rect, text]);
+    API.setSelectedElements([rect]);
+    act(() => {
+      h.setState({ editingTextElement: text });
+    });
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(h.state.editingTextElement?.id).toEqual(text.id);
+  });
 });
