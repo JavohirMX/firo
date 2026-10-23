@@ -11,7 +11,8 @@
  */
 
 import { randomId } from "@firo/common";
-import { asFractionalIndex } from "@firo/schema";
+import { generateKeyBetween } from "@firo/fractional-indexing";
+import { asFractionalIndex, isFractionalIndex } from "@firo/schema";
 import { boardId } from "@firo/board";
 
 import type { FiroDoc, Mutation } from "@firo/doc";
@@ -112,6 +113,20 @@ export const addRecordToCollection = (
   const recordId = `rec-${randomId()}`;
   const now = Date.now();
 
+  /*
+   * Append after the collection's current last card. A key built from the
+   * clock (`a${now}`) is not a valid fractional index -- trailing digits can
+   * end in zero, which the encoding forbids -- and `asFractionalIndex`
+   * throws on it, so the card simply failed to appear roughly one press in
+   * ten.
+   */
+  const last = doc
+    .read()
+    .records.filter((record) => record.collectionId === collectionId)
+    .map((record) => record.order)
+    .filter(isFractionalIndex)
+    .reduce((max, key) => (key > max ? key : max), "");
+
   const mutation: Mutation = {
     kind: "createRecord",
     record: {
@@ -124,7 +139,9 @@ export const addRecordToCollection = (
       },
       created: now,
       updated: now,
-      order: asFractionalIndex(`a${now}`),
+      order: asFractionalIndex(
+        generateKeyBetween(last === "" ? null : last, null),
+      ),
       archived: false,
     },
   };
