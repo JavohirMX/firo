@@ -1,5 +1,5 @@
 import { KEYS } from "@firo/common";
-import { CaptureUpdateAction } from "@firo/element";
+import { CaptureUpdateAction, isLinearElement } from "@firo/element";
 
 import { getSelectedElements } from "../scene";
 
@@ -145,7 +145,9 @@ export const actionToggleSelectionDimensions = register({
  * for the current selection, anchored at the selection's top-left corner in
  * screen coordinates. With nothing selected it does nothing; while text is
  * being edited the editor's own binding wins, so the sticky quick-add keeps
- * working — the two uses are mode-scoped.
+ * working — the two uses are mode-scoped. A single selected line or arrow
+ * keeps the editor's own Ctrl/⌘+Enter binding, which enters the line
+ * editor; the lane opens for every other selection.
  */
 export const actionOpenSelectionContextMenu = register({
   name: "openSelectionContextMenu",
@@ -159,11 +161,20 @@ export const actionOpenSelectionContextMenu = register({
     app.openSelectionContextMenu();
     return false;
   },
-  keyTest: (event, appState, elements) =>
-    event[KEYS.CTRL_OR_CMD] &&
-    event.key === KEYS.ENTER &&
-    !event.shiftKey &&
-    !event.altKey &&
-    !appState.editingTextElement &&
-    getSelectedElements(elements, appState).length > 0,
+  keyTest: (event, appState, elements) => {
+    if (
+      !event[KEYS.CTRL_OR_CMD] ||
+      event.key !== KEYS.ENTER ||
+      event.shiftKey ||
+      event.altKey ||
+      appState.editingTextElement
+    ) {
+      return false;
+    }
+    const selected = getSelectedElements(elements, appState);
+    if (selected.length === 1 && isLinearElement(selected[0])) {
+      return false;
+    }
+    return selected.length > 0;
+  },
 });
