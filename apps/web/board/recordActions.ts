@@ -115,10 +115,10 @@ export const addRecordToCollection = (
 
   /*
    * Append after the collection's current last card. A key built from the
-   * clock (`a${now}`) is not a valid fractional index -- trailing digits can
-   * end in zero, which the encoding forbids -- and `asFractionalIndex`
-   * throws on it, so the card simply failed to appear roughly one press in
-   * ten.
+   * clock (`a${now}`) is not always a valid fractional index: when the
+   * encoded digits end in zero -- which the encoding forbids --
+   * `asFractionalIndex` throws and the card never appears. The regression
+   * test pins such a timestamp.
    */
   const last = doc
     .read()

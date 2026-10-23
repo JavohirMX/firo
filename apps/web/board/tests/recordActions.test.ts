@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 
 import { FiroDoc } from "@firo/doc";
+import { asFractionalIndex } from "@firo/schema";
 
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 
@@ -150,6 +151,61 @@ describe("addRecordToCollection", () => {
       type: "text",
       value: "Review the plan",
     });
+  });
+});
+
+/*
+ * The clock-key bug, pinned deterministically.
+ *
+ * `addRecordToCollection` used to build the order key as `a${Date.now()}`.
+ * Two pinned instants stand in for the two failure modes, so the regression
+ * no longer depends on what the clock happens to read when the suite runs:
+ * 1792782394870 ends in zero (an invalid key: the original code threw here)
+ * and 1792782394864 is valid digits (the original key still sorted before
+ * the starter cards' "a4", not appended).
+ */
+describe("the clock-key order bug (regression)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("pins the encoding fact: a clock key ending in zero is invalid", () => {
+    expect(() => asFractionalIndex("a1792782394870")).toThrow(RangeError);
+    expect(() => asFractionalIndex("a1792782394864")).not.toThrow();
+  });
+
+  it("at a trailing-zero instant, adding a card succeeds and appends", () => {
+    vi.useFakeTimers({ now: 1792782394870 });
+    const { doc, getDocument } = newBoard();
+    const { collectionId } = insertTaskCollection(getDocument);
+    const recordId = addRecordToCollection(getDocument, collectionId);
+    const records = doc
+      .read()
+      .records.filter((record) => record.collectionId === collectionId);
+    const added = records.find((record) => record.id === recordId)!;
+    // The clock still stamps created/updated; it no longer names the order.
+    expect(added.created).toBe(1792782394870);
+    for (const other of records) {
+      if (other.id !== recordId) {
+        expect(added.order > other.order).toBe(true);
+      }
+    }
+  });
+
+  it("at a valid-key instant, the card still appends after the last card", () => {
+    vi.useFakeTimers({ now: 1792782394864 });
+    const { doc, getDocument } = newBoard();
+    const { collectionId } = insertTaskCollection(getDocument);
+    const recordId = addRecordToCollection(getDocument, collectionId);
+    const records = doc
+      .read()
+      .records.filter((record) => record.collectionId === collectionId);
+    const added = records.find((record) => record.id === recordId)!;
+    const last = records
+      .filter((record) => record.id !== recordId)
+      .map((record) => record.order)
+      .reduce((max, key) => (key > max ? key : max), "");
+    expect(added.order > last).toBe(true);
   });
 });
 
