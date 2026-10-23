@@ -582,4 +582,64 @@ describe("context menu structure and keyboard (ADR-0033)", () => {
     expect(UI.queryContextMenu()).toBeNull();
     expect(h.state.editingTextElement?.id).toEqual(text.id);
   });
+
+  it("does not open the lane with Ctrl+Enter in view mode", () => {
+    const rect = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rect]);
+    API.setAppState({ viewModeEnabled: true });
+    API.setSelectedElements([rect]);
+    expect(UI.queryContextMenu()).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(Object.keys(h.state.selectedElementIds)).toEqual([rect.id]);
+  });
+});
+
+describe("lane keyboard gating when interaction is off (ADR-0033)", () => {
+  beforeAll(() => {
+    mockBoundingClientRect();
+  });
+
+  afterAll(() => {
+    restoreOriginalGetBoundingClientRect();
+  });
+
+  beforeEach(async () => {
+    await render(
+      <Excalidraw interaction={false} handleKeyboardGlobally={true} />,
+    );
+  });
+
+  // the lane stays closed in a non-interactive editor. The biting layer is
+  // listener attachment: setupListeners returns early (App.tsx ~4115) so the
+  // keydown handler is never bound. The in-path gates (onKeyDown, the action
+  // manager, openSelectionContextMenu) are defense in depth - muting all
+  // three does not open the lane
+  it("does not open the lane with Ctrl+Enter when interaction is disabled", () => {
+    const rect = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rect]);
+    API.setSelectedElements([rect]);
+    expect(UI.queryContextMenu()).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(UI.queryContextMenu()).toBeNull();
+    expect(Object.keys(h.state.selectedElementIds)).toEqual([rect.id]);
+  });
 });
