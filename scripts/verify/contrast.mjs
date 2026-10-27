@@ -21,6 +21,10 @@ import { chromium } from "playwright";
 
 const BASE = process.env.FIRO_URL ?? "http://localhost:3000";
 
+// Navigation/boot budget; override on slow dev hosts, default stays 30s.
+const parsedNavTimeout = Number.parseInt(process.env.FIRO_NAV_TIMEOUT_MS ?? "", 10);
+const NAV_TIMEOUT_MS = parsedNavTimeout > 0 ? parsedNavTimeout : 30_000;
+
 /** WCAG 2.x relative luminance for an sRGB channel value in 0..255. */
 export const channel = (value) => {
   const c = value / 255;
@@ -47,7 +51,7 @@ export const worstContrast = (samples, background) =>
   );
 
 const boot = async (page) => {
-  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
   await page.waitForTimeout(1000);
   const newBtn = page.getByRole("button", { name: "New board" });
   if ((await newBtn.count()) > 0) {
@@ -56,7 +60,7 @@ const boot = async (page) => {
   await page.waitForFunction(
     () => Boolean(window.__firoBoard?.read),
     undefined,
-    { timeout: 30_000 },
+    { timeout: NAV_TIMEOUT_MS },
   );
   await page.waitForTimeout(1000);
   const welcome = page.locator(".welcome-screen");
