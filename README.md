@@ -63,6 +63,8 @@ yarn fix
 docker compose up -d   # serves the app and sync server on http://localhost:8080
 ```
 
+Step-by-step install, first-account checklist, backups, upgrades and TLS: [`docs/hosting.md`](docs/hosting.md).
+
 The server reads these environment variables (all optional):
 
 | Variable | Default | Purpose |
