@@ -91,9 +91,21 @@
   }
 }
 
-@media (pointer: coarse) {
+/*
+ * Phone: same geometry as the voting panel. The editor's floating bottom
+ * toolbars stack at z-index 60, so the panel goes above them and below the
+ * context menu (90); the top bar (z-index 100) stays reachable, so the panel
+ * starts below it. Full-width: a 380px dock on a 390px screen is fiction.
+ */
+@media (max-width: 730px) {
   .frames-panel {
-    width: 100vw;
+    top: 64px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    height: auto;
+    bottom: 0;
+    z-index: 70;
     border-left: 0;
   }
 }

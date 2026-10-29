@@ -8,7 +8,7 @@
  * the frame tool on the toolbar is the only entry today.
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { CaptureUpdateAction } from "@firo/editor";
 
@@ -40,6 +40,13 @@ export const FramesPanel = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
 
+  // The document absorbs scene changes asynchronously (a delete committed
+  // through updateScene is not in `read()` on the same tick), so a manual
+  // bump alone can render one stale list and then never refresh. Subscribing
+  // is what the voting panel and the vote badges do; the revision bump stays
+  // as the same-tick fast path.
+  useEffect(() => boardDoc().subscribe(() => setRevision((n) => n + 1)), []);
+
   const rows = useMemo(
     () => listFrames(boardDoc().read().elements),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,7 +75,10 @@ export const FramesPanel = ({
   };
 
   return (
-    <aside className="frames-panel" aria-label="Frames">
+    // A div, not an aside: upstream excalidraw hides every aside on mobile
+    // (`.excalidraw--mobile aside { display: none }`), which would blank the
+    // panel exactly where a docked list matters most. role keeps the landmark.
+    <div className="frames-panel" role="complementary" aria-label="Frames">
       <div className="frames-panel__header">
         <h2>Frames</h2>
         <button
@@ -142,6 +152,6 @@ export const FramesPanel = ({
           ))}
         </ol>
       )}
-    </aside>
+    </div>
   );
 };
