@@ -62,6 +62,7 @@ export {
 export { boardProjection, groupAt, groupOf, groupsOf } from "./board.js";
 export { gridProjection, positionOf } from "./grid.js";
 export {
+  descendantIds,
   mindmapProjection,
   relationColumnFor,
   MINDMAP_NODE_HEIGHT,

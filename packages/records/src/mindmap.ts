@@ -301,3 +301,39 @@ export const mindmapProjection: Projection = {
     }
   },
 };
+
+/**
+ * The ids a record picker must not offer as `recordId`'s parent: the record
+ * itself and everything below it (ADR-0040 section 4). `interpret` rejects
+ * these too; this is so the picker never offers a drop the projection would
+ * refuse. Terminates on pre-existing cycles the same way the reparent walk
+ * does.
+ */
+export const descendantIds = (
+  records: readonly FiroRecord[],
+  columnKey: string,
+  recordId: string,
+): ReadonlySet<string> => {
+  const childrenOf = new Map<string, string[]>();
+  for (const record of records) {
+    const parent = parentIdOf(record, columnKey);
+    if (parent !== null) {
+      const siblings = childrenOf.get(parent) ?? [];
+      siblings.push(record.id);
+      childrenOf.set(parent, siblings);
+    }
+  }
+
+  const out = new Set<string>([recordId]);
+  const queue = [recordId];
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    for (const child of childrenOf.get(current) ?? []) {
+      if (!out.has(child)) {
+        out.add(child);
+        queue.push(child);
+      }
+    }
+  }
+  return out;
+};

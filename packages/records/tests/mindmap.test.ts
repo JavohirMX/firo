@@ -12,6 +12,7 @@ import { describe, expect, test } from "vitest";
 import { asFractionalIndex } from "@firo/schema";
 
 import {
+  descendantIds,
   MINDMAP_NODE_HEIGHT,
   MINDMAP_NODE_WIDTH,
   mindmapProjection,
@@ -265,5 +266,35 @@ describe("displayValue for a relation", () => {
 
   test("without context a relation shows nothing rather than guessing", () => {
     expect(displayValue(rows[1], relationColumn)).toBe("");
+  });
+});
+
+describe("descendantIds", () => {
+  test("includes the record and everything below it, nothing else", () => {
+    const rows = [
+      node("root", "Root", null, "a0"),
+      node("child", "Child", "root", "a1"),
+      node("grand", "Grand", "child", "a2"),
+      node("other", "Other", null, "a3"),
+    ];
+    expect([...descendantIds(rows, "parent", "root")].sort()).toEqual([
+      "child",
+      "grand",
+      "root",
+    ]);
+    expect([...descendantIds(rows, "parent", "child")].sort()).toEqual([
+      "child",
+      "grand",
+    ]);
+    expect([...descendantIds(rows, "parent", "grand")]).toEqual(["grand"]);
+  });
+
+  test("terminates when the file already contains a cycle", () => {
+    const rows = [
+      node("a", "A", "b", "a0"),
+      node("b", "B", "a", "a1"),
+      node("c", "C", null, "a2"),
+    ];
+    expect([...descendantIds(rows, "parent", "a")].sort()).toEqual(["a", "b"]);
   });
 });
