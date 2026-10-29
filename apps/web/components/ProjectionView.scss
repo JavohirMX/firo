@@ -490,3 +490,40 @@
   background: var(--color-surface, #ffffff);
   cursor: pointer;
 }
+
+/*
+ * Narrow viewports. The desktop panel anchors at a fixed canvas point with a
+ * 640px minimum width; at phone widths its right side sits off-screen, and
+ * with no page scroll and user-scalable=no there is no gesture that reaches
+ * it. Pin the panel to the viewport instead and let its own rows scroll.
+ */
+@media (max-width: 720px) {
+  .firo-projection-container {
+    left: 8px;
+    right: 8px;
+    top: 56px;
+    min-width: 0;
+    /* The desktop position comes from an inline transform; drop it here. */
+    transform: none !important;
+  }
+
+  .firo-projection-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .firo-projection-switcher {
+    max-width: 100%;
+    overflow-x: auto;
+
+    &__tab {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+  }
+
+  .firo-projection-body {
+    max-height: calc(100vh - 160px);
+    overflow: auto;
+  }
+}
