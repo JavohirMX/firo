@@ -1,6 +1,12 @@
 name: Lint
 
-on: pull_request
+on:
+  pull_request:
+  # The integration branch gets the same checks on push, because it is where
+  # work lands before a PR exists. Narrow on purpose: no other branch added.
+  push:
+    branches:
+      - integration/firo-combined
 
 jobs:
   lint:
