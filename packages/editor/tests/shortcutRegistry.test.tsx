@@ -128,7 +128,7 @@ const keyEvent = ({ key, shift = false, ctrlOrCmd = false }: Chord) =>
     key,
     shiftKey: shift,
     [KEYS.CTRL_OR_CMD]: ctrlOrCmd,
-  } as KeyboardEvent);
+  } as unknown as KeyboardEvent);
 
 const ALIGN_ROWS = [
   {
@@ -161,9 +161,7 @@ describe("cheat-sheet align rows", () => {
   it.each(ALIGN_ROWS)(
     "$name: the advertised chord fires the action",
     ({ name, action, chord, directionToken }) => {
-      expect(action.keyTest?.(keyEvent(chord), {} as never, {} as never)).toBe(
-        true,
-      );
+      expect(action.keyTest?.(keyEvent(chord))).toBe(true);
       const advertised = getShortcutFromShortcutName(name);
       expect(advertised).toContain(directionToken);
       expect(advertised).toMatch(/shift/i);
@@ -179,9 +177,7 @@ describe("cheat-sheet align rows", () => {
         { key: chord.key, shift: true },
       ];
       for (const partial of partialChords) {
-        expect(
-          action.keyTest?.(keyEvent(partial), {} as never, {} as never),
-        ).not.toBe(true);
+        expect(action.keyTest?.(keyEvent(partial))).not.toBe(true);
       }
     },
   );
