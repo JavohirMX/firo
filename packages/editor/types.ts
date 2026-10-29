@@ -1258,6 +1258,7 @@ export type CanvasActions = Partial<{
   addVoteToSelection: boolean;
   removeVoteFromSelection: boolean;
   openVotingPanel: boolean;
+  openFramesPanel: boolean;
   readVoteTally: boolean;
   togglePresentation: boolean;
   nextSlide: boolean;

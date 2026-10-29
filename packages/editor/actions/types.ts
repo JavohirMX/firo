@@ -191,6 +191,7 @@ export type ActionName =
   | "addVoteToSelection"
   | "removeVoteFromSelection"
   | "openVotingPanel"
+  | "openFramesPanel"
   | "readVoteTally"
   | "togglePresentation"
   | "nextSlide"

@@ -198,6 +198,7 @@ import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
 import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { VotingPanel } from "./components/VotingPanel";
+import { FramesPanel } from "./components/FramesPanel";
 import { BulkStickyDialog } from "./components/BulkStickyDialog";
 import { viewportCenter } from "./board/stickyBulk";
 import { createStickyStack } from "./board/stickyStack";
@@ -2106,6 +2107,7 @@ const ExcalidrawWrapper = () => {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [timerSetupOpen, setTimerSetupOpen] = useState(false);
   const [votingPanelOpen, setVotingPanelOpen] = useState(false);
+  const [framesPanelOpen, setFramesPanelOpen] = useState(false);
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -2165,6 +2167,8 @@ const ExcalidrawWrapper = () => {
           setBulkStickyOpen(true);
         } else if (request === "votingPanel") {
           setVotingPanelOpen(true);
+        } else if (request === "framesPanel") {
+          setFramesPanelOpen(true);
         }
       }),
     [],
@@ -4263,6 +4267,11 @@ const ExcalidrawWrapper = () => {
         <VotingPanel
           isOpen={votingPanelOpen}
           onClose={() => setVotingPanelOpen(false)}
+          excalidrawAPI={excalidrawAPI}
+        />
+        <FramesPanel
+          isOpen={framesPanelOpen}
+          onClose={() => setFramesPanelOpen(false)}
           excalidrawAPI={excalidrawAPI}
         />
         <BulkStickyDialog

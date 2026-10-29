@@ -228,7 +228,8 @@ type FacilitatorToggleName =
   | "readVoteTally"
   | "togglePresentation"
   | "nextSlide"
-  | "previousSlide";
+  | "previousSlide"
+  | "openFramesPanel";
 
 /*
  * Whether the host has switched this command off.
@@ -672,6 +673,23 @@ export const facilitatorActions = (
       perform: (): ActionResult =>
         run(() => {
           requestDialog("votingPanel");
+        }),
+    },
+
+    {
+      name: "openFramesPanel",
+      label: "Open the frames panel",
+      keywords: ["frames", "slides", "list", "order", "sections", "navigate"],
+      trackEvent: { category: "facilitation", action: "openFramesPanel" },
+      viewMode: true,
+      predicate: enabledUnless("openFramesPanel"),
+      /*
+       * Same reasoning as the voting panel: the palette and the menu are the
+       * paths, and an occasional panel does not earn an alt-chord.
+       */
+      perform: (): ActionResult =>
+        run(() => {
+          requestDialog("framesPanel");
         }),
     },
 
