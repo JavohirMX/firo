@@ -161,6 +161,7 @@ describe("registration", () => {
       "nextSlide",
       "previousSlide",
       "openVotingPanel",
+      "openFramesPanel",
       "addVoteToSelection",
       "removeVoteFromSelection",
       "readVoteTally",
@@ -176,11 +177,12 @@ describe("registration", () => {
     const { actions } = setup();
     for (const action of actions) {
       /*
-       * `openVotingPanel` is the deliberate exception: ADR-0039 gives the
-       * panel no single-key shortcut (the palette and the facilitation menu
-       * are the paths), so it has no `keyTest` to assert.
+       * `openVotingPanel` and `openFramesPanel` are the deliberate
+       * exceptions: the panels get no single-key shortcut (the palette and
+       * the facilitation menu are the paths), so they have no `keyTest` to
+       * assert.
        */
-      if (action.name !== "openVotingPanel") {
+      if (action.name !== "openVotingPanel" && action.name !== "openFramesPanel") {
         expect(typeof action.keyTest, action.name).toBe("function");
       }
       expect(action.keywords?.length ?? 0, action.name).toBeGreaterThan(0);
@@ -1055,6 +1057,7 @@ describe("the command palette", () => {
       "Next slide",
       "Previous slide",
       "Open the voting panel",
+      "Open the frames panel",
       "Give the selection a dot",
       "Take back a dot from the selection",
       "Read the vote tally",
@@ -1146,9 +1149,10 @@ describe("the command palette", () => {
      */
     const missing = all
       .filter((item) => !item.shortcut)
-      // The panel opener prints no chord because it has none (ADR-0039: no
+      // The panel openers print no chord because they have none (no
       // new single-key shortcut; the palette is the keyboard path).
       .filter((item) => item.label !== "Open the voting panel")
+      .filter((item) => item.label !== "Open the frames panel")
       .map((i) => i.label);
     expect(missing).toEqual([]);
   });
