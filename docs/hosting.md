@@ -20,6 +20,8 @@ docker compose up -d --build
 
 The compose file pins `pull_policy: build`, so Compose builds locally instead of pulling the not-yet-published image. (Older Compose versions may still print a one-line registry "not found" before building - expected, and the build proceeds.) The first build runs the full monorepo build inside Docker; later builds reuse the cache. When it finishes, the app and sync server listen on `http://<host>:8080`. `docker compose logs -f` shows the server log; `curl http://localhost:8080/healthz` answers 200.
 
+Memory-constrained build hosts: the full web build runs parallel typecheck and lint workers, sourcemaps and a gzip-size pass; on a 2 GB host that combination can be OOM-killed. `yarn --cwd apps/web build:app:lean` (`VITE_APP_LEAN_BUILD=true`) builds the same bundle with those three extras off - verified on a 2 GB host in about 30 seconds. It skips the typecheck/lint workers by design, so run the checks separately (`npx tsc` and `npx eslint` in `apps/web`) when you use it. The Docker build intentionally keeps the full checked path.
+
 ## First run: create your account, then close the door
 
 1. Open `http://<host>:8080`. The board works immediately and locally — no account is needed to draw.
