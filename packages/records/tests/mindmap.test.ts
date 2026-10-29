@@ -50,8 +50,9 @@ const node = (
 describe("the forest", () => {
   test("a collection with no relation column projects nothing", () => {
     expect(relationColumnFor(tasks())).toBeNull();
-    expect(mindmapProjection.layout(tasks(), [node("a", "A", null, "a0")]))
-      .toEqual([]);
+    expect(
+      mindmapProjection.layout(tasks(), [node("a", "A", null, "a0")]),
+    ).toEqual([]);
   });
 
   test("roots are records with no parent OR a parent that is gone", () => {
@@ -197,7 +198,10 @@ describe("reparent", () => {
   });
 
   test("rejects a parent in another collection", () => {
-    const elsewhere = { ...node("else", "Else", null, "a3"), collectionId: "col-other" };
+    const elsewhere = {
+      ...node("else", "Else", null, "a3"),
+      collectionId: "col-other",
+    };
     expect(
       mindmapProjection.interpret(collection, [...three, elsewhere], {
         kind: "reparent",

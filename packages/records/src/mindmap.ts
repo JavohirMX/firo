@@ -157,7 +157,6 @@ export const mindmapProjection: Projection = {
       const children = childrenOf.get(record.id) ?? [];
       const x = originX + depth * (MINDMAP_NODE_WIDTH + LEVEL_GAP);
       let y: number;
-      let top = cursorY;
       if (children.length === 0) {
         y = cursorY;
         cursorY += MINDMAP_NODE_HEIGHT;
@@ -270,14 +269,22 @@ export const mindmapProjection: Projection = {
            * depth cap, because the file may already contain a cycle and
            * this walk must still terminate.
            */
+          const byId = new Map(
+            records.map((candidate) => [candidate.id, candidate]),
+          );
           let cursor: string | null = newParentId;
-          for (let depth = 0; cursor !== null && depth <= records.length; depth++) {
+          const seen = new Set<string>();
+          while (cursor !== null) {
             if (cursor === record.id) {
               return null;
             }
-            const current = records.find(
-              (candidate) => candidate.id === cursor,
-            );
+            if (seen.has(cursor)) {
+              // A cycle that already exists elsewhere in the file: it is the
+              // layout's problem (it breaks it), not a reason to refuse this drop.
+              break;
+            }
+            seen.add(cursor);
+            const current = byId.get(cursor);
             cursor = current ? parentIdOf(current, column.key) : null;
           }
         }

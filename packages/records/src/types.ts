@@ -285,7 +285,10 @@ export const displayValue = (
         return "";
       }
       const target = context.records.find((r) => r.id === value.value);
-      if (target === undefined || target.collectionId !== context.collection.id) {
+      if (
+        target === undefined ||
+        target.collectionId !== context.collection.id
+      ) {
         // Dangling: the parent was deleted. Named, not blank - a blank cell
         // reads as "no parent", and this record HAS one that is gone.
         return "Missing record";
