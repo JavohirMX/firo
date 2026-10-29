@@ -18,7 +18,7 @@ cd firo
 docker compose up -d --build
 ```
 
-The first build runs the full monorepo build inside Docker; later builds reuse the cache. When it finishes, the app and sync server listen on `http://<host>:8080`. `docker compose logs -f` shows structured JSON logs; `curl http://localhost:8080/healthz` answers 200.
+The compose file pins `pull_policy: build`, so Compose builds locally instead of pulling the not-yet-published image. (Older Compose versions may still print a one-line registry "not found" before building - expected, and the build proceeds.) The first build runs the full monorepo build inside Docker; later builds reuse the cache. When it finishes, the app and sync server listen on `http://<host>:8080`. `docker compose logs -f` shows structured JSON logs; `curl http://localhost:8080/healthz` answers 200.
 
 ## First run: create your account, then close the door
 

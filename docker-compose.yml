@@ -1,6 +1,9 @@
 services:
   firo:
     image: ghcr.io/javohirmx/firo:latest
+    # Nothing pullable exists under this name yet; build locally rather
+    # than pull. Remove the line once a release pipeline publishes images.
+    pull_policy: build
     build:
       context: .
       dockerfile: Dockerfile
