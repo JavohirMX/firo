@@ -540,11 +540,21 @@
     text-align: center;
   }
 
+  /* Overlay the hover actions instead of reserving layout space for them,
+     so the folder name keeps the row's full width. A solid pill keeps the
+     icons readable over the truncated name; keyboard tab order is unchanged
+     because the buttons stay rendered at opacity 0. */
   &__folder-actions {
+    position: absolute;
+    top: 50%;
+    right: var(--firo-space-xs);
+    transform: translateY(-50%);
     display: flex;
     align-items: center;
     gap: 2px;
-    padding-right: var(--firo-space-xs);
+    padding-left: var(--firo-space-xs);
+    border-radius: var(--firo-radius-pill);
+    background-color: var(--firo-color-panel);
     opacity: 0;
     transition: opacity var(--firo-motion-fast) var(--firo-motion-ease);
   }
