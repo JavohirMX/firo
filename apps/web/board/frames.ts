@@ -34,9 +34,7 @@ const isLiveFrame = (element: FiroElement): element is FrameElement =>
  * skipped; positions are assigned after filtering so the numbers the panel
  * shows have no gaps.
  */
-export const listFrames = (
-  elements: readonly FiroElement[],
-): FrameRow[] =>
+export const listFrames = (elements: readonly FiroElement[]): FrameRow[] =>
   elements.filter(isLiveFrame).map((frame, index) => ({
     id: frame.id,
     name: frame.name,
@@ -61,9 +59,7 @@ export const renameFrame = (
     return elements as FiroElement[];
   }
   return elements.map((element) =>
-    element.id === frameId
-      ? { ...element, name }
-      : element,
+    element.id === frameId ? { ...element, name } : element,
   );
 };
 
@@ -84,9 +80,7 @@ export const deleteFrame = (
     return elements as FiroElement[];
   }
   return elements.map((element) =>
-    element.id === frameId
-      ? { ...element, isDeleted: true }
-      : element,
+    element.id === frameId ? { ...element, isDeleted: true } : element,
   );
 };
 
