@@ -69,6 +69,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onExport,
     className,
     ownerDocument = document,
+    suppressWelcomeScreen,
     onChange,
     onThemeChange,
     onIncrement,
@@ -218,6 +219,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     <EditorJotaiProvider store={editorJotaiStore}>
       <InitializeApp langCode={langCode} theme={theme}>
         <App
+          suppressWelcomeScreen={suppressWelcomeScreen}
           onExport={onExport}
           className={className}
           ownerDocument={ownerDocument}

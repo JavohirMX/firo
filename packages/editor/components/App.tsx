@@ -2562,6 +2562,7 @@ class App extends React.Component<AppProps, AppState> {
                             renderWelcomeScreen={
                               !this.state.isLoading &&
                               this.state.showWelcomeScreen &&
+                              !this.props.suppressWelcomeScreen &&
                               this.state.activeTool.type ===
                                 this.state.preferredSelectionTool.type &&
                               !this.state.zenModeEnabled &&
@@ -4393,7 +4394,11 @@ class App extends React.Component<AppProps, AppState> {
       this.setState({ exportWithDarkMode: shouldExportWithDarkMode });
     }
 
-    if (!this.state.showWelcomeScreen && !elements.length) {
+    if (
+      !this.state.showWelcomeScreen &&
+      !elements.length &&
+      !this.props.suppressWelcomeScreen
+    ) {
       this.setState({ showWelcomeScreen: true });
     }
 

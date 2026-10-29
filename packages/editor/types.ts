@@ -874,6 +874,14 @@ export interface ExcalidrawProps {
    * @default document
    */
   ownerDocument?: Document;
+  /**
+   * Suppress the empty-canvas welcome screen even with an empty canvas.
+   * Hosts whose board keeps content outside the canvas (record collections)
+   * set this: the board is not blank, so the "blank board" hint must not
+   * render on top of that content. The hint returns as soon as the board is
+   * genuinely empty again.
+   */
+  suppressWelcomeScreen?: boolean;
   onChange?: (
     elements: readonly OrderedExcalidrawElement[],
     appState: AppState,

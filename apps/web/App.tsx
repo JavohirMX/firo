@@ -146,6 +146,7 @@ import {
   createDefaultDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
+import { VOTE_COLLECTION_ID } from "@firo/facilitation";
 import {
   createDocBlockCollection,
   isDocBlockRecord,
@@ -3851,6 +3852,12 @@ const ExcalidrawWrapper = () => {
     >
       <Excalidraw
         defaultChromeEnabled={false}
+        suppressWelcomeScreen={boardDoc()
+          .read()
+          .collections.some(
+            (c) =>
+              c.id !== VOTE_COLLECTION_ID && c.id !== DOC_BLOCK_COLLECTION_ID,
+          )}
         onSaveSelectionAsTemplate={
           isReadOnlyShare ? undefined : () => setSaveTemplateOpen(true)
         }
