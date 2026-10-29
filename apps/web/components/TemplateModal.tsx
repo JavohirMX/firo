@@ -600,7 +600,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
             </section>
           )}
 
-          {!anyVisible && entries.length > 0 && (
+          {!anyVisible && (
             <div
               className="firo-template-modal__no-results"
               data-testid="template-no-results"
