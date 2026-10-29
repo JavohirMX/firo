@@ -165,6 +165,20 @@ const coerceFieldValue = (
     log.coerced(field, value.type, expected);
     return null;
   }
+  /*
+   * Relation payloads name a record by id, so anything that is not a string
+   * or null cannot point at a node. Repaired to null (a root) rather than
+   * carried: a number here would otherwise render as a dangling edge to
+   * nothing. ADR-0040 section 4.
+   */
+  if (
+    expected === "relation" &&
+    value.value !== null &&
+    typeof value.value !== "string"
+  ) {
+    log.coerced(field, value.value, null);
+    return null;
+  }
   return { type: expected, value: value.value } as FieldValue;
 };
 

@@ -176,10 +176,11 @@ describe("property 3: interpret asks, it does not write", () => {
 });
 
 describe("every registered projection honours the contract", () => {
-  it("PROJECTIONS contains the four the package documents", () => {
+  it("PROJECTIONS contains the five the package documents", () => {
     expect(Object.keys(PROJECTIONS).sort()).toEqual([
       "board",
       "grid",
+      "mindmap",
       "table",
       "timeline",
     ]);
@@ -323,6 +324,7 @@ describe("displayValue renders every column type the schema declares", () => {
       date: { type: "date", value: "2026-10-04" },
       person: { type: "person", value: "ada" },
       link: { type: "link", value: "https://example.com" },
+      relation: { type: "relation", value: "rec-target" },
       richText: {
         type: "richText",
         value: {
@@ -341,6 +343,21 @@ describe("displayValue renders every column type the schema declares", () => {
       },
     };
 
+    /*
+     * A relation renders its target's title, which needs the context argument:
+     * the collection (so the title column is found) and the records (so the
+     * target is found). Every other type ignores it.
+     */
+    const context = {
+      collection: tasks(),
+      records: [
+        record({
+          id: "rec-target",
+          values: { title: { type: "text", value: "Parent card" } },
+        }),
+      ],
+    };
+
     for (const type of COLUMN_TYPES) {
       expect(
         values[type],
@@ -350,6 +367,7 @@ describe("displayValue renders every column type the schema declares", () => {
       const rendered = displayValue(
         record({ values: { [type]: values[type] } }),
         column(type, type),
+        context,
       );
 
       expect(

@@ -1,6 +1,6 @@
 {
   "elementSchemaVersion": 4,
-  "recordSchemaVersion": 2,
+  "recordSchemaVersion": 3,
   "elementOrder": ["el-note-tagged", "el-note-plain", "el-shape-tagged"],
   "meta": {
     "id": "board-fixture-v4",

@@ -707,7 +707,15 @@ export type FieldValue =
   | { type: "date"; value: string | null }
   | { type: "person"; value: string | null }
   | { type: "link"; value: string | null }
-  | { type: "richText"; value: ProseMirrorDoc };
+  | { type: "richText"; value: ProseMirrorDoc }
+  /*
+   * A same-collection parent link: the record id of the parent, or null for a
+   * root. ADR-0040 section 4. Deliberately not the cross-collection
+   * `linkToRecord` TRD-06 defers: a relation points inside its own collection,
+   * so there is no record-identity-across-collections or delete-cascade
+   * question. The mind-map projection reads the first relation column.
+   */
+  | { type: "relation"; value: string | null };
 
 export const COLUMN_TYPES = [
   "text",
@@ -719,6 +727,7 @@ export const COLUMN_TYPES = [
   "person",
   "link",
   "richText",
+  "relation",
 ] as const;
 
 export type ColumnType = typeof COLUMN_TYPES[number];
@@ -858,4 +867,5 @@ export const FIELD_TYPE_FOR_COLUMN: Readonly<
   person: "person",
   link: "link",
   richText: "richText",
+  relation: "relation",
 };
