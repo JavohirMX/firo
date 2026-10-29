@@ -415,6 +415,10 @@ import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isOverScrollBars } from "../scene/scrollbars";
 import { LassoTrail } from "../lasso";
 import { EraserTrail } from "../eraser";
+import {
+  isEyeDropperBackgroundKey,
+  isEyeDropperStrokeKey,
+} from "../eyeDropperKeys";
 import { getShortcutKey } from "../shortcut";
 
 import {
@@ -5669,11 +5673,8 @@ class App extends React.Component<AppProps, AppState> {
 
       // eye dropper
       // -----------------------------------------------------------------------
-      const lowerCased = event.key.toLocaleLowerCase();
-      const isPickingStroke =
-        lowerCased === KEYS.S && event.shiftKey && !event[KEYS.CTRL_OR_CMD];
-      const isPickingBackground =
-        event.key === KEYS.I || (lowerCased === KEYS.G && event.shiftKey);
+      const isPickingStroke = isEyeDropperStrokeKey(event);
+      const isPickingBackground = isEyeDropperBackgroundKey(event);
 
       if (isPickingStroke || isPickingBackground) {
         this.openEyeDropper({

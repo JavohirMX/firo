@@ -2,13 +2,14 @@ import React from "react";
 
 import { isFirefox, isWindows } from "@firo/common";
 
-import { KEYS } from "@firo/common";
-
 import { actionToggleTheme } from "../actions";
 import { getShortcutFromShortcutName } from "../actions/shortcuts";
+
 import { probablySupportsClipboardBlob } from "../clipboard";
 import { t } from "../i18n";
 import { getShortcutKey } from "../shortcut";
+
+import { getToolShortcuts } from "./Tools";
 
 import { useExcalidrawActionManager } from "./App";
 import { Dialog } from "./Dialog";
@@ -126,51 +127,73 @@ export const HelpDialog = ({
             className="HelpDialog__island--tools"
             caption={t("helpDialog.tools")}
           >
-            <Shortcut label={t("toolBar.hand")} shortcuts={[KEYS.H]} />
+            <Shortcut
+              label={t("toolBar.hand")}
+              shortcuts={getToolShortcuts("hand")}
+            />
             <Shortcut
               label={t("toolBar.selection")}
-              shortcuts={[KEYS.V, KEYS["1"]]}
+              shortcuts={getToolShortcuts("selection")}
             />
             <Shortcut
               label={t("toolBar.rectangle")}
-              shortcuts={[KEYS.R, KEYS["2"]]}
+              shortcuts={getToolShortcuts("rectangle")}
             />
             <Shortcut
               label={t("toolBar.diamond")}
-              shortcuts={[KEYS.D, KEYS["3"]]}
+              shortcuts={getToolShortcuts("diamond")}
             />
             <Shortcut
               label={t("toolBar.ellipse")}
-              shortcuts={[KEYS.O, KEYS["4"]]}
+              shortcuts={getToolShortcuts("ellipse")}
             />
             <Shortcut
               label={t("toolBar.arrow")}
-              shortcuts={[KEYS.A, KEYS["5"]]}
+              shortcuts={getToolShortcuts("arrow")}
             />
             <Shortcut
               label={t("toolBar.line")}
-              shortcuts={[KEYS.L, KEYS["6"]]}
+              shortcuts={getToolShortcuts("line")}
             />
             <Shortcut
               label={t("toolBar.freedraw")}
-              shortcuts={[KEYS.P, KEYS["7"]]}
+              shortcuts={getToolShortcuts("freedraw")}
             />
             <Shortcut
               label={t("toolBar.text")}
-              shortcuts={[KEYS.T, KEYS["8"]]}
+              shortcuts={getToolShortcuts("text")}
             />
-            <Shortcut label={t("toolBar.stickynote")} shortcuts={[KEYS.N]} />
-            <Shortcut label={t("toolBar.image")} shortcuts={[KEYS["9"]]} />
+            <Shortcut
+              label={t("toolBar.stickynote")}
+              shortcuts={getToolShortcuts("stickynote")}
+            />
+            <Shortcut
+              label={t("toolBar.image")}
+              shortcuts={getToolShortcuts("image")}
+            />
             <Shortcut
               label={t("toolBar.eraser")}
-              shortcuts={[KEYS.E, KEYS["0"]]}
+              shortcuts={getToolShortcuts("eraser")}
             />
-            <Shortcut label={t("toolBar.frame")} shortcuts={[KEYS.F]} />
-            <Shortcut label={t("toolBar.laser")} shortcuts={[KEYS.K]} />
-            <Shortcut label={t("toolBar.bucketfill")} shortcuts={[KEYS.B]} />
+            <Shortcut
+              label={t("toolBar.frame")}
+              shortcuts={getToolShortcuts("frame")}
+            />
+            <Shortcut
+              label={t("toolBar.laser")}
+              shortcuts={getToolShortcuts("laser")}
+            />
+            <Shortcut
+              label={t("toolBar.bucketfill")}
+              shortcuts={getToolShortcuts("bucketfill")}
+            />
             <Shortcut
               label={t("labels.eyeDropper")}
-              shortcuts={[KEYS.I, "Shift+S", "Shift+G"]}
+              shortcuts={[
+                getShortcutFromShortcutName("eyeDropper"),
+                getShortcutFromShortcutName("eyeDropper", 1),
+                getShortcutFromShortcutName("eyeDropper", 2),
+              ]}
             />
             <Shortcut
               label={t("helpDialog.editLineArrowPoints")}
@@ -416,19 +439,19 @@ export const HelpDialog = ({
             />
             <Shortcut
               label={t("labels.alignTop")}
-              shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Up")]}
+              shortcuts={[getShortcutFromShortcutName("alignTop")]}
             />
             <Shortcut
               label={t("labels.alignBottom")}
-              shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Down")]}
+              shortcuts={[getShortcutFromShortcutName("alignBottom")]}
             />
             <Shortcut
               label={t("labels.alignLeft")}
-              shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Left")]}
+              shortcuts={[getShortcutFromShortcutName("alignLeft")]}
             />
             <Shortcut
               label={t("labels.alignRight")}
-              shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Right")]}
+              shortcuts={[getShortcutFromShortcutName("alignRight")]}
             />
             <Shortcut
               label={t("labels.duplicateSelection")}

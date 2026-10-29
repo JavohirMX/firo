@@ -1,4 +1,4 @@
-import { isDarwin } from "@firo/common";
+import { isDarwin, KEYS } from "@firo/common";
 
 import type { SubtypeOf } from "@firo/common/utility-types";
 
@@ -36,6 +36,10 @@ export type ShortcutName =
       | "viewMode"
       | "flipHorizontal"
       | "flipVertical"
+      | "alignTop"
+      | "alignBottom"
+      | "alignLeft"
+      | "alignRight"
       | "hyperlink"
       | "toggleElementLock"
       | "resetZoom"
@@ -81,7 +85,12 @@ export type ShortcutName =
   | "imageExport"
   | "commandPalette"
   | "searchMenu"
-  | "toolLock";
+  | "toolLock"
+  /*
+   * Not a registered action: the eye dropper binds inline in App's keydown
+   * (see `eyeDropperKeys.ts`, whose predicates are this entry's other view).
+   */
+  | "eyeDropper";
 
 const shortcutMap: Record<ShortcutName, string[]> = {
   toggleTheme: [getShortcutKey("Shift+Alt+D")],
@@ -116,6 +125,10 @@ const shortcutMap: Record<ShortcutName, string[]> = {
       ? getShortcutKey("CtrlOrCmd+Alt+]")
       : getShortcutKey("CtrlOrCmd+Shift+]"),
   ],
+  alignTop: [getShortcutKey("CtrlOrCmd+Shift+Up")],
+  alignBottom: [getShortcutKey("CtrlOrCmd+Shift+Down")],
+  alignLeft: [getShortcutKey("CtrlOrCmd+Shift+Left")],
+  alignRight: [getShortcutKey("CtrlOrCmd+Shift+Right")],
   copyAsPng: [getShortcutKey("Shift+Alt+C")],
   group: [getShortcutKey("CtrlOrCmd+G")],
   ungroup: [getShortcutKey("CtrlOrCmd+Shift+G")],
@@ -144,6 +157,7 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   saveToActiveFile: [getShortcutKey("CtrlOrCmd+S")],
   toggleShortcuts: [getShortcutKey("?")],
   searchMenu: [getShortcutKey("CtrlOrCmd+F")],
+  eyeDropper: [KEYS.I, getShortcutKey("Shift+S"), getShortcutKey("Shift+G")],
   wrapSelectionInFrame: [],
   toolLock: [getShortcutKey("Q")],
   /*
