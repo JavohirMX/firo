@@ -60,6 +60,24 @@ vi.mock("@firo/editor", async (importOriginal) => {
   };
 });
 
+/*
+ * `AccessibilityLayer` calls `useI18n`, which reads the editor's scoped jotai
+ * store; this harness mounts components without that Provider, the same way it
+ * stubs the editor's other hooks above. Mirrors the mock in
+ * `accessibilityLayer.test.tsx` — without it the render throws "Missing
+ * Provider from createIsolation", which is how the two AC-8/live-region tests
+ * broke when the skip-link landed.
+ */
+vi.mock("@firo/editor/i18n", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@firo/editor/i18n")>();
+  return {
+    ...actual,
+    // Only the hook needs stubbing: it reads the scoped jotai store, which
+    // has no Provider in this harness. The standalone `t` is a plain function.
+    useI18n: () => ({ t: actual.t, langCode: actual.defaultLang.code }),
+  };
+});
+
 let mockSaveStatusListener: ((status: string) => void) | null = null;
 let currentMockSaveStatus = "idle";
 
@@ -547,8 +565,15 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
         "whiteboard",
       );
 
-      const treeButtons = screen.getAllByRole("button");
-      expect(treeButtons).toHaveLength(10);
+      const allTreeButtons = screen.getAllByRole("button");
+      /*
+       * Eleven, not ten: the tree opens with the skip-to-first-object control
+       * (the a11y skip link), and the ten item buttons follow it. The count
+       * pins that the skip control is present; navigation below exercises the
+       * item buttons, so it works on the slice.
+       */
+      expect(allTreeButtons).toHaveLength(11);
+      const treeButtons = allTreeButtons.slice(1);
 
       // Focus first item
       treeButtons[0].focus();
