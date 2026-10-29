@@ -25,7 +25,8 @@ import { describe, expect, test } from "vitest";
 import {
   allKnownFields,
   canonicalJson,
-  CURRENT_ELEMENT_VERSION, CURRENT_RECORD_VERSION,
+  CURRENT_ELEMENT_VERSION,
+  CURRENT_RECORD_VERSION,
   ELEMENT_TYPES,
   knownFieldsFor,
   loadBoard,
