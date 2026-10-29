@@ -55,16 +55,8 @@ export const CURRENT_ELEMENT_VERSION = 4;
  * and drop the comments on the next save. [`tests/fixtures/v2/board.json`](../../tests/fixtures/v2/board.json)
  * pins the promise that the merged v2 board loads, and the record-chain fixture
  * in [`./fixtures.ts`](./fixtures.ts) pins the comment case specifically.
- *
- * v3 adds the `relation` column type (ADR-0040 section 4). The migration is an
- * identity -- no v2 value moves -- but the bump is still load-bearing: a v1/v2
- * build does not know the column type, and this version plus the board-level
- * `ForwardVersionError` is what makes that build REFUSE a v3 file instead of
- * opening it and dropping every relation on the next save. That refusal is the
- * data-loss guard for John's existing boards: an old build can never silently
- * strip a mind map's parent links.
  */
-export const CURRENT_RECORD_VERSION = 3;
+export const CURRENT_RECORD_VERSION = 2;
 /**
  * A file whose stored version is above the current one.
  *

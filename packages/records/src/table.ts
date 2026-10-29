@@ -3,7 +3,6 @@ import type { Collection, FiroRecord } from "@firo/schema";
 import { orderedRecords, reorderMutation } from "./ordering.js";
 import {
   displayValue,
-  titleColumnKeyFor,
   type LayoutContext,
   type Projection,
   type ProjectionElement,
@@ -46,8 +45,20 @@ const HEADER_WIDTH = 48;
 /** Height of the header row. */
 const HEADER_HEIGHT = 64;
 
-// Defined in `types.ts` next to `displayValue`, which needs it for relations.
-export { titleColumnKeyFor } from "./types.js";
+const DEFAULT_TITLE_COLUMN = "title";
+
+/**
+ * Which column is the row's title.
+ *
+ * The first `text` column, and failing that anything at all. A table with no title
+ * column is a legitimate thing to have — every column might be a number — and calling
+ * the first column the title is what makes a table readable rather than a grid of
+ * equal-width anonymous cells.
+ */
+export const titleColumnKeyFor = (collection: Collection): string => {
+  const text = collection.columns.find((column) => column.type === "text");
+  return text?.key ?? collection.columns[0]?.key ?? DEFAULT_TITLE_COLUMN;
+};
 
 const columnWidth = (
   column: Collection["columns"][number] | undefined,

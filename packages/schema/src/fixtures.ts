@@ -547,107 +547,6 @@ const FIXTURES: readonly Fixture[] = [
     },
   },
   {
-    version: 3,
-    chain: "record",
-    description:
-      "The record-v3 case: the `relation` column (ADR-0040 section 4). One " +
-      "collection of idea cards with a `parent` relation column: a root (null), " +
-      "a child pointing at the root, and a record whose parent id no longer " +
-      "exists, which pins that a dangling relation LOADS WITHOUT REPAIR -- it " +
-      "renders as a missing node in the mind-map projection and is never " +
-      "silently pruned here, so restoring the parent record restores the edge. " +
-      "The migration from v2 is an identity: only the header moves.",
-    board: {
-      elementSchemaVersion: 2,
-      recordSchemaVersion: 3,
-      elementOrder: [],
-      meta: {
-        id: "board-fixture-v3-relations",
-        name: "Idea map",
-      },
-      collections: [
-        {
-          id: "col-ideas",
-          boardId: "board-fixture-v3-relations",
-          name: "Ideas",
-          order: "a0",
-          version: 1,
-          columns: [
-            {
-              id: "c-title",
-              key: "title",
-              name: "Title",
-              type: "text",
-            },
-            {
-              id: "c-parent",
-              key: "parent",
-              name: "Parent",
-              type: "relation",
-            },
-          ],
-        },
-      ],
-      elements: [],
-      records: [
-        {
-          id: "rec-root",
-          collectionId: "col-ideas",
-          values: {
-            title: {
-              type: "text",
-              value: "Root cause",
-            },
-            parent: {
-              type: "relation",
-              value: null,
-            },
-          },
-          created: 1750000000000,
-          updated: 1750000000000,
-          order: "a0",
-          archived: false,
-        },
-        {
-          id: "rec-child",
-          collectionId: "col-ideas",
-          values: {
-            title: {
-              type: "text",
-              value: "Contributing factor",
-            },
-            parent: {
-              type: "relation",
-              value: "rec-root",
-            },
-          },
-          created: 1750000001000,
-          updated: 1750000001000,
-          order: "a1",
-          archived: false,
-        },
-        {
-          id: "rec-orphan",
-          collectionId: "col-ideas",
-          values: {
-            title: {
-              type: "text",
-              value: "Detached idea",
-            },
-            parent: {
-              type: "relation",
-              value: "rec-deleted",
-            },
-          },
-          created: 1750000002000,
-          updated: 1750000002000,
-          order: "a2",
-          archived: false,
-        },
-      ],
-    },
-  },
-  {
     version: 4,
     chain: "element",
     description:
@@ -655,7 +554,7 @@ const FIXTURES: readonly Fixture[] = [
       "doc blocks collection, elements, and a structured doc block record.",
     board: {
       elementSchemaVersion: 4,
-      recordSchemaVersion: 3,
+      recordSchemaVersion: 2,
       elementOrder: ["el-note-tagged", "el-note-plain", "el-shape-tagged"],
       meta: {
         id: "board-fixture-v4",
