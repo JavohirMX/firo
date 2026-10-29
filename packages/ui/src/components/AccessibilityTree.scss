@@ -34,3 +34,42 @@
   padding: 0;
   list-style: none;
 }
+
+/* The skip link — the keyboard user's way into the board from the chrome
+ * above it. It lives outside the clipped tree container because a
+ * focus-revealed control cannot be clipped by its parent.
+ *
+ * Same clip technique as the tree itself: present to assistive technology
+ * and to the keyboard, invisible otherwise. On `:focus-visible` it is
+ * revealed in the corner, over the canvas. */
+.firo-a11y-skip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.firo-a11y-skip:focus-visible {
+  width: auto;
+  height: auto;
+  padding: 8px 12px;
+  margin: 8px;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+  z-index: 100;
+  border-radius: 6px;
+  background: var(--firo-color-panel-raised, #ffffff);
+  color: var(--firo-color-text, #111318);
+  border: 1px solid var(--firo-color-accent, #4263eb);
+  box-shadow: 0 2px 8px rgba(17, 19, 24, 0.18);
+  font: inherit;
+}

@@ -1,4 +1,7 @@
 {
+  "accessibility": {
+    "skipToFirstObject": "Skip to first object on the board"
+  },
   "labels": {
     "signUp": "Sign up",
     "signIn": "Sign in",

@@ -321,5 +321,136 @@ describe("@firo/ui accessibility tree", () => {
       );
       expect(screen.getAllByRole("listitem")).toHaveLength(10);
     });
+    describe("skip link", () => {
+      const skip = "Skip to first object on the board";
+      const items: AccessibilityTreeItem[] = [
+        note,
+        { id: "note-2", kind: "Ellipse" },
+      ];
+
+      it("renders no skip link without the label", () => {
+        render(<AccessibilityTree items={items} onActivate={vi.fn()} />);
+
+        expect(screen.queryByRole("button", { name: skip })).toBeNull();
+      });
+
+      it("renders no skip link on an empty board", () => {
+        render(
+          <AccessibilityTree
+            items={[]}
+            skipLinkLabel={skip}
+            onActivate={vi.fn()}
+          />,
+        );
+
+        expect(screen.queryByRole("button", { name: skip })).toBeNull();
+      });
+
+      it("renders the skip link before the tree, as a native button", () => {
+        render(
+          <AccessibilityTree
+            items={items}
+            boardLabel="Sprint planning"
+            skipLinkLabel={skip}
+            onActivate={vi.fn()}
+          />,
+        );
+
+        const link = screen.getByRole("button", { name: skip });
+        expect(link.tagName).toBe("BUTTON");
+        expect(link.getAttribute("type")).toBe("button");
+
+        const tree = screen.getByRole("application", {
+          name: "Sprint planning",
+        });
+        expect(
+          link.compareDocumentPosition(tree) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      });
+
+      it("focuses and selects the first object on activation", () => {
+        const onFocusElement = vi.fn();
+        render(
+          <AccessibilityTree
+            items={items}
+            skipLinkLabel={skip}
+            onActivate={vi.fn()}
+            onFocusElement={onFocusElement}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: skip }));
+
+        const first = screen.getByRole("button", {
+          name: "Sticky note: Write the RFC. Yellow. Position 1 of 2.",
+        });
+        expect(document.activeElement).toBe(first);
+        expect(onFocusElement).toHaveBeenCalledWith("note-1");
+        // Focus, not activation: skipping must not fire the element's action.
+      });
+
+      it("moves focus into the tree even when the first object is already current", () => {
+        // No selection: the roving index defaults to 0. A focus request that
+        // only re-set the index would be a no-op here and drop the skip.
+        render(
+          <AccessibilityTree
+            items={items}
+            skipLinkLabel={skip}
+            onActivate={vi.fn()}
+          />,
+        );
+
+        expect(document.activeElement).toBe(document.body);
+
+        fireEvent.click(screen.getByRole("button", { name: skip }));
+
+        expect(document.activeElement).toBe(
+          screen.getByRole("button", {
+            name: "Sticky note: Write the RFC. Yellow. Position 1 of 2.",
+          }),
+        );
+      });
+
+      it("skips to the first object even when a later one is selected", () => {
+        render(
+          <AccessibilityTree
+            items={items}
+            selectedId="note-2"
+            skipLinkLabel={skip}
+            onActivate={vi.fn()}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: skip }));
+
+        expect(document.activeElement).toBe(
+          screen.getByRole("button", {
+            name: "Sticky note: Write the RFC. Yellow. Position 1 of 2.",
+          }),
+        );
+      });
+
+      it("keeps roving Tab working after the skip", () => {
+        render(
+          <AccessibilityTree
+            items={items}
+            skipLinkLabel={skip}
+            onActivate={vi.fn()}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: skip }));
+        const first = screen.getByRole("button", {
+          name: "Sticky note: Write the RFC. Yellow. Position 1 of 2.",
+        });
+        fireEvent.keyDown(first, { key: "Tab" });
+
+        expect(document.activeElement).toBe(
+          screen.getByRole("button", {
+            name: "Ellipse. Position 2 of 2.",
+          }),
+        );
+      });
+    });
   });
 });
