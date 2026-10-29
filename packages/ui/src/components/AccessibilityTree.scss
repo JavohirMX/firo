@@ -57,10 +57,20 @@
 }
 
 .firo-a11y-skip:focus-visible {
+  /*
+   * Revealed below the top chrome row, not in the corner: the editor's
+   * main-menu trigger owns the top-left (32-48px plus margins, at the same
+   * stacking level), and revealing there let it cover the link's first words
+   * on a phone. 64px clears that row on both desktop and mobile; the safe-area
+   * inset keeps it clear on notched devices. No z-index race — nothing shares
+   * the space the link reveals into.
+   */
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  left: 8px;
   width: auto;
   height: auto;
   padding: 8px 12px;
-  margin: 8px;
+  margin: 0;
   overflow: visible;
   clip: auto;
   clip-path: none;
