@@ -33,7 +33,15 @@ export type ProjectionElement = Readonly<{
   id: string;
   /** The record this is a view of. */
   recordId: string;
-  type: "cell" | "card" | "header" | "frame";
+  /*
+   * `edge` is a connector between two node elements (ADR-0040 section 4): its
+   * `recordId` is the CHILD record whose relation produced it, so a click on
+   * the line still resolves to one record. `fromId`/`toId` name node element
+   * ids within the same layout, and `x`/`y`/`width`/`height` are the
+   * connector's bounding box, not a line equation - the renderer owns the
+   * curve.
+   */
+  type: "cell" | "card" | "header" | "frame" | "edge";
   x: number;
   y: number;
   width: number;
@@ -44,6 +52,9 @@ export type ProjectionElement = Readonly<{
   groupId?: string;
   /** What to draw. Read by the renderer, never by the projection. */
   text?: string;
+  /** Edge endpoints: node element ids within this layout. Edges only. */
+  fromId?: string;
+  toId?: string;
 }>;
 
 /** What a projection needs to know about the world to lay itself out. */
@@ -78,7 +89,18 @@ export type ProjectionIntent =
       columnKey: string;
       value: string;
     }>
-  | Readonly<{ kind: "reorder"; recordId: string; beforeId: string | null }>;
+  | Readonly<{ kind: "reorder"; recordId: string; beforeId: string | null }>
+  | Readonly<{
+      /*
+       * Re-parent a record in a relation hierarchy (ADR-0040 section 4).
+       * `newParentId: null` roots it. The projection validates the drop -
+       * not-self, in-collection, not-a-descendant - and returns null for a
+       * drop it rejects; it never breaks a cycle by rewriting other records.
+       */
+      kind: "reparent";
+      recordId: string;
+      newParentId: string | null;
+    }>;
 
 /**
  * A requested change to a record.
@@ -169,6 +191,24 @@ export const optionsOf = (
   column: Collection["columns"][number] | null,
 ): readonly SelectOption[] => column?.options ?? [];
 
+const DEFAULT_TITLE_COLUMN = "title";
+
+/**
+ * Which column is the row's title.
+ *
+ * The first `text` column, and failing that anything at all. A table with no title
+ * column is a legitimate thing to have -- every column might be a number -- and
+ * calling the first column the title is what makes a table readable rather than a
+ * grid of equal-width anonymous cells.
+ *
+ * Lives here, not in `table.ts`, because a relation's display text is the
+ * target's title and `displayValue` is here; `table.ts` re-exports it.
+ */
+export const titleColumnKeyFor = (collection: Collection): string => {
+  const text = collection.columns.find((column) => column.type === "text");
+  return text?.key ?? collection.columns[0]?.key ?? DEFAULT_TITLE_COLUMN;
+};
+
 /**
  * A record's value for one column, or `null` when it has none.
  *
@@ -181,10 +221,18 @@ export const valueOf = (
   columnKey: string,
 ): FiroRecord["values"][string] | null => record.values[columnKey] ?? null;
 
-/** The display text for a cell, or `""` when there is nothing to show. */
+/**
+ * The display text for a cell, or `""` when there is nothing to show.
+ *
+ * `context` is needed by exactly one column type: a relation renders its
+ * TARGET's title, so it has to be able to find that record. Callers without
+ * the collection at hand omit it and get `""` for relations, which is the
+ * same "no invented rendering" rule the default case holds.
+ */
 export const displayValue = (
   record: FiroRecord,
   column: Collection["columns"][number],
+  context?: { collection: Collection; records: readonly FiroRecord[] },
 ): string => {
   const value = valueOf(record, column.key);
   if (value === null) {
@@ -231,6 +279,20 @@ export const displayValue = (
 
     case "link":
       return value.value ?? "";
+
+    case "relation": {
+      if (value.value === null || context === undefined) {
+        return "";
+      }
+      const target = context.records.find((r) => r.id === value.value);
+      if (target === undefined || target.collectionId !== context.collection.id) {
+        // Dangling: the parent was deleted. Named, not blank - a blank cell
+        // reads as "no parent", and this record HAS one that is gone.
+        return "Missing record";
+      }
+      const title = valueOf(target, titleColumnKeyFor(context.collection));
+      return title !== null && title.type === "text" ? title.value : "";
+    }
 
     default:
       /*

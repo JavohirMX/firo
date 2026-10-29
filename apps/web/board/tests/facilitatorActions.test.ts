@@ -182,7 +182,10 @@ describe("registration", () => {
        * the facilitation menu are the paths), so they have no `keyTest` to
        * assert.
        */
-      if (action.name !== "openVotingPanel" && action.name !== "openFramesPanel") {
+      if (
+        action.name !== "openVotingPanel" &&
+        action.name !== "openFramesPanel"
+      ) {
         expect(typeof action.keyTest, action.name).toBe("function");
       }
       expect(action.keywords?.length ?? 0, action.name).toBeGreaterThan(0);
