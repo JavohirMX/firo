@@ -1,5 +1,6 @@
 {
   "name": "@firo/server",
+  "type": "module",
   "version": "0.1.0",
   "description": "Firo sync server: WebSocket relay, SQLite persistence, and authentication",
   "license": "MIT",
