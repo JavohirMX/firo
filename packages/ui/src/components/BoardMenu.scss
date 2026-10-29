@@ -8,15 +8,15 @@
   box-shadow: var(--firo-elevation-panel);
   border: 1px solid var(--firo-color-border);
   user-select: none;
-  height: 40px;
+  height: var(--firo-bar-height);
   box-sizing: border-box;
 
   &__button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: var(--firo-control-size);
+    height: var(--firo-control-size);
     padding: 0;
     border: none;
     background: transparent;

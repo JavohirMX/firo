@@ -9,7 +9,7 @@
   top: 56px;
   right: 16px;
   bottom: 16px;
-  width: 340px;
+  width: var(--firo-panel-width);
   background-color: var(--firo-color-panel-raised, #ffffff);
   border: 1px solid var(--firo-color-border, #e4e5ea);
   border-radius: var(--firo-radius-lg, 12px);
