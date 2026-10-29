@@ -564,6 +564,13 @@
     opacity: 1;
   }
 
+  /* Re-truncate the name with its own ellipsis ahead of the revealed
+     actions, so the overlay never cuts through glyphs. */
+  &__folder-item:hover &__folder-btn-select,
+  &__folder-item:focus-within &__folder-btn-select {
+    padding-right: calc(44px + var(--firo-space-sm) + var(--firo-space-xs));
+  }
+
   &__folder-action {
     display: flex;
     align-items: center;
@@ -1740,6 +1747,19 @@
   .firo-board-sidebar__folder-action {
     width: 44px;
     height: 44px;
+  }
+
+  /* The actions never hide on touch, so the row reserves their width for
+     good and the drawer grows to keep folder names readable. */
+  .firo-board-sidebar__folder-btn-select {
+    padding-right: calc(88px + var(--firo-space-sm) + var(--firo-space-xs));
+  }
+
+  .firo-board-sidebar {
+    flex-basis: min(300px, 78vw);
+    width: min(300px, 78vw);
+    min-width: min(300px, 78vw);
+    max-width: min(300px, 78vw);
   }
 
   .firo-board-modal__folder-option {
