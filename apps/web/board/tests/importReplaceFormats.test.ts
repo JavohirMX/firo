@@ -417,3 +417,52 @@ describe("Miro image assets are written to asset storage on import", () => {
     expect((images[0] as { status?: string }).status).toBe("saved");
   });
 });
+
+describe("insertElementsIntoDoc group remap", () => {
+  it("keeps inserted copies in disjoint groups, consistent within a copy", async () => {
+    const { insertElementsIntoDoc } = await import("../files");
+    const doc = createFiroDoc();
+
+    const incoming = [
+      {
+        id: "shape_a",
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        groupIds: ["miro_group_g1"],
+        isDeleted: false,
+      },
+      {
+        id: "label_a",
+        type: "text",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 20,
+        text: "label",
+        containerId: "shape_a",
+        groupIds: ["miro_group_g1"],
+        isDeleted: false,
+      },
+    ] as any;
+
+    insertElementsIntoDoc(doc, incoming);
+    insertElementsIntoDoc(doc, incoming);
+
+    const live = doc.read().elements.filter((el) => !el.isDeleted);
+    expect(live).toHaveLength(4);
+
+    const groupSets = live.map((el) => (el.groupIds as string[])[0]);
+    // Both groups exist, each shared by exactly one shape + its label.
+    const unique = [...new Set(groupSets)];
+    expect(unique).toHaveLength(2);
+    for (const groupId of unique) {
+      expect(groupSets.filter((g) => g === groupId)).toHaveLength(2);
+      expect(groupId).toMatch(/^miro_group_g1_/);
+    }
+    // And neither collides with the source id.
+    expect(unique).not.toContain("miro_group_g1");
+  });
+});

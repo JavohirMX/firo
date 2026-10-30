@@ -560,6 +560,23 @@ export const insertElementsIntoDoc = (
     idMap.set(el.id, newId);
   }
 
+  // Group ids get the same per-batch remap as element ids: without it, a
+  // second insert of the same source joins the first copy's groups, and an
+  // import joins groups that already exist on the board.
+  const groupIdMap = new Map<string, string>();
+  for (const el of incoming) {
+    for (const groupId of el.groupIds ?? []) {
+      if (!groupIdMap.has(groupId)) {
+        groupIdMap.set(
+          groupId,
+          `${groupId}_${timestamp}_${Math.random()
+            .toString(36)
+            .substring(2, 6)}`,
+        );
+      }
+    }
+  }
+
   const dx = offset?.x ?? 0;
   const dy = offset?.y ?? 0;
 
@@ -600,6 +617,9 @@ export const insertElementsIntoDoc = (
       y: el.y + dy,
       frameId: remappedFrameId,
       containerId: remappedContainerId,
+      groupIds: (el.groupIds ?? []).map(
+        (groupId) => groupIdMap.get(groupId) || groupId,
+      ),
       bindings: remappedBindings,
       ...(startBinding !== undefined ? { startBinding } : {}),
       ...(endBinding !== undefined ? { endBinding } : {}),
