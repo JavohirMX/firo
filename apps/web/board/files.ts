@@ -598,12 +598,18 @@ export const insertElementsIntoDoc = (
     // the text side). Leaving it unremapped strands the reference on the
     // pre-insert id, so the editor drops the binding on load and the label
     // unbinds from its shape.
-    const remappedBoundElements = el.boundElements
-      ? el.boundElements.map((bound) => ({
+    // Not on the FiroElement schema type: bindings live on the editor-shaped
+    // element, same as startBinding/endBinding below.
+    const boundElements = (el as any).boundElements as
+      | readonly { id: string; type: string }[]
+      | null
+      | undefined;
+    const remappedBoundElements = boundElements
+      ? boundElements.map((bound) => ({
           ...bound,
           id: (idMap.get(String(bound.id)) || bound.id) as any,
         }))
-      : el.boundElements;
+      : boundElements;
 
     let startBinding = (el as any).startBinding;
     if (startBinding?.elementId && idMap.has(startBinding.elementId)) {
@@ -635,7 +641,7 @@ export const insertElementsIntoDoc = (
       ...(startBinding !== undefined ? { startBinding } : {}),
       ...(endBinding !== undefined ? { endBinding } : {}),
       isDeleted: false,
-    } as FiroElement;
+    } as unknown as FiroElement;
   });
 
   const mutations = remapped.map((element) => ({

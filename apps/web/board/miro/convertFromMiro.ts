@@ -668,7 +668,7 @@ export const convertMiroItemsToFiro = async (
             fontFamily: DEFAULT_FONT_FAMILY,
           });
           const wrappedText = wrapText(contentText, labelFont, bounds.width);
-          const labelMetrics = measureText(wrappedText, labelFont, 1.25);
+          const labelMetrics = measureText(wrappedText, labelFont, 1.25 as any);
           let labelY = bounds.y;
           if (exportedVAlign === "middle") {
             labelY =

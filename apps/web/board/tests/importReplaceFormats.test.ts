@@ -454,7 +454,7 @@ describe("insertElementsIntoDoc group remap", () => {
     const live = doc.read().elements.filter((el) => !el.isDeleted);
     expect(live).toHaveLength(4);
 
-    const groupSets = live.map((el) => (el.groupIds as string[])[0]);
+    const groupSets = live.map((el) => (el.groupIds as unknown as string[])[0]);
     // Both groups exist, each shared by exactly one shape + its label.
     const unique = [...new Set(groupSets)];
     expect(unique).toHaveLength(2);
