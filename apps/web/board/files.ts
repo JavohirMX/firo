@@ -820,21 +820,35 @@ const importBoardFileInner = async (
       // Check canvas.json
       if (files.has("canvas.json")) {
         const canvasBytes = files.get("canvas.json")!;
+        /*
+         * Only the decode and parse may mark the backup encrypted: a
+         * KMS-sealed canvas.json is not JSON at all, so a parse failure is
+         * the signal. Everything after the parse — conversion, asset writes,
+         * the document load — fails for its own reasons and must surface its
+         * own error. Wrapping those in the same catch relabelled any bug in
+         * them as "encrypted by Miro KMS", which sent the user to re-export
+         * a board that was never the problem.
+         */
+        let items: unknown;
         try {
           const canvasText = new TextDecoder().decode(canvasBytes);
           const canvasJson = JSON.parse(canvasText);
-          const items = Array.isArray(canvasJson)
+          items = Array.isArray(canvasJson)
             ? canvasJson
             : canvasJson.items || canvasJson.widgets;
-          if (Array.isArray(items)) {
-            const hasContent = doc.read().elements.length > 0;
-            if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
-              return {
-                ok: false,
-                reason: "not-empty",
-                detail: "Clear or export the current board before importing.",
-              };
-            }
+        } catch {
+          isEncrypted = true;
+        }
+        if (!isEncrypted && Array.isArray(items)) {
+          const hasContent = doc.read().elements.length > 0;
+          if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
+            return {
+              ok: false,
+              reason: "not-empty",
+              detail: "Clear or export the current board before importing.",
+            };
+          }
+          try {
             const converted = await convertMiroItemsToFiro(items, {
               boardMeta,
               resources,
@@ -872,9 +886,15 @@ const importBoardFileInner = async (
               format: "miro",
               assets: converted.assetsToPut,
             };
+          } catch (e) {
+            return {
+              ok: false,
+              reason: "failed",
+              detail: `Miro import failed: ${
+                e instanceof Error ? e.message || e.name : String(e)
+              }`,
+            };
           }
-        } catch {
-          isEncrypted = true;
         }
       }
 

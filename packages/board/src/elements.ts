@@ -602,7 +602,10 @@ const customDataFor = (element: FiroElement): Record<string, unknown> => {
  * @throws on a type the editor cannot draw. Silently dropping an element is how
  * a board loses content without anyone noticing.
  */
-export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
+export const toEditorElements = (
+  element: FiroElement,
+  nextIndex?: FiroElement["index"],
+): ExcalidrawElement[] => {
   if (
     element.type === "rectangle" ||
     element.type === "diamond" ||
@@ -845,7 +848,7 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
      */
     index: generateKeyBetween(
       element.index,
-      null,
+      nextIndex ?? null,
     ) as ExcalidrawTextElement["index"],
     containerId: element.id,
     originalText: element.text,
@@ -879,10 +882,20 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
   return [sticky, label];
 };
 
-/** Project a z-ordered list. Order is the z-order; a note's label follows it. */
+/**
+ * Project a z-ordered list. Order is the z-order; a note's label follows it.
+ *
+ * The successor's index goes in with each element: a note's label is derived
+ * between the note and whatever follows it, so densely indexed boards —
+ * imports, where indices are assigned a0, a1, a2 at load — still get a label
+ * that sorts before the next note instead of colliding with it.
+ */
 export const toEditorScene = (
   elements: readonly FiroElement[],
-): ExcalidrawElement[] => elements.flatMap(toEditorElements);
+): ExcalidrawElement[] =>
+  elements.flatMap((element, i) =>
+    toEditorElements(element, elements[i + 1]?.index),
+  );
 
 /**
  * Fold the editor's elements into document elements.

@@ -266,6 +266,91 @@ describe("replace import clears previous content for every format", () => {
     expect(live).toHaveLength(2);
     expect(live).not.toContain("pre_existing");
   });
+
+  it("Miro .rtb archive via canvas.json — the import dialog's actual path", async () => {
+    /*
+     * The import dialog hands over only the .rtb bytes — no companion items
+     * export — so the canvas.json inside the archive is what gets converted.
+     * The sibling above passes items directly and never exercises this
+     * branch; this is the path that actually runs from Board > Import >
+     * Replace.
+     */
+    const doc = nonEmptyDoc();
+    const rtb = zipFiles(
+      new Map([
+        ["board.json", bytesOf(JSON.stringify({ name: "Neutral board" }))],
+        ["resources.json", bytesOf(JSON.stringify({ resources: [] }))],
+        ["canvas.json", bytesOf(JSON.stringify(miroItems))],
+      ]),
+    );
+
+    const result = await importBoardFile(doc, rtb, {
+      insertMode: "replace",
+      force: true,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.format).toBe("miro");
+    const live = liveIds(doc);
+    expect(live).toHaveLength(2);
+    expect(live).not.toContain("pre_existing");
+  });
+
+  it("a failing asset write is not misreported as an encrypted canvas", async () => {
+    /*
+     * The canvas.json branch once wrapped the parse, the conversion, the
+     * asset writes and the document load in a single catch that labelled
+     * every failure "encrypted by Miro KMS" — including a fractional-index
+     * throw from the scene, which made replace imports fail intermittently
+     * with instructions to re-export a board that was never the problem.
+     * Only an unparseable canvas.json is encryption; anything else must
+     * surface with its own identity.
+     */
+    const doc = nonEmptyDoc();
+    const pngBytes = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4,
+    ]);
+    const imageItem = [
+      {
+        id: "mi_img",
+        type: "image",
+        x: 300,
+        y: 300,
+        width: 160,
+        height: 120,
+        origin: "center",
+        relativeTo: "canvas_center",
+        data: { url: "https://cdn.example.invalid/media/img001.png" },
+      },
+    ];
+    const rtb = zipFiles(
+      new Map([
+        ["board.json", bytesOf(JSON.stringify({ name: "Neutral board" }))],
+        ["resources.json", bytesOf(JSON.stringify({ resources: [] }))],
+        ["canvas.json", bytesOf(JSON.stringify(imageItem))],
+        ["img001.png", pngBytes],
+      ]),
+    );
+
+    const result = await importBoardFile(doc, rtb, {
+      insertMode: "replace",
+      force: true,
+      putAsset: async () => {
+        throw new Error("asset store unavailable");
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.reason).toBe("failed");
+    expect(result.detail).toContain("asset store unavailable");
+    expect(result.detail).not.toContain("encrypted");
+  });
 });
 
 /*

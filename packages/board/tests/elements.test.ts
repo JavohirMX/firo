@@ -179,6 +179,38 @@ describe("toEditorElements", () => {
       expect(new Set(labels).size).toBe(labels.length);
     });
 
+    /*
+     * A note's label is derived between the note and the element that follows
+     * it. Imports load with dense indices — a0, a1, a2 — and deriving the
+     * label as "one past the note, unbounded" lands it exactly on the next
+     * note's index: a duplicate the scene's fractional-index validation throws
+     * on, in development, on the first scene change after a quiet minute. That
+     * made imported boards fail to open at random. Bounding the derivation by
+     * the successor keeps the label strictly between the two.
+     */
+    describe("a label on a densely indexed board", () => {
+      it("sorts strictly between its note and the next element", () => {
+        const scene = toEditorScene([
+          note({ id: "n1", index: "a0" as never }),
+          note({ id: "n2", x: 300, index: "a1" as never }),
+        ]);
+
+        const indices = scene.map(
+          (element) => (element as unknown as { index: string }).index,
+        );
+        for (let i = 1; i < indices.length; i++) {
+          expect(indices[i] > indices[i - 1]).toBe(true);
+        }
+      });
+
+      it("stays one step after its note when nothing follows", () => {
+        const scene = toEditorScene([note({ index: "a0" as never })]);
+
+        const label = scene[1] as unknown as { index: string };
+        expect(label.index > "a0").toBe(true);
+      });
+    });
+
     it("survives a round trip through the document without an invalid index", () => {
       // The end-to-end shape of the bug: project, fold, project again. If the label
       // index were derived from something that changed between the two, this is where
