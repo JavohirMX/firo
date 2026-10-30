@@ -302,6 +302,52 @@ describe("Miro conversion", () => {
       expect(board.elements[1].roundness).toEqual({ type: 3 });
     });
 
+    it("positions shape labels from exported vertical alignment and color", async () => {
+      const base = {
+        type: "shape" as const,
+        data: { shape: "rectangle", content: "Hi" },
+        geometry: { width: 200, height: 200 },
+      };
+      const miroItems: MiroItem[] = [
+        {
+          ...base,
+          id: "mid",
+          position: { x: 0, y: 0, origin: "center" },
+          style: { textAlignVertical: "middle", color: "#123456" },
+        },
+        {
+          ...base,
+          id: "top",
+          position: { x: 0, y: 1000, origin: "center" },
+          style: { textAlignVertical: "top" },
+        },
+        {
+          ...base,
+          id: "unspecified",
+          position: { x: 0, y: 2000, origin: "center" },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const labelOf = (id: string) =>
+        board.elements.find((el) => el.id === `${id}_text`) as any;
+      const shapeOf = (id: string) =>
+        board.elements.find((el) => el.id === id) as any;
+
+      // Explicit middle: the estimated one-line block (20 * 1.25 = 25) is
+      // centered in the 200-tall shape: y = shape.y + (200 - 25) / 2.
+      const midShape = shapeOf("mid");
+      const midLabel = labelOf("mid");
+      expect(midLabel.y).toBeCloseTo(midShape.y + (200 - 25) / 2, 5);
+      expect(midLabel.height).toBeCloseTo(25, 5);
+      // Explicit exported text color wins over the contrast heuristic.
+      expect(midLabel.strokeColor).toBe("#123456");
+
+      // Explicit top and absent alignment both keep the shape's top edge.
+      expect(labelOf("top").y).toBe(shapeOf("top").y);
+      expect(labelOf("unspecified").y).toBe(shapeOf("unspecified").y);
+    });
+
     it("converts frames and preserves containment", async () => {
       const miroItems: MiroItem[] = [
         {
