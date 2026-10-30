@@ -349,3 +349,41 @@
     }
   }
 }
+
+// Phone widths: the create row and link rows are single flex lines sized for
+// the desktop dialog, so the selects truncate and the expiry text collides
+// with the action buttons. Stack the controls so each gets its own line.
+@media (max-width: 720px) {
+  .firo-share-modal {
+    &__row {
+      flex-wrap: wrap;
+    }
+
+    &__role-select {
+      flex: 1 1 100%;
+    }
+
+    &__create-btn {
+      flex: 1 1 100%;
+      justify-content: center;
+    }
+
+    &__link-item {
+      flex-wrap: wrap;
+    }
+
+    &__link-meta {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      row-gap: 4px;
+    }
+
+    &__link-expiry {
+      flex-basis: 100%;
+    }
+
+    &__link-actions {
+      margin-left: auto;
+    }
+  }
+}
