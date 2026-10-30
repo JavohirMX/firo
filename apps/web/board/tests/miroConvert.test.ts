@@ -348,6 +348,40 @@ describe("Miro conversion", () => {
       expect(labelOf("unspecified").y).toBe(shapeOf("unspecified").y);
     });
 
+    it("wraps long shape labels at the shape width and disables autoResize", async () => {
+      const longText = `${"word "
+        .repeat(60)
+        .trim()}\nsecond paragraph stays a paragraph`;
+      const miroItems: MiroItem[] = [
+        {
+          id: "wrap",
+          type: "shape",
+          data: { shape: "rectangle", content: longText },
+          position: { x: 0, y: 0, origin: "center" },
+          geometry: { width: 220, height: 2000 },
+          style: { textAlignVertical: "middle" },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const label = board.elements.find((el) => el.id === "wrap_text") as any;
+      const shape = board.elements.find((el) => el.id === "wrap") as any;
+
+      // Wrapped: more lines than the two hard paragraphs, and the box stays
+      // at the shape width instead of re-fitting to one long line.
+      expect(label.text).toContain("\n");
+      const renderedLines = label.text.split("\n").length;
+      expect(renderedLines).toBeGreaterThan(2);
+      expect(label.width).toBe(shape.width);
+      expect(label.autoResize).toBe(false);
+      expect(label.height).toBeCloseTo(
+        renderedLines * label.fontSize * 1.25,
+        5,
+      );
+      // Middle alignment centers the whole wrapped block in the tall shape.
+      expect(label.y).toBeCloseTo(shape.y + (2000 - label.height) / 2, 5);
+    });
+
     it("converts frames and preserves containment", async () => {
       const miroItems: MiroItem[] = [
         {

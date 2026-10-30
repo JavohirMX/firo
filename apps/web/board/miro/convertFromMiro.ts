@@ -12,7 +12,8 @@
  * - Multi-strategy image resolution from Miro .rtb backup archives
  * - Stratified z-index layer ordering (outer frames, inner frames, shapes, images, stickies, text, connectors on top)
  */
-import { DEFAULT_FONT_FAMILY } from "@firo/common";
+import { DEFAULT_FONT_FAMILY, getFontString } from "@firo/common";
+import { measureText, wrapText } from "@firo/element";
 import { hashBytes } from "@firo/doc";
 
 import { miroHtmlToProseMirror } from "./htmlToProseMirror";
@@ -653,32 +654,28 @@ export const convertMiroItemsToFiro = async (
           }
 
           // The label is a freestanding annotation in the document model
-          // (shapes carry no text), so vertical alignment has to be baked
-          // into its geometry. Only an explicit exported alignment moves it:
-          // middle/bottom place the estimated wrapped text block, top or an
-          // absent value keeps the shape's top edge. The estimate wraps at
-          // the label box width with an average glyph width; it positions,
-          // it does not measure.
+          // (shapes carry no text), so wrapping and alignment have to be
+          // baked into its geometry. autoResize: false makes the editor wrap
+          // at the element width - the shape's width - instead of re-fitting
+          // one long line, and the wrap/height below come from the renderer's
+          // own wrapText/measureText pipeline, so what is stored is what the
+          // canvas lays out. Only an explicit exported alignment moves the
+          // block vertically: middle/bottom place it, top or an absent value
+          // keeps the shape's top edge.
           const exportedVAlign = item.style?.textAlignVertical;
-          const avgGlyphWidth = fontSize * 0.55;
-          const charsPerLine = Math.max(
-            1,
-            Math.floor(bounds.width / avgGlyphWidth),
-          );
-          const wrappedLines = contentText
-            .split("\n")
-            .reduce(
-              (total, line) =>
-                total + Math.max(1, Math.ceil(line.length / charsPerLine)),
-              0,
-            );
-          const estimatedHeight = wrappedLines * fontSize * 1.25;
+          const labelFont = getFontString({
+            fontSize,
+            fontFamily: DEFAULT_FONT_FAMILY,
+          });
+          const wrappedText = wrapText(contentText, labelFont, bounds.width);
+          const labelMetrics = measureText(wrappedText, labelFont, 1.25);
           let labelY = bounds.y;
           if (exportedVAlign === "middle") {
             labelY =
-              bounds.y + Math.max(0, (bounds.height - estimatedHeight) / 2);
+              bounds.y + Math.max(0, (bounds.height - labelMetrics.height) / 2);
           } else if (exportedVAlign === "bottom") {
-            labelY = bounds.y + Math.max(0, bounds.height - estimatedHeight);
+            labelY =
+              bounds.y + Math.max(0, bounds.height - labelMetrics.height);
           }
 
           elements.push({
@@ -687,10 +684,10 @@ export const convertMiroItemsToFiro = async (
             x: bounds.x,
             y: labelY,
             width: bounds.width,
-            height: estimatedHeight,
+            height: labelMetrics.height,
             angle: bounds.angle,
             type: "text",
-            text: contentText,
+            text: wrappedText,
             richText,
             fontSize,
             fontFamily: DEFAULT_FONT_FAMILY,
@@ -699,7 +696,7 @@ export const convertMiroItemsToFiro = async (
             strokeColor: textColor,
             backgroundColor: "transparent",
             containerId: id,
-            autoResize: true,
+            autoResize: false,
             lineHeight: 1.25,
           });
         }
