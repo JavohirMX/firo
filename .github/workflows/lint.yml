@@ -6,7 +6,7 @@ on:
   # work lands before a PR exists. Narrow on purpose: no other branch added.
   push:
     branches:
-      - integration/firo-combined
+      - integration/firo-combined*
 
 jobs:
   lint:

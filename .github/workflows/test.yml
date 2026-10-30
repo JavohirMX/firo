@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - dev
-      - integration/firo-combined
+      - integration/firo-combined*
 
 jobs:
   test:
