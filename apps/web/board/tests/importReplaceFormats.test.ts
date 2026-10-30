@@ -267,3 +267,68 @@ describe("replace import clears previous content for every format", () => {
     expect(live).not.toContain("pre_existing");
   });
 });
+
+/*
+ * Asset-write coverage: an imported Miro image whose media bytes ride inside
+ * the .rtb archive must be handed to the board's asset writer exactly once,
+ * byte-identical, and the placed image element must reference the asset by
+ * its content hash with status "saved". Regression guard for imports that
+ * render frames but lose the picture bytes. Synthetic neutral fixture.
+ */
+describe("Miro image assets are written to asset storage on import", () => {
+  it("puts matched media bytes and links the image element by content hash", async () => {
+    const doc = createFiroDoc();
+    const pngBytes = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4,
+    ]);
+    const rtb = zipFiles(
+      new Map([
+        ["board.json", bytesOf(JSON.stringify({ name: "Asset board" }))],
+        ["resources.json", bytesOf(JSON.stringify({ resources: [] }))],
+        ["img001.png", pngBytes],
+      ]),
+    );
+    const imageItem = [
+      {
+        id: "mi_img",
+        type: "image",
+        x: 300,
+        y: 300,
+        width: 160,
+        height: 120,
+        origin: "center",
+        relativeTo: "canvas_center",
+        data: { url: "https://cdn.example.invalid/media/img001.png" },
+      },
+    ];
+    const puts: Array<{ hash: string; bytes: Uint8Array; mimeType: string }> =
+      [];
+    const result = await importBoardFile(doc, rtb, {
+      insertMode: "replace",
+      force: true,
+      miroItems: imageItem,
+      putAsset: async (hash: string, bytes: Uint8Array, mimeType: string) => {
+        puts.push({ hash, bytes, mimeType });
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.assets?.size).toBe(1);
+
+    expect(puts).toHaveLength(1);
+    const put = puts[0]!;
+    expect(put.mimeType).toBe("image/png");
+    expect(put.hash).toMatch(/^[0-9a-f]{64}$/);
+    expect([...put.bytes]).toEqual([...pngBytes]);
+
+    const images = doc
+      .read()
+      .elements.filter((el) => !el.isDeleted && el.type === "image");
+    expect(images).toHaveLength(1);
+    expect(String((images[0] as { fileId?: string }).fileId)).toBe(put.hash);
+    expect((images[0] as { status?: string }).status).toBe("saved");
+  });
+});
