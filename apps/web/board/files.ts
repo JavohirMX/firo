@@ -594,6 +594,16 @@ export const insertElementsIntoDoc = (
           elementId: (idMap.get(b.elementId) || b.elementId) as any,
         }))
       : [];
+    // boundElements is the container side of a text binding (containerId is
+    // the text side). Leaving it unremapped strands the reference on the
+    // pre-insert id, so the editor drops the binding on load and the label
+    // unbinds from its shape.
+    const remappedBoundElements = el.boundElements
+      ? el.boundElements.map((bound) => ({
+          ...bound,
+          id: (idMap.get(String(bound.id)) || bound.id) as any,
+        }))
+      : el.boundElements;
 
     let startBinding = (el as any).startBinding;
     if (startBinding?.elementId && idMap.has(startBinding.elementId)) {
@@ -621,6 +631,7 @@ export const insertElementsIntoDoc = (
         (groupId) => groupIdMap.get(groupId) || groupId,
       ),
       bindings: remappedBindings,
+      boundElements: remappedBoundElements,
       ...(startBinding !== undefined ? { startBinding } : {}),
       ...(endBinding !== undefined ? { endBinding } : {}),
       isDeleted: false,

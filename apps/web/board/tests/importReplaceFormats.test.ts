@@ -465,4 +465,46 @@ describe("insertElementsIntoDoc group remap", () => {
     // And neither collides with the source id.
     expect(unique).not.toContain("miro_group_g1");
   });
+
+  it("keeps container/text bindings consistent after the id remap", async () => {
+    const { insertElementsIntoDoc } = await import("../files");
+    const doc = createFiroDoc();
+
+    const incoming = [
+      {
+        id: "shape_a",
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        boundElements: [{ id: "label_a", type: "text" }],
+        isDeleted: false,
+      },
+      {
+        id: "label_a",
+        type: "text",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 20,
+        text: "label",
+        containerId: "shape_a",
+        boundElements: [],
+        isDeleted: false,
+      },
+    ] as any;
+
+    insertElementsIntoDoc(doc, incoming);
+
+    const live = doc.read().elements.filter((el) => !el.isDeleted);
+    expect(live).toHaveLength(2);
+    const shape = live.find((el) => el.type === "rectangle") as any;
+    const label = live.find((el) => el.type === "text") as any;
+    // Both sides of the binding point at the remapped ids, not the sources.
+    expect(shape.boundElements).toEqual([{ id: label.id, type: "text" }]);
+    expect(label.containerId).toBe(shape.id);
+    expect(String(shape.id)).not.toBe("shape_a");
+    expect(String(label.id)).not.toBe("label_a");
+  });
 });
