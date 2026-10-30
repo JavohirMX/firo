@@ -141,8 +141,7 @@
 .firo-comment-thread__status {
   font-size: var(--firo-font-size-xs);
   font-weight: var(--firo-font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
   color: var(--firo-color-text-muted);
 
   &.is-resolved {
