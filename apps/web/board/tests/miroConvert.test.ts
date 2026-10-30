@@ -382,6 +382,50 @@ describe("Miro conversion", () => {
       expect(label.y).toBeCloseTo(shape.y + (2000 - label.height) / 2, 5);
     });
 
+    it("unbinds connector endpoints whose target was dropped, with a warning", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "shape_ok",
+          type: "shape",
+          data: { shape: "rectangle" },
+          position: { x: 0, y: 0, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        },
+        {
+          id: "gone_1",
+          type: "curve",
+          position: { x: 300, y: 0, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        } as any,
+        {
+          id: "conn_1",
+          type: "connector",
+          position: { x: 50, y: 50, origin: "center" },
+          geometry: { width: 200, height: 0 },
+          start: {
+            item: "shape_ok",
+            position: { x: 1, y: 0.5 },
+            snapTo: "right",
+          },
+          end: { item: "gone_1", position: { x: 0, y: 0.5 }, snapTo: "left" },
+        } as any,
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+      const arrow = board.elements.find((el) => el.id === "conn_1") as any;
+      expect(arrow).toBeTruthy();
+      // Surviving endpoint stays bound; dropped endpoint is unbound.
+      expect(arrow.startBinding?.elementId).toBe("shape_ok");
+      expect(arrow.endBinding).toBeNull();
+      expect(arrow.bindings).toHaveLength(1);
+      // Geometry still resolved against the dropped item's own bounds:
+      // bounds left edge = 300 - 100/2 = 250; end = 250 + 0*100.
+      expect(arrow.x + arrow.points[1][0]).toBeCloseTo(250, 5);
+      expect(
+        warnings.some((w: string) => w.includes("connector endpoint(s)")),
+      ).toBe(true);
+    });
+
     it("converts frames and preserves containment", async () => {
       const miroItems: MiroItem[] = [
         {

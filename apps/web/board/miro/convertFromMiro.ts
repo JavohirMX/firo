@@ -1283,6 +1283,48 @@ export const convertMiroItemsToFiro = async (
     delete el._miroIndex;
   }
 
+  // Drop connector bindings whose target never made it into the output
+  // (unsupported or dropped item types). The endpoint geometry above was
+  // already resolved against the target's own bounds, so the arrow still
+  // points where the item was; only the live binding dangles, and a dangling
+  // binding is silently repaired away by the editor on load - better to drop
+  // it here with a warning than to let that happen unrecorded.
+  const emittedIds = new Set(elements.map((el) => String(el.id)));
+  let unboundEndpoints = 0;
+  for (const el of elements) {
+    if (el.type !== "arrow" && el.type !== "line") {
+      continue;
+    }
+    const arrow = el as unknown as {
+      startBinding?: { elementId: string } | null;
+      endBinding?: { elementId: string } | null;
+      bindings?: { elementId: string }[];
+    };
+    const startDropped =
+      arrow.startBinding != null &&
+      !emittedIds.has(String(arrow.startBinding.elementId));
+    const endDropped =
+      arrow.endBinding != null &&
+      !emittedIds.has(String(arrow.endBinding.elementId));
+    if (startDropped) {
+      arrow.startBinding = null;
+    }
+    if (endDropped) {
+      arrow.endBinding = null;
+    }
+    if (arrow.bindings) {
+      arrow.bindings = arrow.bindings.filter((b) =>
+        emittedIds.has(String(b.elementId)),
+      );
+    }
+    unboundEndpoints += (startDropped ? 1 : 0) + (endDropped ? 1 : 0);
+  }
+  if (unboundEndpoints > 0) {
+    warnings.push(
+      `${unboundEndpoints} connector endpoint(s) targeted items not present in the import (unsupported or dropped in this export); endpoint geometry was resolved to the target's last position and the endpoint left unbound.`,
+    );
+  }
+
   const elementOrder = elements.map((e) => String(e.id));
   const boardName = options.boardMeta?.name ?? "Imported Miro Board";
 
