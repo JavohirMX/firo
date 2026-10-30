@@ -33,7 +33,7 @@ export interface ExportModalProps {
 
   // Actions
   onExportImage?: (opts: {
-    format: "png" | "svg";
+    format: "png" | "jpg" | "svg";
     scale: number;
     background: boolean;
     selectionOnly: boolean;
@@ -81,7 +81,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [activeTab, setActiveTab] = useState<ExportTab>(defaultTab);
 
   // Image tab options
-  const [imageFormat, setImageFormat] = useState<"png" | "svg">("png");
+  const [imageFormat, setImageFormat] = useState<"png" | "jpg" | "svg">("png");
   const [imageScale, setImageScale] = useState<number>(2);
   const [imageBackground, setImageBackground] = useState<boolean>(true);
   const [imageSelectionOnly, setImageSelectionOnly] =
@@ -135,7 +135,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   }
 
   const handleCopyImage = () => {
-    if (!onCopyImage) {
+    if (!onCopyImage || imageFormat === "jpg") {
       return;
     }
     onCopyImage({
@@ -266,6 +266,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <button
                       type="button"
                       className={`firo-export-pill ${
+                        imageFormat === "jpg" ? "firo-export-pill--active" : ""
+                      }`}
+                      onClick={() => setImageFormat("jpg")}
+                    >
+                      JPG (Raster)
+                    </button>
+                    <button
+                      type="button"
+                      className={`firo-export-pill ${
                         imageFormat === "svg" ? "firo-export-pill--active" : ""
                       }`}
                       onClick={() => setImageFormat("svg")}
@@ -275,7 +284,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </div>
                 </div>
 
-                {imageFormat === "png" && (
+                {imageFormat !== "svg" && (
                   <div className="firo-export-section">
                     <label className="firo-export-section__label">
                       Resolution Scale
@@ -303,7 +312,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <label className="firo-export-checkbox-row">
                       <input
                         type="checkbox"
-                        checked={imageBackground}
+                        checked={imageFormat === "jpg" ? true : imageBackground}
+                        disabled={imageFormat === "jpg"}
+                        title={
+                          imageFormat === "jpg"
+                            ? "JPG always includes the canvas background (no transparency)"
+                            : undefined
+                        }
                         onChange={(e) => setImageBackground(e.target.checked)}
                       />
                       <span>Canvas background</span>
@@ -706,14 +721,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <div className="firo-export-modal__action-group">
             {activeTab === "image" && (
               <>
-                <button
-                  type="button"
-                  className="firo-export-modal__secondary-btn"
-                  onClick={handleCopyImage}
-                >
-                  {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-                  <span>{copied ? "Copied!" : "Copy to Clipboard"}</span>
-                </button>
+                {imageFormat !== "jpg" && (
+                  <button
+                    type="button"
+                    className="firo-export-modal__secondary-btn"
+                    onClick={handleCopyImage}
+                  >
+                    {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                    <span>{copied ? "Copied!" : "Copy to Clipboard"}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="firo-export-modal__primary-btn"
@@ -721,7 +738,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     onExportImage?.({
                       format: imageFormat,
                       scale: imageScale,
-                      background: imageBackground,
+                      // JPEG has no alpha: background is always composited
+                      background:
+                        imageFormat === "jpg" ? true : imageBackground,
                       selectionOnly: imageSelectionOnly,
                       embedScene: imageEmbedScene,
                     });
