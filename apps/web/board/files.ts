@@ -615,6 +615,29 @@ export const insertElementsIntoDoc = (
 };
 
 /**
+ * Replace everything in `doc` with `board`.
+ *
+ * `doc.load()` only ever creates - it has no delete - so on a non-empty
+ * document a bare `load` merges the file into the existing board instead of
+ * replacing it: a same-id file becomes an invisible no-op (its ids already
+ * exist) and a different file silently doubles the board. "Replace board
+ * content" promises the file ends up alone in the board, so the previous
+ * elements are deleted first. Collections and records of the previous board
+ * are deliberately left in place: there is no record-delete mutation yet,
+ * and a kept collection is visible where a wrongly deleted one is not.
+ */
+const replaceDocContents = (
+  doc: FiroDoc,
+  board: Parameters<FiroDoc["load"]>[0],
+): void => {
+  const existing = doc.read().elements.map((el) => String(el.id));
+  if (existing.length > 0) {
+    doc.commit([{ kind: "deleteElements", ids: existing } as never]);
+  }
+  doc.load(board);
+};
+
+/**
  * Universal importer for board files:
  * - `.firo` single JSON files (Format v1)
  * - `.firo` packaged ZIP archives (Format v2)
@@ -1021,7 +1044,7 @@ const importBoardFileInner = async (
       };
     }
     const loaded = loadBoard(converted.board);
-    doc.load({
+    replaceDocContents(doc, {
       elements: loaded.elements,
       collections: loaded.collections,
       records: loaded.records,

@@ -131,12 +131,12 @@ describe("Miro import into a non-empty board", () => {
   });
 
   /*
-   * Pinned defect, kept skipped until the fix lands: the replace path ends
-   * in a bare `doc.load()`, which only ever creates, so the previous
-   * elements survive next to the imported ones. Enabled fail-first it
-   * asserted 4 and got 5 ("pre_existing" kept).
+   * Regression for the pinned defect: the replace path used to end in a
+   * bare `doc.load()`, which only ever creates, so the previous elements
+   * survived next to the imported ones. Fail-first: this asserted 4 and got
+   * 5 ("pre_existing" kept) before the fix.
    */
-  it.skip("replace mode resolves and swaps the board content", async () => {
+  it("replace mode resolves and swaps the board content", async () => {
     const doc = nonEmptyDoc();
     const result = await importBoardFile(doc, miroBytes(), {
       insertMode: "replace",
