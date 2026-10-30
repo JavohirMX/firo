@@ -626,14 +626,18 @@ export const insertElementsIntoDoc = (
  * are deliberately left in place: there is no record-delete mutation yet,
  * and a kept collection is visible where a wrongly deleted one is not.
  */
-const replaceDocContents = (
-  doc: FiroDoc,
-  board: Parameters<FiroDoc["load"]>[0],
-): void => {
+const clearDocElements = (doc: FiroDoc): void => {
   const existing = doc.read().elements.map((el) => String(el.id));
   if (existing.length > 0) {
     doc.commit([{ kind: "deleteElements", ids: existing } as never]);
   }
+};
+
+const replaceDocContents = (
+  doc: FiroDoc,
+  board: Parameters<FiroDoc["load"]>[0],
+): void => {
+  clearDocElements(doc);
   doc.load(board);
 };
 
@@ -696,6 +700,11 @@ const importBoardFileInner = async (
         }
       }
 
+      if (deps?.insertMode === "replace" && hasContent) {
+        // The directory importer refuses a non-empty doc by design; the
+        // dialog's replace mode is the deliberate clear it asks for.
+        clearDocElements(doc);
+      }
       const imported = await importFiroDirectory(doc, files, {
         putAsset: deps?.putAsset ?? (async () => {}),
       });
@@ -793,7 +802,7 @@ const importBoardFileInner = async (
           };
         }
         const loaded = loadBoard(converted.board);
-        doc.load({
+        replaceDocContents(doc, {
           elements: loaded.elements,
           collections: loaded.collections,
           records: loaded.records,
@@ -850,7 +859,7 @@ const importBoardFileInner = async (
               };
             }
             const loaded = loadBoard(converted.board);
-            doc.load({
+            replaceDocContents(doc, {
               elements: loaded.elements,
               collections: loaded.collections,
               records: loaded.records,
@@ -913,14 +922,17 @@ const importBoardFileInner = async (
           originY: deps?.offset?.y ?? 0,
         });
         if (stickyNotes.length > 0) {
-          if (deps?.insertMode === "insert" || (hasContent && deps?.force)) {
+          if (
+            deps?.insertMode === "insert" ||
+            (hasContent && deps?.force && deps?.insertMode !== "replace")
+          ) {
             const mutations = stickyNotes.map((el) => ({
               kind: "createElement" as const,
               element: el,
             }));
             doc.commit(mutations as any);
           } else {
-            doc.load({
+            replaceDocContents(doc, {
               elements: stickyNotes as any,
               collections: [],
               records: [],
@@ -985,7 +997,7 @@ const importBoardFileInner = async (
       records: [],
       elementOrder: converted.elements.map((e) => e.id),
     });
-    doc.load({
+    replaceDocContents(doc, {
       elements: loaded.elements,
       collections: loaded.collections,
       records: loaded.records,

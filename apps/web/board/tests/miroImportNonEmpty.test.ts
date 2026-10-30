@@ -1,8 +1,75 @@
 import { createFiroDoc } from "@firo/doc";
+import { vi } from "vitest";
 
 import { createStickyNote } from "@firo/board/defaults";
 
 import { importBoardFile } from "../files";
+
+/*
+ * Faithful in-memory idb-keyval: the import module chain opens stores at
+ * module scope, and the shallow `{}` stubs used elsewhere let those calls
+ * reject unhandled (no indexedDB in node), which fails the whole file before
+ * any test runs. This one behaves like the real thing over a Map, keyed per
+ * named store, so module-level readers resolve and tests stay hermetic.
+ */
+vi.mock("idb-keyval", () => {
+  const maps = new Map<string, Map<unknown, unknown>>();
+  const mapFor = (store?: { __name?: string }) => {
+    const name = store?.__name ?? "default";
+    if (!maps.has(name)) {
+      maps.set(name, new Map());
+    }
+    return maps.get(name)!;
+  };
+  return {
+    createStore: (dbName: string, storeName: string) => ({
+      __name: `${dbName}/${storeName}`,
+    }),
+    get: (key: unknown, store?: { __name?: string }) =>
+      Promise.resolve(mapFor(store).get(key)),
+    getMany: (keys: unknown[], store?: { __name?: string }) =>
+      Promise.resolve(keys.map((k) => mapFor(store).get(k))),
+    set: (key: unknown, value: unknown, store?: { __name?: string }) => {
+      mapFor(store).set(key, value);
+      return Promise.resolve();
+    },
+    setMany: (entries: [unknown, unknown][], store?: { __name?: string }) => {
+      for (const [k, v] of entries) {
+        mapFor(store).set(k, v);
+      }
+      return Promise.resolve();
+    },
+    update: (
+      key: unknown,
+      updater: (old: unknown) => unknown,
+      store?: { __name?: string },
+    ) => {
+      const m = mapFor(store);
+      m.set(key, updater(m.get(key)));
+      return Promise.resolve();
+    },
+    del: (key: unknown, store?: { __name?: string }) => {
+      mapFor(store).delete(key);
+      return Promise.resolve();
+    },
+    delMany: (keys: unknown[], store?: { __name?: string }) => {
+      for (const k of keys) {
+        mapFor(store).delete(k);
+      }
+      return Promise.resolve();
+    },
+    clear: (store?: { __name?: string }) => {
+      mapFor(store).clear();
+      return Promise.resolve();
+    },
+    keys: (store?: { __name?: string }) =>
+      Promise.resolve([...mapFor(store).keys()]),
+    values: (store?: { __name?: string }) =>
+      Promise.resolve([...mapFor(store).values()]),
+    entries: (store?: { __name?: string }) =>
+      Promise.resolve([...mapFor(store).entries()]),
+  };
+});
 
 /*
  * Importing a Miro items JSON into a board that already has content.

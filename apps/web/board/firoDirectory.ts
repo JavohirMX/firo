@@ -651,7 +651,9 @@ export const importFiroDirectory = async (
     return parsed;
   }
 
-  if (doc.read().elements.length > 0) {
+  // Tombstones are not content: a board whose elements were all deleted (a
+  // deliberate clear before a replace import) is an empty board.
+  if (doc.read().elements.some((el) => !el.isDeleted)) {
     return {
       ok: false,
       reason: "not-empty",
