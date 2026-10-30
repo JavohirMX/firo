@@ -846,9 +846,20 @@ export const toEditorElements = (
      * note projects to the same label index on every restore, and two notes can never
      * collide on one.
      */
+    /*
+     * Bounded by the successor only when the successor actually sorts after
+     * the note: a filtered or mid-merge projection can hand over a successor
+     * whose index is lower, and `generateKeyBetween` throws on a >= b. The
+     * unbounded fallback is the pre-existing behaviour for that case; the
+     * scene's own index sync repairs the result.
+     */
     index: generateKeyBetween(
       element.index,
-      nextIndex ?? null,
+      (typeof element.index === "string" &&
+      typeof nextIndex === "string" &&
+      nextIndex > element.index
+        ? nextIndex
+        : null) as never,
     ) as ExcalidrawTextElement["index"],
     containerId: element.id,
     originalText: element.text,

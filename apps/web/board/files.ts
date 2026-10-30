@@ -891,7 +891,9 @@ const importBoardFileInner = async (
               ok: false,
               reason: "failed",
               detail: `Miro import failed: ${
-                e instanceof Error ? e.message || e.name : String(e)
+                e instanceof Error
+                  ? e.message || (e as { code?: string }).code || e.name
+                  : String(e)
               }`,
             };
           }
