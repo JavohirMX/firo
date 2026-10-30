@@ -17,7 +17,7 @@ import { measureText, wrapText } from "@firo/element";
 import { hashBytes } from "@firo/doc";
 
 import { miroHtmlToProseMirror } from "./htmlToProseMirror";
-import { miroHtmlToPlainText } from "./htmlToText";
+import { decodeHtmlEntities, miroHtmlToPlainText } from "./htmlToText";
 
 import type {
   MiroBoardMeta,
@@ -529,7 +529,9 @@ export const convertMiroItemsToFiro = async (
           ...baseFields,
           ...bounds,
           type: "frame",
-          name: title,
+          // Miro HTML-escapes frame/section titles on export (e.g. "Ana&#39;s")
+          // even though they are plain-text fields, so decode them here.
+          name: decodeHtmlEntities(String(title)),
           backgroundColor: normalizeMiroColor(
             item.style?.fillColor,
             item.type === "section" ? "#f5f5f5" : "transparent",

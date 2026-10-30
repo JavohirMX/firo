@@ -426,6 +426,21 @@ describe("Miro conversion", () => {
       ).toBe(true);
     });
 
+    it("decodes HTML entities in frame titles", async () => {
+      const { board } = await convertMiroItemsToFiro([
+        {
+          id: "frame_ent",
+          type: "frame",
+          title: "Q&amp;A &#39;Notes&#39;",
+          position: { x: 0, y: 0, origin: "center" },
+          geometry: { width: 400, height: 300 },
+        } as any,
+      ]);
+      const frame = board.elements.find((el) => el.id === "frame_ent") as any;
+      expect(frame).toBeTruthy();
+      expect(frame.name).toBe("Q&A 'Notes'");
+    });
+
     it("converts frames and preserves containment", async () => {
       const miroItems: MiroItem[] = [
         {
