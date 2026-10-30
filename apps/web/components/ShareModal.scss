@@ -297,13 +297,20 @@
 }
 
 .firo-share-modal__unavailable {
-  padding: 12px 14px;
-  border: 1px dashed var(--firo-color-border, #d1d5db);
-  border-radius: var(--firo-radius-sm, 6px);
-  font-size: 13px;
+  background-color: var(--firo-color-surface-subtle, #f8fafc);
+  border: 1px solid var(--firo-color-border, #e2e8f0);
+  border-radius: var(--firo-radius-md, 8px);
+  padding: var(--firo-space-sm, 12px) var(--firo-space-md, 16px);
+  font-size: var(--firo-font-size-sm, 13px);
+  color: var(--firo-color-text-secondary, #4b5563);
+  line-height: 1.45;
 
   p {
     margin: 0 0 8px;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
   }
 }
 
