@@ -1,5 +1,4 @@
 import {
-  DEFAULT_STICKY_NOTE_SIZE,
   DRAGGING_THRESHOLD,
   EVENT,
   KEYS,
@@ -17,6 +16,8 @@ import type {
   ExcalidrawNonSelectionElement,
   NonDeleted,
 } from "@firo/element/types";
+
+import { stickyNoteSizeForKey } from "../actions/actionStickyNoteSize";
 
 import { trackEvent } from "../analytics";
 
@@ -88,8 +89,8 @@ export const DRAGGABLE_TOOLS: Partial<Record<ToolType, DraggableTool>> = {
   },
   stickynote: {
     createElement: (app, center) => {
-      const size = DEFAULT_STICKY_NOTE_SIZE;
       const { state } = app;
+      const size = stickyNoteSizeForKey(state.currentItemStickynoteSize);
       return newStickyNoteElement({
         type: "stickynote",
         ...centered(center, size, size),

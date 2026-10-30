@@ -38,6 +38,12 @@ export interface AccessibilityTreeProps {
   onFocusElement?: (id: string) => void;
   /** Escape: deselect. */
   onEscape?: () => void;
+  /**
+   * Label for a "skip to first object" link, rendered before the tree.
+   * Omitted entirely when unset or when the board is empty — there is
+   * nothing to skip to on an empty board.
+   */
+  skipLinkLabel?: string;
 }
 
 /**
@@ -81,6 +87,7 @@ export const AccessibilityTree: React.FC<AccessibilityTreeProps> = ({
   onActivate,
   onFocusElement,
   onEscape,
+  skipLinkLabel,
 }) => {
   const nodes = React.useMemo(() => buildAccessibilityNodes(items), [items]);
   const itemRefs = React.useRef<(HTMLDivElement | null)[]>([]);
@@ -99,21 +106,26 @@ export const AccessibilityTree: React.FC<AccessibilityTreeProps> = ({
     [nodes, windowStart, windowSize],
   );
 
-  const pendingFocusRef = React.useRef<number | null>(null);
+  /*
+   * State, not a ref: moving focus *into* the tree from outside (the skip
+   * link) can leave `activeIndex` unchanged — it is 0 by default — and a
+   * ref-backed effect keyed on the index would never re-run, silently
+   * dropping the focus request.
+   */
+  const [pendingFocus, setPendingFocus] = React.useState<number | null>(null);
 
   // `focusIndex` changes the active index, which can move the window, so the
   // node to focus may not exist until after this render.
   React.useEffect(() => {
-    const pending = pendingFocusRef.current;
-    if (pending === null) {
+    if (pendingFocus === null) {
       return;
     }
-    const element = itemRefs.current[pending];
+    const element = itemRefs.current[pendingFocus];
     if (element) {
       element.focus();
-      pendingFocusRef.current = null;
+      setPendingFocus(null);
     }
-  }, [windowStart, activeIndex]);
+  }, [windowStart, activeIndex, pendingFocus]);
 
   // Follow an external selection — a click on the canvas, or the document
   // changing under us — so the tree and the picture agree.
@@ -132,7 +144,7 @@ export const AccessibilityTree: React.FC<AccessibilityTreeProps> = ({
 
   const focusIndex = (index: number) => {
     setActiveIndex(index);
-    pendingFocusRef.current = index;
+    setPendingFocus(index);
   };
 
   const handleKeyDown = (
@@ -186,55 +198,66 @@ export const AccessibilityTree: React.FC<AccessibilityTreeProps> = ({
   };
 
   return (
-    <div
-      className="firo-a11y"
-      role="application"
-      aria-label={boardLabel}
-      aria-roledescription="whiteboard"
-    >
-      {/*
-       * `role="list"` is not redundant here: `list-style: none` (see the
-       * stylesheet) makes Safari drop a list's implicit list semantics, so the
-       * role has to be stated. Same reason the position lives on the `li`.
-       */}
-      {/* eslint-disable-next-line jsx-a11y/no-redundant-roles */}
-      <ul className="firo-a11y__list" role="list" aria-label="Board contents">
-        {visible.map((node, offset) => {
-          const index = windowStart + offset;
-          return (
-            <li
-              key={node.id}
-              aria-posinset={node.posinset}
-              aria-setsize={node.setsize}
-            >
-              <div
-                ref={(element) => {
-                  itemRefs.current[index] = element;
-                }}
-                className="firo-a11y__item"
-                role="button"
-                tabIndex={index === activeIndex ? 0 : -1}
-                aria-label={node.label}
-                aria-pressed={node.id === selectedId ? true : undefined}
-                onClick={() => onActivate(node.id)}
-                onKeyDown={(event) => handleKeyDown(event, index)}
-                onFocus={() => {
-                  setActiveIndex(index);
-                  onFocusElement?.(node.id);
-                }}
-              />
-            </li>
-          );
-        })}
-      </ul>
+    <>
+      {skipLinkLabel !== undefined && nodes.length > 0 && (
+        <button
+          type="button"
+          className="firo-a11y-skip"
+          onClick={() => focusIndex(0)}
+        >
+          {skipLinkLabel}
+        </button>
+      )}
       <div
-        className="firo-a11y__live"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
+        className="firo-a11y"
+        role="application"
+        aria-label={boardLabel}
+        aria-roledescription="whiteboard"
       >
-        {liveMessage}
+        {/*
+         * `role="list"` is not redundant here: `list-style: none` (see the
+         * stylesheet) makes Safari drop a list's implicit list semantics, so the
+         * role has to be stated. Same reason the position lives on the `li`.
+         */}
+        {/* eslint-disable-next-line jsx-a11y/no-redundant-roles */}
+        <ul className="firo-a11y__list" role="list" aria-label="Board contents">
+          {visible.map((node, offset) => {
+            const index = windowStart + offset;
+            return (
+              <li
+                key={node.id}
+                aria-posinset={node.posinset}
+                aria-setsize={node.setsize}
+              >
+                <div
+                  ref={(element) => {
+                    itemRefs.current[index] = element;
+                  }}
+                  className="firo-a11y__item"
+                  role="button"
+                  tabIndex={index === activeIndex ? 0 : -1}
+                  aria-label={node.label}
+                  aria-pressed={node.id === selectedId ? true : undefined}
+                  onClick={() => onActivate(node.id)}
+                  onKeyDown={(event) => handleKeyDown(event, index)}
+                  onFocus={() => {
+                    setActiveIndex(index);
+                    onFocusElement?.(node.id);
+                  }}
+                />
+              </li>
+            );
+          })}
+        </ul>
+        <div
+          className="firo-a11y__live"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {liveMessage}
+        </div>
       </div>
-    </div>
+    </>
   );
 };

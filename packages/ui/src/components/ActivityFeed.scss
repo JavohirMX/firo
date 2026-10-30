@@ -9,16 +9,16 @@
   top: 56px;
   right: 16px;
   bottom: 16px;
-  width: 340px;
+  width: var(--firo-panel-width);
   background-color: var(--firo-color-panel-raised, #ffffff);
-  border: 1px solid var(--firo-color-border, #e0e0e0);
+  border: 1px solid var(--firo-color-border, #e4e5ea);
   border-radius: var(--firo-radius-lg, 12px);
   box-shadow: var(--firo-elevation-floating, 0 8px 30px rgba(0, 0, 0, 0.12));
   display: flex;
   flex-direction: column;
   z-index: 100;
   font-family: var(--firo-font-ui, system-ui, sans-serif);
-  color: var(--firo-color-text, #171717);
+  color: var(--firo-color-text, #111318);
   overflow: hidden;
   animation: firo-slide-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
 
@@ -38,7 +38,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--firo-color-border, #e0e0e0);
+    border-bottom: 1px solid var(--firo-color-border, #e4e5ea);
 
     h3 {
       margin: 0;
@@ -66,8 +66,8 @@
     border-radius: var(--firo-radius-sm, 4px);
 
     &:hover {
-      color: var(--firo-color-danger, #e53e3e);
-      background-color: var(--firo-color-surface, #f5f5f5);
+      color: var(--firo-color-danger, #d5253c);
+      background-color: var(--firo-color-surface, #f5f6f8);
     }
   }
 
@@ -84,8 +84,8 @@
     cursor: pointer;
 
     &:hover {
-      background-color: var(--firo-color-surface, #f5f5f5);
-      color: var(--firo-color-text, #171717);
+      background-color: var(--firo-color-surface, #f5f6f8);
+      color: var(--firo-color-text, #111318);
     }
   }
 
@@ -134,7 +134,7 @@
     height: 26px;
     border-radius: 50%;
     background-color: var(--firo-color-panel, #ffffff);
-    color: var(--firo-color-accent, #0052cc);
+    color: var(--firo-color-accent, #5b4bff);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     flex-shrink: 0;
   }
@@ -165,16 +165,16 @@
   &__board-badge {
     padding: 1px 6px;
     background: var(--firo-color-panel, #ffffff);
-    border: 1px solid var(--firo-color-border, #e0e0e0);
+    border: 1px solid var(--firo-color-border, #e4e5ea);
     border-radius: var(--firo-radius-pill, 9999px);
     font-size: 10px;
     font-weight: 500;
     cursor: pointer;
-    color: var(--firo-color-text, #171717);
+    color: var(--firo-color-text, #111318);
 
     &:hover {
-      border-color: var(--firo-color-accent, #0052cc);
-      color: var(--firo-color-accent, #0052cc);
+      border-color: var(--firo-color-accent, #5b4bff);
+      color: var(--firo-color-accent, #5b4bff);
     }
   }
 

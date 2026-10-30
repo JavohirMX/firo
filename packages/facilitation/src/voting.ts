@@ -259,12 +259,15 @@ export const boardIdConflict = (
 };
 
 /**
- * Place a dot, or move it if this voter already had one elsewhere.
+ * Place one dot.
  *
- * Moving rather than accumulating is the behaviour the plan asks for: clicking
- * twice is one vote, not two. The displaced dot is archived rather than
- * retargeted, so the record store's history of a session stays append-only and a
- * tally being read concurrently never sees a dot change sides.
+ * Placement never archives anything. The earlier auto-move (a named voter's
+ * existing dot archived when they placed a new one) is retired
+ * (ADR-0039 section 3): it made a "votes per person" allowance greater than
+ * one impossible and silently archived a dot on another object. Moving a vote
+ * is now take-back plus place, and the allowance rules live in
+ * [`session.ts`](./session.ts) `planPlacement`, which is the only caller that
+ * knows whether a round is running.
  *
  * `hasCollection` decides whether the collection is created first. It is a
  * parameter rather than something derived from `votes` because an empty session
@@ -283,34 +286,6 @@ export const placeVote = (
     mutations.push({
       kind: "createCollection",
       collection: voteCollection(ids.board, "a0"),
-    });
-  }
-
-  // The voter's dot *anywhere* is moved, so voting twice on two different
-  // elements leaves one dot rather than two. Found by voter rather than by
-  // (element, voter) because "one vote per person" is the rule the plan states.
-  //
-  // Anonymous votes are excluded, and that exclusion is the whole subtlety. An
-  // empty `voterId` matches every other empty `voterId`, so without this a third
-  // anonymous participant voting would archive the first two participants' dots --
-  // destroying two people's votes to record one. They are indistinguishable by
-  // construction; treating them as one identity is what makes "remove my vote"
-  // impossible for exactly the people who need it.
-  //
-  // So an anonymous dot accumulates on its element and is withdrawn by
-  // `removeVote`, and only a *named* voter gets one dot moved for them.
-  const previous =
-    vote.voterId === ""
-      ? []
-      : votes.filter(
-          (candidate) =>
-            candidate.voterId === vote.voterId &&
-            candidate.recordId !== ids.record,
-        );
-  if (previous.length) {
-    mutations.push({
-      kind: "archiveRecords",
-      ids: previous.map((candidate) => candidate.recordId),
     });
   }
 

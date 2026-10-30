@@ -189,6 +189,26 @@ export const getToolShortcut = (type: ToolbarToolType) => {
     : `${letter || numericKey}`;
 };
 
+/**
+ * every key that activates the tool, letters first then the numeric alias —
+ * the cheat sheet's rows, straight from the same TOOLS entry the binding
+ * (`findShapeByKey`) matches on, so the advertised key cannot drift from the
+ * working one. Letters stay in the raw `KEYS` casing the dialog has always
+ * shown.
+ */
+export const getToolShortcuts = (type: ToolbarToolType): string[] => {
+  const { letterKey, numericKey, shiftKey } = TOOLS[type];
+  const letters = letterKey
+    ? typeof letterKey === "string"
+      ? [letterKey]
+      : [...letterKey]
+    : [];
+  const shortcuts = shiftKey
+    ? letters.map((letter) => getShortcutKey(`Shift+${letter}`))
+    : letters;
+  return numericKey != null ? [...shortcuts, numericKey] : shortcuts;
+};
+
 export const findShapeByKey = (
   key: string,
   app: AppClassProperties,

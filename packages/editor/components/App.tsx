@@ -52,7 +52,6 @@ import {
   DEFAULT_COLLISION_THRESHOLD,
   ARROW_TYPE,
   DEFAULT_REDUCED_GLOBAL_ALPHA,
-  DEFAULT_STICKY_NOTE_SIZE,
   ZEN_MODE_TRANSITION_DURATION,
   isLocalLink,
   normalizeLink,
@@ -108,6 +107,7 @@ import {
 import {
   getObservedAppState,
   getCommonBounds,
+  getTextFromElements,
   getElementAbsoluteCoords,
   bindOrUnbindBindingElements,
   getHoveredElementForBinding,
@@ -118,6 +118,7 @@ import {
   newFrameElement,
   newFreeDrawElement,
   newEmbeddableElement,
+  newTextElement,
   newMagicFrameElement,
   newStickyNoteElement,
   newIframeElement,
@@ -156,6 +157,11 @@ import {
   createSrcDoc,
   embeddableURLValidator,
   getEmbedLink,
+  computeEmbedSandbox,
+  computeEmbedReferrerPolicy,
+  EMBED_PERMISSIONS_POLICY,
+  getEmbedProviderName,
+  getEmbedFrameTitle,
   getInitializedImageElements,
   normalizeSVG,
   updateImageCache as _updateImageCache,
@@ -274,6 +280,12 @@ import type { Mutable, ValueOf } from "@firo/common/utility-types";
 
 import {
   actionAddToLibrary,
+  actionAlignBottom,
+  actionAlignHorizontallyCentered,
+  actionAlignLeft,
+  actionAlignRight,
+  actionAlignTop,
+  actionAlignVerticallyCentered,
   actionBringForward,
   actionBringToFront,
   actionCopy,
@@ -292,6 +304,12 @@ import {
   actionSelectAll,
   actionSendBackward,
   actionSendToBack,
+  actionAddTextAtAnchor,
+  actionAddStickyNoteAtAnchor,
+  actionAddCommentAtAnchor,
+  actionAddCommentOnElement,
+  actionToggleSelectionDimensions,
+  actionZoomToFit,
   actionToggleGridMode,
   actionToggleStats,
   actionToggleZenMode,
@@ -300,11 +318,13 @@ import {
   actionUngroup,
   actionLink,
   actionToggleElementLock,
+  actionClearContent,
   actionToggleLinearEditor,
   actionToggleObjectsSnapMode,
   actionToggleArrowBinding,
   actionToggleMidpointSnapping,
   actionToggleCropEditor,
+  stickyNoteSizeForKey,
 } from "../actions";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
@@ -315,6 +335,7 @@ import {
   actionSelectAllElementsInFrame,
   actionWrapSelectionInFrame,
 } from "../actions/actionFrame";
+import { actionSaveSelectionAsTemplate } from "../actions/actionSaveAsTemplate";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
@@ -394,6 +415,10 @@ import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isOverScrollBars } from "../scene/scrollbars";
 import { LassoTrail } from "../lasso";
 import { EraserTrail } from "../eraser";
+import {
+  isEyeDropperBackgroundKey,
+  isEyeDropperStrokeKey,
+} from "../eyeDropperKeys";
 import { getShortcutKey } from "../shortcut";
 
 import {
@@ -453,7 +478,7 @@ import type {
 } from "../scene/types";
 
 import type { ExportedElements } from "../data";
-import type { ContextMenuItems } from "./ContextMenu";
+import type { ContextMenuItems, ContextMenuSubmenu } from "./ContextMenu";
 
 import type {
   AppClassProperties,
@@ -648,6 +673,20 @@ class App extends React.Component<AppProps, AppState> {
   public files: BinaryFiles = {};
   public imageCache: AppClassProperties["imageCache"] = new Map();
   private iFrameRefs = new Map<ExcalidrawElement["id"], HTMLIFrameElement>();
+
+  /**
+   * Embeds whose frame failed to load, keyed by element id + link so a link
+   * edit retries. ADR-0036 §4: a failed frame is replaced by a visible
+   * fallback naming the provider and linking the original URL externally.
+   */
+  private failedEmbeddables = new Set<string>();
+
+  private markEmbeddableFailed = (key: string) => {
+    if (!this.failedEmbeddables.has(key)) {
+      this.failedEmbeddables.add(key);
+      this.forceUpdate();
+    }
+  };
   /**
    * Indicates whether the embeddable's url has been validated for rendering.
    * If value not set, indicates that the validation is pending.
@@ -818,6 +857,8 @@ class App extends React.Component<AppProps, AppState> {
       setToast: this.setToast,
       id: this.id,
       setActiveTool: this.setActiveTool,
+      insertEmbeddableElement: this.insertEmbeddableElement,
+      insertTextElement: this.insertTextElement,
       setCursor: this.cursor.set,
       resetCursor: this.cursor.reset,
       getEditorInterface: () => this.editorInterface,
@@ -2031,31 +2072,78 @@ class App extends React.Component<AppProps, AppState> {
                   >
                     {(isEmbeddableElement(el)
                       ? this.props.renderEmbeddable?.(el, this.state)
-                      : null) ?? (
-                      <iframe
-                        ref={(ref) => this.cacheEmbeddableRef(el, ref)}
-                        className="excalidraw__embeddable"
-                        srcDoc={
-                          src?.type === "document"
-                            ? src.srcdoc(this.state.theme)
-                            : undefined
-                        }
-                        src={
-                          src?.type !== "document" ? src?.link ?? "" : undefined
-                        }
-                        // https://stackoverflow.com/q/18470015
-                        scrolling="no"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Excalidraw Embedded Content"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen={true}
-                        sandbox={`${
-                          src?.sandbox?.allowSameOrigin
-                            ? "allow-same-origin"
-                            : ""
-                        } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads`}
-                      />
-                    )}
+                      : null) ??
+                      (this.failedEmbeddables.has(
+                        `${el.id}:${el.link ?? ""}`,
+                      ) ? (
+                        <div
+                          className="excalidraw__embeddable excalidraw__embeddable__fallback"
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "0.5em",
+                            width: "100%",
+                            height: "100%",
+                            fontFamily: "sans-serif",
+                            fontSize: "0.875rem",
+                            textAlign: "center",
+                            padding: "0.5em",
+                          }}
+                        >
+                          <span>
+                            {getEmbedFrameTitle(
+                              getEmbedProviderName(
+                                (src && "link" in src ? src.link : null) ??
+                                  el.link,
+                              ),
+                            )}{" "}
+                            failed to load.
+                          </span>
+                          {el.link ? (
+                            <a
+                              href={el.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Open link
+                            </a>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <iframe
+                          ref={(ref) => this.cacheEmbeddableRef(el, ref)}
+                          className="excalidraw__embeddable"
+                          srcDoc={
+                            src?.type === "document"
+                              ? src.srcdoc(this.state.theme)
+                              : undefined
+                          }
+                          src={
+                            src?.type !== "document"
+                              ? src?.link ?? ""
+                              : undefined
+                          }
+                          // https://stackoverflow.com/q/18470015
+                          scrolling="no"
+                          referrerPolicy={computeEmbedReferrerPolicy(src)}
+                          title={getEmbedFrameTitle(
+                            getEmbedProviderName(
+                              (src && "link" in src ? src.link : null) ??
+                                el.link,
+                            ),
+                          )}
+                          allow={EMBED_PERMISSIONS_POLICY}
+                          allowFullScreen={true}
+                          sandbox={computeEmbedSandbox(src)}
+                          onError={() =>
+                            this.markEmbeddableFailed(
+                              `${el.id}:${el.link ?? ""}`,
+                            )
+                          }
+                        />
+                      ))}
                   </div>
                 </div>
                 {isPendingGeneration && (
@@ -2312,7 +2400,12 @@ class App extends React.Component<AppProps, AppState> {
 
   public render() {
     const selectedElements = this.scene.getSelectedElements(this.state);
-    const { renderTopRightUI, renderTopLeftUI, renderCustomStats } = this.props;
+    const {
+      renderTopRightUI,
+      renderTopLeftUI,
+      renderCustomStats,
+      renderHelpDialogExtra,
+    } = this.props;
 
     const {
       elementsMap: renderableElementsMap,
@@ -2458,6 +2551,7 @@ class App extends React.Component<AppProps, AppState> {
                             langCode={getLanguage().code}
                             renderTopLeftUI={renderTopLeftUI}
                             renderTopRightUI={renderTopRightUI}
+                            renderHelpDialogExtra={renderHelpDialogExtra}
                             renderCustomStats={renderCustomStats}
                             showExitZenModeBtn={
                               typeof this.props?.zenModeEnabled ===
@@ -2468,6 +2562,7 @@ class App extends React.Component<AppProps, AppState> {
                             renderWelcomeScreen={
                               !this.state.isLoading &&
                               this.state.showWelcomeScreen &&
+                              !this.props.suppressWelcomeScreen &&
                               this.state.activeTool.type ===
                                 this.state.preferredSelectionTool.type &&
                               !this.state.zenModeEnabled &&
@@ -4299,7 +4394,11 @@ class App extends React.Component<AppProps, AppState> {
       this.setState({ exportWithDarkMode: shouldExportWithDarkMode });
     }
 
-    if (!this.state.showWelcomeScreen && !elements.length) {
+    if (
+      !this.state.showWelcomeScreen &&
+      !elements.length &&
+      !this.props.suppressWelcomeScreen
+    ) {
       this.setState({ showWelcomeScreen: true });
     }
 
@@ -5171,24 +5270,28 @@ class App extends React.Component<AppProps, AppState> {
               CLASSES.CONVERT_ELEMENT_TYPE_POPUP,
             ))
         ) {
-          event.preventDefault();
-
           const conversionType =
             getConversionTypeFromElements(selectedElements);
 
-          if (
-            editorJotaiStore.get(convertElementTypePopupAtom)?.type === "panel"
-          ) {
-            if (
-              convertElementTypes(this, {
-                conversionType,
-                direction: event.shiftKey ? "left" : "right",
-              })
-            ) {
-              this.store.scheduleCapture();
-            }
-          }
+          // Only take Tab when there is something to convert. With an empty
+          // or non-convertible selection Tab and Shift+Tab keep their native
+          // job (moving focus), so the canvas is not a keyboard trap.
           if (conversionType) {
+            event.preventDefault();
+
+            if (
+              editorJotaiStore.get(convertElementTypePopupAtom)?.type ===
+              "panel"
+            ) {
+              if (
+                convertElementTypes(this, {
+                  conversionType,
+                  direction: event.shiftKey ? "left" : "right",
+                })
+              ) {
+                this.store.scheduleCapture();
+              }
+            }
             this.updateEditorAtom(convertElementTypePopupAtom, {
               type: "panel",
             });
@@ -5575,11 +5678,8 @@ class App extends React.Component<AppProps, AppState> {
 
       // eye dropper
       // -----------------------------------------------------------------------
-      const lowerCased = event.key.toLocaleLowerCase();
-      const isPickingStroke =
-        lowerCased === KEYS.S && event.shiftKey && !event[KEYS.CTRL_OR_CMD];
-      const isPickingBackground =
-        event.key === KEYS.I || (lowerCased === KEYS.G && event.shiftKey);
+      const isPickingStroke = isEyeDropperStrokeKey(event);
+      const isPickingBackground = isEyeDropperBackgroundKey(event);
 
       if (isPickingStroke || isPickingBackground) {
         this.openEyeDropper({
@@ -9004,8 +9104,58 @@ class App extends React.Component<AppProps, AppState> {
     });
 
     this.insertNewElement(element);
+    this.store.scheduleCapture();
 
     return element;
+  };
+
+  /**
+   * Insert a text element centred on a scene point, select it and return the
+   * tool to selection. Built through the same constructor the text tool uses,
+   * so the text pipeline sees an ordinary text element. Used by host chrome
+   * (e.g. the emoji picker); it does nothing for empty text or in view mode.
+   */
+  public insertTextElement = ({
+    sceneX,
+    sceneY,
+    text,
+    fontSize,
+  }: {
+    sceneX: number;
+    sceneY: number;
+    text: string;
+    fontSize?: number;
+  }) => {
+    if (!text || this.state.viewModeEnabled) {
+      return;
+    }
+    const element = newTextElement({
+      x: sceneX,
+      y: sceneY,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: "transparent",
+      fillStyle: this.state.currentItemFillStyle,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      roughness: this.state.currentItemRoughness,
+      opacity: this.state.currentItemOpacity,
+      text,
+      fontSize: fontSize ?? this.state.currentItemFontSize,
+      fontFamily: this.state.currentItemFontFamily,
+      textAlign: "center",
+      verticalAlign: "middle",
+      locked: false,
+    });
+    // centre on the requested point once the metrics are known
+    const centred = newElementWith(element, {
+      x: sceneX - element.width / 2,
+      y: sceneY - element.height / 2,
+    });
+    this.insertNewElement(centred);
+    this.setState({ selectedElementIds: { [centred.id]: true } });
+    // one undoable step
+    this.store.scheduleCapture();
+    this.setActiveTool({ type: "selection" });
+    return centred;
   };
 
   private newImagePlaceholder = ({
@@ -10780,7 +10930,11 @@ class App extends React.Component<AppProps, AppState> {
           newElement.height * zoom < DRAGGING_THRESHOLD;
         let nextGeometry;
         if (isClick) {
-          const size = DEFAULT_STICKY_NOTE_SIZE;
+          // A click (not a drag) creates the preset size the user last picked
+          // in the sticky flyout; the key is junk-tolerant on restore.
+          const size = stickyNoteSizeForKey(
+            this.state.currentItemStickynoteSize,
+          );
           // Snap after centering: half the default size need not be on the grid.
           const [x, y] = getGridPoint(
             pointerDownState.origin.x - size / 2,
@@ -12346,10 +12500,55 @@ class App extends React.Component<AppProps, AppState> {
       },
       () => {
         this.setState({
-          contextMenu: { top, left, items: this.getContextMenuItems(type) },
+          contextMenu: {
+            top,
+            left,
+            anchorX: x,
+            anchorY: y,
+            items: this.getContextMenuItems(type),
+          },
         });
       },
     );
+  };
+
+  /**
+   * Opens the object lane for the current selection, anchored at the
+   * selection's top-left corner in screen coordinates (ADR-0033's `⌘ +
+   * Enter` path). With nothing selected it does nothing; while text is being
+   * edited the editor's own binding wins.
+   */
+  public openSelectionContextMenu = () => {
+    if (!this.isInteractionEnabled()) {
+      return;
+    }
+    const selectedElements = this.scene.getSelectedElements(this.state);
+    if (!selectedElements.length || this.state.editingTextElement) {
+      return;
+    }
+    const container = this.excalidrawContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const [minX, minY] = getCommonBounds(selectedElements);
+    const { x, y } = sceneCoordsToViewportCoords(
+      { sceneX: minX, sceneY: minY },
+      this.state,
+    );
+    const { top: offsetTop, left: offsetLeft } =
+      container.getBoundingClientRect();
+
+    trackEvent("contextMenu", "openContextMenu", "element");
+
+    this.setState({
+      contextMenu: {
+        top: y - offsetTop,
+        left: x - offsetLeft,
+        anchorX: minX,
+        anchorY: minY,
+        items: this.getContextMenuItems("element"),
+      },
+    });
   };
 
   public maybeDragNewGenericElement = (
@@ -12740,20 +12939,32 @@ class App extends React.Component<AppProps, AppState> {
         ];
       }
 
+      /*
+       * The canvas lane (ADR-0033): creation, display and navigation. The
+       * checkable group is where snapping lives; Firo's extras with no Miro
+       * counterpart keep their home at the tail.
+       */
       return [
         actionPaste,
-        CONTEXT_MENU_SEPARATOR,
-        actionCopyAsPng,
-        actionCopyAsSvg,
-        copyText,
-        CONTEXT_MENU_SEPARATOR,
-        actionSelectAll,
         actionUnlockAllElements,
+        CONTEXT_MENU_SEPARATOR,
+        actionAddTextAtAnchor,
+        actionAddStickyNoteAtAnchor,
+        actionAddCommentAtAnchor,
         CONTEXT_MENU_SEPARATOR,
         actionToggleGridMode,
         actionToggleObjectsSnapMode,
         actionToggleArrowBinding,
         actionToggleMidpointSnapping,
+        actionToggleSelectionDimensions,
+        CONTEXT_MENU_SEPARATOR,
+        actionZoomToFit,
+        CONTEXT_MENU_SEPARATOR,
+        actionSelectAll,
+        actionCopyAsPng,
+        actionCopyAsSvg,
+        copyText,
+        CONTEXT_MENU_SEPARATOR,
         actionToggleZenMode,
         actionToggleViewMode,
         actionToggleStats,
@@ -12769,56 +12980,136 @@ class App extends React.Component<AppProps, AppState> {
       return [actionCopy, ...options];
     }
 
-    const zIndexActions: ContextMenuItems =
-      this.editorInterface.formFactor === "desktop"
-        ? [
-            CONTEXT_MENU_SEPARATOR,
-            actionSendBackward,
-            actionBringForward,
-            actionSendToBack,
-            actionBringToFront,
-          ]
-        : [];
+    /*
+     * The object lane (ADR-0033): commands on the selection. Clipboard and
+     * Duplicate/Delete lead, a single-element Add comment follows, then
+     * styles, the Arrange and Info submenus, Link to, Lock and Create frame.
+     * Firo's commands with no Miro counterpart keep their home at the tail.
+     * Arrange's composition is ours — order, align, group and ungroup built
+     * from the actions Firo has; Info's facts come from the selection.
+     */
+    const arrangeSubmenu: ContextMenuSubmenu = {
+      kind: "submenu",
+      key: "arrange",
+      label: "labels.arrange",
+      items: [
+        ...(this.editorInterface.formFactor === "desktop"
+          ? [
+              actionBringToFront,
+              actionBringForward,
+              actionSendBackward,
+              actionSendToBack,
+              CONTEXT_MENU_SEPARATOR,
+            ]
+          : []),
+        actionAlignTop,
+        actionAlignBottom,
+        actionAlignLeft,
+        actionAlignRight,
+        actionAlignVerticallyCentered,
+        actionAlignHorizontallyCentered,
+        CONTEXT_MENU_SEPARATOR,
+        actionGroup,
+        actionUngroup,
+      ] as ContextMenuItems,
+    };
+
+    const infoSubmenu: ContextMenuSubmenu = {
+      kind: "submenu",
+      key: "info",
+      label: "labels.info",
+      items: [
+        {
+          kind: "fact",
+          key: "created",
+          label: "labels.created",
+          value: (elements, appState) => {
+            const created = getSelectedElements(elements, appState)
+              .map((element) => element.created)
+              .filter((ts): ts is number => typeof ts === "number");
+            return created.length
+              ? new Date(Math.min(...created)).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })
+              : "—";
+          },
+        },
+        {
+          kind: "fact",
+          key: "lastModified",
+          label: "labels.lastModified",
+          value: (elements, appState) => {
+            const selected = getSelectedElements(elements, appState);
+            return selected.length
+              ? new Date(
+                  Math.max(...selected.map((element) => element.updated)),
+                ).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })
+              : "—";
+          },
+        },
+        {
+          kind: "fact",
+          key: "wordCount",
+          label: "labels.wordCount",
+          value: (elements, appState, app) => {
+            const text = getTextFromElements(
+              app.scene.getSelectedElements({
+                selectedElementIds: appState.selectedElementIds,
+                includeBoundTextElement: true,
+              }),
+            ).trim();
+            return String(text ? text.split(/\s+/).length : 0);
+          },
+        },
+        CONTEXT_MENU_SEPARATOR,
+        copyText,
+      ],
+    };
 
     return [
-      CONTEXT_MENU_SEPARATOR,
-      actionCut,
       actionCopy,
+      actionCut,
       actionPaste,
       CONTEXT_MENU_SEPARATOR,
-      actionSelectAllElementsInFrame,
-      actionRemoveAllElementsFromFrame,
-      actionWrapSelectionInFrame,
+      actionCopyElementLink,
       CONTEXT_MENU_SEPARATOR,
-      actionToggleCropEditor,
+      actionCopyAsPng,
+      actionCopyAsSvg,
       CONTEXT_MENU_SEPARATOR,
-      ...options,
+      actionDuplicateSelection,
+      actionDeleteSelected,
+      CONTEXT_MENU_SEPARATOR,
+      actionAddCommentOnElement,
       CONTEXT_MENU_SEPARATOR,
       actionCopyStyles,
       actionPasteStyles,
+      actionClearContent,
       CONTEXT_MENU_SEPARATOR,
-      actionGroup,
+      arrangeSubmenu,
+      CONTEXT_MENU_SEPARATOR,
+      actionLink,
+      actionToggleElementLock,
+      actionWrapSelectionInFrame,
+      CONTEXT_MENU_SEPARATOR,
+      infoSubmenu,
+      CONTEXT_MENU_SEPARATOR,
+      actionSaveSelectionAsTemplate,
+      actionSelectAllElementsInFrame,
+      actionRemoveAllElementsFromFrame,
+      actionToggleCropEditor,
       actionTextAutoResize,
       actionUnbindText,
       actionBindText,
       actionWrapTextInContainer,
-      actionUngroup,
-      CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
-      ...zIndexActions,
-      CONTEXT_MENU_SEPARATOR,
       actionFlipHorizontal,
       actionFlipVertical,
-      CONTEXT_MENU_SEPARATOR,
       actionToggleLinearEditor,
-      CONTEXT_MENU_SEPARATOR,
-      actionLink,
-      actionCopyElementLink,
-      CONTEXT_MENU_SEPARATOR,
-      actionDuplicateSelection,
-      actionToggleElementLock,
-      CONTEXT_MENU_SEPARATOR,
-      actionDeleteSelected,
+      actionSelectAll,
     ];
   };
 

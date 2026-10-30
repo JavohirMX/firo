@@ -77,3 +77,70 @@
     margin: 0 2px;
   }
 }
+
+/*
+ * The zoom readout's navigation menu (Miro parity row 11). Anchored above
+ * the toolbar — the toolbar sits at the bottom-right of the board.
+ */
+.firo-nav-toolbar__zoom-menu-root {
+  position: relative;
+}
+
+.firo-nav-toolbar__zoom-menu {
+  position: absolute;
+  bottom: calc(100% + var(--firo-space-xs, 8px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  padding: var(--firo-space-xs, 4px);
+  background-color: var(--firo-color-panel);
+  border: 1px solid var(--firo-color-border);
+  border-radius: var(--firo-radius-md);
+  box-shadow: var(--firo-elevation-floating);
+  z-index: var(--firo-z-menu, 6);
+}
+
+.firo-nav-toolbar__zoom-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--firo-space-xs, 4px) var(--firo-space-sm, 12px);
+  border: none;
+  background: transparent;
+  border-radius: var(--firo-radius-sm);
+  color: var(--firo-color-text);
+  font-family: var(--firo-font-ui);
+  font-size: var(--firo-font-size-sm);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--firo-color-surface-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--firo-color-focus-ring);
+    outline-offset: 1px;
+  }
+
+  &--current {
+    color: var(--firo-color-accent);
+    font-weight: var(--firo-font-weight-semibold, 600);
+  }
+}
+
+.firo-nav-toolbar__zoom-menu-separator {
+  height: 1px;
+  margin: var(--firo-space-xs, 4px) 0;
+  background-color: var(--firo-color-border);
+}
+
+.firo-nav-toolbar__zoom-menu-dimensions {
+  padding: var(--firo-space-xs, 4px) var(--firo-space-sm, 12px);
+  color: var(--firo-color-text-muted);
+  font-family: var(--firo-font-ui);
+  font-size: var(--firo-font-size-xs);
+  white-space: nowrap;
+}

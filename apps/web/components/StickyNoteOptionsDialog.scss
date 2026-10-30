@@ -1,0 +1,126 @@
+/*
+ * Sticky note options dialog (touch route) — @firo/ui token conventions,
+ * modelled on the bulk-create dialog's shell.
+ */
+
+.firo-sticky-options__overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--firo-color-scrim, rgba(0, 0, 0, 0.45));
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--firo-space-md, 16px);
+  animation: firo-fade-in var(--firo-motion-fast, 150ms) ease-out;
+}
+
+.firo-sticky-options {
+  background: var(--firo-color-panel, #ffffff);
+  border: 1px solid var(--firo-color-border, #e5e7eb);
+  border-radius: var(--firo-radius-lg, 12px);
+  box-shadow: var(
+    --firo-elevation-popover,
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1)
+  );
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--firo-space-sm, 8px);
+  padding: var(--firo-space-lg, 24px);
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  color: var(--firo-color-text, #111827);
+  box-sizing: border-box;
+
+  &__title {
+    margin: 0;
+    font-size: var(--firo-font-size-lg, 18px);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    line-height: 1.3;
+  }
+
+  &__heading {
+    margin: var(--firo-space-sm, 8px) 0 0;
+    font-size: var(--firo-font-size-sm, 13px);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    color: var(--firo-color-text-muted, #6b7280);
+  }
+
+  &__swatches {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--firo-space-sm, 8px);
+  }
+
+  &__swatch {
+    aspect-ratio: 1;
+    min-height: 44px;
+    border: 2px solid var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 8px);
+    cursor: pointer;
+    padding: 0;
+
+    &[aria-pressed="true"] {
+      border-color: var(--firo-color-accent, #2563eb);
+      box-shadow: 0 0 0 2px var(--firo-color-accent, #2563eb);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-accent, #2563eb);
+      outline-offset: 2px;
+    }
+  }
+
+  &__sizes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-xs, 4px);
+  }
+
+  &__size {
+    min-height: 44px;
+    text-align: left;
+    padding: var(--firo-space-sm, 8px) var(--firo-space-md, 12px);
+    border: 1px solid var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 8px);
+    background: var(--firo-color-surface, #f9fafb);
+    color: var(--firo-color-text, #111827);
+    font: inherit;
+    font-size: var(--firo-font-size-md, 14px);
+    cursor: pointer;
+
+    &[aria-checked="true"] {
+      border-color: var(--firo-color-accent, #2563eb);
+      box-shadow: 0 0 0 1px var(--firo-color-accent, #2563eb);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-accent, #2563eb);
+      outline-offset: 2px;
+    }
+  }
+
+  &__bulk {
+    margin-top: var(--firo-space-sm, 8px);
+    min-height: 44px;
+    padding: var(--firo-space-sm, 8px) var(--firo-space-md, 12px);
+    border: 1px solid var(--firo-color-border, #e5e7eb);
+    border-radius: var(--firo-radius-md, 8px);
+    background: var(--firo-color-surface, #f9fafb);
+    color: var(--firo-color-text, #111827);
+    font: inherit;
+    font-size: var(--firo-font-size-md, 14px);
+    cursor: pointer;
+    text-align: left;
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-accent, #2563eb);
+      outline-offset: 2px;
+    }
+  }
+}

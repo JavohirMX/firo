@@ -24,6 +24,8 @@ import {
   PlusIcon,
   DocIcon,
   SparklesIcon,
+  SmileIcon,
+  HighlighterIcon,
 } from "../icons";
 
 import { ToolsCatalog } from "./ToolsCatalog";
@@ -51,7 +53,9 @@ export type RailToolType =
   | "pen"
   | "more"
   | "docblock"
-  | "ai";
+  | "ai"
+  | "media"
+  | "highlighter";
 
 /**
  * What a rail slot *is*. A tool is a command; a family is a set of tools; an
@@ -81,6 +85,12 @@ export interface RailOptionItem {
   icon?: React.ReactNode;
   shortcut?: string;
   selected?: boolean;
+  /**
+   * `option` (default) is a persisted setting and reads as a radio;
+   * `action` fires once — it opens a dialog or runs a command — so it reads
+   * as a plain menu item and never carries `aria-checked`.
+   */
+  kind?: "option" | "action";
 }
 
 export interface RailOptionGroup {
@@ -153,6 +163,8 @@ export const RAIL_TOOL_ICONS: Record<RailToolType, React.ReactNode> = {
   more: <PlusIcon />,
   docblock: <DocIcon />,
   ai: <SparklesIcon />,
+  media: <SmileIcon />,
+  highlighter: <HighlighterIcon />,
 };
 
 /** Default tool list and creation items including docblock (§10.5) */
@@ -187,6 +199,7 @@ export const DEFAULT_RAIL_TOOLS: RailToolItem[] = [
   // Miro's frame slot flies out size presets; Firo has no preset target yet,
   // so the slot stays a plain tool rather than growing a dead chevron.
   { id: "frame", label: "Frame", icon: <FrameIcon />, kind: "tool" },
+  { id: "media", label: "Emoji", icon: <SmileIcon />, kind: "surface" },
   { id: "comment", label: "Comment", icon: <CommentIcon />, kind: "tool" },
   { id: "docblock", label: "Document", icon: <DocIcon />, kind: "tool" },
 ];
@@ -208,6 +221,8 @@ export interface CreationRailProps {
    * popover. Without this the rail would be a one-way door.
    */
   hiddenTools?: RailToolItem[];
+  /** Show the "+" tools catalog. Hosts hide it when there is nothing to add. */
+  showCatalog?: boolean;
   /** Called with the full visible order (pinned entries included) after a drag. */
   onReorder?: (order: RailToolType[]) => void;
   /** Called when a tool is unpinned from its right-click menu. */
@@ -262,6 +277,7 @@ export const CreationRail: React.FC<CreationRailProps> = ({
   onPointerDownTool,
   tools,
   hiddenTools = [],
+  showCatalog = true,
   onReorder,
   onUnpin,
   onRestore,
@@ -539,8 +555,16 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                           <button
                             key={item.id}
                             type="button"
-                            role="menuitemradio"
-                            aria-checked={item.selected ?? false}
+                            role={
+                              item.kind === "action"
+                                ? "menuitem"
+                                : "menuitemradio"
+                            }
+                            aria-checked={
+                              item.kind === "action"
+                                ? undefined
+                                : item.selected ?? false
+                            }
                             aria-label={item.label}
                             title={item.label}
                             className={`firo-rail__option-item${
@@ -591,22 +615,24 @@ export const CreationRail: React.FC<CreationRailProps> = ({
         })}
 
         {/* The '+' is the catalog, and the catalog is the one restore path. */}
-        <div className="firo-rail__slot">
-          <button
-            type="button"
-            className="firo-rail__item firo-rail__item--more"
-            onClick={() => setCatalogOpen((open) => !open)}
-            title="Tools (+)"
-            aria-label="Tools catalog"
-            aria-haspopup="dialog"
-            aria-expanded={catalogOpen}
-          >
-            <PlusIcon />
-          </button>
-        </div>
+        {showCatalog && (
+          <div className="firo-rail__slot">
+            <button
+              type="button"
+              className="firo-rail__item firo-rail__item--more"
+              onClick={() => setCatalogOpen((open) => !open)}
+              title="Tools (+)"
+              aria-label="Tools catalog"
+              aria-haspopup="dialog"
+              aria-expanded={catalogOpen}
+            >
+              <PlusIcon />
+            </button>
+          </div>
+        )}
       </div>
 
-      {catalogOpen ? (
+      {showCatalog && catalogOpen ? (
         <ToolsCatalog
           tools={tools}
           hiddenTools={hiddenTools}

@@ -25,6 +25,7 @@
 
   .context-menu-item {
     position: relative;
+    box-sizing: border-box;
     width: 100%;
     min-width: 9.5rem;
     margin: 0;
@@ -82,6 +83,26 @@
   }
 
   @include isMobile {
+    /* narrow viewports: a submenu drills in over the lane instead of
+       opening beside it, where it would overflow the right edge */
+    .context-menu-item--has-submenu {
+      position: static;
+    }
+
+    .context-menu-item__submenu {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: auto;
+      width: auto;
+      min-width: 0;
+      max-width: none;
+      max-height: 100%;
+      overflow-y: auto;
+      z-index: 2;
+    }
+
     .context-menu-item {
       display: block;
 
@@ -98,5 +119,77 @@
   .context-menu-item-separator {
     border: none;
     border-top: 1px solid $color-gray-5;
+  }
+}
+
+.excalidraw {
+  .context-menu-item--has-submenu {
+    position: relative;
+  }
+
+  .context-menu-item__submenu {
+    position: absolute;
+    left: 100%;
+    top: -0.5rem;
+    width: max-content;
+    min-width: 100%;
+    max-width: 22rem;
+    z-index: 1;
+  }
+
+  .context-menu-item__chevron {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    opacity: 0.6;
+
+    svg {
+      width: 0.9rem;
+      height: 0.9rem;
+    }
+  }
+
+  /* facts size to the lane: the label keeps its width, the value shrinks
+     with an ellipsis instead of overflowing the menu border */
+  .context-menu-item__fact {
+    display: flex;
+    gap: 1rem;
+    cursor: default;
+
+    &:hover {
+      color: inherit;
+      background-color: transparent;
+    }
+
+    .context-menu-item__label {
+      flex: none;
+      margin-inline-end: 0;
+    }
+
+    .context-menu-item__fact-value {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: end;
+      opacity: 0.6;
+      font-size: 0.8rem;
+    }
+  }
+
+  /* The doubled class keeps this above the phone `display: block` override
+     (`.excalidraw--mobile.excalidraw .context-menu-item`, same specificity,
+     earlier in the sheet): the back row must stay a flex row or its chevron
+     and label stack on two lines. */
+  .context-menu-item--back.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+  }
+
+  .context-menu-item__chevron--left {
+    opacity: 1;
   }
 }

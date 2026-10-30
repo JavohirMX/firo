@@ -18,6 +18,9 @@ import {
   actionZoomToFit,
   actionToggleGridMode,
   DocBlockOverlay,
+  renderDocBlock,
+  viewportCoordsToSceneCoords,
+  type MobileExtraTool,
 } from "@firo/editor";
 import {
   CreationRail,
@@ -73,8 +76,11 @@ import {
 } from "@firo/common";
 import polyfill from "@firo/editor/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { loadFromBlob } from "@firo/editor/data/blob";
 import { t } from "@firo/editor/i18n";
+import { getNormalizedZoom } from "@firo/editor/scene";
+import { getViewportForZoomWithScrollConstraints } from "@firo/editor/viewport";
 
 import { isElementLink } from "@firo/element";
 import {
@@ -91,8 +97,13 @@ import {
   restoreAppState,
   restoreElements,
 } from "@firo/editor/data/restore";
-import { newElementWith } from "@firo/element";
+import { newElementWith, setElementContentDrawer } from "@firo/element";
 import { isInitializedImageElement } from "@firo/element";
+import {
+  embeddableURLValidator,
+  getEmbedLink,
+  getEmbedProviderName,
+} from "@firo/element";
 import clsx from "clsx";
 import {
   parseLibraryTokensFromUrl,
@@ -100,8 +111,11 @@ import {
 } from "@firo/editor/data/library";
 
 import {
+  EmbedDialog,
+  EmojiPanel,
   ExportModal,
   ImportModal,
+  type EmbedValidation,
   type ExportTab,
   type ImportFileInfo,
 } from "@firo/ui";
@@ -113,7 +127,7 @@ import {
   exportToSvg,
 } from "@firo/utils/export";
 
-import { mintBoardId, toEditorScene } from "@firo/board";
+import { mintBoardId } from "@firo/board";
 
 import {
   createFiroDoc,
@@ -127,14 +141,17 @@ import {
   createDocBlockRecord,
   docBlockRecordToFiroRecord,
   docBlockRecordFromFiroRecord,
+  serializeDocBlockNode,
+  parseDocBlockJson,
+  createDefaultDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
+import { VOTE_COLLECTION_ID } from "@firo/facilitation";
 import {
   createDocBlockCollection,
   isDocBlockRecord,
   serializeBoard,
   type DocBlockRecord,
-  type FiroElement,
 } from "@firo/schema";
 import { newElement } from "@firo/element";
 
@@ -161,6 +178,13 @@ import type {
 import type { ResolutionType } from "@firo/common/utility-types";
 import type { ResolvablePromise } from "@firo/common/utils";
 
+import { changedDocBlockIds } from "./board/docContentSync";
+import {
+  canAutoFit,
+  computeFitView,
+  selectionRevealScrollX,
+} from "./board/initialFit";
+
 import { clearActivity, listActivity } from "./board/activity";
 
 import CustomStats from "./CustomStats";
@@ -173,15 +197,31 @@ import {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
+import { TimerSetupDialog } from "./components/TimerSetupDialog";
+import { VotingPanel } from "./components/VotingPanel";
+import { FramesPanel } from "./components/FramesPanel";
+import { BulkStickyDialog } from "./components/BulkStickyDialog";
+import { viewportCenter } from "./board/stickyBulk";
+import { createStickyStack } from "./board/stickyStack";
+import { createHighlighterSession } from "./board/highlighter";
+
+import { StickyNoteOptionsDialog } from "./components/StickyNoteOptionsDialog";
+import {
+  applyStickyOption,
+  STICKY_SIZE_PRESET_KEYS,
+} from "./board/stickyNoteOptions";
+import { subscribeToDialogRequests } from "./board/uiRequests";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
 import { VersionHistoryModal } from "./components/VersionHistoryModal";
 import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
+import { VoteBadges } from "./components/VoteBadges";
 import { TagLayer } from "./components/TagLayer";
 import { RemoteCursorLayer } from "./components/RemoteCursorLayer";
 import { CollabBar, type ConnectionStatus } from "./components/CollabBar";
 import { ConnectedShareModal } from "./components/ConnectedShareModal";
 import { TemplateModal } from "./components/TemplateModal";
+import { SaveTemplateDialog } from "./components/SaveTemplateDialog";
 import { AuthDialog } from "./components/AuthDialog";
 import { syncSession, useSyncSession } from "./sync/session";
 import { AIAssistantModal } from "./components/AIAssistantModal";
@@ -228,9 +268,13 @@ import {
   refreshBoard,
 } from "./board/board";
 
-import { facilitatorCommandPaletteItems } from "./board/facilitatorActions";
+import {
+  facilitatorActions,
+  facilitatorCommandPaletteItems,
+  facilitatorHelpRows,
+} from "./board/facilitatorActions";
 import { recordCommandPaletteItems } from "./board/recordActions";
-import { getActiveBoard } from "./board/library";
+import { getActiveBoard, renameBoard, setActiveBoard } from "./board/library";
 import { isMinimapShortcut } from "./board/chromeShortcuts";
 import {
   readRailLayout,
@@ -268,6 +312,10 @@ import { createBoard } from "./board/library";
 import { boardUrl } from "./board/routes";
 
 import "./index.scss";
+
+import type { PenStyle } from "./board/highlighter";
+
+import type { JSX } from "react";
 
 import type { RailLayout } from "./board/railLayout";
 
@@ -506,6 +554,31 @@ export const CREATION_TOOLS = new Set<RailToolType>([
   "docblock",
 ]);
 
+/**
+ * Fit the viewport to a set of elements, leaving room for the board chrome.
+ * Only the viewport changes, never the elements, so shared documents keep
+ * their world coordinates.
+ */
+const fitViewToElements = (
+  api: ExcalidrawImperativeAPI,
+  elements: readonly { x: number; y: number; width: number; height: number }[],
+) => {
+  const fit = computeFitView(api.getAppState(), elements);
+  if (!fit) {
+    return;
+  }
+  api.updateScene({
+    appState: {
+      zoom: { value: fit.zoom as never },
+      scrollX: fit.scrollX,
+      scrollY: fit.scrollY,
+    },
+    captureUpdate: CaptureUpdateAction.NEVER,
+  });
+};
+
+/** The sticky size presets in flyout order: small to large. */
+
 export const WebCreationRail = ({
   appState,
   commentMode = false,
@@ -514,17 +587,30 @@ export const WebCreationRail = ({
   onToggleDocBlockMode,
   onOpenTemplates,
   onOpenAI,
+  onToggleEmoji,
+  highlighterSession,
+  onOpenBulkSticky,
+  onCreateStickyStack,
+  readOnlyRole = null,
 }: {
   appState: UIAppState;
+  /** viewer/commenter share links: only navigation (and, for commenters, comments). */
+  readOnlyRole?: string | null;
   commentMode?: boolean;
   onToggleCommentMode?: () => void;
   docBlockMode?: boolean;
   onToggleDocBlockMode?: () => void;
   onOpenTemplates?: () => void;
   onOpenAI?: () => void;
+  onToggleEmoji?: () => void;
+  /** Shared with the palette commands (the phone path: no rail there). */
+  highlighterSession?: ReturnType<typeof createHighlighterSession>;
+  onOpenBulkSticky?: () => void;
+  onCreateStickyStack?: () => void;
 }) => {
   const app = useApp();
   const actionManager = useExcalidrawActionManager();
+  const setAppState = useExcalidrawSetAppState();
   const activeToolType = appState.activeTool.type as RailToolType;
 
   // Shapes and lines are one family (ADR-0031): the family's active member is
@@ -533,7 +619,7 @@ export const WebCreationRail = ({
   // Highlighter, smart pen and precision eraser are not Firo tools, and a
   // flyout member ships only with its target (ADR-0031) — so the family stops
   // at the four modes the registry actually has.
-  type PenSubTool = "freedraw" | "eraser" | "laser" | "lasso";
+  type PenSubTool = "freedraw" | "highlighter" | "eraser" | "laser" | "lasso";
 
   interface SubToolsState {
     shapes: ShapeSubTool;
@@ -545,9 +631,41 @@ export const WebCreationRail = ({
     pen: "freedraw",
   });
 
+  // The highlighter is a freedraw preset (apps/web/board/highlighter.ts).
+  // While it is on, the live tool is "freedraw" and the next stroke defaults
+  // are overridden; leaving it restores the user's own pen style.
+  const highlighterRef = useRef(
+    highlighterSession ?? createHighlighterSession(),
+  );
+  const endHighlighter = () => {
+    const restore = highlighterRef.current.leave();
+    if (restore) {
+      setAppState(restore as any);
+    }
+  };
+  const startHighlighter = () => {
+    const style = highlighterRef.current.enter(
+      app.state as unknown as PenStyle,
+    );
+    setAppState(style as any);
+    setSubTools((prev) => ({ ...prev, pen: "highlighter" }));
+    app.setActiveTool({ type: "freedraw" });
+  };
+
   // Keep subTools synchronized with live activeTool
   useEffect(() => {
     const live = appState.activeTool.type;
+    if (highlighterRef.current.active && live !== "freedraw") {
+      // another tool was chosen (keyboard, rail or palette): give the user's
+      // own pen settings back so they don't leak into other tools
+      endHighlighter();
+    }
+    if (highlighterRef.current.active && live === "freedraw") {
+      setSubTools((prev) =>
+        prev.pen === "highlighter" ? prev : { ...prev, pen: "highlighter" },
+      );
+      return;
+    }
     if (
       live === "rectangle" ||
       live === "diamond" ||
@@ -568,7 +686,8 @@ export const WebCreationRail = ({
         prev.pen === live ? prev : { ...prev, pen: live },
       );
     }
-  }, [appState.activeTool.type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState.activeTool.type, appState.currentItemOpacity]);
 
   const lastClickRef = useRef<{ tool: RailToolType; time: number } | null>(
     null,
@@ -661,12 +780,16 @@ export const WebCreationRail = ({
 
     if (id === "pen") {
       const activeSub = subTools.pen ?? "freedraw";
-      const activeLabel = capitalizeString(t(`toolBar.${activeSub}`));
+      const activeLabel =
+        activeSub === "highlighter"
+          ? "Highlighter"
+          : capitalizeString(t(`toolBar.${activeSub}`));
       // Lasso is the one member without a key yet; `getToolShortcut` renders
       // the absence as the string "undefined", so ask the registry first.
-      const activeShortcut = TOOLS[activeSub].letterKey
-        ? getToolShortcut(activeSub)
-        : "";
+      const activeShortcut =
+        activeSub !== "highlighter" && TOOLS[activeSub].letterKey
+          ? getToolShortcut(activeSub)
+          : "";
       return {
         id: "pen",
         kind: "family",
@@ -674,7 +797,14 @@ export const WebCreationRail = ({
           ? `${activeLabel} (${activeShortcut})`
           : activeLabel,
         icon: RAIL_TOOL_ICONS[activeSub] || RAIL_TOOL_ICONS.pen,
-        activeOn: ["pen", "freedraw", "eraser", "laser", "lasso"],
+        activeOn: [
+          "pen",
+          "freedraw",
+          "eraser",
+          "laser",
+          "lasso",
+          "highlighter",
+        ],
         activeSubTool: activeSub,
         flyoutItems: [
           {
@@ -682,6 +812,11 @@ export const WebCreationRail = ({
             label: capitalizeString(t("toolBar.freedraw")),
             icon: RAIL_TOOL_ICONS.freedraw,
             shortcut: getToolShortcut("freedraw"),
+          },
+          {
+            id: "highlighter",
+            label: "Highlighter",
+            icon: RAIL_TOOL_ICONS.highlighter,
           },
           {
             id: "eraser",
@@ -739,6 +874,40 @@ export const WebCreationRail = ({
               }),
             ),
           },
+          {
+            /*
+             * The default size for the *next* note (parity matrix row 20).
+             * The preset values are the selection toolbar's own, so the
+             * flyout and the toolbar can never disagree about how big "L" is.
+             */
+            id: "size",
+            label: "Size",
+            layout: "list",
+            items: STICKY_SIZE_PRESET_KEYS.map((key) => ({
+              id: `size-${key}`,
+              label: `${key.toUpperCase()} — ${
+                STICKY_NOTE_SIZE_PRESETS[key]
+              } px`,
+              selected: appState.currentItemStickynoteSize === key,
+            })),
+          },
+          {
+            id: "create",
+            label: "Create",
+            layout: "list",
+            items: [
+              {
+                id: "bulk-create",
+                label: "Bulk create…",
+                kind: "action" as const,
+              },
+              {
+                id: "stack-create",
+                label: "Sticky stack",
+                kind: "action" as const,
+              },
+            ],
+          },
         ],
       };
     }
@@ -758,6 +927,16 @@ export const WebCreationRail = ({
         label: "Document",
         icon: RAIL_TOOL_ICONS.docblock,
         activeOn: ["docblock"],
+      };
+    }
+
+    if (id === "media") {
+      return {
+        id: "media",
+        kind: "surface",
+        label: "Emoji",
+        icon: RAIL_TOOL_ICONS.media,
+        activeOn: [],
       };
     }
 
@@ -785,20 +964,38 @@ export const WebCreationRail = ({
 
   const isKnownTool = (id: RailToolType) =>
     id in TOOLS ||
-    ["shapes", "pen", "templates", "comment", "docblock", "ai"].includes(id);
+    [
+      "shapes",
+      "pen",
+      "templates",
+      "comment",
+      "docblock",
+      "ai",
+      "media",
+    ].includes(id);
 
+  // Read-only roles only get tools that work for them (the pointer, and
+  // Comment for commenters), instead of buttons that silently do nothing.
+  const isAllowedForRole = (id: RailToolType) =>
+    !readOnlyRole || (readOnlyRole === "commenter" && id === "comment");
   const tools: RailToolItem[] = [
     pointerItem,
-    ...layout.order.filter(isKnownTool).map(buildRailTool),
+    ...layout.order
+      .filter(isKnownTool)
+      .filter(isAllowedForRole)
+      .map(buildRailTool),
   ];
-  const hiddenTools: RailToolItem[] = layout.unpinned
-    .filter(isKnownTool)
-    .map(buildRailTool);
+  const hiddenTools: RailToolItem[] = readOnlyRole
+    ? []
+    : layout.unpinned.filter(isKnownTool).map(buildRailTool);
 
   return (
     <CreationRail
       tools={tools}
       hiddenTools={hiddenTools}
+      showCatalog={!readOnlyRole}
+      canUndo={!readOnlyRole}
+      canRedo={!readOnlyRole}
       activeTool={
         commentMode ? "comment" : docBlockMode ? "docblock" : activeToolType
       }
@@ -828,6 +1025,13 @@ export const WebCreationRail = ({
           return;
         }
 
+        if (
+          readOnlyRole &&
+          !(readOnlyRole === "commenter" && tool === "comment")
+        ) {
+          return;
+        }
+
         if (tool === "comment") {
           onToggleCommentMode?.();
           return;
@@ -838,6 +1042,18 @@ export const WebCreationRail = ({
           return;
         }
 
+        if (tool === "highlighter") {
+          trackEvent("toolbar", "highlighter", "ui");
+          startHighlighter();
+          return;
+        }
+
+        if (tool === "freedraw" && highlighterRef.current.active) {
+          // the ordinary pen was chosen explicitly: back to the user's style
+          endHighlighter();
+          setSubTools((prev) => ({ ...prev, pen: "freedraw" }));
+        }
+
         if (tool === "templates") {
           onOpenTemplates?.();
           return;
@@ -845,6 +1061,11 @@ export const WebCreationRail = ({
 
         if (tool === "ai") {
           onOpenAI?.();
+          return;
+        }
+
+        if (tool === "media") {
+          onToggleEmoji?.();
           return;
         }
 
@@ -900,11 +1121,18 @@ export const WebCreationRail = ({
         }
       }}
       onPointerDownTool={(tool, event) => {
+        if (
+          tool === "highlighter" ||
+          (tool === "pen" && subTools.pen === "highlighter")
+        ) {
+          // the highlighter starts on click (a style preset), not on drag
+          return;
+        }
         let targetTool = tool;
         if (tool === "shapes") {
           targetTool = subTools.shapes ?? "rectangle";
         } else if (tool === "pen") {
-          targetTool = subTools.pen ?? "freedraw";
+          targetTool = (subTools.pen ?? "freedraw") as typeof tool;
         }
         isShiftPressedRef.current = event.shiftKey;
         app.toolDrag.handleButtonPointerDown(
@@ -917,20 +1145,21 @@ export const WebCreationRail = ({
           onOpenTemplates?.();
         } else if (surface === "ai") {
           onOpenAI?.();
+        } else if (surface === "media") {
+          onToggleEmoji?.();
         }
       }}
       onSelectOption={(tool, option) => {
-        if (tool !== "stickynote" || !option.color) {
+        if (tool !== "stickynote") {
           return;
         }
-        // The picker writes the sticky domain's default, which is exactly what
-        // a sticky placed next will read (`changeBackgroundColor` resolves the
-        // domain from the active tool). ADR-0031 row 19.
-        actionManager.executeAction(
-          actionManager.actions.changeBackgroundColor,
-          "ui",
-          { color: option.color },
-        );
+        applyStickyOption(option, {
+          actionManager,
+          setAppState,
+          app,
+          onOpenBulkSticky,
+          onCreateStickyStack,
+        });
       }}
       onUndo={() => {
         if (actionManager.actions.undo) {
@@ -955,8 +1184,61 @@ export const WebNavToolbar = ({
   minimapVisible: boolean;
   onToggleMinimap: () => void;
 }) => {
+  const app = useApp();
   const actionManager = useExcalidrawActionManager();
   const zoomValue = useExcalidrawStateValue((state) => state.zoom.value) ?? 1;
+  const [isFullscreen, setIsFullscreen] = useState(
+    () => !!document.fullscreenElement,
+  );
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, []);
+
+  /*
+   * The zoom readout's menu stops run the same constrained viewport math as
+   * the editor's own zoom actions (centre-anchored, lock-aware), not a bare
+   * `zoom.value` write — see `actionResetZoom` for the pattern.
+   */
+  const onZoomTo = (nextZoomValue: number) => {
+    app.requestUnfollow();
+    const fullState = app.state;
+    app.setAppState({
+      ...getViewportForZoomWithScrollConstraints(
+        {
+          viewportX: fullState.width / 2 + fullState.offsetLeft,
+          viewportY: fullState.height / 2 + fullState.offsetTop,
+          nextZoom: getNormalizedZoom(nextZoomValue),
+        },
+        fullState,
+      ),
+    });
+  };
+
+  const onToggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void document.documentElement.requestFullscreen?.();
+    }
+  };
+
+  const selected = app.scene
+    .getNonDeletedElements()
+    .filter((element) => appState.selectedElementIds[element.id]);
+  const bounds = selected.length > 0 ? getCommonBounds(selected) : null;
+  const selectionSize = bounds
+    ? {
+        width: Math.round(bounds[2] - bounds[0]),
+        height: Math.round(bounds[3] - bounds[1]),
+      }
+    : null;
 
   return (
     <div className="firo-nav-wrapper">
@@ -970,22 +1252,108 @@ export const WebNavToolbar = ({
         gridEnabled={appState.gridModeEnabled}
         gridType={appState.gridType}
         onToggleGrid={() => actionManager.executeAction(actionToggleGridMode)}
+        onSelectGridType={(type) =>
+          actionManager.executeAction(actionToggleGridMode, "ui", type)
+        }
+        onHideGrid={() =>
+          actionManager.executeAction(actionToggleGridMode, "ui", false)
+        }
+        showSelectionDimensions={appState.showSelectionDimensions}
+        onToggleSelectionDimensions={() =>
+          app.setAppState({
+            showSelectionDimensions: !appState.showSelectionDimensions,
+          })
+        }
         minimapEnabled={minimapVisible}
         isMinimapOpen={minimapVisible}
         onToggleMinimap={onToggleMinimap}
+        onZoomTo={onZoomTo}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={onToggleFullscreen}
+        selectionSize={selectionSize}
       />
     </div>
   );
 };
 
+/**
+ * ADR-0036 §3: the embed dialog's validation rules. Add is enabled only for
+ * an https URL on the provider allow-list; raw HTML is never accepted; an
+ * unsupported web URL earns the reason plus an "Open link" action.
+ */
+const validateEmbedUrl = (raw: string): EmbedValidation => {
+  const input = raw.trim();
+  if (/[<>]/.test(input)) {
+    return {
+      ok: false,
+      reason:
+        "Raw HTML can't be embedded - paste the provider's page URL instead.",
+    };
+  }
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return { ok: false, reason: "Enter a full https URL." };
+  }
+  if (url.protocol !== "https:") {
+    return {
+      ok: false,
+      isWebUrl: url.protocol === "http:",
+      reason: "Only https URLs can be embedded.",
+    };
+  }
+  if (!embeddableURLValidator(input, undefined)) {
+    return {
+      ok: false,
+      isWebUrl: true,
+      reason: "That provider isn't supported.",
+    };
+  }
+  const resolved = getEmbedLink(input);
+  if (!resolved) {
+    return {
+      ok: false,
+      isWebUrl: true,
+      reason: "That link can't be embedded.",
+    };
+  }
+  return {
+    ok: true,
+    provider: getEmbedProviderName(
+      ("link" in resolved ? resolved.link : null) ?? input,
+    ),
+  };
+};
+
 const WebBoardMenu = () => {
   const setAppState = useExcalidrawSetAppState();
+  /*
+   * The active board is resolved once at routing and cached in the library
+   * module, so the name lives in local state here; a rename refreshes both
+   * the cache (exports and the home list read it) and this label.
+   */
+  const [boardName, setBoardName] = useState(
+    () => getActiveBoard()?.name ?? "Untitled",
+  );
+  const onRenameBoard = async (name: string) => {
+    const active = getActiveBoard();
+    if (!active) {
+      return;
+    }
+    const updated = await renameBoard(active.id, name);
+    if (updated) {
+      setActiveBoard(updated);
+      setBoardName(updated.name ?? name);
+    }
+  };
   return (
     <BoardMenu
-      boardName={getActiveBoard()?.name ?? "Untitled"}
+      boardName={boardName}
       onOpenHome={() => {
         window.location.assign(homeUrl());
       }}
+      onRenameBoard={getActiveBoard() ? onRenameBoard : undefined}
       onOpenMenu={() => {
         setAppState((prevState) => ({
           openMenu: prevState.openMenu === "canvas" ? null : "canvas",
@@ -1007,6 +1375,16 @@ const WebInspector = ({ appState }: { appState: UIAppState }) => {
   const elements = app.scene.getNonDeletedElements();
 
   if (!showSelectedShapeActions(appState, elements)) {
+    return null;
+  }
+
+  // A document block has no stroke, fill or text styling to edit, so the
+  // generic shape panel only gets in the way of it.
+  const selected = elements.filter((el) => appState.selectedElementIds[el.id]);
+  if (
+    selected.length > 0 &&
+    selected.every((el) => el.customData?.isDocBlock)
+  ) {
     return null;
   }
 
@@ -1616,9 +1994,27 @@ export const insertDocBlockOnBoard = (
     });
   }
 
-  const docBlock = createDocBlockRecord({
+  const created = createDocBlockRecord({
     title: "Untitled Document",
   });
+  // On a narrow screen a new block at its default width would run off the
+  // edge, or force a zoom where its text is tiny. Size the new block to the
+  // viewport instead (existing blocks are never resized).
+  const view = excalidrawAPI?.getAppState();
+  const fitWidth = view
+    ? Math.floor(view.width / view.zoom.value - 32)
+    : created.dimensions.width;
+  const fitHeight = view
+    ? Math.floor((view.height * 0.6) / view.zoom.value)
+    : created.dimensions.height;
+  const docBlock = {
+    ...created,
+    dimensions: {
+      ...created.dimensions,
+      width: Math.max(240, Math.min(created.dimensions.width, fitWidth)),
+      height: Math.max(200, Math.min(created.dimensions.height, fitHeight)),
+    },
+  };
   const firoRecord = docBlockRecordToFiroRecord(docBlock);
   mutations.push({
     kind: "createRecord",
@@ -1702,6 +2098,7 @@ const ExcalidrawWrapper = () => {
     null,
   );
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const syncState = useSyncSession();
   useEffect(() => {
@@ -1709,9 +2106,159 @@ const ExcalidrawWrapper = () => {
   }, []);
   const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [timerSetupOpen, setTimerSetupOpen] = useState(false);
+  const [votingPanelOpen, setVotingPanelOpen] = useState(false);
+  const [framesPanelOpen, setFramesPanelOpen] = useState(false);
+  const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
+  const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  // The highlighter freedraw preset; shared by the rail flyout and the palette
+  // commands (the phone path, where the rail is not mounted).
+  const highlighterSession = useMemo(() => createHighlighterSession(), []);
+  const startHighlighterFromPalette = () => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    const style = highlighterSession.enter(
+      excalidrawAPI.getAppState() as unknown as PenStyle,
+    );
+    excalidrawAPI.updateScene({ appState: style as any });
+    excalidrawAPI.setActiveTool({ type: "freedraw" });
+  };
+  const endHighlighterFromPalette = () => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    const restore = highlighterSession.leave();
+    if (restore) {
+      excalidrawAPI.updateScene({ appState: restore as any });
+    }
+    excalidrawAPI.setActiveTool({ type: "freedraw" });
+  };
+  // Leaving freedraw by any route (tool key, mobile toolbar, palette) hands the
+  // user's own pen style back, so the preset never leaks into other tools.
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    return excalidrawAPI.onChange((_els, st) => {
+      if (highlighterSession.active && st.activeTool.type !== "freedraw") {
+        const restore = highlighterSession.leave();
+        if (restore) {
+          excalidrawAPI.updateScene({ appState: restore as any });
+        }
+      }
+    });
+  }, [excalidrawAPI, highlighterSession]);
+  const emojiPickCount = useRef(0);
+  const [stickyOptionsOpen, setStickyOptionsOpen] = useState(false);
+
+  /*
+   * Registered actions live outside the React tree, so they ask for these
+   * dialogs by name and the shell turns the request into state. One
+   * subscription for the app's life; the unsubscribe keeps an unmounted app
+   * from being asked to open anything.
+   */
+  useEffect(
+    () =>
+      subscribeToDialogRequests((request) => {
+        if (request === "timerSetup") {
+          setTimerSetupOpen(true);
+        } else if (request === "bulkStickyNotes") {
+          setBulkStickyOpen(true);
+        } else if (request === "votingPanel") {
+          setVotingPanelOpen(true);
+        } else if (request === "framesPanel") {
+          setFramesPanelOpen(true);
+        }
+      }),
+    [],
+  );
   const [commentMode, setCommentMode] = useState(false);
   const [docBlockMode, setDocBlockMode] = useState(false);
   const [activeDocBlockId, setActiveDocBlockId] = useState<string | null>(null);
+  /**
+   * The doc block the user just closed while it was still the selected
+   * element. Selecting a doc block opens its editor, so without this the
+   * editor reopens the instant Escape or a commit closes it.
+   */
+  const dismissedDocBlockIdRef = useRef<string | null>(null);
+  const activeDocBlockIdRef = useRef<string | null>(null);
+  activeDocBlockIdRef.current = activeDocBlockId;
+
+  // Paint committed doc block content on the canvas when it is not being
+  // edited. The overlay covers the block while editing, so draw the plain
+  // shape then.
+  useEffect(() => {
+    setElementContentDrawer((element, context) => {
+      const recordId = element.customData?.recordId as string | undefined;
+      if (!recordId || recordId === activeDocBlockIdRef.current) {
+        return false;
+      }
+      const firoRecord = boardDoc()
+        .read()
+        .records.find((r) => r.id === recordId);
+      if (!firoRecord) {
+        return false;
+      }
+      const typed = docBlockRecordFromFiroRecord(firoRecord);
+      let node = createDefaultDocBlockNode();
+      if (typed.contentJson) {
+        try {
+          node = parseDocBlockJson(JSON.parse(typed.contentJson));
+        } catch {
+          // unreadable content: show the empty document
+        }
+      }
+      renderDocBlock(context, typed, node, 0, 0, element.width, element.height);
+      return true;
+    });
+    return () => setElementContentDrawer(null);
+  }, []);
+  // A collaborator's committed doc content arrives as a record change, but the
+  // canvas caches each element's drawing by version. Touch the matching
+  // element when a doc block's stored content changes so it repaints.
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    const seen = new Map<string, string>();
+    const readContent = () => {
+      const out = new Map<string, string>();
+      for (const r of boardDoc().read().records) {
+        if (r.collectionId === DOC_BLOCK_COLLECTION_ID) {
+          out.set(
+            r.id,
+            String(docBlockRecordFromFiroRecord(r).contentJson ?? ""),
+          );
+        }
+      }
+      return out;
+    };
+    readContent().forEach((v, k) => seen.set(k, v));
+    return boardDoc().subscribe(() => {
+      const next = readContent();
+      const changed = changedDocBlockIds(
+        seen,
+        next,
+        activeDocBlockIdRef.current,
+      );
+      if (!changed.size) {
+        return;
+      }
+      excalidrawAPI.updateScene({
+        elements: excalidrawAPI.getSceneElementsIncludingDeleted().map((el) =>
+          changed.has(el.customData?.recordId as string)
+            ? newElementWith(el, {
+                customData: { ...el.customData, contentRev: Date.now() },
+              })
+            : el,
+        ),
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    });
+  }, [excalidrawAPI]);
+
   const lastCanvasClickRef = useRef<{
     time: number;
     x: number;
@@ -1719,7 +2266,7 @@ const ExcalidrawWrapper = () => {
   } | null>(null);
 
   const handleUpdateDocBlockRecord = useCallback(
-    (recordId: string, _updatedDoc: any, updatedTitle?: string) => {
+    (recordId: string, updatedDoc: any, updatedTitle?: string) => {
       const doc = boardDoc();
       const existing = doc.read().records.find((r) => r.id === recordId);
       if (!existing) {
@@ -1730,6 +2277,11 @@ const ExcalidrawWrapper = () => {
       const updatedTyped: DocBlockRecord = {
         ...typed,
         title: nextTitle,
+        ...(updatedDoc
+          ? {
+              contentJson: JSON.stringify(serializeDocBlockNode(updatedDoc)),
+            }
+          : {}),
         updated: Date.now(),
       };
       const updatedFiroRecord = docBlockRecordToFiroRecord(updatedTyped);
@@ -1760,6 +2312,17 @@ const ExcalidrawWrapper = () => {
         point,
       );
       setActiveDocBlockId(record.id);
+      // On a narrow screen the new block can be wider than the viewport. Fit
+      // the view to it rather than resizing the shared document.
+      if (excalidrawAPI) {
+        const view = excalidrawAPI.getAppState();
+        const needsFit =
+          element.width * view.zoom.value > view.width * 0.95 ||
+          element.height * view.zoom.value > view.height * 0.7;
+        if (needsFit) {
+          fitViewToElements(excalidrawAPI, [element]);
+        }
+      }
       return { record, element };
     },
     [excalidrawAPI],
@@ -1770,14 +2333,30 @@ const ExcalidrawWrapper = () => {
       if (activeDocBlockId) {
         handleUpdateDocBlockRecord(activeDocBlockId, updatedDoc, updatedTitle);
       }
+      dismissedDocBlockIdRef.current = activeDocBlockId;
+      // The canvas caches each element's drawing by version, so touch the
+      // element to make it repaint with the committed content.
+      if (activeDocBlockId && excalidrawAPI) {
+        excalidrawAPI.updateScene({
+          elements: excalidrawAPI.getSceneElementsIncludingDeleted().map((el) =>
+            el.customData?.recordId === activeDocBlockId
+              ? newElementWith(el, {
+                  customData: { ...el.customData, contentRev: Date.now() },
+                })
+              : el,
+          ),
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
       setActiveDocBlockId(null);
     },
-    [activeDocBlockId, handleUpdateDocBlockRecord],
+    [activeDocBlockId, handleUpdateDocBlockRecord, excalidrawAPI],
   );
 
   const handleDiscardDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const handleChangeDocBlock = useCallback(
     (updatedDoc: any, updatedTitle?: string) => {
@@ -1789,8 +2368,9 @@ const ExcalidrawWrapper = () => {
   );
 
   const handleCloseDocBlock = useCallback(() => {
+    dismissedDocBlockIdRef.current = activeDocBlockId;
     setActiveDocBlockId(null);
-  }, []);
+  }, [activeDocBlockId]);
 
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalTab, setExportModalTab] = useState<ExportTab>("image");
@@ -2503,6 +3083,14 @@ const ExcalidrawWrapper = () => {
     readonly CollaboratorInfo[]
   >([]);
 
+  const [shareRole, setShareRole] = useState<string | null>(null);
+  const isReadOnlyShare = shareRole === "viewer" || shareRole === "commenter";
+  const createStack = useCallback(() => {
+    if (excalidrawAPI && !isReadOnlyShare) {
+      createStickyStack(excalidrawAPI);
+    }
+  }, [excalidrawAPI, isReadOnlyShare]);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -2518,10 +3106,13 @@ const ExcalidrawWrapper = () => {
         getActiveBoard()?.id ||
         "default";
 
-      if (shareToken && (!boardId || boardId === "default")) {
+      if (shareToken) {
         const resolved = await resolveShareToken(shareToken);
-        if (resolved?.boardId) {
+        if (resolved?.boardId && (!boardId || boardId === "default")) {
           boardId = resolved.boardId;
+        }
+        if (resolved?.role && !isCancelled) {
+          setShareRole(resolved.role);
         }
       }
 
@@ -2559,6 +3150,214 @@ const ExcalidrawWrapper = () => {
       void cleanupPromise.then((cleanup) => cleanup?.());
     };
   }, []);
+
+  /*
+   * View mode swallows canvas pointer-downs, so the editor's own
+   * `onPointerDown` never fires for a commenter. Commenters may still place
+   * comments (server rule: they may write only the `comments` partition), so
+   * catch the click here while comment mode is armed.
+   */
+  useEffect(() => {
+    if (!commentMode || shareRole !== "commenter" || !excalidrawAPI) {
+      return undefined;
+    }
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest?.("canvas.interactive")) {
+        return;
+      }
+      const state = excalidrawAPI.getAppState();
+      const point = viewportCoordsToSceneCoords(event, state);
+      setCommentTarget({ point: { x: point.x, y: point.y } });
+      setCommentMode(false);
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [commentMode, shareRole, excalidrawAPI]);
+
+  /*
+   * The mobile toolbar is the generic editor's, so the board's own tools reach
+   * it as extra "More tools" entries. Same rules as the desktop rail: read-only
+   * share roles get no creation tools, commenters keep Comment.
+   */
+  const mobileExtraTools = useMemo(() => {
+    const canCreate = !isReadOnlyShare;
+    const canComment = canCreate || shareRole === "commenter";
+    const tools: MobileExtraTool[] = [];
+    if (canComment) {
+      tools.push({
+        id: "comment",
+        label: "Comment",
+        icon: RAIL_TOOL_ICONS.comment as JSX.Element,
+        selected: commentMode,
+        onSelect: () => {
+          setCommentMode((mode) => !mode);
+          setDocBlockMode(false);
+        },
+      });
+    }
+    if (canCreate) {
+      tools.push(
+        {
+          id: "docblock",
+          label: "Document",
+          icon: RAIL_TOOL_ICONS.docblock as JSX.Element,
+          selected: docBlockMode,
+          onSelect: () => {
+            setDocBlockMode((mode) => !mode);
+            setCommentMode(false);
+          },
+        },
+        {
+          id: "stickyoptions",
+          label: "Sticky options…",
+          icon: RAIL_TOOL_ICONS.stickynote as JSX.Element,
+          onSelect: () => {
+            /*
+             * Mirror the desktop flyout: its options belong to the sticky
+             * slot, so the tool is always active when they show. The colour
+             * action resolves its domain from the active tool, so picking a
+             * colour here must mean "sticky" too, not whatever tool was up.
+             */
+            excalidrawAPI?.setActiveTool({ type: "stickynote" });
+            setStickyOptionsOpen(true);
+          },
+        },
+        {
+          id: "templates",
+          label: "Templates",
+          icon: RAIL_TOOL_ICONS.templates as JSX.Element,
+          onSelect: () => setTemplateModalOpen(true),
+        },
+        {
+          id: "ai",
+          label: "AI Assistant",
+          icon: RAIL_TOOL_ICONS.ai as JSX.Element,
+          onSelect: () => setAiModalOpen(true),
+        },
+      );
+    }
+    return tools;
+  }, [isReadOnlyShare, shareRole, commentMode, docBlockMode, excalidrawAPI]);
+
+  /*
+   * A board opens at scroll 0,0, which hides content that sits near the origin
+   * behind the chrome or off the edge on a phone (templates start there). No
+   * view is stored per board, so fit the view once, when content first shows up
+   * in the opening seconds (local load or first sync). Stop as soon as the
+   * user has panned or zoomed, or after the window, so a first shape drawn on
+   * an empty board never moves the view.
+   */
+  const collabConnected = collabStatus === "connected";
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    let done = false;
+    // The window starts when the board connects, so a slow first sync still
+    // gets fitted. Any pointer or key input by the user ends it.
+    const startedAt = Date.now();
+    const stop = () => {
+      done = true;
+    };
+    window.addEventListener("pointerdown", stop, true);
+    window.addEventListener("keydown", stop, true);
+    const off = excalidrawAPI.onChange((elements, state) => {
+      if (done) {
+        return;
+      }
+      if (!canAutoFit(state, Date.now() - startedAt)) {
+        done = true;
+        return;
+      }
+      const live = elements.filter((el) => !el.isDeleted);
+      if (live.length === 0) {
+        return;
+      }
+      done = true;
+      fitViewToElements(excalidrawAPI, live);
+    });
+    return () => {
+      off();
+      window.removeEventListener("pointerdown", stop, true);
+      window.removeEventListener("keydown", stop, true);
+    };
+    // Re-arm once when the board connects: content that syncs in after the
+    // opening window is still framed, until the user touches the canvas.
+  }, [excalidrawAPI, collabConnected]);
+
+  /*
+   * A selection restored on load can sit under the docked Properties panel.
+   * In the opening seconds, and only until the user touches the canvas, slide
+   * the view sideways once so the selected shapes end up beside the panel. The
+   * selection is kept. Nothing moves during later manipulation.
+   */
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return undefined;
+    }
+    let done = false;
+    const startedAt = Date.now();
+    const stop = () => {
+      done = true;
+    };
+    window.addEventListener("pointerdown", stop, true);
+    window.addEventListener("keydown", stop, true);
+    const off = excalidrawAPI.onChange((elements, state) => {
+      if (done) {
+        return;
+      }
+      if (
+        Date.now() - startedAt > 8000 ||
+        state.newElement ||
+        state.editingTextElement
+      ) {
+        done = true;
+        return;
+      }
+      const ids = state.selectedElementIds ?? {};
+      const picked = elements.filter((el) => !el.isDeleted && ids[el.id]);
+      const panel = document.querySelector(".firo-inspector");
+      if (picked.length === 0 || !panel) {
+        return;
+      }
+      const z = state.zoom.value;
+      const minX = Math.min(...picked.map((el) => el.x));
+      const maxX = Math.max(...picked.map((el) => el.x + el.width));
+      const minY = Math.min(...picked.map((el) => el.y));
+      const maxY = Math.max(...picked.map((el) => el.y + el.height));
+      const toX = (x: number) => (x + state.scrollX) * z + state.offsetLeft;
+      const toY = (y: number) => (y + state.scrollY) * z + state.offsetTop;
+      const rect = panel.getBoundingClientRect();
+      const dx = selectionRevealScrollX(
+        {
+          left: toX(minX),
+          right: toX(maxX),
+          top: toY(minY),
+          bottom: toY(maxY),
+        },
+        {
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+        },
+        z,
+      );
+      done = true;
+      if (dx !== 0) {
+        excalidrawAPI.updateScene({
+          appState: { scrollX: state.scrollX + dx },
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
+    });
+    return () => {
+      off();
+      window.removeEventListener("pointerdown", stop, true);
+      window.removeEventListener("keydown", stop, true);
+    };
+  }, [excalidrawAPI]);
 
   const isCollaborating = collabStatus === "connected";
   /**
@@ -2884,11 +3683,26 @@ const ExcalidrawWrapper = () => {
           (record.collectionId === DOC_BLOCK_COLLECTION_ID ||
             isDocBlockRecord(record))
         ) {
-          if (activeDocBlockId !== recordId) {
+          if (
+            activeDocBlockId !== recordId &&
+            dismissedDocBlockIdRef.current !== recordId
+          ) {
             setActiveDocBlockId(recordId);
           }
         }
       }
+    }
+    // Once the dismissed block is no longer the only selection, selecting it
+    // again should open it.
+    if (
+      dismissedDocBlockIdRef.current &&
+      !(
+        selectedIds.length === 1 &&
+        elements.find((el) => el.id === selectedIds[0])?.customData
+          ?.recordId === dismissedDocBlockIdRef.current
+      )
+    ) {
+      dismissedDocBlockIdRef.current = null;
     }
 
     if (appState.activeTool?.type) {
@@ -3038,9 +3852,24 @@ const ExcalidrawWrapper = () => {
     >
       <Excalidraw
         defaultChromeEnabled={false}
+        suppressWelcomeScreen={boardDoc()
+          .read()
+          .collections.some(
+            (c) =>
+              c.id !== VOTE_COLLECTION_ID && c.id !== DOC_BLOCK_COLLECTION_ID,
+          )}
+        onSaveSelectionAsTemplate={
+          isReadOnlyShare ? undefined : () => setSaveTemplateOpen(true)
+        }
+        onAddComment={
+          isReadOnlyShare && shareRole !== "commenter"
+            ? undefined
+            : (target) => setCommentTarget(target)
+        }
         renderCreationRailUI={(_isMobile, appState) => (
           <WebCreationRail
             appState={appState}
+            readOnlyRole={isReadOnlyShare ? shareRole : null}
             commentMode={commentMode}
             onToggleCommentMode={() => {
               setCommentMode((mode) => !mode);
@@ -3053,6 +3882,10 @@ const ExcalidrawWrapper = () => {
             }}
             onOpenTemplates={() => setTemplateModalOpen(true)}
             onOpenAI={() => setAiModalOpen(true)}
+            onToggleEmoji={() => setEmojiOpen((open) => !open)}
+            highlighterSession={highlighterSession}
+            onOpenBulkSticky={() => setBulkStickyOpen(true)}
+            onCreateStickyStack={createStack}
           />
         )}
         renderNavigationUI={(_isMobile, appState) => (
@@ -3063,6 +3896,46 @@ const ExcalidrawWrapper = () => {
           />
         )}
         renderBoardMenuUI={() => <WebBoardMenu />}
+        renderHelpDialogExtra={() => {
+          if (!excalidrawAPI) {
+            return null;
+          }
+          /*
+           * The rows are built from the registered actions on every open, so
+           * the dialog can never advertise a chord the build no longer has
+           * (parity matrix row 9: Firo's own chords were absent here).
+           */
+          const rows = facilitatorHelpRows(
+            facilitatorActions(excalidrawAPI, boardDoc, refreshBoard),
+          );
+          if (rows.length === 0) {
+            return null;
+          }
+          return (
+            <>
+              <h3>Facilitation</h3>
+              <div className="HelpDialog__islands-container">
+                <div className="HelpDialog__island">
+                  <h4 className="HelpDialog__island-title">Running the room</h4>
+                  <div className="HelpDialog__island-content">
+                    {rows.map((row) => (
+                      <div className="HelpDialog__shortcut" key={row.name}>
+                        <div>{row.label}</div>
+                        <div className="HelpDialog__key-container">
+                          {row.chord.split("+").map((key) => (
+                            <kbd className="HelpDialog__key" key={key}>
+                              {key}
+                            </kbd>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        }}
         renderInspectorUI={(_isMobile, appState) => (
           <WebInspector appState={appState} />
         )}
@@ -3075,6 +3948,7 @@ const ExcalidrawWrapper = () => {
         renderTopRightUI={() => (
           <CollabBar
             connectionStatus={isOffline ? "offline" : collabStatus}
+            readOnlyRole={isReadOnlyShare ? shareRole : null}
             collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
@@ -3152,6 +4026,8 @@ const ExcalidrawWrapper = () => {
                   (hit.customData?.recordId as string | undefined) ||
                   ((hit as any).recordId as string | undefined);
                 if (recordId) {
+                  // An explicit click on the block always opens it.
+                  dismissedDocBlockIdRef.current = null;
                   setActiveDocBlockId(recordId);
                 }
               }
@@ -3176,6 +4052,8 @@ const ExcalidrawWrapper = () => {
         onExport={onExport}
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
+        mobileExtraTools={mobileExtraTools}
+        viewModeEnabled={isReadOnlyShare}
         UIOptions={{
           canvasActions: {
             toggleTheme: true,
@@ -3280,6 +4158,7 @@ const ExcalidrawWrapper = () => {
           composerTarget={commentTarget}
           onCloseComposer={() => setCommentTarget(null)}
         />
+        <VoteBadges />
         <RemoteCursorLayer
           excalidrawAPI={excalidrawAPI}
           collaborators={collaborators}
@@ -3303,65 +4182,119 @@ const ExcalidrawWrapper = () => {
           onSignIn={(u, p) => syncSession.signIn(u, p)}
           onRegister={(u, p) => syncSession.register(u, p)}
         />
+        <TimerSetupDialog
+          isOpen={timerSetupOpen}
+          onClose={() => setTimerSetupOpen(false)}
+        />
+        <EmojiPanel
+          isOpen={emojiOpen && !isReadOnlyShare}
+          onClose={() => {
+            setEmojiOpen(false);
+            emojiPickCount.current = 0;
+            requestAnimationFrame(() =>
+              document
+                .querySelector<HTMLElement>(
+                  '.firo-rail__item[aria-label="Emoji"]',
+                )
+                ?.focus(),
+            );
+          }}
+          onPick={(emoji) => {
+            if (!excalidrawAPI) {
+              return;
+            }
+            // ADR-0036: visible canvas centre, 48px, cascading by 20px
+            const center = viewportCenter(excalidrawAPI);
+            // On phones the panel is a bottom sheet: centre the pick in the
+            // part of the canvas it leaves visible.
+            const panelTop = document
+              .querySelector(".firo-emoji-panel")
+              ?.getBoundingClientRect().top;
+            if (window.innerWidth <= 600 && panelTop) {
+              const st = excalidrawAPI.getAppState();
+              center.y = (-st.scrollY + panelTop / 2) / st.zoom.value;
+            }
+            const offset = (emojiPickCount.current % 10) * 20;
+            emojiPickCount.current += 1;
+            excalidrawAPI.insertTextElement({
+              sceneX: center.x + offset,
+              sceneY: center.y + offset,
+              text: emoji,
+              fontSize: 48,
+            });
+          }}
+        />
+        <EmbedDialog
+          isOpen={embedDialogOpen}
+          onClose={() => setEmbedDialogOpen(false)}
+          validateUrl={validateEmbedUrl}
+          onAdd={(url) => {
+            if (!excalidrawAPI) {
+              return;
+            }
+            const center = viewportCenter(excalidrawAPI);
+            const inserted = excalidrawAPI.insertEmbeddableElement({
+              sceneX: center.x,
+              sceneY: center.y,
+              link: url,
+            });
+            if (!inserted) {
+              return;
+            }
+            // Fit the new frame inside the visible canvas (keeping its aspect
+            // ratio, never enlarging) and centre it on the viewport so it is
+            // visible and selectable on small screens.
+            const appState = excalidrawAPI.getAppState();
+            const zoom = appState.zoom.value || 1;
+            const maxW = (appState.width * 0.85) / zoom;
+            const maxH = (appState.height * 0.6) / zoom;
+            const scale = Math.min(
+              1,
+              maxW / inserted.width,
+              maxH / inserted.height,
+            );
+            const w = inserted.width * scale;
+            const h = inserted.height * scale;
+            excalidrawAPI.updateScene({
+              elements: excalidrawAPI.getSceneElements().map((el) =>
+                el.id === inserted.id
+                  ? {
+                      ...el,
+                      x: center.x - w / 2,
+                      y: center.y - h / 2,
+                      width: w,
+                      height: h,
+                    }
+                  : el,
+              ) as any,
+              captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+            });
+          }}
+        />
+        <VotingPanel
+          isOpen={votingPanelOpen}
+          onClose={() => setVotingPanelOpen(false)}
+          excalidrawAPI={excalidrawAPI}
+        />
+        <FramesPanel
+          isOpen={framesPanelOpen}
+          onClose={() => setFramesPanelOpen(false)}
+          excalidrawAPI={excalidrawAPI}
+        />
+        <BulkStickyDialog
+          isOpen={bulkStickyOpen}
+          onClose={() => setBulkStickyOpen(false)}
+          excalidrawAPI={excalidrawAPI}
+        />
+        <SaveTemplateDialog
+          isOpen={saveTemplateOpen}
+          onClose={() => setSaveTemplateOpen(false)}
+          excalidrawAPI={excalidrawAPI}
+        />
         <TemplateModal
           isOpen={templateModalOpen}
           onClose={() => setTemplateModalOpen(false)}
-          onInsertTemplate={(template) => {
-            if (!excalidrawAPI) {
-              setTemplateModalOpen(false);
-              return;
-            }
-            const elements = template.build();
-            if (!elements.length) {
-              setTemplateModalOpen(false);
-              return;
-            }
-            let minX = Infinity;
-            let minY = Infinity;
-            let maxX = -Infinity;
-            let maxY = -Infinity;
-            for (const el of elements) {
-              minX = Math.min(minX, el.x);
-              minY = Math.min(minY, el.y);
-              maxX = Math.max(maxX, el.x + el.width);
-              maxY = Math.max(maxY, el.y + el.height);
-            }
-            const state = excalidrawAPI.getAppState();
-            const viewportCenterX =
-              -state.scrollX + state.width / 2 / state.zoom.value;
-            const viewportCenterY =
-              -state.scrollY + state.height / 2 / state.zoom.value;
-            const templateCenterX = minX + (maxX - minX) / 2;
-            const templateCenterY = minY + (maxY - minY) / 2;
-            const dx = viewportCenterX - templateCenterX;
-            const dy = viewportCenterY - templateCenterY;
-            const placed = elements.map((el) => ({
-              ...el,
-              x: el.x + dx,
-              y: el.y + dy,
-            }));
-            const editorSceneElements = toEditorScene(
-              placed as unknown as readonly FiroElement[],
-            );
-            const current = excalidrawAPI.getSceneElements();
-            const selectedElementIds: Record<string, true> = {};
-            for (const el of editorSceneElements) {
-              if (el.type !== "text" || !el.containerId) {
-                selectedElementIds[el.id] = true;
-              }
-            }
-            excalidrawAPI.updateScene({
-              elements: [
-                ...current,
-                ...restoreElements(editorSceneElements, null, {
-                  refreshDimensions: true,
-                }),
-              ],
-              appState: { selectedElementIds },
-              captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-            });
-            setTemplateModalOpen(false);
-          }}
+          excalidrawAPI={excalidrawAPI}
         />
         <ActivityFeed
           isOpen={activityFeedOpen}
@@ -3479,6 +4412,42 @@ const ExcalidrawWrapper = () => {
              * These entries are derived from the same `Action` objects the chords
              * come from, so the palette entry and the keystroke cannot drift.
              */
+            {
+              // the highlighter is a freedraw preset; the palette is the phone
+              // path since the rail is hidden there
+              label: "Highlighter",
+              category: DEFAULT_CATEGORIES.tools,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: startHighlighterFromPalette,
+            },
+            {
+              // Miro's sticky Stack, also the phone path (no rail there)
+              label: "Sticky stack",
+              category: DEFAULT_CATEGORIES.tools,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: createStack,
+            },
+            {
+              label: "Pen (your style)",
+              category: DEFAULT_CATEGORIES.tools,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: endHighlighterFromPalette,
+            },
+            {
+              // ADR-0036 §1: the emoji flyout, also reachable on phone where
+              // the rail is hidden
+              label: "Emoji…",
+              category: DEFAULT_CATEGORIES.app,
+              predicate: () => !!excalidrawAPI && !isReadOnlyShare,
+              perform: () => setEmojiOpen((open) => !open),
+            },
+            {
+              // ADR-0036 §3: the in-app embed affordance
+              label: "Add embed…",
+              category: DEFAULT_CATEGORIES.app,
+              predicate: () => !!excalidrawAPI,
+              perform: () => setEmbedDialogOpen(true),
+            },
             ...(excalidrawAPI
               ? facilitatorCommandPaletteItems(
                   excalidrawAPI,
@@ -3577,6 +4546,12 @@ const ExcalidrawWrapper = () => {
           onSuccess={() => {
             excalidrawAPI?.refresh();
           }}
+        />
+        <StickyNoteOptionsDialog
+          isOpen={stickyOptionsOpen}
+          onClose={() => setStickyOptionsOpen(false)}
+          onOpenBulkSticky={() => setBulkStickyOpen(true)}
+          onCreateStickyStack={createStack}
         />
       </Excalidraw>
     </div>

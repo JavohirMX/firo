@@ -1,4 +1,5 @@
 import path from "path";
+
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import svgrPlugin from "vite-plugin-svgr";
@@ -6,11 +7,17 @@ import { ViteEjsPlugin } from "vite-plugin-ejs";
 import { VitePWA } from "vite-plugin-pwa";
 import checker from "vite-plugin-checker";
 import { createHtmlPlugin } from "vite-plugin-html";
+
 import { woff2BrowserPlugin } from "../../scripts/woff2/woff2-vite-plugins";
 export default defineConfig(({ mode }) => {
   // To load .env variables
   const envVars = loadEnv(mode, `../`);
   // https://vitejs.dev/config/
+  // VITE_APP_LEAN_BUILD=true builds on memory-constrained hosts (verified on a
+  // 2 GB box): it drops sourcemaps, the gzip-size reporting pass and the
+  // parallel typecheck/eslint workers. Defaults are unchanged; the skipped
+  // checks stay explicit - run `yarn typecheck` and lint independently.
+  const leanBuild = envVars.VITE_APP_LEAN_BUILD === "true";
   return {
     server: {
       port: Number(envVars.VITE_APP_PORT || 3000),
@@ -150,6 +157,17 @@ export default defineConfig(({ mode }) => {
           ),
         },
         {
+          find: /^@firo\/ai$/,
+          replacement: path.resolve(
+            __dirname,
+            "../../packages/ai/src/index.ts",
+          ),
+        },
+        {
+          find: /^@firo\/ai\/(.*?)/,
+          replacement: path.resolve(__dirname, "../../packages/ai/src/$1"),
+        },
+        {
           find: /^@firo\/ui$/,
           replacement: path.resolve(
             __dirname,
@@ -198,7 +216,8 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-      sourcemap: true,
+      sourcemap: !leanBuild,
+      reportCompressedSize: !leanBuild,
       // don't auto-inline small assets (i.e. fonts hosted on CDN)
       assetsInlineLimit: 0,
     },
@@ -208,28 +227,32 @@ export default defineConfig(({ mode }) => {
       // nothing to index. Reintroduce a sitemap only once a domain exists.
       woff2BrowserPlugin(),
       react(),
-      checker({
-        typescript: true,
-        eslint:
-          envVars.VITE_APP_ENABLE_ESLINT === "false"
-            ? undefined
-            : {
-                // `--ignore-path` is required, not optional. ESLint 7 looks for
-                // `.eslintignore` in the *current working directory*, and this
-                // command runs from `apps/web/`, where there is none. Without
-                // the explicit path it lints `apps/web/build/` — the output
-                // the build just wrote — and fails with ENOENT when the asset
-                // hashes change between glob and read. That made
-                // `yarn build:app` fail intermittently, for a reason that had
-                // nothing to do with the source.
-                lintCommand:
-                  'eslint --ignore-path ../../.eslintignore "./**/*.{js,ts,tsx}"',
+      ...(leanBuild
+        ? []
+        : [
+            checker({
+              typescript: true,
+              eslint:
+                envVars.VITE_APP_ENABLE_ESLINT === "false"
+                  ? undefined
+                  : {
+                      // `--ignore-path` is required, not optional. ESLint 7 looks for
+                      // `.eslintignore` in the *current working directory*, and this
+                      // command runs from `apps/web/`, where there is none. Without
+                      // the explicit path it lints `apps/web/build/` — the output
+                      // the build just wrote — and fails with ENOENT when the asset
+                      // hashes change between glob and read. That made
+                      // `yarn build:app` fail intermittently, for a reason that had
+                      // nothing to do with the source.
+                      lintCommand:
+                        'eslint --ignore-path ../../.eslintignore "./**/*.{js,ts,tsx}"',
+                    },
+              overlay: {
+                initialIsOpen: envVars.VITE_APP_COLLAPSE_OVERLAY === "false",
+                badgeStyle: "margin-bottom: 4rem; margin-left: 1rem",
               },
-        overlay: {
-          initialIsOpen: envVars.VITE_APP_COLLAPSE_OVERLAY === "false",
-          badgeStyle: "margin-bottom: 4rem; margin-left: 1rem",
-        },
-      }),
+            }),
+          ]),
       svgrPlugin(),
       ViteEjsPlugin(),
       VitePWA({

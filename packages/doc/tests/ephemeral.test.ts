@@ -72,6 +72,19 @@ const RUNNING_TIMER = {
   remainingMs: 5 * 60 * 1000,
 } as const;
 
+const RUNNING_ROUND = {
+  settings: {
+    votesPerPerson: 3,
+    minutes: 2,
+    oneVotePerObject: false,
+    showResults: true,
+    eligibleTypes: null,
+  },
+  startsAt: 1000,
+  endsAt: 121000,
+  endedEarly: false,
+} as const;
+
 beforeEach(() => {
   doc = openBoardMemory();
 });
@@ -253,6 +266,12 @@ describe("a five-second drag produces zero document updates", () => {
         index: 1,
       },
     });
+    // ADR-0039's three session rows: claim, live round, and published ballot.
+    doc.setEphemeral({ session: { leader: 42 } });
+    doc.setEphemeral({ voting: RUNNING_ROUND });
+    doc.setEphemeral({
+      ballot: { sessionId: "round-1000", key: "ballot-xyz" },
+    });
     expect(doc.durableUpdates).toBe(before);
 
     expect(doc.getEphemeral()).toEqual({
@@ -270,7 +289,57 @@ describe("a five-second drag produces zero document updates", () => {
         slideIds: ["frame-1", "frame-2"],
         index: 1,
       },
+      session: { leader: 42 },
+      voting: RUNNING_ROUND,
+      ballot: { sessionId: "round-1000", key: "ballot-xyz" },
     });
+  });
+
+  test("a fresh client holds no session, round, or ballot", () => {
+    // ADR-0039: the live session is awareness-only, so the empty state is
+    // "no session" three times over. A required null here is what makes an
+    // absent field from an older client read as "no session" rather than as
+    // a key every consumer must defend against.
+    expect(EMPTY_EPHEMERAL_STATE.session).toBeNull();
+    expect(EMPTY_EPHEMERAL_STATE.voting).toBeNull();
+    expect(EMPTY_EPHEMERAL_STATE.ballot).toBeNull();
+  });
+
+  test("session, voting, and ballot merge like every other patch", () => {
+    const round = {
+      settings: {
+        votesPerPerson: 3,
+        minutes: 2,
+        oneVotePerObject: false,
+        showResults: true,
+        eligibleTypes: null,
+      },
+      startsAt: 1000,
+      endsAt: 121000,
+      endedEarly: false,
+    };
+    const withSession = applyEphemeralPatch(EMPTY_EPHEMERAL_STATE, {
+      session: { leader: 42 },
+      voting: round,
+      ballot: { sessionId: "round-1000", key: "ballot-xyz" },
+    });
+    expect(withSession.session).toEqual({ leader: 42 });
+    expect(withSession.voting).toEqual(round);
+    expect(withSession.ballot).toEqual({
+      sessionId: "round-1000",
+      key: "ballot-xyz",
+    });
+
+    // And a null clears, for the same reason `timer: null` clears the clock.
+    const cleared = applyEphemeralPatch(withSession, {
+      session: null,
+      voting: null,
+      ballot: null,
+    });
+    expect(cleared.session).toBeNull();
+    expect(cleared.voting).toBeNull();
+    expect(cleared.ballot).toBeNull();
+    expect(Object.isFrozen(cleared)).toBe(true);
   });
 
   test("a fresh client starts revealed, with no timer", () => {

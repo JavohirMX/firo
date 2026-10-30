@@ -206,6 +206,27 @@
     bottom: 1rem;
     z-index: 10;
     pointer-events: var(--ui-pointerEvents);
+    // Keep the strip clickable when the inspector opens: see below.
+    transition: right var(--firo-motion-base, 180ms)
+      var(--firo-motion-ease, ease);
+  }
+
+  /*
+   * Miro parity matrix row 16: the side panel PUSHES the bottom-right strip
+   * rather than overlapping it. Without the push, an open inspector (right
+   * dock, 244px) covers the navigation cluster entirely - with a selection
+   * the zoom menu became unreachable by pointer. The inspector renders an
+   * empty container when closed, so the :has() matches only a live panel.
+   */
+  &:has(.firo-inspector-container .firo-inspector) .firo-navigation-container {
+    right: calc(1rem + 244px + 0.75rem);
+  }
+
+  @media (max-width: 1024px) {
+    &:has(.firo-inspector-container .firo-inspector)
+      .firo-navigation-container {
+      right: calc(1rem + 200px + 0.75rem);
+    }
   }
 
   .firo-board-menu-container {

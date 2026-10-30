@@ -57,6 +57,7 @@ export const RAIL_TOOL_DEFAULTS: readonly RailToolType[] = [
   "shapes",
   "pen",
   "frame",
+  "media",
   "comment",
   "docblock",
 ];

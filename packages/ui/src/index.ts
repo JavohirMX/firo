@@ -27,6 +27,8 @@ export * from "./components/BoardMenu";
 export * from "./components/CollabBar";
 export * from "./components/Inspector";
 export * from "./components/SelectionToolbar";
+export * from "./components/EmbedDialog";
+export * from "./components/EmojiPanel";
 export * from "./components/BoardHome";
 export * from "./components/ActivityFeed";
 export * from "./components/AccessibilityTree";

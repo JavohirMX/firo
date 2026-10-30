@@ -1,4 +1,7 @@
 {
+  "accessibility": {
+    "skipToFirstObject": "Skip to first object on the board"
+  },
   "labels": {
     "signUp": "Sign up",
     "signIn": "Sign in",
@@ -25,6 +28,7 @@
     "bringToFront": "Bring to front",
     "sendBackward": "Send backward",
     "delete": "Delete",
+    "clearContent": "Clear content",
     "copyStyles": "Copy styles",
     "pasteStyles": "Paste styles",
     "stroke": "Stroke",
@@ -116,6 +120,10 @@
     "collaborators": "Collaborators",
     "you": "You",
     "toggleGrid": "Toggle grid",
+    "addTextAtAnchor": "Add text",
+    "addStickyNoteAtAnchor": "Add sticky note",
+    "addCommentAtAnchor": "Add comment",
+    "toggleSelectionDimensions": "Object dimensions",
     "addToLibrary": "Add to library",
     "removeFromLibrary": "Remove from library",
     "libraryLoadingMessage": "Loading library…",
@@ -190,6 +198,7 @@
     "copyElementLink": "Copy link to object",
     "linkToElement": "Link to object",
     "wrapSelectionInFrame": "Wrap selection in frame",
+    "saveSelectionAsTemplate": "Save as template…",
     "tab": "Tab",
     "shapeSwitch": "Switch shape",
     "stickyNoteSize": "Sticky note size",
@@ -206,7 +215,14 @@
     "showHints": "Show hints",
     "inputDevice": "Input",
     "inputDeviceTrackpad": "Trackpad",
-    "inputDeviceMouse": "Mouse"
+    "inputDeviceMouse": "Mouse",
+    "arrange": "Arrange",
+    "info": "Info",
+    "created": "Created",
+    "lastModified": "Last modified",
+    "wordCount": "Word count",
+    "openContextMenu": "Open context menu",
+    "back": "Back"
   },
   "elementLink": {
     "title": "Link to object",
@@ -613,9 +629,9 @@
   },
   "welcomeScreen": {
     "app": {
-      "center_heading": "Your drawings are saved in your browser's storage.",
-      "center_heading_line2": "Browser storage can be cleared unexpectedly.",
-      "center_heading_line3": "Save your work to a file regularly to avoid losing it.",
+      "center_heading": "A blank board, ready when you are.",
+      "center_heading_line2": "Pick a tool to start, or open a saved file.",
+      "center_heading_line3": "Press ? for shortcuts and help.",
       "center_heading_plus": "Did you want to go to the Excalidraw+ instead?",
       "menuHint": "Export, preferences, languages, ..."
     },

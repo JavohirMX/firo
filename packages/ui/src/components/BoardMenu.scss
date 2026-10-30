@@ -8,15 +8,15 @@
   box-shadow: var(--firo-elevation-panel);
   border: 1px solid var(--firo-color-border);
   user-select: none;
-  height: 40px;
+  height: var(--firo-bar-height);
   box-sizing: border-box;
 
   &__button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: var(--firo-control-size);
+    height: var(--firo-control-size);
     padding: 0;
     border: none;
     background: transparent;
@@ -67,6 +67,32 @@
         outline: 2px solid var(--firo-color-focus-ring);
         outline-offset: 1px;
       }
+    }
+  }
+
+  /*
+   * The title as an inline rename field. It keeps the title's own typography
+   * and width cap so the bar does not shift when the swap happens; the only
+   * new affordance is the editing ring.
+   */
+  &__title-input {
+    font-family: var(--firo-font-ui);
+    font-size: var(--firo-font-size-md);
+    font-weight: var(--firo-font-weight-semibold);
+    color: var(--firo-color-text);
+    background-color: var(--firo-color-surface);
+    border: 1px solid var(--firo-color-border);
+    border-radius: var(--firo-radius-sm);
+    padding: 0 var(--firo-space-xs);
+    margin: 0;
+    max-width: 240px;
+    min-width: 8ch;
+    height: 28px;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: 2px solid var(--firo-color-focus-ring);
+      outline-offset: 1px;
     }
   }
 }

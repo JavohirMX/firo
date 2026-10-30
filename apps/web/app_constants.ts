@@ -45,6 +45,9 @@ export const STORAGE_KEYS = {
   // rejected `localStorage` for *board payloads* on size and sync cost; a few
   // dozen tool ids are neither large nor on a hot path).
   LOCAL_STORAGE_RAIL_LAYOUT: "firo-rail-layout",
+  // The board home's view mode and sort order: the same kind of per-user chrome
+  // preference as the rail layout above, and the same reasoning applies.
+  LOCAL_STORAGE_HOME_VIEW: "firo-home-view",
   // Reduced motion, per session. Deliberately *session* storage, not local:
   // trd/09 asks for a setting that does not follow the user between sessions
   // the way an OS preference would.

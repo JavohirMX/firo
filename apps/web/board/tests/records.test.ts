@@ -521,3 +521,86 @@ describe("a rich-text column round-trips through the same path", () => {
     expect(records.length).toBe(1);
   });
 });
+
+describe("mind-map reparent, through a real document", () => {
+  /**
+   * The mind map's drag writes a reparent intent that the projection turns
+   * into a field mutation on the relation column. This pins the write path
+   * that view relies on: one gesture is one commit is one undo step, and the
+   * undo restores the previous parent exactly.
+   */
+  const ideasCollection: Collection = {
+    id: "col-ideas",
+    boardId: "b-1",
+    name: "Ideas",
+    order: asFractionalIndex("a0"),
+    version: 1,
+    columns: [
+      { id: "c-title", key: "title", name: "Title", type: "text" },
+      { id: "c-parent", key: "parent", name: "Parent", type: "relation" },
+    ],
+  };
+
+  const idea = (
+    id: string,
+    title: string,
+    parent: string | null,
+    order: string,
+  ): FiroRecord => ({
+    id,
+    collectionId: "col-ideas",
+    values: {
+      title: { type: "text", value: title },
+      parent: { type: "relation", value: parent },
+    },
+    created: 0,
+    updated: 0,
+    order: asFractionalIndex(order),
+    archived: false,
+  });
+
+  const ideasBoard = () => {
+    const doc = new FiroDoc(new Y.Doc());
+    doc.commit([
+      { kind: "createCollection", collection: ideasCollection },
+      { kind: "createRecord", record: idea("root", "Root", null, "a0") },
+      { kind: "createRecord", record: idea("c1", "Child", "root", "a1") },
+      { kind: "createRecord", record: idea("g1", "Grandchild", "c1", "a2") },
+    ]);
+    return doc;
+  };
+
+  const parentOf = (doc: FiroDoc, recordId: string) =>
+    recordsIn(doc, "col-ideas").find((r) => r.id === recordId)?.values.parent
+      .value;
+
+  it("a reparent is one undo step and restores the prior parent", () => {
+    const doc = ideasBoard();
+    const undo = doc.createUndoManager();
+
+    const mutation = projectionFor("mindmap").interpret(
+      ideasCollection,
+      recordsIn(doc, "col-ideas"),
+      { kind: "reparent", recordId: "g1", newParentId: "root" },
+    );
+    expect(mutation).not.toBeNull();
+    applyRecordMutation(doc, "col-ideas", mutation!);
+
+    expect(parentOf(doc, "g1")).toBe("root");
+
+    undo.undo();
+
+    expect(parentOf(doc, "g1")).toBe("c1");
+  });
+
+  it("an invalid reparent produces no mutation, so there is nothing to undo", () => {
+    const doc = ideasBoard();
+    // A record cannot become its own descendant's child.
+    const mutation = projectionFor("mindmap").interpret(
+      ideasCollection,
+      recordsIn(doc, "col-ideas"),
+      { kind: "reparent", recordId: "root", newParentId: "g1" },
+    );
+    expect(mutation).toBeNull();
+  });
+});

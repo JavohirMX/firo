@@ -1,6 +1,7 @@
 import React from "react";
 
 import { useExcalidrawAPI, useExcalidrawStateValue } from "@firo/editor";
+import { useI18n } from "@firo/editor/i18n";
 import { AccessibilityTree } from "@firo/ui";
 
 import type { AccessibilityTreeItem } from "@firo/ui";
@@ -26,6 +27,7 @@ export const AccessibilityLayer: React.FC<{
   boardLabel?: string;
   liveMessage?: string;
 }> = ({ items, boardLabel, liveMessage }) => {
+  const { t } = useI18n();
   const excalidrawAPI = useExcalidrawAPI();
   const selectedElementIds =
     useExcalidrawStateValue((state) => state.selectedElementIds) ?? {};
@@ -65,6 +67,7 @@ export const AccessibilityLayer: React.FC<{
   return (
     <AccessibilityTree
       items={items}
+      skipLinkLabel={t("accessibility.skipToFirstObject")}
       boardLabel={boardLabel}
       liveMessage={liveMessage}
       selectedId={selectedId}

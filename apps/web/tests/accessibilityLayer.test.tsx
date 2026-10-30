@@ -14,6 +14,15 @@ const mockState: {
   editingTextElement: null,
 };
 
+vi.mock("@firo/editor/i18n", () => ({
+  useI18n: () => ({
+    t: (key: string) =>
+      key === "accessibility.skipToFirstObject"
+        ? "Skip to first object on the board"
+        : key,
+  }),
+}));
+
 vi.mock("@firo/editor", () => ({
   useExcalidrawAPI: () => ({ updateScene }),
   useExcalidrawStateValue: (selector: (state: unknown) => unknown) =>
@@ -38,7 +47,8 @@ describe("AccessibilityLayer", () => {
     expect(
       screen.getByRole("application", { name: "Sprint planning" }),
     ).toBeDefined();
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    // The two board objects plus the skip link that leads to them.
+    expect(screen.getAllByRole("button")).toHaveLength(3);
   });
 
   it("marks the editor's current selection as pressed", () => {
@@ -79,7 +89,9 @@ describe("AccessibilityLayer", () => {
   it("clears the canvas selection on Escape", () => {
     render(<AccessibilityLayer items={items} />);
 
-    fireEvent.keyDown(screen.getAllByRole("button")[0], { key: "Escape" });
+    fireEvent.keyDown(screen.getByRole("button", { name: /Sticky note/ }), {
+      key: "Escape",
+    });
 
     expect(updateScene).toHaveBeenCalledWith({
       appState: { selectedElementIds: {} },
@@ -97,5 +109,31 @@ describe("AccessibilityLayer", () => {
     const status = screen.getByRole("status");
     expect(status.getAttribute("aria-live")).toBe("polite");
     expect(status.textContent).toBe("Could not save: storage is full");
+  });
+
+  describe("skip link", () => {
+    it("renders the localized skip link and selects through the editor", () => {
+      render(<AccessibilityLayer items={items} boardLabel="Board" />);
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Skip to first object on the board",
+        }),
+      );
+
+      expect(updateScene).toHaveBeenCalledWith({
+        appState: { selectedElementIds: { "note-1": true } },
+      });
+    });
+
+    it("renders no skip link when the board is empty", () => {
+      render(<AccessibilityLayer items={[]} boardLabel="Board" />);
+
+      expect(
+        screen.queryByRole("button", {
+          name: "Skip to first object on the board",
+        }),
+      ).toBeNull();
+    });
   });
 });

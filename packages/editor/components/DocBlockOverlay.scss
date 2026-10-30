@@ -34,7 +34,10 @@
 
     .DocBlockOverlay-title {
       font-weight: 600;
-      color: var(--color-on-surface, #1e1e1e);
+      /* Inherit the container's inline colour: the doc keeps its own surface
+         (default white) even inside dark chrome, so the title must follow the
+         record's text colour, not the theme's on-surface token. */
+      color: inherit;
       margin: 0;
       padding: 0;
       outline: none;
@@ -123,4 +126,25 @@
       text-decoration: underline;
     }
   }
+}
+
+.DocBlockOverlay-format {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 0 6px;
+  font-size: 14px;
+}
+
+.DocBlockOverlay-formatButton {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
 }

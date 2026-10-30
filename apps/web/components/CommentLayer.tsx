@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { CheckIcon, CommentIcon, TrashIcon } from "@firo/ui";
 
@@ -33,6 +39,110 @@ interface CommentLayerProps {
 }
 
 /** The canvas position a thread's pin should sit at, or null if its element is gone. */
+/**
+ * Keep a popover on screen. It renders 306px wide (280px content plus padding
+ * and border) and is offset 12px from its anchor, with an 8px edge margin.
+ */
+const clampPopoverLeft = (left: number) =>
+  Math.max(
+    8,
+    Math.min(
+      left,
+      (typeof window === "undefined" ? 1024 : window.innerWidth) - 326,
+    ),
+  );
+
+const POPOVER_MARGIN = 8;
+const POPOVER_ANCHOR_GAP = 12;
+
+/**
+ * The chrome a floating popover must not slide under: the inspector dock on
+ * the right and the navigation toolbar at the bottom. Read live, because
+ * both come and go (the inspector opens with a selection).
+ */
+const chromeLimits = () => {
+  let right = window.innerWidth - POPOVER_MARGIN;
+  let bottom = window.innerHeight - POPOVER_MARGIN;
+  const inspector = document.querySelector<HTMLElement>(".firo-inspector");
+  if (inspector) {
+    const rect = inspector.getBoundingClientRect();
+    if (rect.width > 0) {
+      right = Math.min(right, rect.left - POPOVER_MARGIN);
+    }
+  }
+  const navToolbar = document.querySelector<HTMLElement>(".firo-nav-toolbar");
+  if (navToolbar) {
+    const rect = navToolbar.getBoundingClientRect();
+    if (rect.height > 0) {
+      bottom = Math.min(bottom, rect.top - POPOVER_MARGIN);
+    }
+  }
+  return { right, bottom };
+};
+
+/**
+ * A floating comment popover that keeps clear of the chrome: clamped left of
+ * the inspector dock and above the navigation toolbar, flipped over its
+ * anchor when it would not fit below. The unmeasured first frame renders at
+ * the anchor (with the CSS gap), the measured frame applies the placement.
+ */
+const AvoidingPopover: React.FC<
+  React.HTMLAttributes<HTMLDivElement> & {
+    anchorLeft: number;
+    anchorTop: number;
+  }
+> = ({ anchorLeft, anchorTop, style, children, ...rest }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [placement, setPlacement] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) {
+      setPlacement(null);
+      return;
+    }
+    const rect = node.getBoundingClientRect();
+    const { right, bottom } = chromeLimits();
+    let left = rect.left;
+    let top = rect.top;
+    if (left + rect.width > right) {
+      left = right - rect.width;
+    }
+    if (left < POPOVER_MARGIN) {
+      left = POPOVER_MARGIN;
+    }
+    if (top + rect.height > bottom) {
+      const flipped = anchorTop - POPOVER_ANCHOR_GAP - rect.height;
+      top = flipped >= POPOVER_MARGIN ? flipped : bottom - rect.height;
+    }
+    if (top < POPOVER_MARGIN) {
+      top = POPOVER_MARGIN;
+    }
+    setPlacement({ left, top });
+    // remeasure when the anchor moves, not on our own placement update
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Math.round(anchorLeft), Math.round(anchorTop)]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        ...style,
+        left: placement ? placement.left : clampPopoverLeft(anchorLeft),
+        top: placement ? placement.top : anchorTop,
+        // the CSS anchor gap is folded into the measured placement
+        transform: placement ? "none" : undefined,
+      }}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+};
+
 const pinPosition = (
   thread: CommentThread,
   elements: readonly FiroElement[],
@@ -263,9 +373,10 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
       })}
 
       {composerTarget && composerPosition && (
-        <div
+        <AvoidingPopover
+          anchorLeft={composerPosition.left}
+          anchorTop={composerPosition.top}
           className="firo-comment-popover"
-          style={{ left: composerPosition.left, top: composerPosition.top }}
           role="dialog"
           aria-label="New comment"
           data-testid="comment-composer"
@@ -299,7 +410,7 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
               Comment
             </button>
           </div>
-        </div>
+        </AvoidingPopover>
       )}
 
       {openThreadId && (
@@ -351,9 +462,10 @@ const ThreadPopover: React.FC<ThreadPopoverProps> = ({
   };
 
   return (
-    <div
+    <AvoidingPopover
+      anchorLeft={position.left}
+      anchorTop={position.top}
       className="firo-comment-popover firo-comment-thread"
-      style={{ left: position.left, top: position.top }}
       role="dialog"
       aria-label="Comment thread"
       data-testid={`comment-thread-${thread.id}`}
@@ -444,7 +556,7 @@ const ThreadPopover: React.FC<ThreadPopoverProps> = ({
           <TrashIcon size={16} />
         </button>
       </div>
-    </div>
+    </AvoidingPopover>
   );
 };
 

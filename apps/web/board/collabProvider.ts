@@ -111,7 +111,9 @@ export async function resolveShareToken(
   requiresPassword?: boolean;
 } | null> {
   try {
-    const res = await fetch(`${apiBase}/s/${encodeURIComponent(token)}`);
+    const res = await fetch(
+      `${apiBase}/api/shares/${encodeURIComponent(token)}`,
+    );
     if (!res.ok) {
       return null;
     }
@@ -362,6 +364,12 @@ export class CollabProvider {
   }
 
   public setLocalTool(tool: string): void {
+    // onChange runs after every editor render, including awareness renders.
+    // Re-announcing an unchanged tool would notify collaborators and render
+    // the editor again, creating a synchronous feedback loop.
+    if (this.awareness.getLocalState()?.user?.tool === tool) {
+      return;
+    }
     this.setLocalUser({ tool });
   }
 

@@ -1,4 +1,4 @@
-import { isDarwin } from "@firo/common";
+import { isDarwin, KEYS } from "@firo/common";
 
 import type { SubtypeOf } from "@firo/common/utility-types";
 
@@ -36,6 +36,10 @@ export type ShortcutName =
       | "viewMode"
       | "flipHorizontal"
       | "flipVertical"
+      | "alignTop"
+      | "alignBottom"
+      | "alignLeft"
+      | "alignRight"
       | "hyperlink"
       | "toggleElementLock"
       | "resetZoom"
@@ -74,12 +78,19 @@ export type ShortcutName =
       | "togglePresentation"
       | "nextSlide"
       | "previousSlide"
+      | "setupFacilitatorTimer"
+      | "bulkCreateStickyNotes"
     >
   | "saveScene"
   | "imageExport"
   | "commandPalette"
   | "searchMenu"
-  | "toolLock";
+  | "toolLock"
+  /*
+   * Not a registered action: the eye dropper binds inline in App's keydown
+   * (see `eyeDropperKeys.ts`, whose predicates are this entry's other view).
+   */
+  | "eyeDropper";
 
 const shortcutMap: Record<ShortcutName, string[]> = {
   toggleTheme: [getShortcutKey("Shift+Alt+D")],
@@ -114,10 +125,19 @@ const shortcutMap: Record<ShortcutName, string[]> = {
       ? getShortcutKey("CtrlOrCmd+Alt+]")
       : getShortcutKey("CtrlOrCmd+Shift+]"),
   ],
+  alignTop: [getShortcutKey("CtrlOrCmd+Shift+Up")],
+  alignBottom: [getShortcutKey("CtrlOrCmd+Shift+Down")],
+  alignLeft: [getShortcutKey("CtrlOrCmd+Shift+Left")],
+  alignRight: [getShortcutKey("CtrlOrCmd+Shift+Right")],
   copyAsPng: [getShortcutKey("Shift+Alt+C")],
   group: [getShortcutKey("CtrlOrCmd+G")],
   ungroup: [getShortcutKey("CtrlOrCmd+Shift+G")],
-  gridMode: [getShortcutKey("CtrlOrCmd+'")],
+  /*
+   * Plain \`G\`, matching \`actionToggleGridMode\`'s keyTest (Miro parity:
+   * Firo's old \`Ctrl+'\` is not a Miro chord). The map and the keyTest are
+   * two views of one entry; this is the printable view.
+   */
+  gridMode: [getShortcutKey("G")],
   zenMode: [getShortcutKey("Alt+Z")],
   objectsSnapMode: [getShortcutKey("Alt+S")],
   stats: [getShortcutKey("Alt+/")],
@@ -137,6 +157,7 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   saveToActiveFile: [getShortcutKey("CtrlOrCmd+S")],
   toggleShortcuts: [getShortcutKey("?")],
   searchMenu: [getShortcutKey("CtrlOrCmd+F")],
+  eyeDropper: [KEYS.I, getShortcutKey("Shift+S"), getShortcutKey("Shift+G")],
   wrapSelectionInFrame: [],
   toolLock: [getShortcutKey("Q")],
   /*
@@ -169,6 +190,13 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   togglePresentation: [getShortcutKey("Alt+Return")],
   nextSlide: [getShortcutKey("Alt+Right")],
   previousSlide: [getShortcutKey("Alt+Left")],
+  /*
+   * `Alt+Shift+M` sits next to `Alt+M` the way `Alt+Shift+T` sits next to
+   * `Alt+T`: the shifted chord is the heavier, rarer operation on the same
+   * letter. `Alt+B` is B for bulk; nothing in the region claims it.
+   */
+  setupFacilitatorTimer: [getShortcutKey("Alt+Shift+M")],
+  bulkCreateStickyNotes: [getShortcutKey("Alt+B")],
 };
 
 export const getShortcutFromShortcutName = (name: ShortcutName, idx = 0) => {

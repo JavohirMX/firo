@@ -1281,6 +1281,63 @@ const renderElementsBoxHighlight = (
     );
 };
 
+/*
+ * The selection's dimensions as a canvas overlay (Miro parity row 11: Miro's
+ * View menu toggles object dimensions on the board). One label for the whole
+ * selection, centred under its bounds, sized against the zoom so it stays
+ * the same screen size at every scale. Hidden while text is being edited or
+ * an image is cropped, like the other selection chrome.
+ */
+const renderSelectionDimensions = (
+  context: CanvasRenderingContext2D,
+  appState: InteractiveCanvasAppState,
+  selectedElements: readonly NonDeletedExcalidrawElement[],
+) => {
+  if (
+    !appState.showSelectionDimensions ||
+    selectedElements.length === 0 ||
+    appState.editingTextElement ||
+    appState.isCropping
+  ) {
+    return;
+  }
+  const [x1, y1, x2, y2] = getCommonBounds(selectedElements);
+  const zoom = appState.zoom.value;
+  const fontSize = 12 / zoom;
+  const paddingX = 8 / zoom;
+  const paddingY = 4 / zoom;
+  const gap = 8 / zoom;
+  const radius = 4 / zoom;
+  const label = `${Math.round(x2 - x1)} \u00d7 ${Math.round(y2 - y1)}`;
+
+  context.save();
+  context.translate(appState.scrollX, appState.scrollY);
+  context.font = `${fontSize}px "Plus Jakarta Sans", "Nunito", sans-serif`;
+  const labelWidth = context.measureText(label).width + paddingX * 2;
+  const labelHeight = fontSize + paddingY * 2;
+  const labelX = x1 + (x2 - x1) / 2 - labelWidth / 2;
+  const labelY = y2 + gap;
+
+  context.fillStyle =
+    appState.theme === THEME.LIGHT
+      ? "rgba(255, 255, 255, 0.95)"
+      : "rgba(35, 38, 46, 0.95)";
+  context.strokeStyle = getThemedColor("rgb(0,118,255)", appState.theme);
+  context.lineWidth = 1 / zoom;
+  roundRect(context, labelX, labelY, labelWidth, labelHeight, radius);
+  context.fill();
+  context.stroke();
+  context.fillStyle = appState.theme === THEME.LIGHT ? "#1e1e1e" : "#e0e0e0";
+  context.textBaseline = "middle";
+  context.textAlign = "center";
+  context.fillText(
+    label,
+    labelX + labelWidth / 2,
+    labelY + labelHeight / 2 + 0.5 / zoom,
+  );
+  context.restore();
+};
+
 const renderLinearPointHandles = (
   context: CanvasRenderingContext2D,
   appState: InteractiveCanvasAppState,
@@ -1920,6 +1977,8 @@ const _renderInteractiveScene = ({
       console.error(error);
     }
   }
+
+  renderSelectionDimensions(context, appState, selectedElements);
 
   const activeTextElement = getActiveTextElement(selectedElements, appState);
 

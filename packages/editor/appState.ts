@@ -41,6 +41,9 @@ export const getDefaultAppState = (): Omit<
     currentItemStrokeColor: DEFAULT_ELEMENT_PROPS.strokeColor,
     currentItemStickynoteStrokeColor: DEFAULT_ELEMENT_PROPS.strokeColor,
     currentItemStickynoteBackgroundColor: DEFAULT_STICKY_NOTE_BG,
+    // The default size a fresh sticky is created at; "m" is the size Firo
+    // has always created, so nothing moves for an existing user.
+    currentItemStickynoteSize: "m",
     currentItemRoundness: isTestEnv() ? "sharp" : "round",
     currentItemArrowType: ARROW_TYPE.round,
     currentItemStrokeStyle: DEFAULT_ELEMENT_PROPS.strokeStyle,
@@ -74,6 +77,7 @@ export const getDefaultAppState = (): Omit<
     gridSize: DEFAULT_GRID_SIZE,
     gridStep: DEFAULT_GRID_STEP,
     gridModeEnabled: false,
+    showSelectionDimensions: false,
     isBindingEnabled: true,
     bindingPreference: "enabled",
     isMidpointSnappingEnabled: true,
@@ -199,6 +203,13 @@ const APP_STATE_STORAGE_CONF = (<
     export: false,
     server: false,
   },
+  // The size preset is a personal preference like the colours above it:
+  // kept on this machine, never written into a file or sent to a peer.
+  currentItemStickynoteSize: {
+    browser: true,
+    export: false,
+    server: false,
+  },
   currentItemStrokeStyle: { browser: true, export: false, server: false },
   currentItemStrokeWidthKey: { browser: true, export: false, server: false },
   currentItemTextAlign: { browser: true, export: false, server: false },
@@ -274,6 +285,7 @@ const APP_STATE_STORAGE_CONF = (<
   viewBackgroundColor: { browser: true, export: true, server: true },
   width: { browser: false, export: false, server: false },
   zenModeEnabled: { browser: true, export: false, server: false },
+  showSelectionDimensions: { browser: true, export: false, server: false },
   zoom: { browser: true, export: false, server: false },
   viewModeEnabled: { browser: false, export: false, server: false },
   showHyperlinkPopup: { browser: false, export: false, server: false },

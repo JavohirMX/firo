@@ -443,6 +443,49 @@ describe("getViewportForZoomWithScrollConstraints", () => {
       (viewport.scrollY - restingViewport.scrollY) * viewport.zoom.value,
     ).toBeCloseTo(50);
   });
+
+  /*
+   * The nav toolbar's preset-stop menu calls this helper with the viewport
+   * centre, the same shape as the built-in zoom actions. A zoom lock floors
+   * downward stops and still lets upward stops through - the menu must not
+   * promise a 50% stop a locked board cannot show.
+   */
+  it("floors a preset-stop request at the locked zoom but allows zooming in", () => {
+    const state = {
+      ...makeState({
+        scrollConstraints: makeLock({
+          x: 0,
+          y: 0,
+          width: 1000,
+          height: 1000,
+          lockZoom: true,
+          zoom: 2,
+        }),
+      }),
+      offsetLeft: 0,
+      offsetTop: 0,
+    } as AppState;
+
+    const stoppedDown = getViewportForZoomWithScrollConstraints(
+      {
+        viewportX: VIEWPORT.width / 2,
+        viewportY: VIEWPORT.height / 2,
+        nextZoom: getNormalizedZoom(0.5),
+      },
+      state,
+    );
+    expect(stoppedDown.zoom.value).toBe(2);
+
+    const stoppedUp = getViewportForZoomWithScrollConstraints(
+      {
+        viewportX: VIEWPORT.width / 2,
+        viewportY: VIEWPORT.height / 2,
+        nextZoom: getNormalizedZoom(4),
+      },
+      state,
+    );
+    expect(stoppedUp.zoom.value).toBe(4);
+  });
 });
 
 describe("setViewport lock (integration)", () => {

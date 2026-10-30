@@ -141,16 +141,28 @@
 
   &--recommended {
     border-color: var(--firo-color-accent, #5b4bff);
-    background: rgba(91, 75, 255, 0.02);
+    background: color-mix(
+      in srgb,
+      var(--firo-color-accent, #5b4bff) 2%,
+      transparent
+    );
 
     &:hover {
-      background: rgba(91, 75, 255, 0.06);
+      background: color-mix(
+        in srgb,
+        var(--firo-color-accent, #5b4bff) 6%,
+        transparent
+      );
     }
   }
 
   &--danger:hover {
     border-color: var(--firo-color-danger, #d5253c);
-    background: rgba(213, 37, 60, 0.04);
+    background: color-mix(
+      in srgb,
+      var(--firo-color-danger, #d5253c) 4%,
+      transparent
+    );
   }
 }
 
@@ -164,12 +176,20 @@
   flex-shrink: 0;
 
   &--insert {
-    background: rgba(91, 75, 255, 0.1);
+    background: color-mix(
+      in srgb,
+      var(--firo-color-accent, #5b4bff) 10%,
+      transparent
+    );
     color: var(--firo-color-accent, #5b4bff);
   }
 
   &--replace {
-    background: rgba(213, 37, 60, 0.1);
+    background: color-mix(
+      in srgb,
+      var(--firo-color-danger, #d5253c) 10%,
+      transparent
+    );
     color: var(--firo-color-danger, #d5253c);
   }
 
@@ -201,7 +221,7 @@
 .firo-import-option-card__badge {
   font-size: 10px;
   background: var(--firo-color-accent, #5b4bff);
-  color: #ffffff;
+  color: var(--firo-color-on-accent, #ffffff);
   padding: 1px 6px;
   border-radius: var(--firo-radius-pill, 999px);
   font-weight: var(--firo-font-weight-semibold, 600);
@@ -236,6 +256,6 @@
 
   &:hover {
     color: var(--firo-color-text, #111318);
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--firo-color-button-secondary, rgba(0, 0, 0, 0.04));
   }
 }

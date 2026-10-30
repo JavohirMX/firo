@@ -2,7 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: dev
+    branches:
+      - dev
+      - integration/firo-combined
 
 jobs:
   test:

@@ -47,16 +47,52 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   items,
   children,
 }) => {
-  if (!items.length && !children) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [left, setLeft] = React.useState(x);
+  const hasContent = items.length > 0 || Boolean(children);
+
+  // The anchor is the selection's top-centre, so a selection near the right or
+  // left edge pushed half the toolbar off screen and clipped its last buttons.
+  // Measure it against the overlay and slide it back inside. The anchor itself
+  // is untouched, so it still follows pan and zoom.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  React.useLayoutEffect(() => {
+    const node = ref.current;
+    const parent = node?.offsetParent as HTMLElement | null;
+    if (!node || !parent || !parent.clientWidth) {
+      setLeft(x);
+      return;
+    }
+    const margin = 8;
+    const half = node.offsetWidth / 2;
+    const min = half + margin;
+    // Stay clear of the docked Properties panel when it is open, so the
+    // toolbar never sits on top of its title and first controls.
+    const parentLeft = parent.getBoundingClientRect().left;
+    const inspector = document.querySelector(".firo-inspector");
+    const inspectorLeft = inspector
+      ? inspector.getBoundingClientRect().left - parentLeft
+      : parent.clientWidth;
+    const right = Math.min(parent.clientWidth, inspectorLeft);
+    const max = right - half - margin;
+    setLeft(
+      max < min ? parent.clientWidth / 2 : Math.min(Math.max(x, min), max),
+    );
+    // Runs after every render on purpose: the panel opening or closing changes
+    // the bound without changing any prop here. setLeft bails on equal values.
+  });
+
+  if (!hasContent) {
     return null;
   }
 
   return (
     <div
+      ref={ref}
       className="firo-selection-toolbar"
       role="toolbar"
       aria-label="Selection actions"
-      style={{ left: `${x}px`, top: `${y}px` }}
+      style={{ left: `${left}px`, top: `${y}px` }}
     >
       {items.map((item) => (
         <div className="firo-selection-toolbar__slot" key={item.id}>

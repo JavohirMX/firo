@@ -29,6 +29,7 @@
  */
 
 import { generateKeyBetween } from "@firo/fractional-indexing";
+import { getStickyNoteLayout } from "@firo/element";
 
 import type {
   BoundElement,
@@ -591,9 +592,12 @@ const customDataFor = (element: FiroElement): Record<string, unknown> => {
  * Project a document note into the editor elements that draw it.
  *
  * Returns two — the note and its label — because that is what the editor draws.
- * The label's box is the note's box; Excalidraw reflows bound labels on render
- * via `redrawTextBoundingBox`, and duplicating that layout here would be a second
- * implementation to keep in step with the first.
+ * The pair is laid out here, with the same `getStickyNoteLayout` the editor's
+ * own fit uses: the document holds the note's pre-fit ceiling as its fontSize,
+ * and the post-mount reflows that would otherwise re-derive the geometry race
+ * the font-loaded event — a race the label loses on most warm-cache loads,
+ * rendering oversized text that overflows the note. A projected note is born
+ * fitted; the editor's reflows only re-derive the same geometry afterwards.
  *
  * @throws on a type the editor cannot draw. Silently dropping an element is how
  * a board loses content without anyone noticing.
@@ -857,6 +861,20 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
     lineHeight: 1.25 as ExcalidrawTextElement["lineHeight"],
     autoResize: true,
   };
+
+  const layout = getStickyNoteLayout(sticky, label);
+  Object.assign(sticky, layout.container);
+  if (layout.text) {
+    /*
+     * Geometry only. `baseFontSize` and `autoFontSize` stay as the document
+     * recorded them (above): they are the user's intent, and overwriting them
+     * with the fit's working values would make every projection differ from
+     * the document it came from — the sync echo would read a change that
+     * never happened.
+     */
+    const { text, fontSize, width, height, x, y } = layout.text;
+    Object.assign(label, { text, fontSize, width, height, x, y });
+  }
 
   return [sticky, label];
 };

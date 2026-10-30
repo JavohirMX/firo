@@ -53,6 +53,8 @@ import type {
 } from "@firo/element";
 import type { GlobalPoint } from "@firo/math";
 
+import type { StickyNoteSizePreset } from "./actions/actionStickyNoteSize";
+
 import type { Action } from "./actions/types";
 import type { Spreadsheet } from "./charts";
 import type { ClipboardData } from "./clipboard";
@@ -234,6 +236,7 @@ export type InteractiveCanvasAppState = Readonly<
     isBindingEnabled: AppState["isBindingEnabled"];
     isMidpointSnappingEnabled: AppState["isMidpointSnappingEnabled"];
     gridModeEnabled: AppState["gridModeEnabled"];
+    showSelectionDimensions: AppState["showSelectionDimensions"];
     suggestedBinding: AppState["suggestedBinding"];
     textToolHover: AppState["textToolHover"];
     isRotating: AppState["isRotating"];
@@ -331,6 +334,13 @@ export interface AppState {
     items: ContextMenuItems;
     top: number;
     left: number;
+    /**
+     * The menu anchor in scene coordinates, resolved when the menu opens:
+     * the canvas lane's creation rows act here (ADR-0033). Kept on the state
+     * because the menu clears `contextMenu` before the row's action runs.
+     */
+    anchorX: number;
+    anchorY: number;
   } | null;
   showWelcomeScreen: boolean;
   isLoading: boolean;
@@ -450,6 +460,7 @@ export interface AppState {
   currentItemStrokeColor: string;
   currentItemStickynoteStrokeColor: string;
   currentItemStickynoteBackgroundColor: string;
+  currentItemStickynoteSize: StickyNoteSizePreset;
   currentItemBackgroundColor: string;
   currentItemFillStyle: ExcalidrawElement["fillStyle"];
   currentItemStrokeWidthKey: StrokeWidthKey;
@@ -521,6 +532,7 @@ export interface AppState {
   gridSize: number;
   gridStep: number;
   gridModeEnabled: boolean;
+  showSelectionDimensions: boolean;
   gridType?: GridType;
   viewModeEnabled: boolean;
 
@@ -840,6 +852,16 @@ export type ElementRenderOffsets = ReadonlyMap<
   NonNullable<ElementRenderOverride["offset"]>
 >;
 
+/** A host-provided entry in the mobile toolbar's "More tools" menu. */
+export type MobileExtraTool = {
+  id: string;
+  label: string;
+  icon?: JSX.Element;
+  selected?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+};
+
 export interface ExcalidrawProps {
   className?: string;
   /**
@@ -852,6 +874,14 @@ export interface ExcalidrawProps {
    * @default document
    */
   ownerDocument?: Document;
+  /**
+   * Suppress the empty-canvas welcome screen even with an empty canvas.
+   * Hosts whose board keeps content outside the canvas (record collections)
+   * set this: the board is not blank, so the "blank board" hint must not
+   * render on top of that content. The hint returns as soon as the board is
+   * genuinely empty again.
+   */
+  suppressWelcomeScreen?: boolean;
   onChange?: (
     elements: readonly OrderedExcalidrawElement[],
     appState: AppState,
@@ -929,6 +959,13 @@ export interface ExcalidrawProps {
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
+  /**
+   * Extra rows for the Help dialog (?), rendered after the editor's own
+   * shortcut sections. The host owns its chords (facilitation, records), so
+   * the host owns their rows — generated, not hardcoded, is the host's
+   * business; this is only the slot.
+   */
+  renderHelpDialogExtra?: () => React.ReactNode;
   renderTopRightUI?: (
     isMobile: boolean,
     appState: UIAppState,
@@ -940,6 +977,11 @@ export interface ExcalidrawProps {
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
+  /**
+   * Host-provided entries for the mobile toolbar's "More tools" menu, for
+   * tools the generic editor does not know about (the host's own rail tools).
+   */
+  mobileExtraTools?: readonly MobileExtraTool[];
   renderNavigationUI?: (
     isMobile: boolean,
     appState: UIAppState,
@@ -1048,6 +1090,23 @@ export interface ExcalidrawProps {
   autoFocus?: boolean;
   generateIdForFile?: (file: File) => string | Promise<string>;
   generateLinkForSelection?: (id: string, type: "element" | "group") => string;
+  /**
+   * Host hook for the object lane's **Save as template…** row: the editor
+   * owns the menu item, the host owns the dialog and the store
+   * (ADR-0038). When unset, the row and its palette entry stay hidden.
+   */
+  onSaveSelectionAsTemplate?: () => void;
+  /**
+   * Host hook for the two lanes' **Add comment** rows (ADR-0033): the editor
+   * owns the menu items and resolves the target — the menu anchor's scene
+   * coordinates for the canvas lane, the single selected element for the
+   * object lane — and the host owns the comment composer. When unset, the
+   * rows stay hidden.
+   */
+  onAddComment?: (target: {
+    elementId?: string;
+    point?: { x: number; y: number };
+  }) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{
@@ -1206,10 +1265,14 @@ export type CanvasActions = Partial<{
   toggleBoardReveal: boolean;
   addVoteToSelection: boolean;
   removeVoteFromSelection: boolean;
+  openVotingPanel: boolean;
+  openFramesPanel: boolean;
   readVoteTally: boolean;
   togglePresentation: boolean;
   nextSlide: boolean;
   previousSlide: boolean;
+  setupFacilitatorTimer: boolean;
+  bulkCreateStickyNotes: boolean;
 }>;
 
 export type UIOptions = Partial<{
@@ -1286,6 +1349,7 @@ export type AppClassProperties = {
   setActiveTool: App["setActiveTool"];
   setOpenDialog: App["setOpenDialog"];
   insertEmbeddableElement: App["insertEmbeddableElement"];
+  insertTextElement: App["insertTextElement"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];
   dismissLinearEditor: App["dismissLinearEditor"];
@@ -1293,6 +1357,8 @@ export type AppClassProperties = {
   drawShape: App["drawShape"];
   arrowText: App["arrowText"];
   textTool: App["textTool"];
+  text: App["text"];
+  miroSticky: App["miroSticky"];
   cursor: App["cursor"];
   bucketFill: App["bucketFill"];
   duplicate: App["duplicate"];
@@ -1322,6 +1388,8 @@ export type AppClassProperties = {
 
   isInteractionEnabled: App["isInteractionEnabled"];
   isNavigationEnabled: App["isNavigationEnabled"];
+
+  openSelectionContextMenu: App["openSelectionContextMenu"];
 };
 
 export type PointerDownState = Readonly<{
@@ -1464,6 +1532,8 @@ export interface ExcalidrawImperativeAPI {
   addFiles: (data: BinaryFileData[]) => void;
   id: string;
   setActiveTool: InstanceType<typeof App>["setActiveTool"];
+  insertEmbeddableElement: InstanceType<typeof App>["insertEmbeddableElement"];
+  insertTextElement: InstanceType<typeof App>["insertTextElement"];
   setCursor: InstanceType<typeof App>["cursor"]["set"];
   resetCursor: InstanceType<typeof App>["cursor"]["reset"];
   toggleSidebar: InstanceType<typeof App>["toggleSidebar"];

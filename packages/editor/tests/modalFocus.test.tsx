@@ -24,6 +24,29 @@ const modal = () =>
  * `openDialog` changing under it — so focus is destroyed along with the DOM
  * node that held it and lands on `<body>`.
  */
+describe("editor dialog render slots", () => {
+  it("passes renderHelpDialogExtra through to the Help dialog", async () => {
+    /*
+     * Regression: the prop reached the editor's types and the Help dialog's
+     * `extraSections` slot, but the Excalidraw entry component never forwarded
+     * it to the App class — a host's section (Firo's facilitation chords)
+     * silently never appeared. This renders the full entry boundary, the way
+     * a host does.
+     */
+    await render(
+      <Excalidraw
+        renderHelpDialogExtra={() => <div>Facilitation extra section</div>}
+      />,
+    );
+
+    act(() => h.app.setState({ openDialog: { name: "help" } }));
+
+    await waitFor(() => {
+      expect(modal()?.textContent).toContain("Facilitation extra section");
+    });
+  });
+});
+
 describe("editor dialog focus", () => {
   it("returns focus to the opener when the dialog is closed by state", async () => {
     await render(<Excalidraw />);

@@ -36,6 +36,7 @@ describe("the rail arrangement", () => {
       "shapes",
       "pen",
       "frame",
+      "media",
       "comment",
       "docblock",
     ]);
@@ -155,6 +156,7 @@ describe("the rail arrangement", () => {
       "comment",
       "docblock",
       "ai",
+      "media",
     ]);
   });
 

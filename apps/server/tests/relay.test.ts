@@ -257,6 +257,44 @@ describe("WebSocket Relay & Permission Gates", () => {
     await client2.close();
   });
 
+  it("drops a disconnected peer's awareness immediately, not after the stale timeout", async () => {
+    // ADR-0039 assumes the relay drops awareness on disconnect: a driver's
+    // session claim must leave the room when the driver does, or nobody
+    // else can start a session for up to the 30s y-protocols timeout.
+    const owner = storage.createUser({
+      id: "u-owner-drop",
+      username: "owner-drop",
+      password_hash: "h",
+      salt: "s",
+      is_admin: 0,
+    });
+    storage.createBoard("board-aware-drop", "Awareness Drop", owner.id);
+    const session = createSession(storage, owner.id, 60_000);
+
+    const client1 = await createClient("/boards/board-aware-drop", {
+      headers: { Cookie: `firo_session=${session.token}` },
+    });
+    const client2 = await createClient("/boards/board-aware-drop", {
+      headers: { Cookie: `firo_session=${session.token}` },
+    });
+
+    client1.awareness.setLocalStateField("session", { leader: 1 });
+    client1.sendAwareness([client1.awareness.clientID]);
+
+    await waitUntil(() =>
+      client2.awareness.getStates().has(client1.awareness.clientID),
+    );
+
+    await client1.close();
+
+    await waitUntil(
+      () => !client2.awareness.getStates().has(client1.awareness.clientID),
+      5_000,
+    );
+
+    await client2.close();
+  });
+
   describe("Commenter permission gate (ADR-0027)", () => {
     it("allows commenter to write comments, but REJECTS writes to elements or collections", async () => {
       const owner = storage.createUser({

@@ -14,6 +14,7 @@ import { exportToPdf } from "@firo/utils/export";
 import type {
   ActivityFeedItem,
   BoardCardData,
+  BoardContentMatchData,
   TemplateCardData,
 } from "@firo/ui";
 
@@ -36,8 +37,12 @@ import {
   setBoardFolder,
   toggleStarBoard,
   trashBoard,
+  emptyTrash,
 } from "./board/library";
+import { groupContentMatches, searchBoardsContent } from "./board/search";
+import { readHomePrefs, writeHomePrefs } from "./board/homePrefs";
 import { BOARD_TEMPLATES, templateById } from "./board/templates";
+import { STORAGE_KEYS } from "./app_constants";
 import { boardUrl } from "./board/routes";
 import {
   downloadBoard,
@@ -90,6 +95,7 @@ const toCard = (meta: BoardMeta, foldersList: BoardFolder[]): BoardCardData => {
     lastOpenedLabel: meta.trashedAt
       ? undefined
       : formatLastOpened(meta.lastOpened),
+    trashedLabel: meta.trashedAt ? formatLastOpened(meta.trashedAt) : undefined,
     color: meta.color,
     thumbnail: meta.thumbnail,
     trashed: Boolean(meta.trashedAt),
@@ -103,15 +109,121 @@ const toCard = (meta: BoardMeta, foldersList: BoardFolder[]): BoardCardData => {
 
 let cachedMiroRtbArchive: MiroRtbArchive | null = null;
 
+/**
+ * The home is chrome, so it follows the chrome's theme. The editor toggles
+ * `theme--dark` on its own container, but the home renders outside it, so it
+ * resolved its tokens against the light set regardless of the stored theme.
+ * This reads the same `firo-theme` key the editor writes (without importing
+ * the editor bundle, which the home deliberately never loads) and mirrors
+ * its "system" resolution. Kept in sync with `useHandleAppTheme`.
+ */
+const useHomeThemeIsDark = (): [boolean, () => void] => {
+  const readIsDark = (): boolean => {
+    const stored = window.localStorage.getItem(
+      STORAGE_KEYS.LOCAL_STORAGE_THEME,
+    );
+    if (stored === "dark") {
+      return true;
+    }
+    if (stored === "system") {
+      return (
+        window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false
+      );
+    }
+    return false;
+  };
+
+  const [isDark, setIsDark] = React.useState<boolean>(readIsDark);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const handleChange = () => setIsDark(readIsDark());
+    mediaQuery?.addEventListener("change", handleChange);
+    window.addEventListener("storage", handleChange);
+    return () => {
+      mediaQuery?.removeEventListener("change", handleChange);
+      window.removeEventListener("storage", handleChange);
+    };
+  }, []);
+
+  const toggle = React.useCallback(() => {
+    const next = !readIsDark();
+    window.localStorage.setItem(
+      STORAGE_KEYS.LOCAL_STORAGE_THEME,
+      next ? "dark" : "light",
+    );
+    setIsDark(next);
+  }, []);
+
+  return [isDark, toggle];
+};
+
 export const BoardHomeScreen: React.FC = () => {
+  const [isDark, toggleTheme] = useHomeThemeIsDark();
   const [boards, setBoards] = React.useState<BoardMeta[] | null>(null);
   const [folders, setFolders] = React.useState<BoardFolder[]>([]);
   const [activities, setActivities] = React.useState<ActivityFeedItem[]>([]);
   const [activeSection, setActiveSection] = React.useState<string>("all");
-  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid");
-  const [sortBy, setSortBy] = React.useState<"lastOpened" | "created" | "name">(
-    "lastOpened",
+  const [viewMode, setViewModeState] = React.useState<"grid" | "list">(
+    () => readHomePrefs().viewMode,
   );
+  const [sortBy, setSortByState] = React.useState<
+    "lastOpened" | "created" | "name"
+  >(() => readHomePrefs().sortBy);
+
+  const setViewMode = React.useCallback((mode: "grid" | "list") => {
+    setViewModeState(mode);
+    writeHomePrefs({ viewMode: mode, sortBy: readHomePrefs().sortBy });
+  }, []);
+  const setSortBy = React.useCallback(
+    (sort: "lastOpened" | "created" | "name") => {
+      setSortByState(sort);
+      writeHomePrefs({ viewMode: readHomePrefs().viewMode, sortBy: sort });
+    },
+    [],
+  );
+
+  // The filter text lives in BoardHome; it is mirrored here so the home's
+  // "Inside boards" section can search board *contents*, not just names. The
+  // scan reads every live board's payload, so it is debounced rather than run
+  // per keystroke, and its result is dropped if a newer query landed first.
+  const [filterQuery, setFilterQuery] = React.useState("");
+  const [contentMatches, setContentMatches] = React.useState<
+    BoardContentMatchData[]
+  >([]);
+  const [contentSearching, setContentSearching] = React.useState(false);
+
+  React.useEffect(() => {
+    const needle = filterQuery.trim();
+    if (!needle || activeSection === "trash" || activeSection === "activity") {
+      setContentMatches([]);
+      setContentSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setContentSearching(true);
+    const timer = window.setTimeout(() => {
+      void searchBoardsContent(needle)
+        .then((matches) => {
+          if (cancelled) {
+            return;
+          }
+          setContentMatches(groupContentMatches(matches));
+          setContentSearching(false);
+        })
+        .catch(() => {
+          if (cancelled) {
+            return;
+          }
+          setContentMatches([]);
+          setContentSearching(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [filterQuery, activeSection, boards]);
 
   const [miroModalArchive, setMiroModalArchive] =
     React.useState<MiroRtbArchive | null>(null);
@@ -408,6 +520,11 @@ export const BoardHomeScreen: React.FC = () => {
     await refresh();
   };
 
+  const handleEmptyTrash = async () => {
+    await emptyTrash();
+    await refresh();
+  };
+
   // Filter boards based on activeSection
   const displayedBoards = React.useMemo(() => {
     if (!boards) {
@@ -432,6 +549,26 @@ export const BoardHomeScreen: React.FC = () => {
     return live.filter((b) => b.folderId === activeSection);
   }, [boards, activeSection]);
 
+  // Boards the grid already shows for the current filter (name or tag match
+  // within the section) must not repeat in "Inside boards": the section's
+  // point is finding boards the grid missed.
+  const visibleContentMatches = React.useMemo(() => {
+    const needle = filterQuery.trim().toLowerCase();
+    if (!needle || contentMatches.length === 0) {
+      return contentMatches;
+    }
+    const visibleIds = new Set(
+      displayedBoards
+        .filter(
+          (board) =>
+            board.name.toLowerCase().includes(needle) ||
+            board.tags.some((tag) => tag.toLowerCase().includes(needle)),
+        )
+        .map((board) => board.id),
+    );
+    return contentMatches.filter((match) => !visibleIds.has(match.boardId));
+  }, [filterQuery, contentMatches, displayedBoards]);
+
   // Storage is asynchronous, and rendering an empty home first would flash "no
   // boards yet" at someone who has boards. Nothing is shown until the answer is.
   if (boards === null) {
@@ -439,7 +576,7 @@ export const BoardHomeScreen: React.FC = () => {
   }
 
   return (
-    <>
+    <div className={isDark ? "theme--dark" : undefined}>
       <BoardHome
         boards={displayedBoards.map((b) => toCard(b, folders))}
         templates={activeSection === "trash" ? [] : templateCards}
@@ -465,7 +602,13 @@ export const BoardHomeScreen: React.FC = () => {
         onChangeViewMode={setViewMode}
         onChangeSortBy={setSortBy}
         onExportBoard={handleExportBoard}
+        onFilterChange={setFilterQuery}
+        contentMatches={visibleContentMatches}
+        contentSearching={contentSearching}
+        onEmptyTrash={handleEmptyTrash}
         activities={activities}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
         onClearActivity={async () => {
           await clearActivity();
           setActivities([]);
@@ -678,6 +821,6 @@ export const BoardHomeScreen: React.FC = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };

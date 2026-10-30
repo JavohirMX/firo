@@ -309,6 +309,9 @@ function coerceColumnValue(col: Column, rawVal: unknown): FieldValue {
         return { type: "link", value: null };
       case "richText":
         return { type: "richText", value: textToProseMirrorDoc("") };
+      // A relation has no text-derived default: unknown parent means root.
+      case "relation":
+        return { type: "relation", value: null };
     }
   }
 
@@ -376,6 +379,10 @@ function coerceColumnValue(col: Column, rawVal: unknown): FieldValue {
         type: "richText",
         value: textToProseMirrorDoc(String(rawVal)),
       };
+
+    // A raw AI value cannot name a parent record id reliably; root it.
+    case "relation":
+      return { type: "relation", value: null };
   }
 }
 

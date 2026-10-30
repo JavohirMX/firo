@@ -69,6 +69,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onExport,
     className,
     ownerDocument = document,
+    suppressWelcomeScreen,
     onChange,
     onThemeChange,
     onIncrement,
@@ -93,6 +94,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     theme,
     name,
     renderCustomStats,
+    renderHelpDialogExtra,
     onPaste,
     detectScroll = true,
     handleKeyboardGlobally = false,
@@ -101,6 +103,8 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     generateIdForFile,
     onLinkOpen,
     generateLinkForSelection,
+    onSaveSelectionAsTemplate,
+    onAddComment,
     onPointerDown,
     onPointerUp,
     onScrollChange,
@@ -118,6 +122,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     imageOptions,
     defaultChromeEnabled,
     renderCreationRailUI,
+    mobileExtraTools,
     renderNavigationUI,
     renderBoardMenuUI,
     renderInspectorUI,
@@ -214,6 +219,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     <EditorJotaiProvider store={editorJotaiStore}>
       <InitializeApp langCode={langCode} theme={theme}>
         <App
+          suppressWelcomeScreen={suppressWelcomeScreen}
           onExport={onExport}
           className={className}
           ownerDocument={ownerDocument}
@@ -241,6 +247,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           theme={theme}
           name={name}
           renderCustomStats={renderCustomStats}
+          renderHelpDialogExtra={renderHelpDialogExtra}
           UIOptions={UIOptions}
           onPaste={onPaste}
           detectScroll={detectScroll}
@@ -250,6 +257,8 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           generateIdForFile={generateIdForFile}
           onLinkOpen={onLinkOpen}
           generateLinkForSelection={generateLinkForSelection}
+          onSaveSelectionAsTemplate={onSaveSelectionAsTemplate}
+          onAddComment={onAddComment}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
           onScrollChange={onScrollChange}
@@ -266,6 +275,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           imageOptions={normalizedImageOptions}
           defaultChromeEnabled={defaultChromeEnabled}
           renderCreationRailUI={renderCreationRailUI}
+          mobileExtraTools={mobileExtraTools}
           renderNavigationUI={renderNavigationUI}
           renderBoardMenuUI={renderBoardMenuUI}
           renderInspectorUI={renderInspectorUI}
@@ -504,6 +514,7 @@ export type {
   ViewportStatusFrame,
   ElementRenderOverride,
   ElementRenderOverrides,
+  MobileExtraTool,
 } from "./types";
 
 export { zoomToFitBounds, DEFAULT_OVERSCROLL } from "./viewport";
@@ -590,6 +601,7 @@ export {
   actionChangeStickyNoteSize,
   STICKY_NOTE_SIZE_PRESETS,
   getSelectionStickyNoteSize,
+  stickyNoteSizeForKey,
 } from "./actions";
 export type { StickyNoteSizePreset, StickyNoteSizeLabel } from "./actions";
 

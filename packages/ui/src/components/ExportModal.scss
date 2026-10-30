@@ -135,7 +135,11 @@
 
 .firo-export-modal__badge {
   font-size: 10px;
-  background: rgba(91, 75, 255, 0.12);
+  background: color-mix(
+    in srgb,
+    var(--firo-color-accent, #5b4bff) 12%,
+    transparent
+  );
   color: var(--firo-color-accent, #5b4bff);
   padding: 1px 6px;
   border-radius: var(--firo-radius-pill, 999px);
@@ -283,11 +287,19 @@
 
   &--active {
     border-color: var(--firo-color-accent, #5b4bff);
-    background: rgba(91, 75, 255, 0.04);
+    background: color-mix(
+      in srgb,
+      var(--firo-color-accent, #5b4bff) 4%,
+      transparent
+    );
     box-shadow: 0 0 0 1px var(--firo-color-accent, #5b4bff);
 
     &:hover {
-      background: rgba(91, 75, 255, 0.06);
+      background: color-mix(
+        in srgb,
+        var(--firo-color-accent, #5b4bff) 6%,
+        transparent
+      );
     }
   }
 
@@ -395,7 +407,7 @@
 
   &:hover {
     color: var(--firo-color-text, #111318);
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--firo-color-button-secondary, rgba(0, 0, 0, 0.04));
   }
 }
 
@@ -444,5 +456,44 @@
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+}
+
+// Mobile polish: keep the dialog usable at phone widths.
+@media (max-width: 480px) {
+  .firo-export-modal-overlay {
+    padding: var(--firo-space-sm, 8px);
+  }
+
+  .firo-export-modal__header,
+  .firo-export-modal__content,
+  .firo-export-modal__tabs,
+  .firo-export-modal__footer {
+    padding-left: var(--firo-space-lg, 16px);
+    padding-right: var(--firo-space-lg, 16px);
+  }
+
+  // Tighter tabs so more of the tab list is visible before it scrolls.
+  .firo-export-modal__tab {
+    padding: var(--firo-space-sm, 8px);
+  }
+
+  // Footer buttons must not wrap mid-label; stack the rows instead.
+  .firo-export-modal__footer {
+    flex-wrap: wrap;
+    gap: var(--firo-space-sm, 8px);
+  }
+
+  .firo-export-modal__action-group {
+    flex: 1 1 100%;
+    display: flex;
+    gap: var(--firo-space-sm, 8px);
+  }
+
+  .firo-export-modal__secondary-btn,
+  .firo-export-modal__primary-btn {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
   }
 }

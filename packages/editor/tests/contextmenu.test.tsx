@@ -55,6 +55,11 @@ beforeEach(() => {
 
 const { h } = window;
 
+/** opens the object lane's Arrange submenu (ADR-0033) */
+const openArrangeSubmenu = (contextMenu: HTMLElement) => {
+  fireEvent.click(contextMenu.querySelector('button[data-submenu="arrange"]')!);
+};
+
 describe("contextMenu element", () => {
   beforeEach(async () => {
     localStorage.clear();
@@ -118,6 +123,8 @@ describe("contextMenu element", () => {
     const contextMenu = UI.queryContextMenu();
     const contextMenuOptions =
       contextMenu?.querySelectorAll(".context-menu li");
+    // ADR-0033: order/align/group live in the Arrange submenu; the top lane
+    // carries the two submenu parents and Select all
     const expectedContextMenuItems: ActionName[] = [
       "cut",
       "copy",
@@ -129,23 +136,34 @@ describe("contextMenu element", () => {
       "addToLibrary",
       "flipHorizontal",
       "flipVertical",
-      "sendBackward",
-      "bringForward",
-      "sendToBack",
-      "bringToFront",
       "duplicateSelection",
       "hyperlink",
       "copyElementLink",
       "toggleElementLock",
+      "selectAll",
     ];
 
     expect(contextMenu).not.toBeNull();
-    expect(contextMenuOptions?.length).toBe(expectedContextMenuItems.length);
+    expect(contextMenuOptions?.length).toBe(
+      expectedContextMenuItems.length + 2, // the Arrange and Info rows
+    );
     expectedContextMenuItems.forEach((item) => {
       expect(
         contextMenu?.querySelector(`li[data-testid="${item}"]`),
       ).not.toBeNull();
     });
+
+    // the z-order commands moved into Arrange
+    fireEvent.click(
+      contextMenu!.querySelector('button[data-submenu="arrange"]')!,
+    );
+    ["sendBackward", "bringForward", "sendToBack", "bringToFront"].forEach(
+      (item) => {
+        expect(
+          contextMenu?.querySelector(`li[data-testid="${item}"]`),
+        ).not.toBeNull();
+      },
+    );
   });
 
   it("shows context menu for element", () => {
@@ -220,21 +238,37 @@ describe("contextMenu element", () => {
       "copyStyles",
       "pasteStyles",
       "deleteSelectedElements",
-      "group",
       "addToLibrary",
       "flipHorizontal",
       "flipVertical",
+      "duplicateSelection",
+      "toggleElementLock",
+      "selectAll",
+    ];
+
+    expect(contextMenu).not.toBeNull();
+    expect(contextMenuOptions?.length).toBe(
+      expectedShortcutNames.length + 2, // the Arrange and Info rows
+    );
+    expectedShortcutNames.forEach((shortcutName) => {
+      expect(
+        contextMenu?.querySelector(`li[data-testid="${shortcutName}"]`),
+      ).not.toBeNull();
+    });
+
+    // group, align and order live in the Arrange submenu (ADR-0033)
+    fireEvent.click(
+      contextMenu!.querySelector('button[data-submenu="arrange"]')!,
+    );
+    [
+      "group",
       "sendBackward",
       "bringForward",
       "sendToBack",
       "bringToFront",
-      "duplicateSelection",
-      "toggleElementLock",
-    ];
-
-    expect(contextMenu).not.toBeNull();
-    expect(contextMenuOptions?.length).toBe(expectedShortcutNames.length);
-    expectedShortcutNames.forEach((shortcutName) => {
+      "alignTop",
+      "alignHorizontallyCentered",
+    ].forEach((shortcutName) => {
       expect(
         contextMenu?.querySelector(`li[data-testid="${shortcutName}"]`),
       ).not.toBeNull();
@@ -278,21 +312,29 @@ describe("contextMenu element", () => {
       "pasteStyles",
       "deleteSelectedElements",
       "copyElementLink",
-      "ungroup",
       "addToLibrary",
       "flipHorizontal",
       "flipVertical",
-      "sendBackward",
-      "bringForward",
-      "sendToBack",
-      "bringToFront",
       "duplicateSelection",
       "toggleElementLock",
+      "selectAll",
     ];
 
     expect(contextMenu).not.toBeNull();
-    expect(contextMenuOptions?.length).toBe(expectedContextMenuItems.length);
+    expect(contextMenuOptions?.length).toBe(
+      expectedContextMenuItems.length + 2, // the Arrange and Info rows
+    );
     expectedContextMenuItems.forEach((item) => {
+      expect(
+        contextMenu?.querySelector(`li[data-testid="${item}"]`),
+      ).not.toBeNull();
+    });
+
+    // ungroup lives in the Arrange submenu (ADR-0033)
+    fireEvent.click(
+      contextMenu!.querySelector('button[data-submenu="arrange"]')!,
+    );
+    ["ungroup", "sendBackward", "bringToFront"].forEach((item) => {
       expect(
         contextMenu?.querySelector(`li[data-testid="${item}"]`),
       ).not.toBeNull();
@@ -472,6 +514,7 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
+    openArrangeSubmenu(contextMenu!);
     fireEvent.click(queryByText(contextMenu!, "Send backward")!);
     expect(elementsBefore[0].id).toEqual(h.elements[1].id);
     expect(elementsBefore[1].id).toEqual(h.elements[0].id);
@@ -494,6 +537,7 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
+    openArrangeSubmenu(contextMenu!);
     fireEvent.click(queryByText(contextMenu!, "Bring forward")!);
     expect(elementsBefore[0].id).toEqual(h.elements[1].id);
     expect(elementsBefore[1].id).toEqual(h.elements[0].id);
@@ -516,6 +560,7 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
+    openArrangeSubmenu(contextMenu!);
     fireEvent.click(queryByText(contextMenu!, "Send to back")!);
     expect(elementsBefore[1].id).toEqual(h.elements[0].id);
   });
@@ -537,6 +582,7 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
+    openArrangeSubmenu(contextMenu!);
     fireEvent.click(queryByText(contextMenu!, "Bring to front")!);
     expect(elementsBefore[0].id).toEqual(h.elements[1].id);
   });
@@ -561,6 +607,7 @@ describe("contextMenu element", () => {
       clientY: 3,
     });
     const contextMenu = UI.queryContextMenu();
+    openArrangeSubmenu(contextMenu!);
     fireEvent.click(queryByText(contextMenu!, "Group selection")!);
     const selectedGroupIds = Object.keys(h.state.selectedGroupIds);
     expect(h.elements[0].groupIds).toEqual(selectedGroupIds);
@@ -593,6 +640,7 @@ describe("contextMenu element", () => {
 
     const contextMenu = UI.queryContextMenu();
     expect(contextMenu).not.toBeNull();
+    openArrangeSubmenu(contextMenu!);
     fireEvent.click(queryByText(contextMenu!, "Ungroup selection")!);
 
     const selectedGroupIds = Object.keys(h.state.selectedGroupIds);

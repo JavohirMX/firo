@@ -53,11 +53,17 @@ export class Room {
   public addClient(client: ClientConnection): void {
     this.clients.add(client);
 
-    // 1. Send sync step 1 to client
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.writeSyncStep1(encoder, this.doc);
-    client.send(encoding.toUint8Array(encoder));
+    // Request offline document edits only from roles allowed to edit the board.
+    // A SyncStep1 makes the browser upload its local Yjs state as SyncStep2.
+    // Read-only/comment-only browsers may have locally seeded board metadata;
+    // asking for that upload immediately violates their write permissions and
+    // disconnects an otherwise valid reader before they do anything.
+    if (client.role === "owner" || client.role === "editor") {
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, MESSAGE_SYNC);
+      syncProtocol.writeSyncStep1(encoder, this.doc);
+      client.send(encoding.toUint8Array(encoder));
+    }
 
     // Send full document state to client so client is in sync immediately
     const step2Encoder = encoding.createEncoder();
@@ -83,6 +89,17 @@ export class Room {
 
   public removeClient(client: ClientConnection): void {
     this.clients.delete(client);
+    /*
+     * Drop the leaving client's awareness states now, and broadcast the
+     * removal to everyone still here (origin null: the sender is gone, so
+     * there is nobody to exclude). Without this a driver's session claim
+     * would hold the room until the 30s stale timeout (ADR-0039 §3).
+     */
+    if (client.awarenessIds.size > 0) {
+      const ids = Array.from(client.awarenessIds);
+      client.awarenessIds.clear();
+      awarenessProtocol.removeAwarenessStates(this.awareness, ids, null);
+    }
   }
 
   public handleMessage(client: ClientConnection, data: Uint8Array): void {
@@ -97,6 +114,20 @@ export class Room {
         }
         case MESSAGE_AWARENESS: {
           const update = decoding.readVarUint8Array(decoder);
+          /*
+           * Learn which awareness clientIDs this connection speaks for, so
+           * removeClient can drop them the moment the socket closes. The
+           * frame is a varUint count, then per entry: clientID, clock and
+           * the JSON state string -- read-only peeking, nothing re-encoded.
+           */
+          const peek = decoding.createDecoder(update);
+          const entryCount = decoding.readVarUint(peek);
+          for (let i = 0; i < entryCount; i++) {
+            const clientId = decoding.readVarUint(peek);
+            decoding.readVarUint(peek); // clock
+            decoding.readVarString(peek); // state JSON
+            client.awarenessIds.add(clientId);
+          }
           awarenessProtocol.applyAwarenessUpdate(
             this.awareness,
             update,

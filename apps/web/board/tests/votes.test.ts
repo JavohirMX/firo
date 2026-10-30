@@ -109,16 +109,17 @@ describe("a vote, committed for real", () => {
     expect(leaders(votes, 1)).toEqual(["note-a"]);
   });
 
-  it("does not stack a second dot when one person votes twice", () => {
-    // "One vote per person" is the rule the plan states, and it is what makes
-    // holding down the key not produce fifty dots.
+  it("records a second dot rather than moving the first", () => {
+    // `placeVote` never moves or deduplicates: the one-dot-per-target rule
+    // lives one layer up, in `planPlacement`, which refuses a duplicate on the
+    // same note instead (packages/facilitation session tests). The writer
+    // stays dumb so the UI layer owns the refusal message.
     const doc = newDoc();
     vote(doc, "note-a", "ada", "r1");
     vote(doc, "note-b", "ada", "r2");
 
     const votes = votesFromRecords(doc.read().records);
-    expect(votes).toHaveLength(1);
-    expect(votes[0].elementId).toBe("note-b");
+    expect(votes).toHaveLength(2);
   });
 
   it("withdraws a vote rather than deleting it", () => {

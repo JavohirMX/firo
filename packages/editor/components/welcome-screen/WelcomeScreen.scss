@@ -12,7 +12,8 @@
   .welcome-screen-decor {
     pointer-events: none;
 
-    color: var(--color-gray-40);
+    color: var(--firo-color-text-muted, var(--color-gray-40));
+    font-family: var(--firo-font-ui, "Nunito");
 
     a {
       --color: var(--color-primary);
@@ -24,7 +25,7 @@
 
   &.theme--dark {
     .welcome-screen-decor {
-      color: var(--color-gray-60);
+      color: var(--firo-color-text-muted, var(--color-gray-60));
     }
   }
 

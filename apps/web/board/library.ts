@@ -185,7 +185,7 @@ export const renameBoard = async (
     return getBoardMeta(id);
   }
   const result = await putBoardMeta({ id, name: trimmed });
-  void recordActivity({
+  await recordActivity({
     boardId: id,
     boardName: trimmed,
     kind: "board",
@@ -198,7 +198,7 @@ export const renameBoard = async (
 export const trashBoard = async (id: string): Promise<void> => {
   const meta = await getBoardMeta(id);
   await putBoardMeta({ id, trashedAt: Date.now() });
-  void recordActivity({
+  await recordActivity({
     boardId: id,
     boardName: meta?.name,
     kind: "delete",
@@ -216,7 +216,7 @@ export const restoreTrashedBoard = async (id: string): Promise<void> => {
   delete meta.trashedAt;
   index[id] = meta;
   await writeIndex(index);
-  void recordActivity({
+  await recordActivity({
     boardId: id,
     boardName: meta.name,
     kind: "board",
@@ -342,6 +342,37 @@ export const deleteBoardForever = async (id: string): Promise<void> => {
   delete index[id];
   await writeIndex(index);
   await deleteBoardPayload(id);
+};
+
+/**
+ * Permanently delete every trashed board: metadata and bytes. The bulk form of
+ * `deleteBoardForever`, reached only through the home's confirm dialog — like
+ * that dialog, there is no undo, so it records what it did in the activity
+ * feed. Returns how many boards were deleted.
+ */
+export const emptyTrash = async (): Promise<number> => {
+  const index = await readIndex();
+  const trashedIds = Object.values(index)
+    .filter((meta) => Boolean(meta.trashedAt))
+    .map((meta) => meta.id);
+  if (trashedIds.length === 0) {
+    return 0;
+  }
+  for (const id of trashedIds) {
+    delete index[id];
+  }
+  await writeIndex(index);
+  for (const id of trashedIds) {
+    await deleteBoardPayload(id);
+  }
+  await recordActivity({
+    boardId: trashedIds[0],
+    kind: "delete",
+    summary: `Emptied trash (${trashedIds.length} board${
+      trashedIds.length === 1 ? "" : "s"
+    })`,
+  });
+  return trashedIds.length;
 };
 
 /**

@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { VOTE_COLLECTION_ID } from "@firo/facilitation";
+import { randomId } from "@firo/common";
 import {
   DAY_WIDTH,
+  descendantIds,
   DOC_BLOCK_COLLECTION_ID,
   displayValue,
   groupingColumnFor,
   groupsOf,
+  mindmapProjection,
   projectionFor,
+  relationColumnFor,
   SIDEBAR_WIDTH,
   timelineProjection,
+  titleColumnKeyFor,
   valueOf,
 } from "@firo/records";
+
+import type { Mutation } from "@firo/doc";
+import type { RecordMutation } from "@firo/records";
 
 import type { Collection, FiroRecord } from "@firo/schema";
 import type { AppState, ExcalidrawImperativeAPI } from "@firo/editor/types";
@@ -25,7 +33,7 @@ interface ProjectionViewProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
 }
 
-type ProjectionMode = "board" | "table" | "grid" | "timeline";
+type ProjectionMode = "board" | "table" | "grid" | "timeline" | "mindmap";
 
 interface EditingCell {
   recordId: string;
@@ -164,6 +172,71 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
           refreshBoard();
         };
 
+        /*
+         * Drag-reparent in the mind map: the projection validates the drop
+         * (not-self, in-collection, not-a-descendant) and a rejected drop is a
+         * no-op, the same rule the kanban's dead drop zones follow.
+         */
+        const handleReparent = (
+          recordId: string,
+          newParentId: string | null,
+        ) => {
+          const projection = projectionFor("mindmap");
+          const mutation = projection.interpret(collection, records, {
+            kind: "reparent",
+            recordId,
+            newParentId,
+          });
+          if (mutation) {
+            applyRecordMutation(doc, collection.id, mutation);
+            refreshBoard();
+          }
+        };
+
+        /* The table's relation picker writes the same kind of mutation. */
+        const handleRelationChange = (
+          recordId: string,
+          columnKey: string,
+          newParentId: string | null,
+        ) => {
+          const mutation: RecordMutation = {
+            kind: "setField",
+            recordId,
+            columnKey,
+            value: { type: "relation", value: newParentId },
+          };
+          applyRecordMutation(doc, collection.id, mutation);
+          refreshBoard();
+        };
+
+        /*
+         * The empty state's offer. Key "parent-2" when "parent" is taken by a
+         * column of another type: values are keyed by Column.key, and reusing
+         * the key would read another column's stored values as relations.
+         */
+        const handleAddRelationColumn = () => {
+          const key = collection.columns.some((c) => c.key === "parent")
+            ? "parent-2"
+            : "parent";
+          const mutation: Mutation = {
+            kind: "updateCollection",
+            id: collection.id,
+            changes: {
+              columns: [
+                ...collection.columns,
+                {
+                  id: `col-${randomId()}`,
+                  key,
+                  name: "Parent",
+                  type: "relation",
+                },
+              ],
+            },
+          };
+          doc.commit([mutation]);
+          refreshBoard();
+        };
+
         return (
           <div
             key={collection.id}
@@ -237,6 +310,18 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
                 >
                   Timeline
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`firo-projection-switcher__tab ${
+                    mode === "mindmap" ? "is-active" : ""
+                  }`}
+                  aria-selected={mode === "mindmap"}
+                  data-testid="switch-projection-mindmap"
+                  onClick={() => setMode("mindmap")}
+                >
+                  Mind map
+                </button>
               </div>
 
               <button
@@ -269,11 +354,27 @@ export const ProjectionView: React.FC<ProjectionViewProps> = ({
                   }
                   onSubmitEdit={handleCellEditSubmit}
                   onCancelEdit={() => setEditingCell(null)}
+                  onChangeRelation={handleRelationChange}
                 />
               )}
 
               {mode === "grid" && (
                 <GridView collection={collection} records={records} />
+              )}
+
+              {mode === "mindmap" && (
+                <MindMapView
+                  collection={collection}
+                  records={records}
+                  editingCell={editingCell}
+                  onStartEdit={(recordId, columnKey, currentValue) =>
+                    setEditingCell({ recordId, columnKey, currentValue })
+                  }
+                  onSubmitEdit={handleCellEditSubmit}
+                  onCancelEdit={() => setEditingCell(null)}
+                  onReparent={handleReparent}
+                  onAddRelationColumn={handleAddRelationColumn}
+                />
               )}
 
               {mode === "timeline" && (
@@ -422,6 +523,11 @@ interface TableViewProps {
     nextValue: string,
   ) => void;
   onCancelEdit: () => void;
+  onChangeRelation: (
+    recordId: string,
+    columnKey: string,
+    newParentId: string | null,
+  ) => void;
 }
 
 const TableView: React.FC<TableViewProps> = ({
@@ -431,6 +537,7 @@ const TableView: React.FC<TableViewProps> = ({
   onStartEdit,
   onSubmitEdit,
   onCancelEdit,
+  onChangeRelation,
 }) => {
   return (
     <div className="firo-table-view" data-testid="firo-table-view">
@@ -448,7 +555,10 @@ const TableView: React.FC<TableViewProps> = ({
           {records.map((record) => (
             <tr key={record.id} data-testid={`table-row-${record.id}`}>
               {collection.columns.map((column) => {
-                const cellText = displayValue(record, column);
+                const cellText = displayValue(record, column, {
+                  collection,
+                  records,
+                });
                 const isEditing =
                   editingCell?.recordId === record.id &&
                   editingCell?.columnKey === column.key;
@@ -471,6 +581,14 @@ const TableView: React.FC<TableViewProps> = ({
                           onSubmitEdit(record.id, column.key, val)
                         }
                         onCancel={onCancelEdit}
+                      />
+                    ) : column.type === "relation" ? (
+                      <RelationPicker
+                        collection={collection}
+                        records={records}
+                        record={record}
+                        columnKey={column.key}
+                        onChange={onChangeRelation}
                       />
                     ) : column.type === "singleSelect" && column.options ? (
                       <select
@@ -552,6 +670,247 @@ const InlineCellEditor: React.FC<InlineCellEditorProps> = ({
       data-testid="inline-cell-input"
       aria-label="Edit cell value"
     />
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Mind Map View Component                                                    */
+/* -------------------------------------------------------------------------- */
+
+interface MindMapViewProps {
+  collection: Collection;
+  records: readonly FiroRecord[];
+  editingCell: EditingCell | null;
+  onStartEdit: (
+    recordId: string,
+    columnKey: string,
+    currentValue: string,
+  ) => void;
+  onSubmitEdit: (
+    recordId: string,
+    columnKey: string,
+    nextValue: string,
+  ) => void;
+  onCancelEdit: () => void;
+  onReparent: (recordId: string, newParentId: string | null) => void;
+  onAddRelationColumn: () => void;
+}
+
+/*
+ * DOM nodes over an SVG edge layer. The projection owns the geometry; this
+ * component only turns `ProjectionElement`s into pixels, which is the same
+ * split the table and kanban keep. A drop on a node re-parents to it, a drop
+ * on the background roots the record, and a drop the projection rejects is a
+ * no-op rather than an error toast: dragging is exploratory.
+ */
+const MindMapView: React.FC<MindMapViewProps> = ({
+  collection,
+  records,
+  editingCell,
+  onStartEdit,
+  onSubmitEdit,
+  onCancelEdit,
+  onReparent,
+  onAddRelationColumn,
+}) => {
+  const column = relationColumnFor(collection);
+
+  if (column === null) {
+    return (
+      <div className="firo-mindmap-empty" data-testid="mindmap-empty">
+        <p>
+          A mind map links each record to a parent record. This collection has
+          no parent relation yet.
+        </p>
+        <button
+          type="button"
+          data-testid="add-parent-relation"
+          onClick={onAddRelationColumn}
+        >
+          Add parent relation
+        </button>
+      </div>
+    );
+  }
+
+  const titleKey = titleColumnKeyFor(collection);
+  const elements = mindmapProjection.layout(collection, records);
+  const nodes = elements.filter((element) => element.type === "card");
+  const edges = elements.filter((element) => element.type === "edge");
+
+  if (nodes.length === 0) {
+    return (
+      <div className="firo-mindmap-empty" data-testid="mindmap-empty">
+        <p>No records yet.</p>
+      </div>
+    );
+  }
+
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const maxX = Math.max(...nodes.map((node) => node.x + node.width));
+  const maxY = Math.max(...nodes.map((node) => node.y + node.height));
+
+  return (
+    <div
+      className="firo-mindmap-view"
+      data-testid="firo-mindmap-view"
+      style={{ position: "relative", width: maxX, height: maxY }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        const recordId = e.dataTransfer.getData("text/plain");
+        if (recordId) {
+          onReparent(recordId, null);
+        }
+      }}
+    >
+      <svg
+        className="firo-mindmap-edges"
+        width={maxX}
+        height={maxY}
+        aria-hidden="true"
+      >
+        {edges.map((edge) => {
+          const from = nodeById.get(edge.fromId ?? "");
+          const to = nodeById.get(edge.toId ?? "");
+          if (!from || !to) {
+            return null;
+          }
+          const x1 = from.x + from.width;
+          const y1 = from.y + from.height / 2;
+          const x2 = to.x;
+          const y2 = to.y + to.height / 2;
+          const midX = (x1 + x2) / 2;
+          return (
+            <path
+              key={edge.id}
+              data-testid={edge.id}
+              className="firo-mindmap-edge"
+              d={`M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`}
+              fill="none"
+            />
+          );
+        })}
+      </svg>
+      {nodes.map((node) => {
+        const isEditing =
+          editingCell?.recordId === node.recordId &&
+          editingCell?.columnKey === titleKey;
+        return (
+          <div
+            key={node.id}
+            className="firo-mindmap-node"
+            data-testid={`mindmap-node-${node.recordId}`}
+            style={{
+              position: "absolute",
+              left: node.x,
+              top: node.y,
+              width: node.width,
+              height: node.height,
+            }}
+            draggable={!isEditing}
+            onDragStart={(e) =>
+              e.dataTransfer.setData("text/plain", node.recordId)
+            }
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const recordId = e.dataTransfer.getData("text/plain");
+              if (recordId) {
+                onReparent(recordId, node.recordId);
+              }
+            }}
+            onDoubleClick={() => {
+              if (!isEditing) {
+                onStartEdit(node.recordId, titleKey, node.text ?? "");
+              }
+            }}
+          >
+            {isEditing ? (
+              <InlineCellEditor
+                initialValue={editingCell.currentValue}
+                onSave={(value) => onSubmitEdit(node.recordId, titleKey, value)}
+                onCancel={onCancelEdit}
+              />
+            ) : (
+              <span className="firo-mindmap-node__title">
+                {node.text || "Untitled"}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Relation Picker (table cells)                                              */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The parent picker for a relation cell (ADR-0040 section 4): None, every
+ * non-archived record in the collection except the row itself and its
+ * descendants (offering a descendant would offer a cycle), and a named
+ * "(Missing record)" entry when the stored parent is gone so the cell can
+ * keep showing the truth until it is changed.
+ */
+const RelationPicker: React.FC<{
+  collection: Collection;
+  records: readonly FiroRecord[];
+  record: FiroRecord;
+  columnKey: string;
+  onChange: (
+    recordId: string,
+    columnKey: string,
+    newParentId: string | null,
+  ) => void;
+}> = ({ collection, records, record, columnKey, onChange }) => {
+  const value = valueOf(record, columnKey);
+  const current =
+    value !== null && value.type === "relation" ? value.value : null;
+  const excluded = descendantIds(records, columnKey, record.id);
+  const titleKey = titleColumnKeyFor(collection);
+  const dangling =
+    current !== null && !records.some((candidate) => candidate.id === current);
+
+  return (
+    <select
+      className="firo-table__select"
+      aria-label={columnKey}
+      value={current ?? ""}
+      onChange={(e) =>
+        onChange(
+          record.id,
+          columnKey,
+          e.target.value === "" ? null : e.target.value,
+        )
+      }
+      data-testid={`select-relation-${record.id}`}
+    >
+      <option value="">(None)</option>
+      {dangling && <option value={current}>(Missing record)</option>}
+      {records
+        .filter((candidate) => !excluded.has(candidate.id))
+        .map((candidate) => {
+          const titleValue = valueOf(candidate, titleKey);
+          const title =
+            titleValue !== null &&
+            titleValue.type === "text" &&
+            titleValue.value !== ""
+              ? titleValue.value
+              : candidate.id;
+          return (
+            <option key={candidate.id} value={candidate.id}>
+              {title}
+            </option>
+          );
+        })}
+    </select>
   );
 };
 

@@ -26,6 +26,7 @@ import {
   allKnownFields,
   canonicalJson,
   CURRENT_ELEMENT_VERSION,
+  CURRENT_RECORD_VERSION,
   ELEMENT_TYPES,
   knownFieldsFor,
   loadBoard,
@@ -282,6 +283,7 @@ describe("the committed v2 fixture", () => {
       canonicalJson({
         ...boardV2,
         elementSchemaVersion: CURRENT_ELEMENT_VERSION,
+        recordSchemaVersion: CURRENT_RECORD_VERSION,
       }),
     );
     expect(written.elements[2]).toHaveProperty("someFutureField", {

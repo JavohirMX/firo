@@ -84,6 +84,7 @@ export type ActionName =
   | "changeExportEmbedScene"
   | "changeExportScale"
   | "saveToActiveFile"
+  | "saveSelectionAsTemplate"
   | "saveFileToDisk"
   | "loadScene"
   | "duplicateSelection"
@@ -127,6 +128,7 @@ export type ActionName =
   | "bindText"
   | "unlockAllElements"
   | "toggleElementLock"
+  | "clearContent"
   | "toggleLinearEditor"
   | "selectAllElementsInFrame"
   | "removeAllElementsFromFrame"
@@ -138,6 +140,17 @@ export type ActionName =
   | "elementStats"
   | "searchMenu"
   | "copyElementLink"
+  /*
+   * The canvas lane's creation and display rows (ADR-0033). They act at the
+   * context menu's anchor rather than at the pointer, so they are their own
+   * actions instead of reusing the tool handlers.
+   */
+  | "addTextAtAnchor"
+  | "addStickyNoteAtAnchor"
+  | "addCommentAtAnchor"
+  | "addCommentOnElement"
+  | "toggleSelectionDimensions"
+  | "openSelectionContextMenu"
   /*
    * Firo's own actions, registered by the host through
    * `excalidrawAPI.registerAction`.
@@ -177,10 +190,18 @@ export type ActionName =
   | "toggleBoardReveal"
   | "addVoteToSelection"
   | "removeVoteFromSelection"
+  | "openVotingPanel"
+  | "openFramesPanel"
   | "readVoteTally"
   | "togglePresentation"
   | "nextSlide"
   | "previousSlide"
+  /*
+   * The two dialog-opening commands. Like the seven above they are registered
+   * by the host and individually disableable through `canvasActions`.
+   */
+  | "setupFacilitatorTimer"
+  | "bulkCreateStickyNotes"
   | "linkToElement"
   | "cropEditor"
   | "wrapSelectionInFrame"

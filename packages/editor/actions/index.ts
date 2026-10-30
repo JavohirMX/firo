@@ -80,6 +80,14 @@ export {
 export { actionToggleGridMode } from "./actionToggleGridMode";
 export { actionToggleZenMode } from "./actionToggleZenMode";
 export { actionToggleObjectsSnapMode } from "./actionToggleObjectsSnapMode";
+export {
+  actionAddTextAtAnchor,
+  actionAddStickyNoteAtAnchor,
+  actionAddCommentAtAnchor,
+  actionAddCommentOnElement,
+  actionToggleSelectionDimensions,
+  actionOpenSelectionContextMenu,
+} from "./actionCanvasAnchor";
 export { actionToggleArrowBinding } from "./actionToggleArrowBinding";
 export { actionToggleMidpointSnapping } from "./actionToggleMidpointSnapping";
 export { actionToggleShowHints } from "./actionToggleShowHints";
@@ -92,6 +100,7 @@ export {
   STICKY_NOTE_SIZE_PRESETS,
   getStickyNoteSizePreset,
   getSelectionStickyNoteSize,
+  stickyNoteSizeForKey,
 } from "./actionStickyNoteSize";
 export type {
   StickyNoteSizePreset,
@@ -99,6 +108,7 @@ export type {
 } from "./actionStickyNoteSize";
 export { actionLink } from "./actionLink";
 export { actionToggleElementLock } from "./actionElementLock";
+export { actionClearContent } from "./actionClearContent";
 export { actionToggleLinearEditor } from "./actionLinearEditor";
 
 export { actionToggleSearchMenu } from "./actionToggleSearchMenu";

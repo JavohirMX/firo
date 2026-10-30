@@ -253,6 +253,7 @@ const getRelevantAppStateProps = (
   isBindingEnabled: appState.isBindingEnabled,
   isMidpointSnappingEnabled: appState.isMidpointSnappingEnabled,
   gridModeEnabled: appState.gridModeEnabled,
+  showSelectionDimensions: appState.showSelectionDimensions,
   suggestedBinding: appState.suggestedBinding,
   textToolHover: appState.textToolHover,
   isRotating: appState.isRotating,

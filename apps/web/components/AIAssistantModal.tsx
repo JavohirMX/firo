@@ -86,18 +86,25 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   }, [isOpen, initialTab, hasStickies, hasElements]);
 
   // Handle escape key
+  /* Keep the latest onClose without detaching the listener on every
+     render: an inline onClose prop changes identity per render, which
+     tore the Escape listener down and rebuilt it in passive effects,
+     dropping Escape presses that landed in between. */
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!isOpen || isSettingsOpen) {
       return undefined;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isSettingsOpen, onClose]);
+  }, [isOpen, isSettingsOpen]);
 
   if (!isOpen) {
     return null;

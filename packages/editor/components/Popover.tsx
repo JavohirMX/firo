@@ -17,6 +17,12 @@ type Props = {
   children?: React.ReactNode;
   onCloseRequest?(event: PointerEvent): void;
   fitInViewport?: boolean;
+  /**
+   * ADR-0033's placement rule: the lane prefers below-right of its anchor;
+   * when it does not fit below it opens above the anchor, and when it fits
+   * in neither direction the clamp-and-scroll fallback applies.
+   */
+  flipAbove?: boolean;
   viewportWidth?: number;
   viewportHeight?: number;
   className?: string;
@@ -28,6 +34,7 @@ export const Popover = ({
   top,
   onCloseRequest,
   fitInViewport = false,
+  flipAbove = false,
   viewportWidth = window.innerWidth,
   viewportHeight = window.innerHeight,
   className,
@@ -126,14 +133,22 @@ export const Popover = ({
         element.style.top = `${POPOVER_CONTAINER_GAP}px`;
         element.style.overflowY = "scroll";
       } else {
-        element.style.top = `${clamp(
+        let resolvedTop = clamp(
           top,
           POPOVER_CONTAINER_GAP,
           viewportHeight - POPOVER_CONTAINER_GAP - height,
-        )}px`;
+        );
+        if (
+          flipAbove &&
+          top + height > viewportHeight - POPOVER_CONTAINER_GAP &&
+          top - height >= POPOVER_CONTAINER_GAP
+        ) {
+          resolvedTop = top - height;
+        }
+        element.style.top = `${resolvedTop}px`;
       }
     }
-  }, [top, left, fitInViewport, viewportWidth, viewportHeight]);
+  }, [top, left, fitInViewport, flipAbove, viewportWidth, viewportHeight]);
 
   useEffect(() => {
     if (onCloseRequest) {

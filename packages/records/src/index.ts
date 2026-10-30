@@ -14,6 +14,9 @@
  * | Five separate element types | A task moved from a kanban to a table becomes two objects that drift. No switching. Every cross-view feature is a sync problem. |
  * | One record store, four projections | One identity. Switching is free. Cross-view features are queries. |
  *
+ * The TRD's table above still says "four projections"; the mind map (ADR-0040
+ * section 4) is the fifth, and the quote stays verbatim because it is a quote.
+ *
  * ## What is *not* in here
  *
  * **No elements.** A `ProjectionElement` is a description of something to draw, and
@@ -34,6 +37,7 @@
 
 import { boardProjection } from "./board.js";
 import { gridProjection } from "./grid.js";
+import { mindmapProjection } from "./mindmap.js";
 import { tableProjection } from "./table.js";
 import { timelineProjection } from "./timeline.js";
 
@@ -57,6 +61,13 @@ export {
 } from "./docBlock.js";
 export { boardProjection, groupAt, groupOf, groupsOf } from "./board.js";
 export { gridProjection, positionOf } from "./grid.js";
+export {
+  descendantIds,
+  mindmapProjection,
+  relationColumnFor,
+  MINDMAP_NODE_HEIGHT,
+  MINDMAP_NODE_WIDTH,
+} from "./mindmap.js";
 export {
   asOrder,
   orderForLast,
@@ -103,6 +114,7 @@ export {
  */
 export const PROJECTIONS: Readonly<Record<string, Projection>> = {
   board: boardProjection,
+  mindmap: mindmapProjection,
   grid: gridProjection,
   table: tableProjection,
   timeline: timelineProjection,

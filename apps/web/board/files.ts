@@ -623,7 +623,7 @@ export const insertElementsIntoDoc = (
  * - `.excalidraw` scene drawings
  * - `.csv` tabular spreadsheets
  */
-export const importBoardFile = async (
+const importBoardFileInner = async (
   doc: FiroDoc,
   data: string | Uint8Array,
   deps?: {
@@ -1048,4 +1048,33 @@ export const importBoardFile = async (
   }
 
   return importBoard(doc, text);
+};
+
+/**
+ * Import a board file into `doc`.
+ *
+ * A file brings its own board id in its metadata. Loading it over the board the
+ * user is looking at would swap that board's identity for the file's, so the
+ * server then sees someone else's board id (a teammate's export is refused with
+ * "belongs to someone else"), and importing one file twice would give two
+ * boards the same id. The content comes from the file; the id stays the
+ * current board's.
+ */
+export const importBoardFile = async (
+  doc: FiroDoc,
+  data: string | Uint8Array,
+  deps?: Parameters<typeof importBoardFileInner>[2],
+): Promise<ImportResult> => {
+  const before = doc.read().meta?.id;
+  const result = await importBoardFileInner(doc, data, deps);
+  if (
+    result.ok &&
+    deps?.insertMode !== "insert" &&
+    typeof before === "string" &&
+    before.length > 0 &&
+    doc.read().meta?.id !== before
+  ) {
+    doc.commit([{ kind: "setMeta", entries: { id: before } }]);
+  }
+  return result;
 };
