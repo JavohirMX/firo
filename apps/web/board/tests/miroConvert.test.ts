@@ -177,6 +177,35 @@ describe("Miro conversion", () => {
       expect(note.textAlign).toBe("center");
     });
 
+    it("converts embeds to linked placeholder rectangles with a host label", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "embed_1",
+          type: "embed",
+          url: "https://example.com/article/123",
+          mode: "inline",
+          position: { x: 400, y: 300, origin: "center" },
+          geometry: { width: 320, height: 180 },
+        },
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+
+      expect(board.elements.length).toBe(2);
+      const rect = board.elements.find((el) => el.type === "rectangle");
+      const label = board.elements.find((el) => el.type === "text");
+      expect(rect).toBeDefined();
+      expect(rect?.link).toBe("https://example.com/article/123");
+      expect(rect?.x).toBe(400 - 160);
+      expect(rect?.y).toBe(300 - 90);
+      expect(label).toBeDefined();
+      expect(label?.text).toBe("example.com");
+      expect(label?.containerId).toBe("embed_1");
+      expect(
+        warnings.some((w) => w.includes("linked placeholder rectangle")),
+      ).toBe(true);
+    });
+
     it("converts shapes (circle to ellipse, round rectangle)", async () => {
       const miroItems: MiroItem[] = [
         {

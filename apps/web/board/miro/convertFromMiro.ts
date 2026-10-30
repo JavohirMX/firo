@@ -1076,6 +1076,71 @@ export const convertMiroItemsToFiro = async (
         break;
       }
 
+      case "embed": {
+        /*
+         * A Miro embed carries a live-preview URL. Firo renders live embeds
+         * only for its whitelisted embeddable domains, and board embeds are
+         * usually arbitrary sites, so the faithful conversion is a rectangle
+         * that keeps the geometry, carries the URL as its link, and shows the
+         * URL's host as its label - with a warning, so nothing is silently
+         * dropped or silently approximated.
+         */
+        const embedUrl = String(item.url ?? item.data?.url ?? "");
+        let embedHost = "";
+        try {
+          embedHost = new URL(embedUrl).hostname.replace(/^www\./, "");
+        } catch {
+          embedHost = embedUrl;
+        }
+
+        const embedTextId = `${id}_text`;
+        const embedBound: { id: string; type: "text" }[] = [];
+        if (embedHost) {
+          embedBound.push({ id: embedTextId, type: "text" });
+        }
+
+        elements.push({
+          ...baseFields,
+          ...bounds,
+          type: "rectangle",
+          backgroundColor: "transparent",
+          strokeColor: "#868e96",
+          strokeStyle: "dashed",
+          roundness: { type: 3 },
+          boundElements: embedBound,
+          link: embedUrl || null,
+        });
+
+        if (embedHost) {
+          elements.push({
+            ...baseFields,
+            id: embedTextId,
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+            angle: bounds.angle,
+            type: "text",
+            text: embedHost,
+            richText: miroHtmlToProseMirror(embedHost),
+            fontSize: 14,
+            fontFamily: DEFAULT_FONT_FAMILY,
+            textAlign: "center",
+            verticalAlign: "middle",
+            backgroundColor: "transparent",
+            strokeColor: "#868e96",
+            containerId: id,
+            autoResize: true,
+            lineHeight: 1.25,
+          });
+        }
+
+        warnings.push(
+          `Miro embed converted to a linked placeholder rectangle (live embed rendering is limited to whitelisted domains) (id: ${id})`,
+        );
+        break;
+      }
+
       default:
         warnings.push(`Unsupported Miro item type "${item.type}" (id: ${id})`);
     }
