@@ -1507,6 +1507,23 @@
     scroll-snap-type: x proximity;
     scroll-padding: 0 var(--firo-space-md);
     -webkit-overflow-scrolling: touch;
+    // Slim, token-colored scrollbar: the default desktop strip looked heavy
+    // under the swipeable template row.
+    scrollbar-width: thin;
+    scrollbar-color: var(--firo-color-border) transparent;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: var(--firo-color-border);
+      border-radius: var(--firo-radius-pill, 9999px);
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
   }
 
   .firo-template-card {
