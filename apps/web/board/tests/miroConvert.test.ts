@@ -177,6 +177,73 @@ describe("Miro conversion", () => {
       expect(note.textAlign).toBe("center");
     });
 
+    it("preserves Miro group membership, including nested groups", async () => {
+      const miroItems: MiroItem[] = [
+        { id: "g_outer", type: "group", itemsIds: ["g_inner", "shape_a"] },
+        { id: "g_inner", type: "group", itemsIds: ["sticky_a"] },
+        {
+          id: "sticky_a",
+          type: "sticky_note",
+          groupId: "g_inner",
+          data: { content: "<p>grouped note</p>" },
+          position: { x: 100, y: 100, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        },
+        {
+          id: "shape_a",
+          type: "shape",
+          groupId: "g_outer",
+          data: { shape: "rectangle" },
+          position: { x: 400, y: 100, origin: "center" },
+          geometry: { width: 80, height: 80 },
+        },
+        {
+          id: "shape_b",
+          type: "shape",
+          data: { shape: "rectangle" },
+          position: { x: 700, y: 100, origin: "center" },
+          geometry: { width: 80, height: 80 },
+        },
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+
+      // Groups themselves produce no elements and no warnings.
+      expect(board.elements.length).toBe(3);
+      expect(warnings).toEqual([]);
+
+      const note = board.elements.find((el) => el.type === "stickynote");
+      expect(note?.groupIds).toEqual([
+        "miro_group_g_inner",
+        "miro_group_g_outer",
+      ]);
+
+      const groupedShape = board.elements.find((el) => el.id === "shape_a");
+      expect(groupedShape?.groupIds).toEqual(["miro_group_g_outer"]);
+
+      const ungrouped = board.elements.find((el) => el.id === "shape_b");
+      expect(ungrouped?.groupIds).toEqual([]);
+    });
+
+    it("survives cyclic group data without hanging", async () => {
+      const miroItems: MiroItem[] = [
+        { id: "g1", type: "group", itemsIds: ["g2"] },
+        { id: "g2", type: "group", itemsIds: ["g1"] },
+        {
+          id: "sticky_c",
+          type: "sticky_note",
+          groupId: "g1",
+          data: { content: "<p>cyclic</p>" },
+          position: { x: 100, y: 100, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const note = board.elements.find((el) => el.type === "stickynote");
+      expect(note?.groupIds).toEqual(["miro_group_g1", "miro_group_g2"]);
+    });
+
     it("converts embeds to linked placeholder rectangles with a host label", async () => {
       const miroItems: MiroItem[] = [
         {

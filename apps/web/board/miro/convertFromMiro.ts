@@ -190,6 +190,38 @@ export const convertMiroItemsToFiro = async (
     itemsById.set(id, item);
   }
 
+  // Miro groups become Firo group membership. An item points at its immediate
+  // group via `groupId`; a group lists its members (which may include other
+  // groups) via `itemsIds`, so nested groups resolve by walking the parent
+  // chain. Firo elements carry every ancestor group id on their `groupIds`,
+  // which is exactly what the walk produces. Miro ids get a prefix so they
+  // can never collide with group ids Firo mints locally.
+  const groupParentOf = new Map<string, string>();
+  for (const item of items) {
+    if (item.type !== "group") {
+      continue;
+    }
+    const groupId = String(item.id);
+    const members = Array.isArray(item.itemsIds) ? item.itemsIds : [];
+    for (const member of members) {
+      const memberId = String(member);
+      if (!groupParentOf.has(memberId)) {
+        groupParentOf.set(memberId, groupId);
+      }
+    }
+  }
+  const resolveGroupIds = (item: MiroItem): string[] => {
+    const groupIds: string[] = [];
+    const seen = new Set<string>();
+    let groupId = item.groupId != null ? String(item.groupId) : null;
+    while (groupId && !seen.has(groupId)) {
+      seen.add(groupId);
+      groupIds.push(`miro_group_${groupId}`);
+      groupId = groupParentOf.get(groupId) ?? null;
+    }
+    return groupIds;
+  };
+
   // --------------------------------------------------------------------------
   // Pass 2: Calculate absolute canvas bounds for each item with recursive cascade
   // For arbitrarily nested elements (stickies inside cards inside frames inside sections).
@@ -456,13 +488,15 @@ export const convertMiroItemsToFiro = async (
 
     const containerId = parentId && itemsById.has(parentId) ? parentId : null;
 
+    const itemGroupIds = resolveGroupIds(item);
+
     const baseFields = {
       id,
       version: 1,
       versionNonce: Math.floor(Math.random() * 1000000),
       index: null,
       isDeleted: false,
-      groupIds: [],
+      groupIds: itemGroupIds,
       frameId: enclosingFrameId,
       containerId: containerId ?? enclosingFrameId,
       boundElements: [],
@@ -1140,6 +1174,13 @@ export const convertMiroItemsToFiro = async (
         );
         break;
       }
+
+      case "group":
+        /*
+         * No element: the group is preserved as `miro_group_*` membership on
+         * each member element, which is how Firo models grouping.
+         */
+        break;
 
       default:
         warnings.push(`Unsupported Miro item type "${item.type}" (id: ${id})`);
