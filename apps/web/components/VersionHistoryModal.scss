@@ -418,3 +418,23 @@
     }
   }
 }
+
+// Small screens: the revision row's two action buttons leave the info column
+// ~40px at 390px, clipping the time text. Stack info above actions there so
+// both keep their full width inside the card.
+@media (max-width: 560px) {
+  .firo-version-history__item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--firo-space-sm, 10px);
+
+    &-actions {
+      flex-wrap: wrap;
+
+      .firo-version-history__action-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
+    }
+  }
+}
