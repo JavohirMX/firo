@@ -194,8 +194,13 @@
   .firo-creation-rail-container {
     position: absolute;
     left: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
+    // Center the rail within the space below the top-left board chrome, not
+    // within the full canvas height: at short viewports full-height centering
+    // slid the rail over the Main Menu button and swallowed its clicks.
+    top: 4.5rem;
+    bottom: 1rem;
+    margin-block: auto;
+    height: fit-content;
     z-index: 10;
     pointer-events: var(--ui-pointerEvents);
   }
