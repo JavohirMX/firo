@@ -21,6 +21,7 @@ import { miroHtmlToPlainText } from "./htmlToText";
 import type {
   MiroBoardMeta,
   MiroCaption,
+  MiroConnectorEndpoint,
   MiroItem,
   MiroResourceMeta,
 } from "./types";
@@ -38,6 +39,9 @@ const MIRO_COLOR_MAP: Readonly<Record<string, string>> = {
   violet: "#c5a3ff",
   magenta: "#ea7ae5",
   pink: "#ffb2d8",
+  // light_pink sampled from Miro's own sticky rendering (modal gradient range
+  // #ffd2f2-#ffd8f4 on a real board, 2026-10-30); not an official spec hex.
+  light_pink: "#ffd5f3",
   red: "#f2647c",
   gray: "#d0d0d0",
   light_gray: "#f0f0f0",
@@ -245,7 +249,10 @@ export const convertMiroItemsToFiro = async (
 
     const rawX = item.position?.x ?? item.x ?? 0;
     const rawY = item.position?.y ?? item.y ?? 0;
-    const origin = item.position?.origin ?? "center";
+    const origin =
+      item.position?.origin ??
+      (item.origin as "center" | "top-left" | undefined) ??
+      "center";
     const angle =
       (item.geometry?.rotation ?? item.rotation ?? 0) * (Math.PI / 180);
 
@@ -676,18 +683,57 @@ export const convertMiroItemsToFiro = async (
         const startItemId = item.start?.item ?? item.startItem?.id;
         const endItemId = item.end?.item ?? item.endItem?.id;
 
-        if (item.start?.position) {
-          startX = item.start.position.x;
-          startY = item.start.position.y;
+        // Real .rtb backups serialize bound endpoints as 0..1 fractions of
+        // the bound item's box (with snapTo), not absolute canvas coords.
+        const resolveEndpoint = (
+          endpoint: MiroConnectorEndpoint | undefined,
+          itemId: unknown,
+        ): { x: number; y: number } | null => {
+          const pos = endpoint?.position;
+          if (!pos) {
+            return null;
+          }
+          const b =
+            itemId != null ? itemBoundsMap.get(String(itemId)) : undefined;
+          if (b && Math.abs(pos.x) <= 1 && Math.abs(pos.y) <= 1) {
+            return { x: b.x + pos.x * b.width, y: b.y + pos.y * b.height };
+          }
+          return { x: pos.x, y: pos.y };
+        };
+        const bindingFocus = (
+          endpoint: MiroConnectorEndpoint | undefined,
+        ): number => {
+          const pos = endpoint?.position;
+          if (!pos) {
+            return 0;
+          }
+          const snap = String(endpoint?.snapTo ?? "").toLowerCase();
+          const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+          if (snap === "left" || snap === "right") {
+            return clamp((pos.y - 0.5) * 2);
+          }
+          if (snap === "top" || snap === "bottom") {
+            return clamp((pos.x - 0.5) * 2);
+          }
+          return 0;
+        };
+        const startFocus = bindingFocus(item.start);
+        const endFocus = bindingFocus(item.end);
+
+        const sp = resolveEndpoint(item.start, startItemId);
+        if (sp) {
+          startX = sp.x;
+          startY = sp.y;
         } else if (startItemId && itemBoundsMap.has(String(startItemId))) {
           const sb = itemBoundsMap.get(String(startItemId))!;
           startX = sb.x + sb.width / 2;
           startY = sb.y + sb.height / 2;
         }
 
-        if (item.end?.position) {
-          endX = item.end.position.x;
-          endY = item.end.position.y;
+        const ep = resolveEndpoint(item.end, endItemId);
+        if (ep) {
+          endX = ep.x;
+          endY = ep.y;
         } else if (endItemId && itemBoundsMap.has(String(endItemId))) {
           const eb = itemBoundsMap.get(String(endItemId))!;
           endX = eb.x + eb.width / 2;
@@ -854,17 +900,17 @@ export const convertMiroItemsToFiro = async (
           endArrowhead,
           boundElements,
           startBinding: startItemId
-            ? { elementId: String(startItemId), focus: 0, gap: 1 }
+            ? { elementId: String(startItemId), focus: startFocus, gap: 1 }
             : null,
           endBinding: endItemId
-            ? { elementId: String(endItemId), focus: 0, gap: 1 }
+            ? { elementId: String(endItemId), focus: endFocus, gap: 1 }
             : null,
           bindings: [
             ...(startItemId
-              ? [{ elementId: String(startItemId), focus: 0, gap: 1 }]
+              ? [{ elementId: String(startItemId), focus: startFocus, gap: 1 }]
               : []),
             ...(endItemId
-              ? [{ elementId: String(endItemId), focus: 0, gap: 1 }]
+              ? [{ elementId: String(endItemId), focus: endFocus, gap: 1 }]
               : []),
           ],
         });

@@ -567,6 +567,98 @@ describe("Miro conversion", () => {
     });
   });
 
+  describe("real .rtb backup serialization (grounded 2026-10-30)", () => {
+    it("maps light_pink fillColor instead of dropping it to transparent", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "lp1",
+          type: "sticky_note",
+          shape: "square",
+          content: "note",
+          style: { fillColor: "light_pink" },
+          origin: "center",
+          relativeTo: "canvas_center",
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 200,
+        },
+      ];
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const el = board.elements.find((e) => e.id === "lp1");
+      expect(el?.backgroundColor).toBe("#ffd5f3");
+    });
+
+    it("honors top-level origin field from backup items", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "o1",
+          type: "sticky_note",
+          shape: "square",
+          content: "note",
+          origin: "top-left",
+          relativeTo: "canvas_center",
+          x: 100,
+          y: 50,
+          width: 200,
+          height: 100,
+        },
+      ];
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const el = board.elements.find((e) => e.id === "o1");
+      expect(el?.x).toBe(100);
+      expect(el?.y).toBe(50);
+    });
+
+    it("resolves fractional bound connector endpoints against item bounds", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "a",
+          type: "sticky_note",
+          shape: "square",
+          content: "A",
+          origin: "center",
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 200,
+        },
+        {
+          id: "b",
+          type: "sticky_note",
+          shape: "square",
+          content: "B",
+          origin: "center",
+          x: 1000,
+          y: 0,
+          width: 200,
+          height: 200,
+        },
+        {
+          id: "c1",
+          type: "connector",
+          shape: "straight",
+          start: { item: "a", position: { x: 1, y: 0.75 }, snapTo: "right" },
+          end: { item: "b", position: { x: 0, y: 0.25 }, snapTo: "left" },
+          width: 800,
+          height: 0,
+        },
+      ];
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const arrow = board.elements.find((e) => e.type === "arrow");
+      expect(arrow).toBeDefined();
+      // A box is x:-100..100; right edge at x=100, y at (0.75-0.5)*200=50.
+      expect(arrow?.x).toBeCloseTo(100, 5);
+      expect(arrow?.y).toBeCloseTo(50, 5);
+      // B box is x:900..1100; left edge x=900 -> dx=800.
+      expect(arrow?.width).toBeCloseTo(800, 5);
+      const startBinding = arrow?.startBinding as { focus: number };
+      const endBinding = arrow?.endBinding as { focus: number };
+      expect(startBinding.focus).toBeCloseTo(0.5, 5);
+      expect(endBinding.focus).toBeCloseTo(-0.5, 5);
+    });
+  });
+
   describe("Firo to Miro export", () => {
     it("converts Firo elements back to Miro items", () => {
       const firoElements = [
