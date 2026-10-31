@@ -28,6 +28,7 @@ export class WebSocketRelay {
   public readonly wss: WebSocketServer;
   public readonly rooms: Map<string, Room> = new Map();
   private readonly allowedOrigins: string[];
+  private expiryTimer: NodeJS.Timeout | null = null;
 
   constructor(options: RelayOptions) {
     this.storage = options.storage;
@@ -113,6 +114,7 @@ export class WebSocketRelay {
     });
 
     room.addClient(client);
+    this.scheduleExpirySweep();
 
     ws.on("message", (data: Buffer | ArrayBuffer | Buffer[]) => {
       let uint8: Uint8Array;
@@ -128,6 +130,7 @@ export class WebSocketRelay {
 
     ws.on("close", () => {
       room?.removeClient(client);
+      this.scheduleExpirySweep();
       if (room && room.clients.size === 0) {
         // Compact, then release the room so its Y.Doc and awareness state do
         // not stay in memory for every board ever opened. A later connection
@@ -276,18 +279,84 @@ export class WebSocketRelay {
   /** Disconnect every client joined through the revoked share link. */
   public disconnectShareClients(share: ShareRecord): void {
     const room = this.rooms.get(share.board_id);
-    if (!room) {
-      return;
-    }
-    for (const client of [...room.clients]) {
-      if (client.shareToken === share.token) {
-        client.close(4403, "Access revoked");
-        room.removeClient(client);
+    if (room) {
+      for (const client of [...room.clients]) {
+        if (client.shareToken === share.token) {
+          client.close(4403, "Access revoked");
+          room.removeClient(client);
+        }
       }
     }
+    this.scheduleExpirySweep();
+  }
+
+  /**
+   * Arms a one-shot timer at the earliest share expiry among connected
+   * clients. Expiry is a known timestamp, so an exact timer cuts idle
+   * readers at the moment the link lapses instead of polling on an
+   * interval. setTimeout accepts at most ~24.8 days; longer waits clamp
+   * and re-arm when they fire.
+   */
+  private scheduleExpirySweep(): void {
+    if (this.expiryTimer) {
+      clearTimeout(this.expiryTimer);
+      this.expiryTimer = null;
+    }
+    const now = Date.now();
+    let earliest: number | null = null;
+    for (const room of this.rooms.values()) {
+      for (const client of room.clients) {
+        if (!client.shareToken) {
+          continue;
+        }
+        const share = this.storage.getShareByToken(client.shareToken);
+        if (!share || share.revoked === 1 || !share.expires_at) {
+          continue;
+        }
+        if (earliest === null || share.expires_at < earliest) {
+          earliest = share.expires_at;
+        }
+      }
+    }
+    if (earliest === null) {
+      return;
+    }
+    const MAX_TIMER_MS = 2_147_483_647;
+    const delay = Math.min(Math.max(earliest - now, 0), MAX_TIMER_MS);
+    this.expiryTimer = setTimeout(() => {
+      this.expiryTimer = null;
+      this.sweepLapsedShareClients();
+    }, delay);
+    this.expiryTimer.unref();
+  }
+
+  /** Cut every share client whose link has expired, then re-arm. */
+  private sweepLapsedShareClients(): void {
+    const now = Date.now();
+    for (const room of this.rooms.values()) {
+      for (const client of [...room.clients]) {
+        if (!client.shareToken) {
+          continue;
+        }
+        const share = this.storage.getShareByToken(client.shareToken);
+        const lapsed =
+          !share ||
+          share.revoked === 1 ||
+          (share.expires_at !== null && share.expires_at <= now);
+        if (lapsed) {
+          client.close(4403, "Share link expired");
+          room.removeClient(client);
+        }
+      }
+    }
+    this.scheduleExpirySweep();
   }
 
   public close(): void {
+    if (this.expiryTimer) {
+      clearTimeout(this.expiryTimer);
+      this.expiryTimer = null;
+    }
     for (const room of this.rooms.values()) {
       room.destroy();
     }

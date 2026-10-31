@@ -315,3 +315,182 @@ describe("Share revocation disconnects existing clients", () => {
     expect(events).toEqual(["once-tok"]);
   });
 });
+
+describe("Share expiry disconnects existing clients", () => {
+  let db: Database.Database;
+  let storage: Storage;
+  let server: http.Server;
+  let serverUrl: string;
+  let wsUrl: string;
+  let relay: WebSocketRelay;
+
+  interface TrackedSocket {
+    ws: WebSocket;
+    messages: number;
+    closeCode: number | null;
+  }
+
+  const waitFor = async (
+    predicate: () => boolean,
+    timeoutMs = 4_000,
+  ): Promise<boolean> => {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (predicate()) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return predicate();
+  };
+
+  const connect = (query: string): Promise<TrackedSocket> =>
+    new Promise((resolve, reject) => {
+      const tracked: TrackedSocket = {
+        ws: new WebSocket(`${wsUrl}?${query}`),
+        messages: 0,
+        closeCode: null,
+      };
+      tracked.ws.on("message", () => {
+        tracked.messages += 1;
+      });
+      tracked.ws.on("close", (code) => {
+        tracked.closeCode = code;
+      });
+      tracked.ws.on("open", () => resolve(tracked));
+      tracked.ws.on("error", reject);
+    });
+
+  beforeEach(async () => {
+    db = new Database(":memory:");
+    storage = new Storage(db);
+    const handler = createHttpHandler({
+      storage,
+      config: loadConfig({ sessionTtlMs: 3600_000 }),
+      authRateLimiter: new RateLimiter(100, 60_000),
+    });
+    server = http.createServer((req, res) => {
+      void handler(req, res).catch(() => {
+        res.writeHead(500);
+        res.end();
+      });
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const port = (server.address() as { port: number }).port;
+    serverUrl = `http://127.0.0.1:${port}`;
+    wsUrl = `ws://127.0.0.1:${port}/ws`;
+    relay = new WebSocketRelay({ storage, server });
+
+    storage.createUser({
+      id: "exp-owner",
+      username: "exp-owner",
+      password_hash: "unused",
+      salt: "unused",
+      is_admin: 0,
+    });
+    storage.createBoard("exp-board", "Board", "exp-owner");
+    storage.createSession("exp-sess", "exp-owner", 60_000);
+  });
+
+  afterEach(async () => {
+    relay.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    storage.close();
+  });
+
+  const seedPasswordShare = (token: string, expiresAt: number | null) => {
+    const { hash, salt } = hashPassword(SHARE_PASSWORD);
+    return storage.createShare({
+      id: `id-${token}`,
+      boardId: "exp-board",
+      token,
+      role: "editor",
+      password_hash: hash,
+      salt,
+      expires_at: expiresAt,
+    });
+  };
+
+  it("disconnects an idle password-share client when its link expires", async () => {
+    const share = seedPasswordShare("exp-tok", Date.now() + 400);
+    const proof = createShareProof(share);
+    const client = await connect(
+      `boardId=exp-board&shareToken=exp-tok&shareProof=${encodeURIComponent(
+        proof,
+      )}`,
+    );
+    expect(client.closeCode).toBeNull();
+
+    // No frame from the client: the server cuts it at the expiry timestamp.
+    expect(await waitFor(() => client.closeCode === 4403)).toBe(true);
+  });
+
+  it("stops delivering broadcasts after expiry", async () => {
+    const share = seedPasswordShare("exp-feed", Date.now() + 400);
+    const proof = createShareProof(share);
+    const lapsed = await connect(
+      `boardId=exp-board&shareToken=exp-feed&shareProof=${encodeURIComponent(
+        proof,
+      )}`,
+    );
+    const owner = await connect("boardId=exp-board&token=exp-sess");
+    expect(await waitFor(() => lapsed.closeCode === 4403)).toBe(true);
+    const messagesAtCutoff = lapsed.messages;
+
+    const doc = new Y.Doc();
+    doc.getMap("t").set("k", "v");
+    const enc = encoding.createEncoder();
+    encoding.writeVarUint(enc, 0);
+    encoding.writeVarUint(enc, 2);
+    encoding.writeVarUint8Array(enc, Y.encodeStateAsUpdate(doc));
+    owner.ws.send(encoding.toUint8Array(enc));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(lapsed.messages).toBe(messagesAtCutoff);
+    owner.ws.close();
+  });
+
+  it("cuts a passwordless viewer at expiry", async () => {
+    storage.createShare({
+      id: "id-exp-open",
+      boardId: "exp-board",
+      token: "exp-open",
+      role: "viewer",
+      expires_at: Date.now() + 400,
+    });
+    const client = await connect("boardId=exp-board&shareToken=exp-open");
+    expect(client.closeCode).toBeNull();
+    expect(await waitFor(() => client.closeCode === 4403)).toBe(true);
+  });
+
+  it("leaves unexpired shares and the owner connected when another share expires", async () => {
+    const expiring = seedPasswordShare("exp-a", Date.now() + 400);
+    const proofA = createShareProof(expiring);
+    const staying = seedPasswordShare("exp-b", null);
+    const proofB = createShareProof(staying);
+
+    const cut = await connect(
+      `boardId=exp-board&shareToken=exp-a&shareProof=${encodeURIComponent(
+        proofA,
+      )}`,
+    );
+    const other = await connect(
+      `boardId=exp-board&shareToken=exp-b&shareProof=${encodeURIComponent(
+        proofB,
+      )}`,
+    );
+    const owner = await connect("boardId=exp-board&token=exp-sess");
+
+    expect(await waitFor(() => cut.closeCode === 4403)).toBe(true);
+    // Give any wrongful disconnect a chance to happen.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(other.closeCode).toBeNull();
+    expect(other.ws.readyState).toBe(WebSocket.OPEN);
+    expect(owner.closeCode).toBeNull();
+    expect(owner.ws.readyState).toBe(WebSocket.OPEN);
+    other.ws.close();
+    owner.ws.close();
+  });
+});
