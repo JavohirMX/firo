@@ -1,7 +1,8 @@
+import { verifyShareProof } from "../auth/shareProof.js";
+
 import type { WebSocket } from "ws";
 import type { Role, UserRecord } from "../db/schema.js";
 import type { Storage } from "../db/storage.js";
-import { verifyShareProof } from "../auth/shareProof.js";
 
 export class ClientConnection {
   public readonly ws: WebSocket;

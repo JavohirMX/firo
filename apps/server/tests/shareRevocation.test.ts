@@ -320,7 +320,6 @@ describe("Share expiry disconnects existing clients", () => {
   let db: Database.Database;
   let storage: Storage;
   let server: http.Server;
-  let serverUrl: string;
   let wsUrl: string;
   let relay: WebSocketRelay;
 
@@ -379,7 +378,6 @@ describe("Share expiry disconnects existing clients", () => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
     const port = (server.address() as { port: number }).port;
-    serverUrl = `http://127.0.0.1:${port}`;
     wsUrl = `ws://127.0.0.1:${port}/ws`;
     relay = new WebSocketRelay({ storage, server });
 
