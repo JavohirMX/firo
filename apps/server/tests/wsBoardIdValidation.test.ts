@@ -39,7 +39,7 @@ describe("WebSocket board id validation", () => {
         host: "localhost",
         cookie: `firo_session=${sessionToken}`,
       },
-    }) as unknown as http.IncomingMessage;
+    } as unknown as http.IncomingMessage);
 
   it.each([
     "/boards/has space",
