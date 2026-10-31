@@ -131,7 +131,10 @@ export function createStaticHandler(
       // char base64url hash, but the directory alone is not proof: fixed
       // names exist in the build (public/ files at the root, woff2 fonts
       // under /fonts/), and a config change could put one under /assets/.
-      // Require the hash in the file name, not just the directory.
+      // The name check below is a heuristic, not proof of a content hash:
+      // a future fixed suffix of 8+ word chars would also match. Accepting
+      // that residual risk beats trusting the directory alone; the build
+      // emits no manifest to check against.
       const basename = pathname.slice(pathname.lastIndexOf("/") + 1);
       const isHashedAsset =
         pathname.startsWith("/assets/") &&
