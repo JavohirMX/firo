@@ -1,6 +1,7 @@
 import type { WebSocket } from "ws";
 import type { Role, UserRecord } from "../db/schema.js";
 import type { Storage } from "../db/storage.js";
+import { verifyShareProof } from "../auth/shareProof.js";
 
 export class ClientConnection {
   public readonly ws: WebSocket;
@@ -8,6 +9,7 @@ export class ClientConnection {
   public readonly userId: string | null;
   public user: UserRecord | null;
   public readonly shareToken: string | null;
+  public readonly shareProof: string | null;
   public role: Role;
   private readonly storage: Storage;
   public isClosed: boolean = false;
@@ -25,6 +27,7 @@ export class ClientConnection {
     userId: string | null;
     user: UserRecord | null;
     shareToken: string | null;
+    shareProof: string | null;
     role: Role;
     storage: Storage;
   }) {
@@ -33,6 +36,7 @@ export class ClientConnection {
     this.userId = options.userId;
     this.user = options.user;
     this.shareToken = options.shareToken;
+    this.shareProof = options.shareProof;
     this.role = options.role;
     this.storage = options.storage;
   }
@@ -66,10 +70,19 @@ export class ClientConnection {
       this.user = freshUser;
     }
 
+    let shareProofValid = false;
+    if (this.shareToken) {
+      const share = this.storage.getShareByToken(this.shareToken);
+      if (share) {
+        shareProofValid = verifyShareProof(share, this.shareProof);
+      }
+    }
+
     const currentRole = this.storage.resolveRole(
       this.boardId,
       this.user,
       this.shareToken,
+      shareProofValid,
     );
     if (currentRole) {
       this.role = currentRole;

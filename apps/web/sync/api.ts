@@ -59,7 +59,11 @@ export interface SyncApi {
   createBoard(id: string, name?: string): Promise<void>;
   createShare(
     boardId: string,
-    options: { role: ShareRole; expiresAt?: number | null },
+    options: {
+      role: ShareRole;
+      expiresAt?: number | null;
+      password?: string | null;
+    },
   ): Promise<SyncShare>;
   listShares(boardId: string): Promise<SyncShare[]>;
   revokeShare(boardId: string, shareId: string): Promise<void>;
@@ -160,6 +164,7 @@ export const createSyncApi = (options: SyncApiOptions = {}): SyncApi => {
           body: {
             role: shareOptions.role,
             expiresAt: shareOptions.expiresAt ?? undefined,
+            password: shareOptions.password ?? undefined,
           },
         },
       );

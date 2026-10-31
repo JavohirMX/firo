@@ -4,6 +4,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 
 import { parseCookies } from "../auth/session.js";
 import { isAllowedOrigin } from "../http/routes.js";
+import { verifyShareProof } from "../auth/shareProof.js";
 
 import { ClientConnection } from "./connection.js";
 
@@ -74,10 +75,10 @@ export class WebSocketRelay {
       return;
     }
 
-    const { boardId, user, shareToken, role } = parsed;
+    const { boardId, user, shareToken, shareProof, role } = parsed;
 
     this.wss.handleUpgrade(req, socket, head, (ws: WebSocket) => {
-      this.handleConnection(ws, boardId, user, shareToken, role);
+      this.handleConnection(ws, boardId, user, shareToken, shareProof, role);
     });
   }
 
@@ -86,6 +87,7 @@ export class WebSocketRelay {
     boardId: string,
     user: UserRecord | null,
     shareToken: string | null,
+    shareProof: string | null,
     role: Role,
   ): void {
     let room = this.rooms.get(boardId);
@@ -100,6 +102,7 @@ export class WebSocketRelay {
       userId: user?.id ?? null,
       user,
       shareToken,
+      shareProof,
       role,
       storage: this.storage,
     });
@@ -146,6 +149,7 @@ export class WebSocketRelay {
     boardId: string;
     user: UserRecord | null;
     shareToken: string | null;
+    shareProof: string | null;
     role: Role;
   } | null {
     try {
@@ -185,6 +189,7 @@ export class WebSocketRelay {
       let shareToken =
         fullUrl.searchParams.get("share") ||
         fullUrl.searchParams.get("shareToken");
+      const shareProof = fullUrl.searchParams.get("shareProof");
       let boardId: string | null = fullUrl.searchParams.get("boardId");
 
       if (pathname.startsWith("/s/")) {
@@ -227,7 +232,22 @@ export class WebSocketRelay {
         return null;
       }
 
-      const role = this.storage.resolveRole(boardId, user, shareToken);
+      // A password-protected share needs the password-claim proof, not just
+      // the link: without it resolveRole refuses the share role.
+      let shareProofValid = false;
+      if (shareToken) {
+        const share = this.storage.getShareByToken(shareToken);
+        if (share) {
+          shareProofValid = verifyShareProof(share, shareProof);
+        }
+      }
+
+      const role = this.storage.resolveRole(
+        boardId,
+        user,
+        shareToken,
+        shareProofValid,
+      );
       if (!role) {
         return null;
       }
@@ -236,6 +256,7 @@ export class WebSocketRelay {
         boardId,
         user,
         shareToken,
+        shareProof,
         role,
       };
     } catch {

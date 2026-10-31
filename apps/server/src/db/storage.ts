@@ -276,6 +276,7 @@ export class Storage {
     boardId: string,
     user: UserRecord | null,
     shareToken: string | null = null,
+    shareProofValid: boolean = false,
   ): Role | null {
     const board = this.getBoard(boardId);
     if (!board) {
@@ -300,6 +301,13 @@ export class Storage {
       const share = this.getShareByToken(shareToken);
       if (share && share.board_id === boardId && share.revoked === 0) {
         if (!share.expires_at || share.expires_at > Date.now()) {
+          // A password-protected share grants its role only when the caller
+          // has already proven the password claim; the link alone is not
+          // enough. Without this the stored hash was never consulted and
+          // password links were open to anyone holding the URL.
+          if (share.password_hash && !shareProofValid) {
+            return null;
+          }
           return share.role;
         }
       }

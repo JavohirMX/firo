@@ -11,7 +11,10 @@ import {
   MESSAGE_SYNC,
   MESSAGE_AWARENESS,
   buildRelayWsUrl,
+  claimSharePassword,
+  getShareProof,
   resolveShareToken,
+  storeShareProof,
   type CollabStatus,
   type CollaboratorInfo,
 } from "../collabProvider";
@@ -97,6 +100,29 @@ describe("CollabProvider", () => {
       expect(url2).toBe(
         "ws://localhost:8080/ws?boardId=board-456&shareToken=token-abc",
       );
+    });
+
+    it("appends the share proof when one was claimed", () => {
+      const url = buildRelayWsUrl(
+        "board-456",
+        "token-abc",
+        "ws://localhost:8080/ws",
+        "v1.proof-with+symbols=",
+      );
+      expect(url).toBe(
+        "ws://localhost:8080/ws?boardId=board-456&shareToken=token-abc" +
+          `&shareProof=${encodeURIComponent("v1.proof-with+symbols=")}`,
+      );
+    });
+
+    it("omits the share proof when none was claimed", () => {
+      const url = buildRelayWsUrl(
+        "board-456",
+        "token-abc",
+        "ws://localhost:8080/ws",
+        null,
+      );
+      expect(url).not.toContain("shareProof=");
     });
 
     it("respects existing query parameters in base URL", () => {
@@ -597,6 +623,64 @@ describe("CollabProvider", () => {
 
       const result = await resolveShareToken("invalid-tok");
       expect(result).toBeNull();
+    });
+  });
+
+  describe("claimSharePassword", () => {
+    it("posts the password to the claim endpoint and returns the proof", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ proof: "v1.abc" }),
+      });
+      global.fetch = mockFetch;
+
+      const result = await claimSharePassword("tok-1", "pw", "https://a.test");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://a.test/api/shares/tok-1/claim",
+        expect.objectContaining({ method: "POST" }),
+      );
+      expect(result).toEqual({ proof: "v1.abc" });
+    });
+
+    it("maps a wrong password to the prompt message", async () => {
+      global.fetch = vi
+        .fn()
+        .mockResolvedValue({ ok: false, status: 401, json: async () => ({}) });
+      expect(await claimSharePassword("tok-1", "nope")).toEqual({
+        error: "Incorrect password.",
+      });
+    });
+
+    it("maps revoked and expired links to their messages", async () => {
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 404 })
+        .mockResolvedValueOnce({ ok: false, status: 410 });
+      expect(await claimSharePassword("tok-1", "pw")).toEqual({
+        error: "Share link not found or revoked.",
+      });
+      expect(await claimSharePassword("tok-1", "pw")).toEqual({
+        error: "Share link has expired.",
+      });
+    });
+
+    it("reports a network failure without throwing", async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error("offline"));
+      expect(await claimSharePassword("tok-1", "pw")).toEqual({
+        error: "Could not reach the server. Try again.",
+      });
+    });
+  });
+
+  describe("share proof storage", () => {
+    it("round-trips a proof per share token", () => {
+      window.localStorage.clear();
+      expect(getShareProof("tok-store")).toBeNull();
+      storeShareProof("tok-store", "v1.stored");
+      expect(getShareProof("tok-store")).toBe("v1.stored");
+      expect(getShareProof("tok-other")).toBeNull();
+      window.localStorage.clear();
     });
   });
 });

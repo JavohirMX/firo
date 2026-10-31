@@ -228,6 +228,7 @@ import { AIAssistantModal } from "./components/AIAssistantModal";
 
 import {
   CollabProvider,
+  getShareProof,
   resolveShareToken,
   type CollaboratorInfo,
 } from "./board/collabProvider";
@@ -3129,6 +3130,7 @@ const ExcalidrawWrapper = () => {
       const provider = new CollabProvider({
         boardId,
         shareToken,
+        shareProof: shareToken ? getShareProof(shareToken) : null,
         doc: boardDoc(),
       });
 

@@ -18,6 +18,8 @@ export interface ShareLink {
 
 export interface ShareLinkOptions {
   expiresAt: number | null;
+  /** Optional share password; only server-backed links can enforce it. */
+  password?: string | null;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -88,6 +90,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [links, setLinks] = useState<ShareLink[]>([...initialLinks]);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [expiryId, setExpiryId] = useState<string>("never");
+  const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -135,7 +138,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     try {
       let newLink: ShareLink;
       if (onGenerateLink) {
-        newLink = await onGenerateLink(selectedRole, { expiresAt });
+        const trimmedPassword = password.trim();
+        newLink = await onGenerateLink(selectedRole, {
+          expiresAt,
+          ...(trimmedPassword ? { password: trimmedPassword } : {}),
+        });
+        setPassword("");
       } else {
         const token = generateCapabilityToken();
         const origin =
@@ -161,7 +169,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     } finally {
       setBusy(false);
     }
-  }, [busy, expiryId, onGenerateLink, selectedRole]);
+  }, [busy, expiryId, onGenerateLink, selectedRole, password]);
 
   const handleCopyLink = useCallback(async (link: ShareLink) => {
     try {
@@ -319,6 +327,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   Create link
                 </button>
               </div>
+              {onGenerateLink && (
+                <div className="firo-share-modal__row">
+                  <input
+                    type="password"
+                    className="firo-share-modal__role-select"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password (optional)"
+                    autoComplete="off"
+                    aria-label="Optional share password"
+                    data-testid="share-password-input"
+                  />
+                </div>
+              )}
             </div>
           )}
 
