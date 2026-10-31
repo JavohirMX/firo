@@ -14,6 +14,7 @@ import {
 
 export class Storage {
   public readonly db: Database.Database;
+  private readonly shareRevokedListeners: ((share: ShareRecord) => void)[] = [];
 
   constructor(dbOrPath: Database.Database | string) {
     if (typeof dbOrPath === "string") {
@@ -263,11 +264,31 @@ export class Storage {
     return stmt.all(boardId) as ShareRecord[];
   }
 
+  public onShareRevoked(listener: (share: ShareRecord) => void): void {
+    this.shareRevokedListeners.push(listener);
+  }
+
   public revokeShare(tokenOrId: string): void {
+    // Collect the affected rows first so listeners learn which share (and
+    // board) was revoked; the UPDATE alone would leave that unknown.
+    const matches = this.db
+      .prepare(
+        "SELECT * FROM shares WHERE (id = ? OR token = ?) AND revoked = 0",
+      )
+      .all(tokenOrId, tokenOrId) as ShareRecord[];
     const stmt = this.db.prepare(
       "UPDATE shares SET revoked = 1 WHERE id = ? OR token = ?",
     );
     stmt.run(tokenOrId, tokenOrId);
+    for (const share of matches) {
+      for (const listener of this.shareRevokedListeners) {
+        try {
+          listener(share);
+        } catch {
+          // A listener failure must not break the revoke API path.
+        }
+      }
+    }
   }
 
   // --- Role Resolution ---

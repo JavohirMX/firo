@@ -10,7 +10,7 @@ import { ClientConnection } from "./connection.js";
 
 import { Room } from "./room.js";
 
-import type { Role, UserRecord } from "../db/schema.js";
+import type { Role, ShareRecord, UserRecord } from "../db/schema.js";
 import type { Storage } from "../db/storage.js";
 
 import type { Socket } from "node:net";
@@ -33,6 +33,11 @@ export class WebSocketRelay {
     this.storage = options.storage;
     this.allowedOrigins = options.allowedOrigins ?? [];
     this.wss = new WebSocketServer({ noServer: true });
+
+    // Revoking a share must cut off its existing connections, not only new
+    // ones: without this, an idle share client kept receiving broadcasts
+    // until it happened to send an update frame.
+    this.storage.onShareRevoked((share) => this.disconnectShareClients(share));
 
     if (options.server) {
       this.attachToServer(options.server);
@@ -266,6 +271,20 @@ export class WebSocketRelay {
 
   public getRoom(boardId: string): Room | undefined {
     return this.rooms.get(boardId);
+  }
+
+  /** Disconnect every client joined through the revoked share link. */
+  public disconnectShareClients(share: ShareRecord): void {
+    const room = this.rooms.get(share.board_id);
+    if (!room) {
+      return;
+    }
+    for (const client of [...room.clients]) {
+      if (client.shareToken === share.token) {
+        client.close(4403, "Access revoked");
+        room.removeClient(client);
+      }
+    }
   }
 
   public close(): void {

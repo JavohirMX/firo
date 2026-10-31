@@ -2,11 +2,18 @@ import http from "node:http";
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Database from "better-sqlite3";
+import WebSocket from "ws";
+import * as Y from "yjs";
+import * as encoding from "lib0/encoding.js";
 
 import { Storage } from "../src/db/storage.js";
 import { RateLimiter } from "../src/http/rateLimit.js";
 import { createHttpHandler } from "../src/http/routes.js";
 import { loadConfig } from "../src/config.js";
+import { hashPassword } from "../src/auth/crypto.js";
+import { createShareProof } from "../src/auth/shareProof.js";
+import { WebSocketRelay } from "../src/ws/relay.js";
+const SHARE_PASSWORD = "correct horse battery staple";
 
 describe("Board share revocation", () => {
   let db: Database.Database;
@@ -98,5 +105,213 @@ describe("Board share revocation", () => {
         expect(storage.getShareById(share.id)?.revoked).toBe(1);
       },
     );
+  });
+});
+
+describe("Share revocation disconnects existing clients", () => {
+  let db: Database.Database;
+  let storage: Storage;
+  let server: http.Server;
+  let serverUrl: string;
+  let wsUrl: string;
+  let relay: WebSocketRelay;
+
+  interface TrackedSocket {
+    ws: WebSocket;
+    messages: number;
+    closeCode: number | null;
+  }
+
+  const waitFor = async (
+    predicate: () => boolean,
+    timeoutMs = 3_000,
+  ): Promise<boolean> => {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (predicate()) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return predicate();
+  };
+
+  const connect = (query: string): Promise<TrackedSocket> =>
+    new Promise((resolve, reject) => {
+      const tracked: TrackedSocket = {
+        ws: new WebSocket(`${wsUrl}?${query}`),
+        messages: 0,
+        closeCode: null,
+      };
+      tracked.ws.on("message", () => {
+        tracked.messages += 1;
+      });
+      tracked.ws.on("close", (code) => {
+        tracked.closeCode = code;
+      });
+      tracked.ws.on("open", () => resolve(tracked));
+      tracked.ws.on("error", reject);
+    });
+
+  beforeEach(async () => {
+    db = new Database(":memory:");
+    storage = new Storage(db);
+    const handler = createHttpHandler({
+      storage,
+      config: loadConfig({ sessionTtlMs: 3600_000 }),
+      authRateLimiter: new RateLimiter(100, 60_000),
+    });
+    server = http.createServer((req, res) => {
+      void handler(req, res).catch(() => {
+        res.writeHead(500);
+        res.end();
+      });
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const port = (server.address() as { port: number }).port;
+    serverUrl = `http://127.0.0.1:${port}`;
+    wsUrl = `ws://127.0.0.1:${port}/ws`;
+    relay = new WebSocketRelay({ storage, server });
+
+    storage.createUser({
+      id: "rev-owner",
+      username: "rev-owner",
+      password_hash: "unused",
+      salt: "unused",
+      is_admin: 0,
+    });
+    storage.createBoard("rev-board", "Board", "rev-owner");
+  });
+
+  afterEach(async () => {
+    relay.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    storage.close();
+  });
+
+  const seedPasswordShare = (token: string) => {
+    const { hash, salt } = hashPassword(SHARE_PASSWORD);
+    return storage.createShare({
+      id: `id-${token}`,
+      boardId: "rev-board",
+      token,
+      role: "editor",
+      password_hash: hash,
+      salt,
+      expires_at: null,
+    });
+  };
+
+  const revokeViaApi = (shareId: string, sessionToken: string) =>
+    fetch(`${serverUrl}/api/boards/rev-board/shares/${shareId}/revoke`, {
+      method: "POST",
+      headers: { Cookie: `firo_session=${sessionToken}` },
+    });
+
+  it("disconnects an idle password-share client on revoke, before any write", async () => {
+    const share = seedPasswordShare("idle-tok");
+    const proof = createShareProof(share);
+    storage.createSession("sess-1", "rev-owner", 60_000);
+
+    const client = await connect(
+      `boardId=rev-board&shareToken=idle-tok&shareProof=${encodeURIComponent(
+        proof,
+      )}`,
+    );
+    expect(client.closeCode).toBeNull();
+
+    const res = await revokeViaApi(share.id, "sess-1");
+    expect(res.status).toBe(200);
+
+    // No frame from the client: the server must cut the idle connection.
+    expect(await waitFor(() => client.closeCode === 4403)).toBe(true);
+  });
+
+  it("stops delivering broadcasts to a revoked client", async () => {
+    const share = seedPasswordShare("feed-tok");
+    const proof = createShareProof(share);
+    storage.createSession("sess-2", "rev-owner", 60_000);
+
+    const revoked = await connect(
+      `boardId=rev-board&shareToken=feed-tok&shareProof=${encodeURIComponent(
+        proof,
+      )}`,
+    );
+    const other = await connect(
+      `boardId=rev-board&shareToken=feed-tok&shareProof=${encodeURIComponent(
+        proof,
+      )}`,
+    );
+    const messagesBefore = revoked.messages;
+
+    await revokeViaApi(share.id, "sess-2");
+    expect(await waitFor(() => revoked.closeCode === 4403)).toBe(true);
+
+    // A surviving client writes; the revoked one must not receive it.
+    const doc = new Y.Doc();
+    doc.getMap("t").set("k", "v");
+    const enc = encoding.createEncoder();
+    encoding.writeVarUint(enc, 0);
+    encoding.writeVarUint(enc, 2);
+    encoding.writeVarUint8Array(enc, Y.encodeStateAsUpdate(doc));
+    other.ws.send(encoding.toUint8Array(enc));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(revoked.messages).toBe(messagesBefore);
+    other.ws.close();
+  });
+
+  it("disconnects an idle passwordless-share client on revoke", async () => {
+    const share = storage.createShare({
+      id: "id-open-tok",
+      boardId: "rev-board",
+      token: "open-tok",
+      role: "viewer",
+      expires_at: null,
+    });
+    storage.createSession("sess-3", "rev-owner", 60_000);
+
+    const client = await connect("boardId=rev-board&shareToken=open-tok");
+    expect(client.closeCode).toBeNull();
+
+    await revokeViaApi(share.id, "sess-3");
+    expect(await waitFor(() => client.closeCode === 4403)).toBe(true);
+  });
+
+  it("leaves the owner's session and other shares connected", async () => {
+    const shareA = seedPasswordShare("tok-a");
+    const shareB = seedPasswordShare("tok-b");
+    const proofB = createShareProof(shareB);
+    storage.createSession("sess-4", "rev-owner", 60_000);
+
+    const owner = await connect("boardId=rev-board&token=sess-4");
+    const other = await connect(
+      `boardId=rev-board&shareToken=tok-b&shareProof=${encodeURIComponent(
+        proofB,
+      )}`,
+    );
+
+    await revokeViaApi(shareA.id, "sess-4");
+    // Give any wrongful disconnect a chance to happen.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(owner.closeCode).toBeNull();
+    expect(owner.ws.readyState).toBe(WebSocket.OPEN);
+    expect(other.closeCode).toBeNull();
+    expect(other.ws.readyState).toBe(WebSocket.OPEN);
+    owner.ws.close();
+    other.ws.close();
+  });
+
+  it("revoking an already-revoked share notifies nothing new", async () => {
+    const share = seedPasswordShare("once-tok");
+    const events: string[] = [];
+    storage.onShareRevoked((s) => events.push(s.token));
+
+    storage.revokeShare(share.id);
+    storage.revokeShare(share.id);
+    expect(events).toEqual(["once-tok"]);
   });
 });
