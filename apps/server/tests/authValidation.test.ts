@@ -150,9 +150,29 @@ describe("Auth route validation", () => {
       const res = await fetch(`${serverUrl}/api/auth/me`);
       expect(res.status).toBe(401);
     });
-  });
+  it("does not reveal unknown usernames through response timing", async () => {
+    // Baseline: one real scrypt verification in this process.
+    const { hashPassword, verifyPassword } = await import(
+      "../src/auth/crypto.js"
+    );
+    const creds = hashPassword("baseline-password");
+    const t0 = performance.now();
+    verifyPassword("candidate", creds.hash, creds.salt);
+    const scryptMs = performance.now() - t0;
 
-  describe("closed registration", () => {
+    const t1 = performance.now();
+    const res = await fetch(`${serverUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "no-such-user", password: "whatever1" }),
+    });
+    const elapsed = performance.now() - t1;
+    expect(res.status).toBe(401);
+    // Unknown user must still pay a full scrypt; allow a wide margin for
+    // loaded CI machines, but a skipped verify would be ~instant.
+    expect(elapsed).toBeGreaterThan(scryptMs * 0.5);
+  });
+  });  describe("closed registration", () => {
     beforeEach(() => start({ allowOpenRegistration: false }));
 
     it("allows the first account, then refuses further sign-ups", async () => {
@@ -170,4 +190,5 @@ describe("Auth route validation", () => {
       expect(storage.getUserByUsername("bob")).toBeNull();
     });
   });
+
 });

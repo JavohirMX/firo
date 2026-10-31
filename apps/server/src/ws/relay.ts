@@ -209,7 +209,10 @@ export class WebSocketRelay {
         }
       }
 
-      if (!boardId) {
+      // Same validation as POST /api/boards: the WS path auto-creates boards
+      // for authenticated users, so it must not accept ids the HTTP API
+      // would reject.
+      if (!boardId || !/^[A-Za-z0-9_.-]{1,128}$/.test(boardId)) {
         return null;
       }
 

@@ -126,8 +126,11 @@ export function createStaticHandler(
     if (fs.existsSync(targetFilePath) && fs.statSync(targetFilePath).isFile()) {
       const stat = fs.statSync(targetFilePath);
       const mime = getMimeType(targetFilePath);
-      const isHashedAsset =
-        pathname.startsWith("/assets/") || pathname.includes("-");
+      // Only vite's /assets/ output always carries a content hash. Public
+      // files (favicon-32x32.png, service-worker.js) and some fonts contain
+      // dashes but no hash; treating them as immutable serves stale copies
+      // for a year after an upgrade.
+      const isHashedAsset = pathname.startsWith("/assets/");
       const isHtml = mime.startsWith("text/html");
 
       const cacheControl = isHtml

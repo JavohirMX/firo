@@ -11,6 +11,7 @@ import {
 import {
   generateId,
   generateShareToken,
+  getDummyPasswordCredentials,
   hashPassword,
   verifyPassword,
 } from "../auth/crypto.js";
@@ -261,7 +262,12 @@ export function createHttpHandler(
       }
 
       const user = storage.getUserByUsername(username);
-      if (!user || !verifyPassword(password, user.password_hash, user.salt)) {
+      // Verify against dummy credentials when the user does not exist, so an
+      // unknown username costs the same scrypt time as a wrong password.
+      const { hash, salt } = user
+        ? { hash: user.password_hash, salt: user.salt }
+        : getDummyPasswordCredentials();
+      if (!verifyPassword(password, hash, salt) || !user) {
         sendJson(res, 401, { error: "Invalid username or password." });
         return;
       }
