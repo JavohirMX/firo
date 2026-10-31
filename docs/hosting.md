@@ -5,7 +5,7 @@ One container serves the web app, the sync server, and SQLite. This guide takes 
 ## What you need
 
 - A machine with Docker and the Compose plugin (`docker compose version`).
-- About 2 GB of free disk for the build, a few hundred MB after that.
+- About 4 GB of free disk for the first build (a cold build was measured at ~3.3 GB on 2026-10-31, image and build cache included); much less once the cache is warm.
 - Ten minutes, most of it the first build.
 
 ## Install (from source)
@@ -18,9 +18,13 @@ cd firo
 docker compose up -d --build
 ```
 
-The compose file pins `pull_policy: build`, so Compose builds locally instead of pulling the not-yet-published image. (Older Compose versions may still print a one-line registry "not found" before building - expected, and the build proceeds.) The first build runs the full monorepo build inside Docker; later builds reuse the cache. When it finishes, the app and sync server listen on `http://<host>:8080`. `docker compose logs -f` shows the server log; `curl http://localhost:8080/healthz` answers 200.
+The compose file pins `pull_policy: build`, so Compose builds locally instead of pulling the not-yet-published image. (Older Compose versions may still print a one-line registry "not found" before building - expected, and the build proceeds.) The first build runs the full monorepo build inside Docker; later builds reuse the cache. When it finishes, the app and sync server listen on `http://<host>:8080`. `docker compose logs -f` shows the server log; `curl http://localhost:8080/healthz` answers 200. The from-source build and `/healthz` were verified end-to-end on 2026-10-31 (Docker 29, `node:20-bookworm-slim`) in an isolated run.
 
 Memory-constrained build hosts: the full web build runs parallel typecheck and lint workers, sourcemaps and a gzip-size pass; on a 2 GB host that combination can be OOM-killed. `yarn --cwd apps/web build:app:lean` (`VITE_APP_LEAN_BUILD=true`) builds the same bundle with those three extras off - verified on a 2 GB host in about 30 seconds. It skips the typecheck/lint workers by design, so run the checks separately (`npx tsc` and `npx eslint` in `apps/web`) when you use it. The Docker build intentionally keeps the full checked path.
+
+## Network exposure
+
+The compose file publishes `8080:8080`, which listens on **all** interfaces - fine for a private LAN, wrong for a host reachable from a network you do not control. To bind loopback only, edit the port line in `docker-compose.yml` to `127.0.0.1:8080:8080` and let the TLS proxy below reach it there. If you use an override file instead, know that Compose *merges* `ports` lists from overrides instead of replacing them; dropping the base bind needs an explicit `!reset`, or edit the base file directly.
 
 ## First run: create your account, then close the door
 
