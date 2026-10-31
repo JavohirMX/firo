@@ -126,11 +126,16 @@ export function createStaticHandler(
     if (fs.existsSync(targetFilePath) && fs.statSync(targetFilePath).isFile()) {
       const stat = fs.statSync(targetFilePath);
       const mime = getMimeType(targetFilePath);
-      // Only vite's /assets/ output always carries a content hash. Public
-      // files (favicon-32x32.png, service-worker.js) and some fonts contain
-      // dashes but no hash; treating them as immutable serves stale copies
-      // for a year after an upgrade.
-      const isHashedAsset = pathname.startsWith("/assets/");
+      // Immutable caching is only safe when the URL changes with the
+      // content. Vite emits "name-<hash>.<ext>" under /assets/ with an 8+
+      // char base64url hash, but the directory alone is not proof: fixed
+      // names exist in the build (public/ files at the root, woff2 fonts
+      // under /fonts/), and a config change could put one under /assets/.
+      // Require the hash in the file name, not just the directory.
+      const basename = pathname.slice(pathname.lastIndexOf("/") + 1);
+      const isHashedAsset =
+        pathname.startsWith("/assets/") &&
+        /-[A-Za-z0-9_-]{8,}\.[^./]+(\.map)?$/.test(basename);
       const isHtml = mime.startsWith("text/html");
 
       const cacheControl = isHtml

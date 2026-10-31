@@ -23,6 +23,13 @@ describe("Static cache headers", () => {
     fs.writeFileSync(path.join(web, "index.html"), "Firo");
     // vite always emits hashed names under /assets/
     fs.writeFileSync(path.join(web, "assets", "index-Dq2x9Klm.js"), "js");
+    fs.writeFileSync(path.join(web, "assets", "index-Dq2x9Klm.js.map"), "map");
+    // regression: an un-hashed name must not become immutable just because
+    // it sits under /assets/ (e.g. if the woff2 rule ever points there)
+    fs.writeFileSync(
+      path.join(web, "assets", "PlusJakartaSans-latin.woff2"),
+      "font",
+    );
     // public/ files are copied verbatim: dashes, but no content hash
     fs.writeFileSync(path.join(web, "favicon-32x32.png"), "png");
     fs.writeFileSync(path.join(web, "service-worker.js"), "sw");
@@ -72,6 +79,20 @@ describe("Static cache headers", () => {
       expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
     },
   );
+
+  it("does not mark an un-hashed file under /assets/ immutable", async () => {
+    const res = await fetch(`${url}/assets/PlusJakartaSans-latin.woff2`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
+  });
+
+  it("marks hashed sourcemaps under /assets/ immutable", async () => {
+    const res = await fetch(`${url}/assets/index-Dq2x9Klm.js.map`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+  });
 
   it("serves html with no-cache", async () => {
     const res = await fetch(`${url}/index.html`);
