@@ -37,6 +37,7 @@ export interface CollabProviderOptions {
   doc: FiroDoc;
   wsUrl?: string;
   shareToken?: string | null;
+  shareProof?: string | null;
   user?: {
     name?: string;
     color?: string;
@@ -54,6 +55,7 @@ export function buildRelayWsUrl(
   boardId: string,
   shareToken?: string | null,
   configuredBaseUrl?: string,
+  shareProof?: string | null,
 ): string {
   let base = configuredBaseUrl;
   if (!base) {
@@ -99,6 +101,9 @@ export function buildRelayWsUrl(
   if (shareToken && !url.includes("shareToken=") && !url.includes("share=")) {
     url += `&shareToken=${encodeURIComponent(shareToken)}`;
   }
+  if (shareProof && !url.includes("shareProof=")) {
+    url += `&shareProof=${encodeURIComponent(shareProof)}`;
+  }
   return url;
 }
 
@@ -125,12 +130,70 @@ export async function resolveShareToken(
   }
 }
 
+/**
+ * Exchanges a share link's password for the proof the server wants on the
+ * realtime connection. The error strings are meant for the person at the
+ * password prompt, not the console.
+ */
+export async function claimSharePassword(
+  token: string,
+  password: string,
+  apiBase = "",
+): Promise<{ proof: string | null } | { error: string }> {
+  try {
+    const res = await fetch(
+      `${apiBase}/api/shares/${encodeURIComponent(token)}/claim`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      },
+    );
+    if (res.status === 401) {
+      return { error: "Incorrect password." };
+    }
+    if (res.status === 404) {
+      return { error: "Share link not found or revoked." };
+    }
+    if (res.status === 410) {
+      return { error: "Share link has expired." };
+    }
+    if (!res.ok) {
+      return { error: "Could not verify the password. Try again." };
+    }
+    const data = await res.json();
+    return { proof: data?.proof ?? null };
+  } catch {
+    return { error: "Could not reach the server. Try again." };
+  }
+}
+
+const shareProofKey = (token: string) => `firo-share-proof:${token}`;
+
+/** The stored password-claim proof for a share link, if one was claimed. */
+export function getShareProof(token: string): string | null {
+  try {
+    return window.localStorage.getItem(shareProofKey(token));
+  } catch {
+    return null;
+  }
+}
+
+export function storeShareProof(token: string, proof: string): void {
+  try {
+    window.localStorage.setItem(shareProofKey(token), proof);
+  } catch {
+    // Storage full or blocked: the proof just won't survive a reload.
+  }
+}
+
 export class CollabProvider {
   public readonly boardId: string;
   public readonly doc: FiroDoc;
   public readonly awareness: awarenessProtocol.Awareness;
   public readonly wsUrl: string;
   public readonly shareToken: string | null;
+  public readonly shareProof: string | null;
 
   private ws: WebSocket | null = null;
   private _status: CollabStatus = "disconnected";
@@ -153,10 +216,12 @@ export class CollabProvider {
     this.doc = options.doc;
     this.awareness = options.doc.awareness;
     this.shareToken = options.shareToken ?? null;
+    this.shareProof = options.shareProof ?? null;
     this.wsUrl = buildRelayWsUrl(
       options.boardId,
       options.shareToken,
       options.wsUrl,
+      options.shareProof,
     );
 
     this.WSClass =

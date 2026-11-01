@@ -1,116 +1,130 @@
 # Firo
 
-**A free, open-source, local-first whiteboard that is a real Miro replacement.**
+**Workshop boards that remember.** Firo is an infinite-canvas workshop board with
+structured records under the canvas - you can run a sticky-note session on the
+board and see the same items as a table, a board, a grid, or a timeline. It is
+free, open source (MIT), offline-first, and yours to self-host.
 
-Miro is an excellent tool with a business model that prices out small teams: three boards on the free plan, then $8 per person per month for the parts of the product you actually use to run a workshop. Excalidraw is free and genuinely open source, but it is a sketching tool, not a workshop tool — no sticky-note workflow, no facilitation, no structure, no backend.
+[![Lint](https://github.com/JavohirMX/firo/actions/workflows/lint.yml/badge.svg)](https://github.com/JavohirMX/firo/actions/workflows/lint.yml)
+[![Tests](https://github.com/JavohirMX/firo/actions/workflows/test.yml/badge.svg)](https://github.com/JavohirMX/firo/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/JavohirMX/firo/blob/dev/LICENSE)
 
-Firo is the third thing: Miro's object vocabulary, facilitation loop and board layout, on a canvas that is clean by default and sketchable when you want it, stored on your own machine, under the MIT licence, forever.
+![A Firo board running a sprint retro: sticky notes grouped in frames, with the toolbar and share controls visible](docs/assets/hero.png)
 
-> **Status: Version 1 and Version 2 complete; Phase 10 Wave 1 complete.** The application is built, tested, and operational. Phases 0 through 9 are complete — offline workshop canvas, Miro-style shell and clean aesthetic ([Phase 7.5](docs/plans/phase-7-5-miro-ui.md)), Miro object vocabulary, board home, local-first comments ([ADR-0027](docs/adr/0027-comments-are-their-own-lane.md)), facilitation tools (voting, timer, presentation, private mode), structured records with switchable projections (Table, Board, Grid, Timeline), lossless `.firo` directory format persistence ([ADR-0018](docs/adr/0018-a-firo-is-a-directory.md)), the project layer (folders, starring, duplication, tags, activity feed, cross-board content search — [Phase 8](docs/plans/phase-8-pm-layer.md)), and the multiplayer sync server in `apps/server` (single container on port 8080, SQLite persistence, snapshot compaction, WebSocket relay with commenter boundary enforcement, presence cursors/laser, capability share links, AC-12 verified — [Phase 9](docs/plans/phase-9-sync-server.md)). Phase 10 Wave 1 has shipped: local AI engine in `@firo/ai` and Model Context Protocol server in `@firo/mcp` ([Phase 10](docs/plans/phase-10-ai-mcp-a11y-desktop.md)). Phase 11 — Miro board-experience parity — has opened: a scenario-driven evidence pass against a live Miro account lands a per-command parity matrix and closes every recorded shell gap ([Phase 11](docs/plans/phase-11-miro-parity.md)). See [`docs/roadmap.md`](docs/roadmap.md) for what follows.
+Most online whiteboards are great for the session and useless afterwards: sticky
+notes are pixels, not data. The follow-up happens somewhere else. Firo keeps the
+item and the placement in one model, so the board and the follow-up are two
+views of the same thing.
 
----
+The same model is shared by the canvas, the structured views, integrations and
+AI agents - no sync layer to get out of date. Every edit is versioned and
+reversible. AI and MCP tools are opt-in; the board, your data and the model
+stay on your machine unless you say otherwise.
+
+> **Status: early and moving fast.** The core is local-first: your boards open
+> instantly and keep working offline. The sync server is available today,
+> self-hosted in a single Docker container, with share links that support
+> viewer/editor roles, optional passwords and expiry, and instant revocation.
+> The public hosted app is planned. Things will change before 1.0, so expect to
+> contribute (feedback counts as contributing).
 
 ## What makes it different
 
-|  | Miro | Excalidraw | Firo |
-| --- | --- | --- | --- |
-| Price | $0–$20/seat/mo | Free | **Free, MIT, forever** |
-| Boards on free tier | **3** | Unlimited | Unlimited |
-| Facilitating a workshop (vote, timer, reveal) | **Paid** | Not available | Free |
-| Export watermark | Yes, on free tier | No | No |
-| Data location | Miro's cloud | Your browser | **Your machine, your file** |
-| Self-hostable | **Never, at any tier** | Awkward | Yes, one container (v2) |
-| Seat minimum | 30 (Enterprise) | — | **None** |
-| Works offline | No | Yes | **Yes, 100%** |
-| Open source | No | MIT | MIT |
+**Structured records under the canvas.** Every card on the board is a real item
+with properties - status, assignee, size, tags, anything. See the same items as
+a table, board, grid or timeline. Group them, filter them, sort them. Edit in
+either place; both stay in sync. One model, many projections.
 
-Four ideas do most of the work:
+**Built for facilitators.** Voting, timer, presentation mode, private mode
+(cards hidden until the reveal). A single facilitator key switches between
+facilitate, present and edit modes, so participants can open the board on their
+own devices without accounts or setup.
 
-**1. Local-first means local.** Your boards live in IndexedDB on your device and export to a plain, readable `.firo` directory archive you own. The app is fully functional with no account, no network, and no server. Collaboration is an optional addition, never a prerequisite.
+**Comments that land where they belong.** Comment threads on the board, not
+just on shapes. Every comment is a first-class object that syncs and works with
+mentions.
 
-**2. One data set, many views.** A task exists once. View it as a table, a board, or a grid with zero reload. This is the single largest architectural bet in the project and the thing that most separates Firo from a pile of disconnected widgets.
+**Open source, end to end.** MIT licence. The web app, the sync server and the
+AI integration ship in this repo. No phone-home, no paywall, no feature
+editions.
 
-**3. Anything can hold anything.** Any object can become a container, and containers nest to any depth. Sticky notes inside a card inside a list inside a frame. Boards stay legible because structure is created by arrangement, not by a fixed taxonomy.
+## Importing from Miro
 
-**4. Green information.** Information that stays live on one surface, legible at a glance. We will not build a separate status table that you have to keep in sync — that is the anti-pattern we are building against.
+Firo imports Miro backups (`.rtb`) and Miro/Excalidraw JSON exports, so moving
+an existing workshop over is a drag-and-drop away. Miro-only widgets that have
+no Firo equivalent are called out in import warnings instead of disappearing
+silently.
 
----
+## Quickstart
 
-## Quickstart & Development
+Firo is a [Yarn 4](https://yarnpkg.com/) workspace monorepo.
 
-Firo is a Yarn v1 monorepo targeting modern browsers:
+```bash
+# enable Yarn 4 via Corepack (Node 18+)
+corepack enable
 
-```sh
-# Install dependencies
-yarn install --frozen-lockfile
+# install dependencies
+yarn install
 
-# Start the web app dev server
-yarn start
+# build the packages
+yarn build
 
-# Typecheck all packages and apps (TypeScript strict mode)
-yarn test:typecheck
-
-# Run test suite
-yarn test
-
-# Format and lint
-yarn fix
+# run the app in dev mode (web app + local sync server)
+yarn dev
 ```
 
-### Self-hosting the server
+The web app runs at `http://localhost:3000`, the sync server at
+`http://localhost:4000`. See [docs/localdev.md](docs/localdev.md) for the full
+dev-loop guide (watch mode, hot reload, building the sync server).
 
-```sh
-docker compose up -d   # serves the app and sync server on http://localhost:8080
+## Self-hosting
+
+The sync server ships as a single small Docker image. Data lives in one SQLite
+file in a mounted volume. Create invite and share links from the UI, and share
+them with viewer or editor roles, optional passwords and expiry.
+
+```bash
+docker run -d \
+  --name firo-server \
+  -p 8080:8080 \
+  -v firo-data:/data \
+  -e FIRO_PUBLIC_URL=https://boards.example.com \
+  -e FIRO_BASE_DOMAIN=example.com \
+  -e FIRO_INVITE_SECRET=$(openssl rand -base64 32) \
+  ghcr.io/javohirmx/firo-server
 ```
 
-Step-by-step install, first-account checklist, backups, upgrades and TLS: [`docs/hosting.md`](docs/hosting.md).
+[docs/hosting.md](docs/hosting.md) is the complete guide: building from source,
+all configuration variables, running as a system service, backups and
+restores, and verified nginx and Caddy reverse-proxy configs for putting it
+behind TLS.
 
-The server reads these environment variables (all optional):
+## AI and MCP
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `PORT` / `FIRO_PORT` | `8080` | Listen port |
-| `HOST` | `0.0.0.0` | Listen address |
-| `FIRO_DATA_DIR` | `./data` | Where data is stored |
-| `FIRO_DB_PATH` | `<data dir>/firo.sqlite` | SQLite file |
-| `FIRO_WEB_DIR` | auto-detected | Built web app to serve |
-| `FIRO_OPEN_REGISTRATION` | `true` | Set to `false` to disable sign-up |
-| `FIRO_ALLOWED_ORIGINS` | empty | Comma-separated extra browser origins allowed to call the API with credentials. Same-origin is always allowed |
-
-Full details: [`docs/roadmap.md`](docs/roadmap.md) · [`docs/trd/`](docs/trd/) · [`docs/adr/`](docs/adr/)
-
----
+Firo has an opt-in AI layer: a local model runtime in the browser, a sidepanel
+for board-aware chat, and an MCP server so external agents can read and edit
+boards. Everything runs against the same local model. No data leaves your
+machine unless you configure it to.
 
 ## Documentation
 
-Start here, in order:
-
-| Document | What it covers |
-| --- | --- |
-| [`docs/vision.md`](docs/vision.md) | The problem, the thesis, and what we refuse to build |
-| [`docs/competitive.md`](docs/competitive.md) | How we compare to Miro, Excalidraw, Weje, tldraw, AFFiNE |
-| [`docs/prd/`](docs/prd/) | Product requirements: personas, scope, feature specifications, acceptance criteria |
-| [`docs/trd/`](docs/trd/) | Technical requirements: data model, sync, rendering, text, storage, security |
-| [`docs/adr/`](docs/adr/) | Every significant decision, with context, options, and consequences |
-| [`docs/architecture/`](docs/architecture/) | How the system actually fits together |
-| [`docs/plans/`](docs/plans/) | Phase-by-phase implementation plans |
-| [`docs/research/`](docs/research/) | The source research the decisions are based on |
-| [`docs/roadmap.md`](docs/roadmap.md) | Phases, milestones, and exit criteria |
-| [`AGENTS.md`](AGENTS.md) | Operating rules for AI coding agents in this repository |
-
----
+- [docs/localdev.md](docs/localdev.md) - local development loop
+- [docs/architecture.md](docs/architecture.md) - how the canvas, model, sync
+  and AI layers fit together
+- [docs/hosting.md](docs/hosting.md) - self-hosting the sync server end to end
+- [docs/schema.md](docs/schema.md) - the item model: shapes, views, properties
+- [docs/datasync.md](docs/datasync.md) - sync, storage and the server API
+- [docs/security.md](docs/security.md) - threat model, credentials, share
+  links, reporting
+- [docs/browser-support.md](docs/browser-support.md) - supported browsers and
+  known engine quirks
 
 ## Contributing
 
-Firo is a solo project at the moment. Contributions are welcome, but please read [`docs/vision.md`](docs/vision.md) first — the most useful contribution is often "this belongs in the non-goals", not "this is a missing feature".
+Bugs, ideas and PRs are welcome. The codebase is TypeScript throughout. Run
+`yarn typecheck`, `yarn lint` and `yarn test` before opening a PR. Bigger
+changes (schema, sync protocol, AI behaviour) should start as an issue.
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to help, and the fork's provenance rules
-- [`docs/contributing/`](docs/contributing/) — our working agreements
+## Licence
 
-## Licence and funding
-
-MIT. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) for provenance — including the exact Excalidraw commit this fork started from.
-
-Firo ships font binaries, and their licences are tracked in [`FONT-LICENSES.md`](FONT-LICENSES.md), which is the audit trail — a "believed" row there is treated as worse than an unverified one. Seven of the eight distributed faces are cleared with their licence text committed beside the binary, and `packages/common/tests/fonts.test.ts` fails the build if either half goes missing. One face, **Liberation Sans**, is a genuine **release blocker**: we ship its 2007 GPLv2 binary and GPLv2 §3 wants the corresponding source, which we do not have. See [ADR-0014](docs/adr/0014-font-position-after-phase-0.md).
-
-Firo will never charge for the software. If it becomes useful to you and you want to fund its maintenance, that will be handled through GitHub Sponsors and/or Open Collective. There is no paid tier and there will not be one.
+MIT. Use it, fork it, host it, sell it - attribution is enough.

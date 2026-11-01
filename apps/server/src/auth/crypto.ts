@@ -58,3 +58,17 @@ export function generateShareToken(): string {
 export function generateId(): string {
   return crypto.randomBytes(16).toString("hex");
 }
+
+let dummyCredentials: { hash: string; salt: string } | null = null;
+
+/**
+ * Per-process random credentials used to run a real scrypt verification when
+ * a login names an unknown user, so the response time does not reveal whether
+ * the username exists. Random per process so the dummy itself is no oracle.
+ */
+export function getDummyPasswordCredentials(): { hash: string; salt: string } {
+  if (!dummyCredentials) {
+    dummyCredentials = hashPassword(crypto.randomBytes(32).toString("hex"));
+  }
+  return dummyCredentials;
+}

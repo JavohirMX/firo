@@ -181,6 +181,15 @@
   }
 }
 
+/* BoardHome.scss styles a different `.firo-board-card` (the recent-boards
+   grid) whose absolutely positioned, hover-revealed __actions leak onto these
+   kanban cards and cover the title - always on touch, on hover elsewhere.
+   Keep the kanban move buttons in the column flow below the title. */
+.firo-board-view .firo-board-card__actions {
+  position: static;
+  opacity: 1;
+}
+
 /* Table View */
 .firo-table-view {
   width: 100%;

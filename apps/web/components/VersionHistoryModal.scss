@@ -149,8 +149,7 @@
   color: var(--firo-color-text-muted, #5f6270);
   font-weight: 500;
   font-size: var(--firo-font-size-xs, 12px);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
 }
 
 .firo-version-history__pill {
@@ -416,6 +415,26 @@
 
     &--local {
       color: var(--firo-color-text-muted, #9c9fab);
+    }
+  }
+}
+
+// Small screens: the revision row's two action buttons leave the info column
+// ~40px at 390px, clipping the time text. Stack info above actions there so
+// both keep their full width inside the card.
+@media (max-width: 560px) {
+  .firo-version-history__item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--firo-space-sm, 10px);
+
+    &-actions {
+      flex-wrap: wrap;
+
+      .firo-version-history__action-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
     }
   }
 }

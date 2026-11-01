@@ -108,6 +108,15 @@ its labels, layout and interaction are Firo's, and no Miro asset is copied.
 - **Remove them from the v1 contract** (chosen). The UI never offered them,
   the token bypasses them today, and Miro's captured dialog has no password
   field. The columns stay reserved for a follow-up with a real unlock grant.
+
+  **Amended 2026-10-31 (owner decision):** passwords are now a real control.
+  `POST /api/shares/:token/claim` exchanges the password for a stateless
+  proof (an HMAC over the share's identity, keyed by its stored password
+  hash, so changing the password invalidates every proof); `resolveRole`
+  refuses a password-protected share's role without a valid proof, and the
+  relay checks the proof on connect and on role re-resolution. The share
+  dialog can create password links, and a gate page collects the password
+  from visitors.
 - Enforce them now with an unlock cookie checked by the public route and the
   WebSocket handshake. Rejected for this phase: it is a second auth flow with
   its own rate limiting, rotation and tests, and nothing in the product can
@@ -424,3 +433,21 @@ forbidden.
 - Recon: Miro Business build `1.104717.0`, 19 October 2026, 1200 × 818 CSS.
   The share dialog was captured; nothing was exercised. Raw captures stay out
   of the repository.
+
+## Amendment (31 October 2026, second): revocation and expiry cut live readers
+
+The first amendment made the password a claim proof checked when the share
+role is resolved. Resolution points alone left a hole: a client that joined
+through a share and then stayed idle was never re-resolved, so revoking or
+expiring its link did not stop the board from streaming to it.
+
+Revocation is now an in-process event: `Storage.revokeShare` reports the
+affected rows to listeners, and the relay closes every client joined through
+the revoked token with 4403. Expiry is a known timestamp, so the relay arms a
+one-shot timer at the earliest connected share's expiry and sweeps then;
+write-time re-resolution remains as the backstop for both.
+
+Scope: this is exact within one server process, which is the supported
+deployment (one container serving web, sync and SQLite, `docs/hosting.md`).
+Running several replicas against one SQLite file is outside the supported
+topology; revoke and expiry events would not cross those processes.

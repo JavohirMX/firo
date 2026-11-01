@@ -177,6 +177,127 @@ describe("Miro conversion", () => {
       expect(note.textAlign).toBe("center");
     });
 
+    it("preserves Miro group membership, including nested groups", async () => {
+      const miroItems: MiroItem[] = [
+        { id: "g_outer", type: "group", itemsIds: ["g_inner", "shape_a"] },
+        { id: "g_inner", type: "group", itemsIds: ["sticky_a"] },
+        {
+          id: "sticky_a",
+          type: "sticky_note",
+          groupId: "g_inner",
+          data: { content: "<p>grouped note</p>" },
+          position: { x: 100, y: 100, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        },
+        {
+          id: "shape_a",
+          type: "shape",
+          groupId: "g_outer",
+          data: { shape: "rectangle" },
+          position: { x: 400, y: 100, origin: "center" },
+          geometry: { width: 80, height: 80 },
+        },
+        {
+          id: "shape_b",
+          type: "shape",
+          data: { shape: "rectangle" },
+          position: { x: 700, y: 100, origin: "center" },
+          geometry: { width: 80, height: 80 },
+        },
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+
+      // Groups themselves produce no elements and no warnings.
+      expect(board.elements.length).toBe(3);
+      expect(warnings).toEqual([]);
+
+      const note = board.elements.find((el) => el.type === "stickynote");
+      expect(note?.groupIds).toEqual([
+        "miro_group_g_inner",
+        "miro_group_g_outer",
+      ]);
+
+      const groupedShape = board.elements.find((el) => el.id === "shape_a");
+      expect(groupedShape?.groupIds).toEqual(["miro_group_g_outer"]);
+
+      const ungrouped = board.elements.find((el) => el.id === "shape_b");
+      expect(ungrouped?.groupIds).toEqual([]);
+    });
+
+    it("survives cyclic group data without hanging", async () => {
+      const miroItems: MiroItem[] = [
+        { id: "g1", type: "group", itemsIds: ["g2"] },
+        { id: "g2", type: "group", itemsIds: ["g1"] },
+        {
+          id: "sticky_c",
+          type: "sticky_note",
+          groupId: "g1",
+          data: { content: "<p>cyclic</p>" },
+          position: { x: 100, y: 100, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const note = board.elements.find((el) => el.type === "stickynote");
+      expect(note?.groupIds).toEqual(["miro_group_g1", "miro_group_g2"]);
+    });
+
+    it("converts embeds to linked placeholder rectangles with a host label", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "embed_1",
+          type: "embed",
+          url: "https://example.com/article/123",
+          mode: "inline",
+          position: { x: 400, y: 300, origin: "center" },
+          geometry: { width: 320, height: 180 },
+        },
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+
+      expect(board.elements.length).toBe(2);
+      const rect = board.elements.find((el) => el.type === "rectangle");
+      const label = board.elements.find((el) => el.type === "text");
+      expect(rect).toBeDefined();
+      expect(rect?.link).toBe("https://example.com/article/123");
+      expect(rect?.x).toBe(400 - 160);
+      expect(rect?.y).toBe(300 - 90);
+      expect(label).toBeDefined();
+      expect(label?.text).toBe("example.com");
+      expect(label?.containerId).toBe("embed_1");
+      expect(
+        warnings.some((w) => w.includes("linked placeholder rectangle")),
+      ).toBe(true);
+    });
+
+    it("drops unsupported item types with a warning naming the type", async () => {
+      // Grounded 2026-11-01 against a real export: its 250 unsupported items
+      // (curve, stencil, Miro's own "unsupported" tombstones, table_text,
+      // code, stamp, emoji, table) arrive content-stripped - position and
+      // size only - so no faithful conversion is possible from that export.
+      // Pin the current contract: drop with a type-naming warning, never
+      // silently. (Whether these should become visible placeholders instead
+      // is an open product decision.)
+      const miroItems: MiroItem[] = [
+        {
+          id: "curve_1",
+          type: "curve",
+          position: { x: 100, y: 100, origin: "center" },
+          geometry: { width: 200, height: 50 },
+        },
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+
+      expect(board.elements).toHaveLength(0);
+      expect(
+        warnings.some((w) => w.includes('Unsupported Miro item type "curve"')),
+      ).toBe(true);
+    });
+
     it("converts shapes (circle to ellipse, round rectangle)", async () => {
       const miroItems: MiroItem[] = [
         {
@@ -204,6 +325,145 @@ describe("Miro conversion", () => {
 
       expect(board.elements[1].type).toBe("rectangle");
       expect(board.elements[1].roundness).toEqual({ type: 3 });
+    });
+
+    it("positions shape labels from exported vertical alignment and color", async () => {
+      const base = {
+        type: "shape" as const,
+        data: { shape: "rectangle", content: "Hi" },
+        geometry: { width: 200, height: 200 },
+      };
+      const miroItems: MiroItem[] = [
+        {
+          ...base,
+          id: "mid",
+          position: { x: 0, y: 0, origin: "center" },
+          style: { textAlignVertical: "middle", color: "#123456" },
+        },
+        {
+          ...base,
+          id: "top",
+          position: { x: 0, y: 1000, origin: "center" },
+          style: { textAlignVertical: "top" },
+        },
+        {
+          ...base,
+          id: "unspecified",
+          position: { x: 0, y: 2000, origin: "center" },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const labelOf = (id: string) =>
+        board.elements.find((el) => el.id === `${id}_text`) as any;
+      const shapeOf = (id: string) =>
+        board.elements.find((el) => el.id === id) as any;
+
+      // Explicit middle: the estimated one-line block (20 * 1.25 = 25) is
+      // centered in the 200-tall shape: y = shape.y + (200 - 25) / 2.
+      const midShape = shapeOf("mid");
+      const midLabel = labelOf("mid");
+      expect(midLabel.y).toBeCloseTo(midShape.y + (200 - 25) / 2, 5);
+      expect(midLabel.height).toBeCloseTo(25, 5);
+      // Explicit exported text color wins over the contrast heuristic.
+      expect(midLabel.strokeColor).toBe("#123456");
+
+      // Explicit top and absent alignment both keep the shape's top edge.
+      expect(labelOf("top").y).toBe(shapeOf("top").y);
+      expect(labelOf("unspecified").y).toBe(shapeOf("unspecified").y);
+    });
+
+    it("wraps long shape labels at the shape width and disables autoResize", async () => {
+      const longText = `${"word "
+        .repeat(60)
+        .trim()}\nsecond paragraph stays a paragraph`;
+      const miroItems: MiroItem[] = [
+        {
+          id: "wrap",
+          type: "shape",
+          data: { shape: "rectangle", content: longText },
+          position: { x: 0, y: 0, origin: "center" },
+          geometry: { width: 220, height: 2000 },
+          style: { textAlignVertical: "middle" },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const label = board.elements.find((el) => el.id === "wrap_text") as any;
+      const shape = board.elements.find((el) => el.id === "wrap") as any;
+
+      // Wrapped: more lines than the two hard paragraphs, and the box stays
+      // at the shape width instead of re-fitting to one long line.
+      expect(label.text).toContain("\n");
+      const renderedLines = label.text.split("\n").length;
+      expect(renderedLines).toBeGreaterThan(2);
+      expect(label.width).toBe(shape.width);
+      expect(label.autoResize).toBe(false);
+      expect(label.height).toBeCloseTo(
+        renderedLines * label.fontSize * 1.25,
+        5,
+      );
+      // Middle alignment centers the whole wrapped block in the tall shape.
+      expect(label.y).toBeCloseTo(shape.y + (2000 - label.height) / 2, 5);
+    });
+
+    it("unbinds connector endpoints whose target was dropped, with a warning", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "shape_ok",
+          type: "shape",
+          data: { shape: "rectangle" },
+          position: { x: 0, y: 0, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        },
+        {
+          id: "gone_1",
+          type: "curve",
+          position: { x: 300, y: 0, origin: "center" },
+          geometry: { width: 100, height: 100 },
+        } as any,
+        {
+          id: "conn_1",
+          type: "connector",
+          position: { x: 50, y: 50, origin: "center" },
+          geometry: { width: 200, height: 0 },
+          start: {
+            item: "shape_ok",
+            position: { x: 1, y: 0.5 },
+            snapTo: "right",
+          },
+          end: { item: "gone_1", position: { x: 0, y: 0.5 }, snapTo: "left" },
+        } as any,
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+      const arrow = board.elements.find((el) => el.id === "conn_1") as any;
+      expect(arrow).toBeTruthy();
+      // Surviving endpoint stays bound; dropped endpoint is unbound.
+      expect(arrow.startBinding?.elementId).toBe("shape_ok");
+      expect(arrow.endBinding).toBeNull();
+      expect(arrow.bindings).toHaveLength(1);
+      // Geometry still resolved against the dropped item's own bounds:
+      // bounds left edge = 300 - 100/2 = 250; end = 250 + 0*100.
+      expect(arrow.x + arrow.points[1][0]).toBeCloseTo(250, 5);
+      expect(
+        warnings.some((w: string) => w.includes("connector endpoint(s)")),
+      ).toBe(true);
+    });
+
+    it("decodes HTML entities in frame titles", async () => {
+      const { board } = await convertMiroItemsToFiro([
+        {
+          id: "frame_ent",
+          type: "frame",
+          title: "Q&amp;A &#39;Notes&#39;",
+          position: { x: 0, y: 0, origin: "center" },
+          geometry: { width: 400, height: 300 },
+        } as any,
+      ]);
+      const frame = board.elements.find((el) => el.id === "frame_ent") as any;
+      expect(frame).toBeTruthy();
+      expect(frame.name).toBe("Q&A 'Notes'");
     });
 
     it("converts frames and preserves containment", async () => {
@@ -564,6 +824,98 @@ describe("Miro conversion", () => {
       expect(richText.type).toBe("doc");
       expect(Array.isArray(richText.content)).toBe(true);
       expect(richText.content?.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe("real .rtb backup serialization (grounded 2026-10-30)", () => {
+    it("maps light_pink fillColor instead of dropping it to transparent", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "lp1",
+          type: "sticky_note",
+          shape: "square",
+          content: "note",
+          style: { fillColor: "light_pink" },
+          origin: "center",
+          relativeTo: "canvas_center",
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 200,
+        },
+      ];
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const el = board.elements.find((e) => e.id === "lp1");
+      expect(el?.backgroundColor).toBe("#ffd5f3");
+    });
+
+    it("honors top-level origin field from backup items", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "o1",
+          type: "sticky_note",
+          shape: "square",
+          content: "note",
+          origin: "top-left",
+          relativeTo: "canvas_center",
+          x: 100,
+          y: 50,
+          width: 200,
+          height: 100,
+        },
+      ];
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const el = board.elements.find((e) => e.id === "o1");
+      expect(el?.x).toBe(100);
+      expect(el?.y).toBe(50);
+    });
+
+    it("resolves fractional bound connector endpoints against item bounds", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "a",
+          type: "sticky_note",
+          shape: "square",
+          content: "A",
+          origin: "center",
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 200,
+        },
+        {
+          id: "b",
+          type: "sticky_note",
+          shape: "square",
+          content: "B",
+          origin: "center",
+          x: 1000,
+          y: 0,
+          width: 200,
+          height: 200,
+        },
+        {
+          id: "c1",
+          type: "connector",
+          shape: "straight",
+          start: { item: "a", position: { x: 1, y: 0.75 }, snapTo: "right" },
+          end: { item: "b", position: { x: 0, y: 0.25 }, snapTo: "left" },
+          width: 800,
+          height: 0,
+        },
+      ];
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const arrow = board.elements.find((e) => e.type === "arrow");
+      expect(arrow).toBeDefined();
+      // A box is x:-100..100; right edge at x=100, y at (0.75-0.5)*200=50.
+      expect(arrow?.x).toBeCloseTo(100, 5);
+      expect(arrow?.y).toBeCloseTo(50, 5);
+      // B box is x:900..1100; left edge x=900 -> dx=800.
+      expect(arrow?.width).toBeCloseTo(800, 5);
+      const startBinding = arrow?.startBinding as { focus: number };
+      const endBinding = arrow?.endBinding as { focus: number };
+      expect(startBinding.focus).toBeCloseTo(0.5, 5);
+      expect(endBinding.focus).toBeCloseTo(-0.5, 5);
     });
   });
 

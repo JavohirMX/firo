@@ -11,9 +11,11 @@ import {
 import {
   generateId,
   generateShareToken,
+  getDummyPasswordCredentials,
   hashPassword,
   verifyPassword,
 } from "../auth/crypto.js";
+import { createShareProof } from "../auth/shareProof.js";
 
 import { parseRequestUrl } from "./requestUrl.js";
 
@@ -261,7 +263,12 @@ export function createHttpHandler(
       }
 
       const user = storage.getUserByUsername(username);
-      if (!user || !verifyPassword(password, user.password_hash, user.salt)) {
+      // Verify against dummy credentials when the user does not exist, so an
+      // unknown username costs the same scrypt time as a wrong password.
+      const { hash, salt } = user
+        ? { hash: user.password_hash, salt: user.salt }
+        : getDummyPasswordCredentials();
+      if (!verifyPassword(password, hash, salt) || !user) {
         sendJson(res, 401, { error: "Invalid username or password." });
         return;
       }
@@ -557,6 +564,55 @@ export function createHttpHandler(
           requiresPassword: Boolean(share.password_hash),
         },
       });
+      return;
+    }
+
+    // 10. Share password claim: POST /api/shares/:token/claim
+    // Exchanges the share's password for a stateless proof the client then
+    // presents when the share role is resolved (WS connect and re-checks).
+    const shareClaimMatch = pathname.match(/^\/api\/shares\/([^/]+)\/claim$/);
+    if (shareClaimMatch && method === "POST") {
+      const ip = getClientIp(req);
+      if (!authRateLimiter.check(ip)) {
+        sendJson(res, 429, {
+          error: "Too many requests. Please try again later.",
+        });
+        return;
+      }
+
+      const token = decodeURIComponent(shareClaimMatch[1]);
+      const share = storage.getShareByToken(token);
+      if (!share || share.revoked === 1) {
+        sendJson(res, 404, { error: "Share link not found or revoked." });
+        return;
+      }
+
+      if (share.expires_at && share.expires_at < Date.now()) {
+        sendJson(res, 410, { error: "Share link has expired." });
+        return;
+      }
+
+      if (!share.password_hash) {
+        sendJson(res, 200, { proof: null });
+        return;
+      }
+
+      const body = await readJsonBody<{ password?: string }>(req);
+      if (
+        !body ||
+        typeof body.password !== "string" ||
+        body.password.length === 0
+      ) {
+        sendJson(res, 400, { error: "The share password is required." });
+        return;
+      }
+
+      if (!verifyPassword(body.password, share.password_hash, share.salt!)) {
+        sendJson(res, 401, { error: "Incorrect password." });
+        return;
+      }
+
+      sendJson(res, 200, { proof: createShareProof(share) });
       return;
     }
 

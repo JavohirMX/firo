@@ -16,6 +16,8 @@
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness.js";
 
+import { generateNKeysBetween } from "@firo/fractional-indexing";
+
 import type {
   Collection,
   CommentThread,
@@ -714,10 +716,17 @@ export class FiroDoc {
 
     // The origin is what marks this transaction as ours, for the undo manager and
     // for the write guard. Both depend on it being here and nowhere else.
+    const createsElements = mutations.some(
+      (mutation) =>
+        mutation.kind === "createElement" || mutation.kind === "createElements",
+    );
     this.guard.run(() =>
       this.rawYdoc.transact(() => {
         for (const mutation of mutations) {
           applyMutation(this.nodes, mutation);
+        }
+        if (createsElements) {
+          repairElementIndices(this.nodes);
         }
       }, LOCAL_ORIGIN),
     );
@@ -808,6 +817,7 @@ export class FiroDoc {
             ].filter((id, index, all) => all.indexOf(id) === index),
           );
         }
+        repairElementIndices(this.nodes);
       }, LOAD_ORIGIN),
     );
 
@@ -937,6 +947,60 @@ const writeElementFields = (
     node.set("versionNonce", freshNonce());
   }
   node.set("updated", timestamp);
+};
+
+/**
+ * Repair missing or out-of-order fractional indices, over the final z-order.
+ *
+ * `elementOrder` is the document's z-order, and several producers leave
+ * `index` null — the note factory and the Miro/CSV/Excalidraw importers — or
+ * hand a paste indices that duplicate their originals. The scene is not as
+ * tolerant: its development-mode validation throws
+ * `InvalidFractionalIndexError` on null or non-increasing indices, throttled
+ * to one run a minute, which surfaced as whole-board imports failing at
+ * random inside an unrelated toast. Indices that are already valid are kept
+ * as anchors; each run of invalid ones gets fresh keys between its
+ * neighbouring anchors, the same semantics as the scene's own sync — but
+ * applied here, on the one write path, so the stored order and the stored
+ * indices can never disagree, and every later read projects clean.
+ */
+const repairElementIndices = (nodes: DocStructure): void => {
+  const order = nodes.elementOrder.toArray();
+  let runStart = -1;
+  let lastValid: string | null = null;
+  const flushRun = (endExclusive: number, upper: string | null) => {
+    if (runStart < 0) {
+      return;
+    }
+    const keys = generateNKeysBetween(
+      lastValid as never,
+      upper as never,
+      endExclusive - runStart,
+    );
+    for (let i = runStart; i < endExclusive; i++) {
+      const node = nodes.elements.get(order[i]);
+      if (!node) {
+        continue;
+      }
+      const key = keys[i - runStart] as string;
+      node.set("index", key);
+      lastValid = key;
+    }
+    runStart = -1;
+  };
+  for (let i = 0; i < order.length; i++) {
+    const index = nodes.elements.get(order[i])?.get("index");
+    if (
+      typeof index === "string" &&
+      (lastValid === null || index > lastValid)
+    ) {
+      flushRun(i, index as string);
+      lastValid = index as string;
+    } else if (runStart < 0) {
+      runStart = i;
+    }
+  }
+  flushRun(order.length, null);
 };
 
 const applyMutation = (nodes: DocStructure, mutation: Mutation): void => {

@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# Pre-push: run the CI lint/format checks on just the files this push
+# changes, so a push cannot rediscover a lint failure CI would have caught.
+#
+# Why scoped: the full-repo eslint pass takes ~50s and the full typecheck can
+# OOM a small machine. The failures these checks exist to prevent (prettier
+# drift, eslint warnings on edited files) are properties of the changed
+# files, so checking those files catches them in a few seconds.
+#
+# Skip logic: `git push --no-verify` bypasses, same as the other hooks. When
+# dependencies are not installed, the checks cannot run, so the hook warns
+# and lets the push through rather than blocking it.
+
+if [ ! -x ./node_modules/.bin/eslint ]; then
+  echo "pre-push: node_modules not installed; skipping scoped lint checks"
+  exit 0
+fi
+
+while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+  # First push of a branch (no remote ancestor): NOT checked. There is no
+  # remote tip to diff against and guessing one could block a legitimate
+  # push, so the hook's protection covers updates to existing remote refs
+  # only. CI still checks that first push.
+  if [ "$REMOTE_SHA" = "0000000000000000000000000000000000000000" ]; then
+    continue
+  fi
+
+  # Two-dot: exactly the commits this push adds, no merge-base needed, so
+  # this also works in shallow clones.
+  CHANGED=$(git diff --name-only "$REMOTE_SHA" "$LOCAL_SHA" 2>/dev/null)
+  [ -z "$CHANGED" ] && continue
+
+  CODE=$(echo "$CHANGED" | grep -E '\.(ts|tsx|js)$' || true)
+  FORMAT=$(echo "$CHANGED" | grep -E '\.(css|scss|json|md|html|yml)$' || true)
+
+  if [ -n "$FORMAT" ]; then
+    echo "$FORMAT" | xargs ./node_modules/.bin/prettier --check || {
+      echo "pre-push: prettier would fail CI; run prettier --write on the files above (or push --no-verify)"
+      exit 1
+    }
+  fi
+  if [ -n "$CODE" ]; then
+    echo "$CODE" | xargs ./node_modules/.bin/eslint --max-warnings=0 || {
+      echo "pre-push: eslint would fail CI; fix the warnings above (or push --no-verify)"
+      exit 1
+    }
+  fi
+done
+
+exit 0

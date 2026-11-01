@@ -8,7 +8,8 @@ import {
   resolveInitialBoard,
   setActiveBoard,
 } from "./board/library";
-import { resolveShareToken } from "./board/collabProvider";
+import { getShareProof, resolveShareToken } from "./board/collabProvider";
+import { SharePasswordGate } from "./components/SharePasswordGate";
 import { boardUrl, readRoute } from "./board/routes";
 
 /**
@@ -41,6 +42,13 @@ type Screen = { kind: "home" } | { kind: "board" };
 
 export const Root: React.FC = () => {
   const [screen, setScreen] = React.useState<Screen | null>(null);
+  // Set when the share link in the URL needs a password this browser has not
+  // proven yet; the gate replaces routing until the claim succeeds.
+  const [shareGate, setShareGate] = React.useState<{ token: string } | null>(
+    null,
+  );
+  // Bumped when the gate unlocks so routing runs again with the proof stored.
+  const [routeNonce, setRouteNonce] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -53,6 +61,10 @@ export const Root: React.FC = () => {
           const token = shareMatch[1];
           const resolved = await resolveShareToken(token);
           if (cancelled) {
+            return;
+          }
+          if (resolved?.requiresPassword && !getShareProof(token)) {
+            setShareGate({ token });
             return;
           }
           if (resolved?.boardId) {
@@ -118,10 +130,23 @@ export const Root: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [routeNonce]);
 
   // Resolving. Rendering an empty home here would flash "no boards" at someone
   // who has boards; rendering the editor would render the wrong board.
+  if (shareGate) {
+    return (
+      <SharePasswordGate
+        token={shareGate.token}
+        onUnlocked={() => {
+          setShareGate(null);
+          setScreen(null);
+          setRouteNonce((nonce) => nonce + 1);
+        }}
+      />
+    );
+  }
+
   if (screen === null) {
     return null;
   }

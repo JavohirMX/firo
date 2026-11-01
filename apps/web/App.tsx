@@ -228,6 +228,7 @@ import { AIAssistantModal } from "./components/AIAssistantModal";
 
 import {
   CollabProvider,
+  getShareProof,
   resolveShareToken,
   type CollaboratorInfo,
 } from "./board/collabProvider";
@@ -2387,7 +2388,7 @@ const ExcalidrawWrapper = () => {
 
   const handleExportImage = useCallback(
     async (opts: {
-      format: "png" | "svg";
+      format: "png" | "jpg" | "svg";
       scale: number;
       background: boolean;
       selectionOnly: boolean;
@@ -2433,25 +2434,31 @@ const ExcalidrawWrapper = () => {
         elements: elementsToExport,
         appState: {
           ...appState,
-          exportBackground: opts.background,
+          // JPEG has no alpha channel, so the scene is always composited
+          // onto the canvas background.
+          exportBackground: opts.format === "jpg" ? true : opts.background,
           exportScale: opts.scale,
-          exportEmbedScene: opts.embedScene,
+          exportEmbedScene: opts.format === "png" && opts.embedScene,
         },
         files,
       });
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${boardName}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
-      });
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${boardName}.${opts.format}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 0);
+        },
+        opts.format === "jpg" ? "image/jpeg" : "image/png",
+        opts.format === "jpg" ? 0.92 : undefined,
+      );
     },
     [excalidrawAPI],
   );
@@ -3123,6 +3130,7 @@ const ExcalidrawWrapper = () => {
       const provider = new CollabProvider({
         boardId,
         shareToken,
+        shareProof: shareToken ? getShareProof(shareToken) : null,
         doc: boardDoc(),
       });
 

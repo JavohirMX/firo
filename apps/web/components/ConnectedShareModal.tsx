@@ -81,6 +81,7 @@ export const ConnectedShareModal: React.FC<ConnectedShareModalProps> = ({
       const share = await syncApi.createShare(boardId, {
         role,
         expiresAt: options.expiresAt,
+        password: options.password ?? undefined,
       });
       return toLink(share);
     },

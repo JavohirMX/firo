@@ -348,6 +348,42 @@ describe("Client Collaboration and Presence UI", () => {
       ).toBeDefined();
     });
 
+    it("passes an optional password through to server-backed link creation", async () => {
+      const onGenerateLink = vi.fn((role: ShareRole): ShareLink => {
+        return {
+          id: "pw-token",
+          token: "pw-token",
+          role,
+          createdAt: Date.now(),
+          url: `https://firo.app/s/pw-token`,
+        };
+      });
+
+      render(
+        <ShareModal
+          isOpen={true}
+          onClose={() => {}}
+          onGenerateLink={onGenerateLink}
+        />,
+      );
+
+      const passwordInput = screen.getByTestId("share-password-input");
+      fireEvent.change(passwordInput, { target: { value: "s3cret" } });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("create-link-button"));
+      });
+
+      expect(onGenerateLink).toHaveBeenCalledWith("editor", {
+        expiresAt: null,
+        password: "s3cret",
+      });
+      // Cleared after creation so a later link does not silently reuse it.
+      expect(
+        (screen.getByTestId("share-password-input") as HTMLInputElement).value,
+      ).toBe("");
+    });
+
     it("copies link to clipboard and displays feedback", async () => {
       const initialLinks: ShareLink[] = [
         {

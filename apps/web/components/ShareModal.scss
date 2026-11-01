@@ -108,8 +108,7 @@
   &__section-title {
     font-size: var(--firo-font-size-sm, 13px);
     font-weight: var(--firo-font-weight-semibold, 600);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.01em;
     color: var(--firo-color-text-muted, #64748b);
     margin: 0;
   }
@@ -297,13 +296,20 @@
 }
 
 .firo-share-modal__unavailable {
-  padding: 12px 14px;
-  border: 1px dashed var(--firo-color-border, #d1d5db);
-  border-radius: var(--firo-radius-sm, 6px);
-  font-size: 13px;
+  background-color: var(--firo-color-surface-subtle, #f8fafc);
+  border: 1px solid var(--firo-color-border, #e2e8f0);
+  border-radius: var(--firo-radius-md, 8px);
+  padding: var(--firo-space-sm, 12px) var(--firo-space-md, 16px);
+  font-size: var(--firo-font-size-sm, 13px);
+  color: var(--firo-color-text-secondary, #4b5563);
+  line-height: 1.45;
 
   p {
     margin: 0 0 8px;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
   }
 }
 
@@ -319,4 +325,64 @@
 .firo-share-modal__link-expiry {
   font-size: 12px;
   color: var(--firo-color-text-muted, #6b7280);
+}
+
+// Dark-mode badge variants: the hardcoded light pastels read as glowing
+// inverted chips on the dark dialog (same treatment as the version-history
+// pills).
+.theme--dark {
+  .firo-share-modal__role-badge {
+    &--editor {
+      background-color: rgba(96, 165, 250, 0.16);
+      color: #93c5fd;
+    }
+
+    &--commenter {
+      background-color: rgba(251, 191, 36, 0.14);
+      color: #fcd34d;
+    }
+
+    &--viewer {
+      background-color: var(--firo-color-surface, #151619);
+      color: var(--firo-color-text-muted, #9c9fab);
+    }
+  }
+}
+
+// Phone widths: the create row and link rows are single flex lines sized for
+// the desktop dialog, so the selects truncate and the expiry text collides
+// with the action buttons. Stack the controls so each gets its own line.
+@media (max-width: 720px) {
+  .firo-share-modal {
+    &__row {
+      flex-wrap: wrap;
+    }
+
+    &__role-select {
+      flex: 1 1 100%;
+    }
+
+    &__create-btn {
+      flex: 1 1 100%;
+      justify-content: center;
+    }
+
+    &__link-item {
+      flex-wrap: wrap;
+    }
+
+    &__link-meta {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      row-gap: 4px;
+    }
+
+    &__link-expiry {
+      flex-basis: 100%;
+    }
+
+    &__link-actions {
+      margin-left: auto;
+    }
+  }
 }

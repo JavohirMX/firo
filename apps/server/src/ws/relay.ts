@@ -4,12 +4,13 @@ import { WebSocketServer, type WebSocket } from "ws";
 
 import { parseCookies } from "../auth/session.js";
 import { isAllowedOrigin } from "../http/routes.js";
+import { verifyShareProof } from "../auth/shareProof.js";
 
 import { ClientConnection } from "./connection.js";
 
 import { Room } from "./room.js";
 
-import type { Role, UserRecord } from "../db/schema.js";
+import type { Role, ShareRecord, UserRecord } from "../db/schema.js";
 import type { Storage } from "../db/storage.js";
 
 import type { Socket } from "node:net";
@@ -27,11 +28,17 @@ export class WebSocketRelay {
   public readonly wss: WebSocketServer;
   public readonly rooms: Map<string, Room> = new Map();
   private readonly allowedOrigins: string[];
+  private expiryTimer: NodeJS.Timeout | null = null;
 
   constructor(options: RelayOptions) {
     this.storage = options.storage;
     this.allowedOrigins = options.allowedOrigins ?? [];
     this.wss = new WebSocketServer({ noServer: true });
+
+    // Revoking a share must cut off its existing connections, not only new
+    // ones: without this, an idle share client kept receiving broadcasts
+    // until it happened to send an update frame.
+    this.storage.onShareRevoked((share) => this.disconnectShareClients(share));
 
     if (options.server) {
       this.attachToServer(options.server);
@@ -74,10 +81,10 @@ export class WebSocketRelay {
       return;
     }
 
-    const { boardId, user, shareToken, role } = parsed;
+    const { boardId, user, shareToken, shareProof, role } = parsed;
 
     this.wss.handleUpgrade(req, socket, head, (ws: WebSocket) => {
-      this.handleConnection(ws, boardId, user, shareToken, role);
+      this.handleConnection(ws, boardId, user, shareToken, shareProof, role);
     });
   }
 
@@ -86,6 +93,7 @@ export class WebSocketRelay {
     boardId: string,
     user: UserRecord | null,
     shareToken: string | null,
+    shareProof: string | null,
     role: Role,
   ): void {
     let room = this.rooms.get(boardId);
@@ -100,11 +108,13 @@ export class WebSocketRelay {
       userId: user?.id ?? null,
       user,
       shareToken,
+      shareProof,
       role,
       storage: this.storage,
     });
 
     room.addClient(client);
+    this.scheduleExpirySweep();
 
     ws.on("message", (data: Buffer | ArrayBuffer | Buffer[]) => {
       let uint8: Uint8Array;
@@ -120,6 +130,7 @@ export class WebSocketRelay {
 
     ws.on("close", () => {
       room?.removeClient(client);
+      this.scheduleExpirySweep();
       if (room && room.clients.size === 0) {
         // Compact, then release the room so its Y.Doc and awareness state do
         // not stay in memory for every board ever opened. A later connection
@@ -146,6 +157,7 @@ export class WebSocketRelay {
     boardId: string;
     user: UserRecord | null;
     shareToken: string | null;
+    shareProof: string | null;
     role: Role;
   } | null {
     try {
@@ -185,6 +197,7 @@ export class WebSocketRelay {
       let shareToken =
         fullUrl.searchParams.get("share") ||
         fullUrl.searchParams.get("shareToken");
+      const shareProof = fullUrl.searchParams.get("shareProof");
       let boardId: string | null = fullUrl.searchParams.get("boardId");
 
       if (pathname.startsWith("/s/")) {
@@ -209,7 +222,10 @@ export class WebSocketRelay {
         }
       }
 
-      if (!boardId) {
+      // Same validation as POST /api/boards: the WS path auto-creates boards
+      // for authenticated users, so it must not accept ids the HTTP API
+      // would reject.
+      if (!boardId || !/^[A-Za-z0-9_.-]{1,128}$/.test(boardId)) {
         return null;
       }
 
@@ -224,7 +240,22 @@ export class WebSocketRelay {
         return null;
       }
 
-      const role = this.storage.resolveRole(boardId, user, shareToken);
+      // A password-protected share needs the password-claim proof, not just
+      // the link: without it resolveRole refuses the share role.
+      let shareProofValid = false;
+      if (shareToken) {
+        const share = this.storage.getShareByToken(shareToken);
+        if (share) {
+          shareProofValid = verifyShareProof(share, shareProof);
+        }
+      }
+
+      const role = this.storage.resolveRole(
+        boardId,
+        user,
+        shareToken,
+        shareProofValid,
+      );
       if (!role) {
         return null;
       }
@@ -233,6 +264,7 @@ export class WebSocketRelay {
         boardId,
         user,
         shareToken,
+        shareProof,
         role,
       };
     } catch {
@@ -244,7 +276,87 @@ export class WebSocketRelay {
     return this.rooms.get(boardId);
   }
 
+  /** Disconnect every client joined through the revoked share link. */
+  public disconnectShareClients(share: ShareRecord): void {
+    const room = this.rooms.get(share.board_id);
+    if (room) {
+      for (const client of [...room.clients]) {
+        if (client.shareToken === share.token) {
+          client.close(4403, "Access revoked");
+          room.removeClient(client);
+        }
+      }
+    }
+    this.scheduleExpirySweep();
+  }
+
+  /**
+   * Arms a one-shot timer at the earliest share expiry among connected
+   * clients. Expiry is a known timestamp, so an exact timer cuts idle
+   * readers at the moment the link lapses instead of polling on an
+   * interval. setTimeout accepts at most ~24.8 days; longer waits clamp
+   * and re-arm when they fire.
+   */
+  private scheduleExpirySweep(): void {
+    if (this.expiryTimer) {
+      clearTimeout(this.expiryTimer);
+      this.expiryTimer = null;
+    }
+    const now = Date.now();
+    let earliest: number | null = null;
+    for (const room of this.rooms.values()) {
+      for (const client of room.clients) {
+        if (!client.shareToken) {
+          continue;
+        }
+        const share = this.storage.getShareByToken(client.shareToken);
+        if (!share || share.revoked === 1 || !share.expires_at) {
+          continue;
+        }
+        if (earliest === null || share.expires_at < earliest) {
+          earliest = share.expires_at;
+        }
+      }
+    }
+    if (earliest === null) {
+      return;
+    }
+    const MAX_TIMER_MS = 2_147_483_647;
+    const delay = Math.min(Math.max(earliest - now, 0), MAX_TIMER_MS);
+    this.expiryTimer = setTimeout(() => {
+      this.expiryTimer = null;
+      this.sweepLapsedShareClients();
+    }, delay);
+    this.expiryTimer.unref();
+  }
+
+  /** Cut every share client whose link has expired, then re-arm. */
+  private sweepLapsedShareClients(): void {
+    const now = Date.now();
+    for (const room of this.rooms.values()) {
+      for (const client of [...room.clients]) {
+        if (!client.shareToken) {
+          continue;
+        }
+        const share = this.storage.getShareByToken(client.shareToken);
+        const lapsed =
+          !share ||
+          share.revoked === 1 ||
+          (share.expires_at !== null && share.expires_at <= now);
+        if (lapsed) {
+          client.close(4403, "Share link expired");
+          room.removeClient(client);
+        }
+      }
+    }
+    this.scheduleExpirySweep();
+  }
+
   public close(): void {
+    if (this.expiryTimer) {
+      clearTimeout(this.expiryTimer);
+      this.expiryTimer = null;
+    }
     for (const room of this.rooms.values()) {
       room.destroy();
     }

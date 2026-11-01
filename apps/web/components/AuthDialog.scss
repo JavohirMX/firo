@@ -116,3 +116,13 @@
     text-align: left;
   }
 }
+
+// Dark mode: the light-theme error red reads as mud on the dark dialog
+// surface (~2.5:1). Use a lighter red with a matching tinted chip.
+.theme--dark {
+  .firo-auth-dialog__error {
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #fca5a5;
+  }
+}

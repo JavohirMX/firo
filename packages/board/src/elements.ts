@@ -602,7 +602,10 @@ const customDataFor = (element: FiroElement): Record<string, unknown> => {
  * @throws on a type the editor cannot draw. Silently dropping an element is how
  * a board loses content without anyone noticing.
  */
-export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
+export const toEditorElements = (
+  element: FiroElement,
+  nextIndex?: FiroElement["index"],
+): ExcalidrawElement[] => {
   if (
     element.type === "rectangle" ||
     element.type === "diamond" ||
@@ -843,9 +846,20 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
      * note projects to the same label index on every restore, and two notes can never
      * collide on one.
      */
+    /*
+     * Bounded by the successor only when the successor actually sorts after
+     * the note: a filtered or mid-merge projection can hand over a successor
+     * whose index is lower, and `generateKeyBetween` throws on a >= b. The
+     * unbounded fallback is the pre-existing behaviour for that case; the
+     * scene's own index sync repairs the result.
+     */
     index: generateKeyBetween(
       element.index,
-      null,
+      (typeof element.index === "string" &&
+      typeof nextIndex === "string" &&
+      nextIndex > element.index
+        ? nextIndex
+        : null) as never,
     ) as ExcalidrawTextElement["index"],
     containerId: element.id,
     originalText: element.text,
@@ -879,10 +893,20 @@ export const toEditorElements = (element: FiroElement): ExcalidrawElement[] => {
   return [sticky, label];
 };
 
-/** Project a z-ordered list. Order is the z-order; a note's label follows it. */
+/**
+ * Project a z-ordered list. Order is the z-order; a note's label follows it.
+ *
+ * The successor's index goes in with each element: a note's label is derived
+ * between the note and whatever follows it, so densely indexed boards —
+ * imports, where indices are assigned a0, a1, a2 at load — still get a label
+ * that sorts before the next note instead of colliding with it.
+ */
 export const toEditorScene = (
   elements: readonly FiroElement[],
-): ExcalidrawElement[] => elements.flatMap(toEditorElements);
+): ExcalidrawElement[] =>
+  elements.flatMap((element, i) =>
+    toEditorElements(element, elements[i + 1]?.index),
+  );
 
 /**
  * Fold the editor's elements into document elements.

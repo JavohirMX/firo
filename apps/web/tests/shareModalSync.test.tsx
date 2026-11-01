@@ -123,6 +123,44 @@ describe("ShareModal with a sync server", () => {
     ).toMatch(/^Expires /);
   });
 
+  it("hides the explainer and the empty links section while sharing is unavailable", () => {
+    render(
+      <ShareModal
+        isOpen
+        onClose={vi.fn()}
+        unavailableMessage="Sharing needs a Firo sync server."
+      />,
+    );
+    expect(screen.getByTestId("share-unavailable")).toBeTruthy();
+    // The capability explainer and an empty "(0)" links list only add noise
+    // next to the unavailable notice.
+    expect(screen.queryByText(/Capability links:/)).toBeNull();
+    expect(screen.queryByTestId("active-share-links")).toBeNull();
+    expect(screen.queryByTestId("no-share-links")).toBeNull();
+  });
+
+  it("shows the explainer and a count-free header with no links yet", () => {
+    render(<ShareModal isOpen onClose={vi.fn()} onGenerateLink={vi.fn()} />);
+    expect(screen.getByText(/Capability links:/)).toBeTruthy();
+    expect(screen.getByTestId("no-share-links")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "Active share links" }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Active share links \(/)).toBeNull();
+  });
+
+  it("counts the live links in the header once one exists", async () => {
+    const onGenerateLink = vi.fn().mockResolvedValue(link("abc123abc123"));
+    render(
+      <ShareModal isOpen onClose={vi.fn()} onGenerateLink={onGenerateLink} />,
+    );
+    fireEvent.click(screen.getByTestId("create-link-button"));
+    await screen.findByTestId("share-link-item-abc123abc123");
+    expect(
+      screen.getByRole("heading", { name: "Active share links (1)" }),
+    ).toBeTruthy();
+  });
+
   it("replaces the create controls with the unavailable message and action", () => {
     const onSelect = vi.fn();
     render(

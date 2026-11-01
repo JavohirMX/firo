@@ -12,15 +12,17 @@
  * - Multi-strategy image resolution from Miro .rtb backup archives
  * - Stratified z-index layer ordering (outer frames, inner frames, shapes, images, stickies, text, connectors on top)
  */
-import { DEFAULT_FONT_FAMILY } from "@firo/common";
+import { DEFAULT_FONT_FAMILY, getFontString } from "@firo/common";
+import { measureText, wrapText } from "@firo/element";
 import { hashBytes } from "@firo/doc";
 
 import { miroHtmlToProseMirror } from "./htmlToProseMirror";
-import { miroHtmlToPlainText } from "./htmlToText";
+import { decodeHtmlEntities, miroHtmlToPlainText } from "./htmlToText";
 
 import type {
   MiroBoardMeta,
   MiroCaption,
+  MiroConnectorEndpoint,
   MiroItem,
   MiroResourceMeta,
 } from "./types";
@@ -38,6 +40,9 @@ const MIRO_COLOR_MAP: Readonly<Record<string, string>> = {
   violet: "#c5a3ff",
   magenta: "#ea7ae5",
   pink: "#ffb2d8",
+  // light_pink sampled from Miro's own sticky rendering (modal gradient range
+  // #ffd2f2-#ffd8f4 on a real board, 2026-10-30); not an official spec hex.
+  light_pink: "#ffd5f3",
   red: "#f2647c",
   gray: "#d0d0d0",
   light_gray: "#f0f0f0",
@@ -186,6 +191,38 @@ export const convertMiroItemsToFiro = async (
     itemsById.set(id, item);
   }
 
+  // Miro groups become Firo group membership. An item points at its immediate
+  // group via `groupId`; a group lists its members (which may include other
+  // groups) via `itemsIds`, so nested groups resolve by walking the parent
+  // chain. Firo elements carry every ancestor group id on their `groupIds`,
+  // which is exactly what the walk produces. Miro ids get a prefix so they
+  // can never collide with group ids Firo mints locally.
+  const groupParentOf = new Map<string, string>();
+  for (const item of items) {
+    if (item.type !== "group") {
+      continue;
+    }
+    const groupId = String(item.id);
+    const members = Array.isArray(item.itemsIds) ? item.itemsIds : [];
+    for (const member of members) {
+      const memberId = String(member);
+      if (!groupParentOf.has(memberId)) {
+        groupParentOf.set(memberId, groupId);
+      }
+    }
+  }
+  const resolveGroupIds = (item: MiroItem): string[] => {
+    const groupIds: string[] = [];
+    const seen = new Set<string>();
+    let groupId = item.groupId != null ? String(item.groupId) : null;
+    while (groupId && !seen.has(groupId)) {
+      seen.add(groupId);
+      groupIds.push(`miro_group_${groupId}`);
+      groupId = groupParentOf.get(groupId) ?? null;
+    }
+    return groupIds;
+  };
+
   // --------------------------------------------------------------------------
   // Pass 2: Calculate absolute canvas bounds for each item with recursive cascade
   // For arbitrarily nested elements (stickies inside cards inside frames inside sections).
@@ -245,7 +282,10 @@ export const convertMiroItemsToFiro = async (
 
     const rawX = item.position?.x ?? item.x ?? 0;
     const rawY = item.position?.y ?? item.y ?? 0;
-    const origin = item.position?.origin ?? "center";
+    const origin =
+      item.position?.origin ??
+      (item.origin as "center" | "top-left" | undefined) ??
+      "center";
     const angle =
       (item.geometry?.rotation ?? item.rotation ?? 0) * (Math.PI / 180);
 
@@ -449,13 +489,15 @@ export const convertMiroItemsToFiro = async (
 
     const containerId = parentId && itemsById.has(parentId) ? parentId : null;
 
+    const itemGroupIds = resolveGroupIds(item);
+
     const baseFields = {
       id,
       version: 1,
       versionNonce: Math.floor(Math.random() * 1000000),
       index: null,
       isDeleted: false,
-      groupIds: [],
+      groupIds: itemGroupIds,
       frameId: enclosingFrameId,
       containerId: containerId ?? enclosingFrameId,
       boundElements: [],
@@ -487,7 +529,9 @@ export const convertMiroItemsToFiro = async (
           ...baseFields,
           ...bounds,
           type: "frame",
-          name: title,
+          // Miro HTML-escapes frame/section titles on export (e.g. "Ana&#39;s")
+          // even though they are plain-text fields, so decode them here.
+          name: decodeHtmlEntities(String(title)),
           backgroundColor: normalizeMiroColor(
             item.style?.fillColor,
             item.type === "section" ? "#f5f5f5" : "transparent",
@@ -589,7 +633,11 @@ export const convertMiroItemsToFiro = async (
         });
 
         if (contentText) {
-          const textColor = getContrastingTextColor(bg);
+          // The export carries an explicit text color per shape; only fall
+          // back to the contrast heuristic when it is absent.
+          const textColor = item.style?.color
+            ? normalizeMiroColor(item.style.color, "#1e1e1e")
+            : getContrastingTextColor(bg);
           const rawFontSize = Number(item.style?.fontSize ?? item.fontSize);
           let fontSize: number;
           if (!isNaN(rawFontSize) && rawFontSize > 0) {
@@ -607,16 +655,41 @@ export const convertMiroItemsToFiro = async (
             );
           }
 
+          // The label is a freestanding annotation in the document model
+          // (shapes carry no text), so wrapping and alignment have to be
+          // baked into its geometry. autoResize: false makes the editor wrap
+          // at the element width - the shape's width - instead of re-fitting
+          // one long line, and the wrap/height below come from the renderer's
+          // own wrapText/measureText pipeline, so what is stored is what the
+          // canvas lays out. Only an explicit exported alignment moves the
+          // block vertically: middle/bottom place it, top or an absent value
+          // keeps the shape's top edge.
+          const exportedVAlign = item.style?.textAlignVertical;
+          const labelFont = getFontString({
+            fontSize,
+            fontFamily: DEFAULT_FONT_FAMILY,
+          });
+          const wrappedText = wrapText(contentText, labelFont, bounds.width);
+          const labelMetrics = measureText(wrappedText, labelFont, 1.25 as any);
+          let labelY = bounds.y;
+          if (exportedVAlign === "middle") {
+            labelY =
+              bounds.y + Math.max(0, (bounds.height - labelMetrics.height) / 2);
+          } else if (exportedVAlign === "bottom") {
+            labelY =
+              bounds.y + Math.max(0, bounds.height - labelMetrics.height);
+          }
+
           elements.push({
             ...baseFields,
             id: textId,
             x: bounds.x,
-            y: bounds.y,
+            y: labelY,
             width: bounds.width,
-            height: bounds.height,
+            height: labelMetrics.height,
             angle: bounds.angle,
             type: "text",
-            text: contentText,
+            text: wrappedText,
             richText,
             fontSize,
             fontFamily: DEFAULT_FONT_FAMILY,
@@ -625,7 +698,7 @@ export const convertMiroItemsToFiro = async (
             strokeColor: textColor,
             backgroundColor: "transparent",
             containerId: id,
-            autoResize: true,
+            autoResize: false,
             lineHeight: 1.25,
           });
         }
@@ -676,18 +749,57 @@ export const convertMiroItemsToFiro = async (
         const startItemId = item.start?.item ?? item.startItem?.id;
         const endItemId = item.end?.item ?? item.endItem?.id;
 
-        if (item.start?.position) {
-          startX = item.start.position.x;
-          startY = item.start.position.y;
+        // Real .rtb backups serialize bound endpoints as 0..1 fractions of
+        // the bound item's box (with snapTo), not absolute canvas coords.
+        const resolveEndpoint = (
+          endpoint: MiroConnectorEndpoint | undefined,
+          itemId: unknown,
+        ): { x: number; y: number } | null => {
+          const pos = endpoint?.position;
+          if (!pos) {
+            return null;
+          }
+          const b =
+            itemId != null ? itemBoundsMap.get(String(itemId)) : undefined;
+          if (b && Math.abs(pos.x) <= 1 && Math.abs(pos.y) <= 1) {
+            return { x: b.x + pos.x * b.width, y: b.y + pos.y * b.height };
+          }
+          return { x: pos.x, y: pos.y };
+        };
+        const bindingFocus = (
+          endpoint: MiroConnectorEndpoint | undefined,
+        ): number => {
+          const pos = endpoint?.position;
+          if (!pos) {
+            return 0;
+          }
+          const snap = String(endpoint?.snapTo ?? "").toLowerCase();
+          const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+          if (snap === "left" || snap === "right") {
+            return clamp((pos.y - 0.5) * 2);
+          }
+          if (snap === "top" || snap === "bottom") {
+            return clamp((pos.x - 0.5) * 2);
+          }
+          return 0;
+        };
+        const startFocus = bindingFocus(item.start);
+        const endFocus = bindingFocus(item.end);
+
+        const sp = resolveEndpoint(item.start, startItemId);
+        if (sp) {
+          startX = sp.x;
+          startY = sp.y;
         } else if (startItemId && itemBoundsMap.has(String(startItemId))) {
           const sb = itemBoundsMap.get(String(startItemId))!;
           startX = sb.x + sb.width / 2;
           startY = sb.y + sb.height / 2;
         }
 
-        if (item.end?.position) {
-          endX = item.end.position.x;
-          endY = item.end.position.y;
+        const ep = resolveEndpoint(item.end, endItemId);
+        if (ep) {
+          endX = ep.x;
+          endY = ep.y;
         } else if (endItemId && itemBoundsMap.has(String(endItemId))) {
           const eb = itemBoundsMap.get(String(endItemId))!;
           endX = eb.x + eb.width / 2;
@@ -854,17 +966,17 @@ export const convertMiroItemsToFiro = async (
           endArrowhead,
           boundElements,
           startBinding: startItemId
-            ? { elementId: String(startItemId), focus: 0, gap: 1 }
+            ? { elementId: String(startItemId), focus: startFocus, gap: 1 }
             : null,
           endBinding: endItemId
-            ? { elementId: String(endItemId), focus: 0, gap: 1 }
+            ? { elementId: String(endItemId), focus: endFocus, gap: 1 }
             : null,
           bindings: [
             ...(startItemId
-              ? [{ elementId: String(startItemId), focus: 0, gap: 1 }]
+              ? [{ elementId: String(startItemId), focus: startFocus, gap: 1 }]
               : []),
             ...(endItemId
-              ? [{ elementId: String(endItemId), focus: 0, gap: 1 }]
+              ? [{ elementId: String(endItemId), focus: endFocus, gap: 1 }]
               : []),
           ],
         });
@@ -1030,6 +1142,78 @@ export const convertMiroItemsToFiro = async (
         break;
       }
 
+      case "embed": {
+        /*
+         * A Miro embed carries a live-preview URL. Firo renders live embeds
+         * only for its whitelisted embeddable domains, and board embeds are
+         * usually arbitrary sites, so the faithful conversion is a rectangle
+         * that keeps the geometry, carries the URL as its link, and shows the
+         * URL's host as its label - with a warning, so nothing is silently
+         * dropped or silently approximated.
+         */
+        const embedUrl = String(item.url ?? item.data?.url ?? "");
+        let embedHost = "";
+        try {
+          embedHost = new URL(embedUrl).hostname.replace(/^www\./, "");
+        } catch {
+          embedHost = embedUrl;
+        }
+
+        const embedTextId = `${id}_text`;
+        const embedBound: { id: string; type: "text" }[] = [];
+        if (embedHost) {
+          embedBound.push({ id: embedTextId, type: "text" });
+        }
+
+        elements.push({
+          ...baseFields,
+          ...bounds,
+          type: "rectangle",
+          backgroundColor: "transparent",
+          strokeColor: "#868e96",
+          strokeStyle: "dashed",
+          roundness: { type: 3 },
+          boundElements: embedBound,
+          link: embedUrl || null,
+        });
+
+        if (embedHost) {
+          elements.push({
+            ...baseFields,
+            id: embedTextId,
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+            angle: bounds.angle,
+            type: "text",
+            text: embedHost,
+            richText: miroHtmlToProseMirror(embedHost),
+            fontSize: 14,
+            fontFamily: DEFAULT_FONT_FAMILY,
+            textAlign: "center",
+            verticalAlign: "middle",
+            backgroundColor: "transparent",
+            strokeColor: "#868e96",
+            containerId: id,
+            autoResize: true,
+            lineHeight: 1.25,
+          });
+        }
+
+        warnings.push(
+          `Miro embed converted to a linked placeholder rectangle (live embed rendering is limited to whitelisted domains) (id: ${id})`,
+        );
+        break;
+      }
+
+      case "group":
+        /*
+         * No element: the group is preserved as `miro_group_*` membership on
+         * each member element, which is how Firo models grouping.
+         */
+        break;
+
       default:
         warnings.push(`Unsupported Miro item type "${item.type}" (id: ${id})`);
     }
@@ -1099,6 +1283,48 @@ export const convertMiroItemsToFiro = async (
   // Clean up internal _miroIndex property
   for (const el of elements) {
     delete el._miroIndex;
+  }
+
+  // Drop connector bindings whose target never made it into the output
+  // (unsupported or dropped item types). The endpoint geometry above was
+  // already resolved against the target's own bounds, so the arrow still
+  // points where the item was; only the live binding dangles, and a dangling
+  // binding is silently repaired away by the editor on load - better to drop
+  // it here with a warning than to let that happen unrecorded.
+  const emittedIds = new Set(elements.map((el) => String(el.id)));
+  let unboundEndpoints = 0;
+  for (const el of elements) {
+    if (el.type !== "arrow" && el.type !== "line") {
+      continue;
+    }
+    const arrow = el as unknown as {
+      startBinding?: { elementId: string } | null;
+      endBinding?: { elementId: string } | null;
+      bindings?: { elementId: string }[];
+    };
+    const startDropped =
+      arrow.startBinding != null &&
+      !emittedIds.has(String(arrow.startBinding.elementId));
+    const endDropped =
+      arrow.endBinding != null &&
+      !emittedIds.has(String(arrow.endBinding.elementId));
+    if (startDropped) {
+      arrow.startBinding = null;
+    }
+    if (endDropped) {
+      arrow.endBinding = null;
+    }
+    if (arrow.bindings) {
+      arrow.bindings = arrow.bindings.filter((b) =>
+        emittedIds.has(String(b.elementId)),
+      );
+    }
+    unboundEndpoints += (startDropped ? 1 : 0) + (endDropped ? 1 : 0);
+  }
+  if (unboundEndpoints > 0) {
+    warnings.push(
+      `${unboundEndpoints} connector endpoint(s) targeted items not present in the import (unsupported or dropped in this export); endpoint geometry was resolved to the target's last position and the endpoint left unbound.`,
+    );
   }
 
   const elementOrder = elements.map((e) => String(e.id));

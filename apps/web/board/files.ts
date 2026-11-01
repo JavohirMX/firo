@@ -560,6 +560,23 @@ export const insertElementsIntoDoc = (
     idMap.set(el.id, newId);
   }
 
+  // Group ids get the same per-batch remap as element ids: without it, a
+  // second insert of the same source joins the first copy's groups, and an
+  // import joins groups that already exist on the board.
+  const groupIdMap = new Map<string, string>();
+  for (const el of incoming) {
+    for (const groupId of el.groupIds ?? []) {
+      if (!groupIdMap.has(groupId)) {
+        groupIdMap.set(
+          groupId,
+          `${groupId}_${timestamp}_${Math.random()
+            .toString(36)
+            .substring(2, 6)}`,
+        );
+      }
+    }
+  }
+
   const dx = offset?.x ?? 0;
   const dy = offset?.y ?? 0;
 
@@ -577,6 +594,22 @@ export const insertElementsIntoDoc = (
           elementId: (idMap.get(b.elementId) || b.elementId) as any,
         }))
       : [];
+    // boundElements is the container side of a text binding (containerId is
+    // the text side). Leaving it unremapped strands the reference on the
+    // pre-insert id, so the editor drops the binding on load and the label
+    // unbinds from its shape.
+    // Not on the FiroElement schema type: bindings live on the editor-shaped
+    // element, same as startBinding/endBinding below.
+    const boundElements = (el as any).boundElements as
+      | readonly { id: string; type: string }[]
+      | null
+      | undefined;
+    const remappedBoundElements = boundElements
+      ? boundElements.map((bound) => ({
+          ...bound,
+          id: (idMap.get(String(bound.id)) || bound.id) as any,
+        }))
+      : boundElements;
 
     let startBinding = (el as any).startBinding;
     if (startBinding?.elementId && idMap.has(startBinding.elementId)) {
@@ -600,11 +633,15 @@ export const insertElementsIntoDoc = (
       y: el.y + dy,
       frameId: remappedFrameId,
       containerId: remappedContainerId,
+      groupIds: (el.groupIds ?? []).map(
+        (groupId) => groupIdMap.get(groupId) || groupId,
+      ),
       bindings: remappedBindings,
+      boundElements: remappedBoundElements,
       ...(startBinding !== undefined ? { startBinding } : {}),
       ...(endBinding !== undefined ? { endBinding } : {}),
       isDeleted: false,
-    } as FiroElement;
+    } as unknown as FiroElement;
   });
 
   const mutations = remapped.map((element) => ({
@@ -612,6 +649,33 @@ export const insertElementsIntoDoc = (
     element,
   }));
   doc.commit(mutations as any);
+};
+
+/**
+ * Replace everything in `doc` with `board`.
+ *
+ * `doc.load()` only ever creates - it has no delete - so on a non-empty
+ * document a bare `load` merges the file into the existing board instead of
+ * replacing it: a same-id file becomes an invisible no-op (its ids already
+ * exist) and a different file silently doubles the board. "Replace board
+ * content" promises the file ends up alone in the board, so the previous
+ * elements are deleted first. Collections and records of the previous board
+ * are deliberately left in place: there is no record-delete mutation yet,
+ * and a kept collection is visible where a wrongly deleted one is not.
+ */
+const clearDocElements = (doc: FiroDoc): void => {
+  const existing = doc.read().elements.map((el) => String(el.id));
+  if (existing.length > 0) {
+    doc.commit([{ kind: "deleteElements", ids: existing } as never]);
+  }
+};
+
+const replaceDocContents = (
+  doc: FiroDoc,
+  board: Parameters<FiroDoc["load"]>[0],
+): void => {
+  clearDocElements(doc);
+  doc.load(board);
 };
 
 /**
@@ -673,6 +737,11 @@ const importBoardFileInner = async (
         }
       }
 
+      if (deps?.insertMode === "replace" && hasContent) {
+        // The directory importer refuses a non-empty doc by design; the
+        // dialog's replace mode is the deliberate clear it asks for.
+        clearDocElements(doc);
+      }
       const imported = await importFiroDirectory(doc, files, {
         putAsset: deps?.putAsset ?? (async () => {}),
       });
@@ -770,7 +839,7 @@ const importBoardFileInner = async (
           };
         }
         const loaded = loadBoard(converted.board);
-        doc.load({
+        replaceDocContents(doc, {
           elements: loaded.elements,
           collections: loaded.collections,
           records: loaded.records,
@@ -788,21 +857,35 @@ const importBoardFileInner = async (
       // Check canvas.json
       if (files.has("canvas.json")) {
         const canvasBytes = files.get("canvas.json")!;
+        /*
+         * Only the decode and parse may mark the backup encrypted: a
+         * KMS-sealed canvas.json is not JSON at all, so a parse failure is
+         * the signal. Everything after the parse — conversion, asset writes,
+         * the document load — fails for its own reasons and must surface its
+         * own error. Wrapping those in the same catch relabelled any bug in
+         * them as "encrypted by Miro KMS", which sent the user to re-export
+         * a board that was never the problem.
+         */
+        let items: unknown;
         try {
           const canvasText = new TextDecoder().decode(canvasBytes);
           const canvasJson = JSON.parse(canvasText);
-          const items = Array.isArray(canvasJson)
+          items = Array.isArray(canvasJson)
             ? canvasJson
             : canvasJson.items || canvasJson.widgets;
-          if (Array.isArray(items)) {
-            const hasContent = doc.read().elements.length > 0;
-            if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
-              return {
-                ok: false,
-                reason: "not-empty",
-                detail: "Clear or export the current board before importing.",
-              };
-            }
+        } catch {
+          isEncrypted = true;
+        }
+        if (!isEncrypted && Array.isArray(items)) {
+          const hasContent = doc.read().elements.length > 0;
+          if (hasContent && !deps?.force && deps?.insertMode !== "insert") {
+            return {
+              ok: false,
+              reason: "not-empty",
+              detail: "Clear or export the current board before importing.",
+            };
+          }
+          try {
             const converted = await convertMiroItemsToFiro(items, {
               boardMeta,
               resources,
@@ -827,7 +910,7 @@ const importBoardFileInner = async (
               };
             }
             const loaded = loadBoard(converted.board);
-            doc.load({
+            replaceDocContents(doc, {
               elements: loaded.elements,
               collections: loaded.collections,
               records: loaded.records,
@@ -840,9 +923,17 @@ const importBoardFileInner = async (
               format: "miro",
               assets: converted.assetsToPut,
             };
+          } catch (e) {
+            return {
+              ok: false,
+              reason: "failed",
+              detail: `Miro import failed: ${
+                e instanceof Error
+                  ? e.message || (e as { code?: string }).code || e.name
+                  : String(e)
+              }`,
+            };
           }
-        } catch {
-          isEncrypted = true;
         }
       }
 
@@ -890,14 +981,17 @@ const importBoardFileInner = async (
           originY: deps?.offset?.y ?? 0,
         });
         if (stickyNotes.length > 0) {
-          if (deps?.insertMode === "insert" || (hasContent && deps?.force)) {
+          if (
+            deps?.insertMode === "insert" ||
+            (hasContent && deps?.force && deps?.insertMode !== "replace")
+          ) {
             const mutations = stickyNotes.map((el) => ({
               kind: "createElement" as const,
               element: el,
             }));
             doc.commit(mutations as any);
           } else {
-            doc.load({
+            replaceDocContents(doc, {
               elements: stickyNotes as any,
               collections: [],
               records: [],
@@ -962,7 +1056,7 @@ const importBoardFileInner = async (
       records: [],
       elementOrder: converted.elements.map((e) => e.id),
     });
-    doc.load({
+    replaceDocContents(doc, {
       elements: loaded.elements,
       collections: loaded.collections,
       records: loaded.records,
@@ -1021,7 +1115,7 @@ const importBoardFileInner = async (
       };
     }
     const loaded = loadBoard(converted.board);
-    doc.load({
+    replaceDocContents(doc, {
       elements: loaded.elements,
       collections: loaded.collections,
       records: loaded.records,

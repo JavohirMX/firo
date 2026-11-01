@@ -126,8 +126,19 @@ export function createStaticHandler(
     if (fs.existsSync(targetFilePath) && fs.statSync(targetFilePath).isFile()) {
       const stat = fs.statSync(targetFilePath);
       const mime = getMimeType(targetFilePath);
+      // Immutable caching is only safe when the URL changes with the
+      // content. Vite emits "name-<hash>.<ext>" under /assets/ with an 8+
+      // char base64url hash, but the directory alone is not proof: fixed
+      // names exist in the build (public/ files at the root, woff2 fonts
+      // under /fonts/), and a config change could put one under /assets/.
+      // The name check below is a heuristic, not proof of a content hash:
+      // a future fixed suffix of 8+ word chars would also match. Accepting
+      // that residual risk beats trusting the directory alone; the build
+      // emits no manifest to check against.
+      const basename = pathname.slice(pathname.lastIndexOf("/") + 1);
       const isHashedAsset =
-        pathname.startsWith("/assets/") || pathname.includes("-");
+        pathname.startsWith("/assets/") &&
+        /-[A-Za-z0-9_-]{8,}\.[^./]+(\.map)?$/.test(basename);
       const isHtml = mime.startsWith("text/html");
 
       const cacheControl = isHtml
