@@ -450,6 +450,21 @@ describe("Share expiry disconnects existing clients", () => {
     owner.ws.close();
   });
 
+  it("rejects a handshake whose share has already expired", async () => {
+    // resolveRole refuses expired shares at the handshake; without that pin a
+    // regression would let a stale proof open a sync connection and receive
+    // board content before the post-connect sweep cuts it.
+    const share = seedPasswordShare("exp-stale", Date.now() - 1_000);
+    const proof = createShareProof(share);
+    await expect(
+      connect(
+        `boardId=exp-board&shareToken=exp-stale&shareProof=${encodeURIComponent(
+          proof,
+        )}`,
+      ),
+    ).rejects.toThrow(/403/);
+  });
+
   it("cuts a passwordless viewer at expiry", async () => {
     storage.createShare({
       id: "id-exp-open",
