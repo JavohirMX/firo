@@ -18,8 +18,10 @@ if [ ! -x ./node_modules/.bin/eslint ]; then
 fi
 
 while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
-  # A brand-new remote ref has no ancestor to diff against; nothing scoped
-  # to check that CI will not check anyway.
+  # First push of a branch (no remote ancestor): NOT checked. There is no
+  # remote tip to diff against and guessing one could block a legitimate
+  # push, so the hook's protection covers updates to existing remote refs
+  # only. CI still checks that first push.
   if [ "$REMOTE_SHA" = "0000000000000000000000000000000000000000" ]; then
     continue
   fi
