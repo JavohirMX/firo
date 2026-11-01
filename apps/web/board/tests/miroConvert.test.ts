@@ -273,6 +273,31 @@ describe("Miro conversion", () => {
       ).toBe(true);
     });
 
+    it("drops unsupported item types with a warning naming the type", async () => {
+      // Grounded 2026-11-01 against a real export: its 250 unsupported items
+      // (curve, stencil, Miro's own "unsupported" tombstones, table_text,
+      // code, stamp, emoji, table) arrive content-stripped - position and
+      // size only - so no faithful conversion is possible from that export.
+      // Pin the current contract: drop with a type-naming warning, never
+      // silently. (Whether these should become visible placeholders instead
+      // is an open product decision.)
+      const miroItems: MiroItem[] = [
+        {
+          id: "curve_1",
+          type: "curve",
+          position: { x: 100, y: 100, origin: "center" },
+          geometry: { width: 200, height: 50 },
+        },
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems);
+
+      expect(board.elements).toHaveLength(0);
+      expect(
+        warnings.some((w) => w.includes('Unsupported Miro item type "curve"')),
+      ).toBe(true);
+    });
+
     it("converts shapes (circle to ellipse, round rectangle)", async () => {
       const miroItems: MiroItem[] = [
         {
