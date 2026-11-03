@@ -1,6 +1,6 @@
 # Bundled font licences
 
-**Status: complete. All eight distributed fonts are cleared under SIL OFL 1.1 or MIT, and the licence text now ships with each of them. No blockers left.**
+**Status: complete. All eleven distributed fonts are cleared under SIL OFL 1.1 or MIT, and the licence text now ships with each of them. No blockers left.**
 
 Two font roots are scanned, because two packages ship fonts: `packages/editor/fonts/` (the canvas faces and the editor's UI face) and `packages/ui/src/fonts/` (the chrome face). `packages/common/tests/fonts.test.ts` walks both.
 
@@ -29,6 +29,9 @@ Both are handled in [`docs/adr/0013-replace-the-virgil-font.md`](docs/adr/0013-r
 | Cascadia Code | 3 | SIL OFL 1.1 | **yes** | [`microsoft/cascadia-code/LICENSE`](https://raw.githubusercontent.com/microsoft/cascadia-code/main/LICENSE) | **yes** — `Cascadia/LICENSE.txt` committed. RFN `Cascadia Code`; unmodified. |
 | Comic Shanns | 8 | MIT | **yes** | [`shannpersand/comic-shanns/LICENSE`](https://raw.githubusercontent.com/shannpersand/comic-shanns/master/LICENSE) + the binary's own `name` table | **yes** — `ComicShanns/LICENSE.txt` committed. Provenance oddity, not a licence problem; see the research doc. |
 | **Liberation Sans** | 9 | SIL OFL 1.1 | **yes** | Google Croscore / Liberation OFL release | **yes** — `Liberation/OFL.txt` committed. Resolved release blocker; see below. |
+| Noto Sans | 11 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/notosans/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/OFL.txt) | **yes** — `NotoSans/OFL.txt` committed. Bundled for faithful Miro imports (Miro `noto_sans`); `private: true`, so rendering only, not in the font picker. Subsets fetched 2026-11-03 from Google's css2 stylesheet (`family=Noto+Sans:wght@400`, weight 400): latin `09aee806`, latin-ext `c8e6bf92`, cyrillic `05af9e70`, cyrillic-ext `fa833149`, vietnamese `0f0c8a48` (SHA-256, first 8). |
+| Open Sans | 12 | SIL OFL 1.1 | **yes** | [`google/fonts/ofl/opensans/OFL.txt`](https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OFL.txt) | **yes** — `OpenSans/OFL.txt` committed. Same Miro-import role (`open_sans`) and `private: true`. Same fetch route (`family=Open+Sans:wght@400`): latin `0e44026a`, latin-ext `c260ffc9`, cyrillic `dbb0be74`, cyrillic-ext `d18e67d9`, vietnamese `e65e991f`. |
+| Fredoka One | 13 | SIL OFL 1.1 | **yes, via the binary** | binary `name` table (see note below) | **yes** — `FredokaOne/OFL.txt` committed. Miro `fredoka_one`; `private: true`. Google's css2 now serves only the latin subset for this family (`e9986c62`). |
 | Helvetica | 2 | — | n/a | `local: true` | Not distributed — resolves to the OS copy. No binary, nothing to clear. |
 | Emoji | — | — | n/a | `local://` via `LOCAL_FONT_PROTOCOL` | Not distributed — resolves to the OS emoji font. No binary, nothing to clear. |
 
@@ -87,3 +90,7 @@ When you add a font:
 - `AGENTS.md` forbids shipping an unlicensed font file, and `packages/common/tests/fonts.test.ts` fails if either half is missing.
 
 A row saying "unverified" is a blocker, not a to-do. A row saying "believed" is worse — it is an unverified claim wearing a conclusion's clothes, which is how the Liberation Sans entry went wrong in the first place.
+
+### Fredoka One licence provenance
+
+The former upstream repository (`googlefonts/fredokaone`) no longer resolves (404 on 2026-11-03), and `google/fonts` carries only the successor family `ofl/fredoka`, whose copyright line does not cover Fredoka One. The licence was therefore verified from the shipped binary's own `name` table, read with fontTools on the exact committed file: copyright entry "Copyright (c) 2011 Milena B Brandao (milenabbrandao@gmail.com), with Reserved Font Name "Fredoka"", licence URL entry `http://scripts.sil.org/OFL`. The committed `OFL.txt` pairs that copyright line with the standard SIL OFL 1.1 text. The Reserved Font Name is honoured: the binaries ship unmodified under their original family name, which OFL 1.1 permits.

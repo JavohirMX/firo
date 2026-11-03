@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_FONT_FAMILY } from "@firo/common";
+import { DEFAULT_FONT_FAMILY, FONT_FAMILY } from "@firo/common";
 
 import {
   convertFiroToMiroItems,
@@ -984,6 +984,95 @@ describe("Miro conversion", () => {
       // 14 * 2.5 = 35
       expect(textEl.fontSize).toBe(35);
       expect(textEl.fontFamily).toBe(DEFAULT_FONT_FAMILY);
+    });
+
+    it("maps exported Miro font families to the bundled fonts", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "text-noto",
+          type: "text",
+          data: { content: "Noto text" },
+          position: { x: 0, y: 0 },
+          geometry: { width: 200, height: 50 },
+          style: { fontFamily: "noto_sans" },
+        },
+        {
+          id: "text-noto-enum",
+          type: "text",
+          data: { content: "Noto enum text" },
+          position: { x: 0, y: 100 },
+          geometry: { width: 200, height: 50 },
+          style: { fontFamily: "NotoSans" },
+        },
+        {
+          id: "text-open",
+          type: "text",
+          data: { content: "Open Sans text" },
+          position: { x: 0, y: 200 },
+          geometry: { width: 200, height: 50 },
+          style: { fontFamily: "open_sans" },
+        },
+        {
+          id: "text-fredoka",
+          type: "text",
+          data: { content: "Fredoka text" },
+          position: { x: 0, y: 300 },
+          geometry: { width: 200, height: 50 },
+          style: { fontFamily: "fredoka_one" },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const byId = (id: string) => board.elements.find((e) => e.id === id);
+      expect(byId("text-noto")?.fontFamily).toBe(FONT_FAMILY["Noto Sans"]);
+      expect(byId("text-noto-enum")?.fontFamily).toBe(FONT_FAMILY["Noto Sans"]);
+      expect(byId("text-open")?.fontFamily).toBe(FONT_FAMILY["Open Sans"]);
+      expect(byId("text-fredoka")?.fontFamily).toBe(FONT_FAMILY["Fredoka One"]);
+    });
+
+    it("falls back to the default font for families Firo does not ship", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "text-unknown",
+          type: "text",
+          data: { content: "Unshipped font text" },
+          position: { x: 0, y: 0 },
+          geometry: { width: 200, height: 50 },
+          style: { fontFamily: "permanent_marker" },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      expect(board.elements[0].fontFamily).toBe(DEFAULT_FONT_FAMILY);
+    });
+
+    it("applies the exported font to sticky notes and shape labels", async () => {
+      const miroItems: MiroItem[] = [
+        {
+          id: "sticky-font",
+          type: "sticky_note",
+          data: { content: "Noto sticky" },
+          position: { x: 0, y: 0 },
+          geometry: { width: 200, height: 200 },
+          style: { fontFamily: "noto_sans" },
+        },
+        {
+          id: "shape-font",
+          type: "shape",
+          data: { shape: "rectangle", content: "Open Sans label" },
+          position: { x: 300, y: 0 },
+          geometry: { width: 200, height: 100 },
+          style: { fontFamily: "open_sans" },
+        },
+      ];
+
+      const { board } = await convertMiroItemsToFiro(miroItems);
+      const sticky = board.elements.find((e) => e.type === "stickynote");
+      const label = board.elements.find(
+        (e) => e.type === "text" && e.containerId,
+      );
+      expect(sticky?.fontFamily).toBe(FONT_FAMILY["Noto Sans"]);
+      expect(label?.fontFamily).toBe(FONT_FAMILY["Open Sans"]);
     });
 
     it("quantizes sticky note font size to valid schema values [16, 20, 28, 36]", async () => {

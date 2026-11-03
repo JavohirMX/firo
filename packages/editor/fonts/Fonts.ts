@@ -39,7 +39,10 @@ import { ExcalidrawFontFace } from "./ExcalidrawFontFace";
 import { HelveticaFontFaces } from "./Helvetica";
 import { LiberationFontFaces } from "./Liberation";
 import { LilitaFontFaces } from "./Lilita";
+import { FredokaOneFontFaces } from "./FredokaOne";
+import { NotoSansFontFaces } from "./NotoSans";
 import { NunitoFontFaces } from "./Nunito";
+import { OpenSansFontFaces } from "./OpenSans";
 import { XiaolaiFontFaces } from "./Xiaolai";
 
 export class Fonts {
@@ -404,6 +407,9 @@ export class Fonts {
     init("Liberation Sans", ...LiberationFontFaces);
     init("Lilita One", ...LilitaFontFaces);
     init("Nunito", ...NunitoFontFaces);
+    init("Noto Sans", ...NotoSansFontFaces);
+    init("Open Sans", ...OpenSansFontFaces);
+    init("Fredoka One", ...FredokaOneFontFaces);
 
     // fallback font faces
     init(CJK_HAND_DRAWN_FALLBACK_FONT, ...XiaolaiFontFaces);
