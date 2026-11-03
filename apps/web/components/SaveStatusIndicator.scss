@@ -84,3 +84,13 @@
     transform: scale(0.85);
   }
 }
+
+// Dark mode: the error chip's light pink wash reads as a bright slab on the
+// dark surface; use the same tinted-red treatment as the other dialogs.
+.theme--dark {
+  .firo-save-status--error {
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.12);
+  }
+}
