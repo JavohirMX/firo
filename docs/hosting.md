@@ -81,6 +81,10 @@ server {
 
 LAN-only use needs no proxy at all: browse to `http://<host>:8080` and the app and API are same-origin, so `FIRO_ALLOWED_ORIGINS` stays empty.
 
+When the proxy terminates TLS, also set `FIRO_SECURE_COOKIES=true` so the session cookie carries the `Secure` flag and browsers only send it over HTTPS. Leave it unset on plain-HTTP LAN installs, where a `Secure` cookie would never be sent and sign-in would silently fail.
+
+`FIRO_WS_MAX_PAYLOAD` optionally caps one sync message's size in bytes (for example `16777216` for 16 MiB); an over-cap message is dropped with close code 1009. Unset keeps the library default of 100 MiB, which large boards with embedded images can legitimately need.
+
 ## Proposed: a minimal first-run onboarding (awaiting approval)
 
 Using only what exists today, the smallest honest onboarding is:

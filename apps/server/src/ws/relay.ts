@@ -21,6 +21,11 @@ export interface RelayOptions {
   server?: http.Server;
   /** Extra browser origins allowed to open a socket. Same-origin always is. */
   allowedOrigins?: string[];
+  /**
+   * Optional per-message payload cap in bytes. Undefined leaves the ws
+   * default (100 MiB) in effect; oversize messages are closed with 1009.
+   */
+  maxPayload?: number;
 }
 
 export class WebSocketRelay {
@@ -33,7 +38,12 @@ export class WebSocketRelay {
   constructor(options: RelayOptions) {
     this.storage = options.storage;
     this.allowedOrigins = options.allowedOrigins ?? [];
-    this.wss = new WebSocketServer({ noServer: true });
+    this.wss = new WebSocketServer({
+      noServer: true,
+      ...(options.maxPayload !== undefined
+        ? { maxPayload: options.maxPayload }
+        : {}),
+    });
 
     // Revoking a share must cut off its existing connections, not only new
     // ones: without this, an idle share client kept receiving broadcasts

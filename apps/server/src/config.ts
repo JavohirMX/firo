@@ -17,7 +17,25 @@ export interface ServerConfig {
   allowOpenRegistration: boolean;
   /** Extra browser origins allowed to call the HTTP API with credentials. */
   allowedOrigins: string[];
+  /**
+   * Mark the session cookie Secure. Off by default so plain-HTTP homelab
+   * LAN deployments keep working; enable behind HTTPS.
+   */
+  secureCookies: boolean;
+  /**
+   * Optional per-message WebSocket payload cap in bytes. Undefined leaves the
+   * ws default (100 MiB) in effect.
+   */
+  wsMaxPayloadBytes: number | undefined;
 }
+
+const parseMaxPayloadBytes = (raw: string | undefined): number | undefined => {
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
+};
 
 export function loadConfig(
   overrides: Partial<ServerConfig> = {},
@@ -76,5 +94,10 @@ export function loadConfig(
         .split(",")
         .map((o) => o.trim().replace(/\/+$/, ""))
         .filter(Boolean),
+    secureCookies:
+      overrides.secureCookies ?? process.env.FIRO_SECURE_COOKIES === "true",
+    wsMaxPayloadBytes:
+      overrides.wsMaxPayloadBytes ??
+      parseMaxPayloadBytes(process.env.FIRO_WS_MAX_PAYLOAD),
   };
 }

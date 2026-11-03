@@ -222,7 +222,11 @@ export function createHttpHandler(
       });
 
       const { token } = createSession(storage, user.id, config.sessionTtlMs);
-      const cookie = buildSessionCookie(token, config.sessionTtlMs, false);
+      const cookie = buildSessionCookie(
+        token,
+        config.sessionTtlMs,
+        config.secureCookies,
+      );
 
       sendJson(
         res,
@@ -274,7 +278,11 @@ export function createHttpHandler(
       }
 
       const { token } = createSession(storage, user.id, config.sessionTtlMs);
-      const cookie = buildSessionCookie(token, config.sessionTtlMs, false);
+      const cookie = buildSessionCookie(
+        token,
+        config.sessionTtlMs,
+        config.secureCookies,
+      );
 
       sendJson(
         res,
