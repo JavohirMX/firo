@@ -60,8 +60,8 @@
     transition: background 0.15s ease;
 
     &:hover {
-      background: var(--color-primary-light, #e7f5ff);
-      color: var(--color-primary, #1971c2);
+      background: var(--firo-color-active-tool, rgba(91, 75, 255, 0.1));
+      color: var(--firo-color-accent, #5b4bff);
     }
   }
 }
@@ -86,7 +86,7 @@
 
     &.is-active {
       background: var(--color-bg, #ffffff);
-      color: var(--color-primary, #1971c2);
+      color: var(--firo-color-accent, #5b4bff);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
@@ -175,8 +175,8 @@
     cursor: pointer;
 
     &:hover {
-      background: var(--color-primary-light, #e7f5ff);
-      color: var(--color-primary, #1971c2);
+      background: var(--firo-color-active-tool, rgba(91, 75, 255, 0.1));
+      color: var(--firo-color-accent, #5b4bff);
     }
   }
 }
@@ -226,7 +226,7 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.9rem;
     font-family: inherit;
-    border: 1px solid var(--color-primary, #1971c2);
+    border: 1px solid var(--firo-color-accent, #5b4bff);
     border-radius: 3px;
     outline: none;
   }
@@ -400,8 +400,8 @@
   position: absolute;
   top: 6px;
   height: 32px;
-  background: var(--color-primary, #1971c2);
-  color: #ffffff;
+  background: var(--firo-color-accent, #5b4bff);
+  color: var(--firo-color-on-accent, #ffffff);
   border-radius: 4px;
   padding: 0 0.5rem;
   display: flex;

@@ -134,6 +134,8 @@
   --color-gray-600: var(--firo-color-text-muted);
   --color-text: var(--firo-color-text);
   --color-text-muted: var(--firo-color-text-muted);
+  --color-gray-100: var(--firo-color-button-secondary);
+  --default-border-color: var(--firo-color-border);
 
   /* Elevation */
   --firo-elevation-panel: 0 1px 2px var(--firo-color-shadow),
@@ -211,6 +213,8 @@
   --color-gray-600: var(--firo-color-text-muted);
   --color-text: var(--firo-color-text);
   --color-text-muted: var(--firo-color-text-muted);
+  --color-gray-100: var(--firo-color-button-secondary);
+  --default-border-color: var(--firo-color-border);
 }
 
 /**
