@@ -124,13 +124,37 @@ export const flushBoardThumbnail = async (): Promise<void> => {
     return;
   }
   try {
-    const thumbnail = await captureBoardThumbnail(
-      capture.elements,
-      capture.appState,
-      capture.files,
-      capture.exportToCanvasImpl,
-    );
+    const hasLive = capture.elements.some((element) => !element.isDeleted);
+    const thumbnail = hasLive
+      ? await captureBoardThumbnail(
+          capture.elements,
+          capture.appState,
+          capture.files,
+          capture.exportToCanvasImpl,
+        )
+      : undefined;
     if (!thumbnail) {
+      if (!hasLive) {
+        /*
+         * The scene was emptied: keeping the last render would show a board
+         * that no longer exists. A failed render of a live scene keeps the
+         * previous preview instead (the degradation rule above).
+         */
+        const meta = await putBoardMeta({
+          id: capture.boardId,
+          thumbnail: undefined,
+        });
+        lastFingerprint = fingerprint;
+        const active = getActiveBoard();
+        if (active && active.id === capture.boardId) {
+          setActiveBoard(meta);
+        }
+        window.dispatchEvent(
+          new CustomEvent(BOARD_THUMBNAIL_EVENT, {
+            detail: { boardId: capture.boardId, thumbnail: undefined },
+          }),
+        );
+      }
       return;
     }
     const meta = await putBoardMeta({ id: capture.boardId, thumbnail });

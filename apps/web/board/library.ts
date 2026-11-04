@@ -159,6 +159,9 @@ export const putBoardMeta = async (
   if ("folderId" in input && input.folderId === undefined) {
     delete meta.folderId;
   }
+  if ("thumbnail" in input && input.thumbnail === undefined) {
+    delete meta.thumbnail;
+  }
   index[meta.id] = meta;
   await writeIndex(index);
   return meta;

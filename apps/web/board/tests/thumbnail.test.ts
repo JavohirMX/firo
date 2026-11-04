@@ -150,6 +150,33 @@ describe("flushBoardThumbnail", () => {
     expect(exporter).toHaveBeenCalledTimes(2);
   });
 
+  it("clears the stored preview when the scene is emptied", async () => {
+    const board = await createBoard({ name: "Clearing board" });
+    scheduleBoardThumbnail(
+      board.id,
+      [element("a")],
+      appState,
+      files,
+      fakeExporter(),
+    );
+    await flushBoardThumbnail();
+    expect((await getBoardMeta(board.id))?.thumbnail).toBeDefined();
+    const seen: Array<{ boardId: string; thumbnail?: string }> = [];
+    window.addEventListener(BOARD_THUMBNAIL_EVENT, (event) =>
+      seen.push((event as CustomEvent).detail),
+    );
+    scheduleBoardThumbnail(
+      board.id,
+      [element("a", { isDeleted: true })],
+      appState,
+      files,
+      fakeExporter(),
+    );
+    await flushBoardThumbnail();
+    expect((await getBoardMeta(board.id))?.thumbnail).toBeUndefined();
+    expect(seen).toEqual([{ boardId: board.id, thumbnail: undefined }]);
+  });
+
   it("keeps the placeholder when the render fails", async () => {
     const board = await createBoard({ name: "Fragile board" });
     const failing = vi.fn(async () => {
