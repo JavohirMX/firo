@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { AWARENESS_KEY } from "@firo/doc";
 
+import { isReactionLive, reactionEmoji } from "@firo/facilitation";
+
+import type { Reaction } from "@firo/facilitation";
+
 import type { EphemeralState, FiroDoc } from "@firo/doc";
 
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
@@ -44,6 +48,8 @@ export interface RemoteCollaborator {
   laser?: { x: number; y: number } | null;
   idleSince?: number | null;
   isIdle?: boolean;
+  /** The reaction this collaborator is showing, if any (ADR-0039 section 7). */
+  reaction?: Reaction | null;
 }
 
 export interface RemoteCursorLayerProps {
@@ -145,6 +151,8 @@ export const RemoteCursorLayer: React.FC<RemoteCursorLayerProps> = ({
           `User ${clientId}`;
         const color = user?.color ?? getCollaboratorColor(clientId);
 
+        const reaction = (firoState?.reaction as Reaction | null) ?? null;
+
         list.push({
           clientId,
           name,
@@ -153,6 +161,7 @@ export const RemoteCursorLayer: React.FC<RemoteCursorLayerProps> = ({
           laser,
           idleSince,
           isIdle: idleSince !== null && Date.now() - idleSince > 5000,
+          reaction,
         });
       });
 
@@ -168,6 +177,25 @@ export const RemoteCursorLayer: React.FC<RemoteCursorLayerProps> = ({
 
   // Determine active collaborators list
   const collaborators = explicitCollaborators ?? awarenessCollaborators;
+
+  /*
+   * Reactions expire (ADR-0039 section 7: peers render a new reaction for
+   * four seconds). Awareness tells us when a reaction *arrives*; nothing
+   * tells us when it *ends*, so while any reaction is live this tick repaints
+   * until the last one crosses the boundary. The interval is a repaint, not
+   * a write — the same argument FacilitatorBar makes for its clock.
+   */
+  const anyLiveReaction = collaborators.some((collab) =>
+    isReactionLive(collab.reaction, Date.now()),
+  );
+  const [reactionNow, setReactionNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!anyLiveReaction) {
+      return undefined;
+    }
+    const id = window.setInterval(() => setReactionNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [anyLiveReaction]);
 
   // Laser history per collaborator: clientId -> LaserTrailPoint[]
   const trailsRef = useRef<Record<string, LaserTrailPoint[]>>({});
@@ -228,6 +256,20 @@ export const RemoteCursorLayer: React.FC<RemoteCursorLayerProps> = ({
   }, [explicitViewport, excalidrawAPI, viewportRevision]);
 
   // Convert board coordinate to viewport screen coordinate
+  /*
+   * Centre of a scene element, for element-anchored reactions. Decorative:
+   * an element the local scene no longer has falls back to the coordinates
+   * the sender published with the reaction.
+   */
+  const sceneElementCenter = (id: string): { x: number; y: number } | null => {
+    const element = excalidrawAPI
+      ?.getSceneElements?.()
+      .find((candidate) => candidate.id === id && !candidate.isDeleted);
+    return element
+      ? { x: element.x + element.width / 2, y: element.y + element.height / 2 }
+      : null;
+  };
+
   const toViewport = (boardX: number, boardY: number) => ({
     x: (boardX + viewport.scrollX) * viewport.zoom,
     y: (boardY + viewport.scrollY) * viewport.zoom,
@@ -356,6 +398,34 @@ export const RemoteCursorLayer: React.FC<RemoteCursorLayerProps> = ({
             >
               {name}
             </div>
+          </div>
+        );
+      })}
+
+      {/* Reactions (ADR-0039 section 7): decorative, aria-hidden, gone in four seconds */}
+      {collaborators.map((collab) => {
+        const reaction = collab.reaction;
+        if (!isReactionLive(reaction, reactionNow)) {
+          return null;
+        }
+        const emoji = reactionEmoji(reaction.kind);
+        if (!emoji) {
+          return null;
+        }
+        const id = String(collab.clientId);
+        const anchor = reaction.targetId
+          ? sceneElementCenter(reaction.targetId) ?? reaction
+          : reaction;
+        const { x: vx, y: vy } = toViewport(anchor.x, anchor.y);
+        return (
+          <div
+            key={`reaction-${id}`}
+            className="firo-remote-reaction"
+            style={{ transform: `translate(${vx}px, ${vy}px)` }}
+            aria-hidden="true"
+            data-testid={`remote-reaction-${id}`}
+          >
+            {emoji}
           </div>
         );
       })}

@@ -167,6 +167,12 @@ describe("registration", () => {
       "readVoteTally",
       "setupFacilitatorTimer",
       "bulkCreateStickyNotes",
+      "sendReactionThumbsUp",
+      "sendReactionLove",
+      "sendReactionFire",
+      "sendReactionWow",
+      "sendReactionCelebration",
+      "sendReactionWave",
     ]);
   });
 
@@ -182,9 +188,15 @@ describe("registration", () => {
        * the facilitation menu are the paths), so they have no `keyTest` to
        * assert.
        */
+      /*
+       * The reactions are chordless for the same reason, one clause further:
+       * six more alt-chords in an already crowded space would cost more than
+       * the palette lookup (ADR-0039 section 9).
+       */
       if (
         action.name !== "openVotingPanel" &&
-        action.name !== "openFramesPanel"
+        action.name !== "openFramesPanel" &&
+        !action.name.startsWith("sendReaction")
       ) {
         expect(typeof action.keyTest, action.name).toBe("function");
       }
@@ -1066,6 +1078,12 @@ describe("the command palette", () => {
       "Read the vote tally",
       "Set up timer with a chosen duration",
       "Bulk create sticky notes",
+      "React: thumbs up",
+      "React: love",
+      "React: fire",
+      "React: wow",
+      "React: celebration",
+      "React: wave",
     ]);
   });
 
@@ -1156,6 +1174,9 @@ describe("the command palette", () => {
       // new single-key shortcut; the palette is the keyboard path).
       .filter((item) => item.label !== "Open the voting panel")
       .filter((item) => item.label !== "Open the frames panel")
+      // Reactions print no chord for the same reason: the palette is the
+      // keyboard path (ADR-0039 section 9).
+      .filter((item) => !item.label.startsWith("React:"))
       .map((i) => i.label);
     expect(missing).toEqual([]);
   });
@@ -1201,5 +1222,35 @@ describe("the command palette", () => {
     }
 
     expect(mismatched).toEqual([]);
+  });
+});
+
+describe("the reactions", () => {
+  it("publishes to awareness and announces, with no document write", () => {
+    const { document, run, toasts } = setup();
+    const before = document.durableUpdates;
+
+    run("sendReactionFire");
+
+    const reaction = document.getEphemeral().reaction;
+    expect(reaction?.kind).toBe("fire");
+    expect(reaction?.id).toBeTruthy();
+    // Rule 1: a reaction is live-meeting state, so the send is not a write.
+    expect(document.durableUpdates).toBe(before);
+    expect(lastToast(toasts)).toContain("Fire");
+  });
+
+  it("anchors to the one selected element and floats otherwise", () => {
+    const { document, run } = setup();
+    const id = note(document, "anchor me");
+
+    run("sendReactionWave");
+    expect(document.getEphemeral().reaction?.targetId).toBe(id);
+
+    // Nothing selected: the newest reaction replaces the previous one and
+    // floats, anchored to nothing (ADR-0039 section 7).
+    select();
+    run("sendReactionWave");
+    expect(document.getEphemeral().reaction?.targetId).toBeNull();
   });
 });

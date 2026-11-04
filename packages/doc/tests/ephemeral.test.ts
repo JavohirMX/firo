@@ -272,6 +272,10 @@ describe("a five-second drag produces zero document updates", () => {
     doc.setEphemeral({
       ballot: { sessionId: "round-1000", key: "ballot-xyz" },
     });
+    // ADR-0039 section 7: a reaction is live-meeting state, never a write.
+    doc.setEphemeral({
+      reaction: { id: "r1", kind: "fire", targetId: "a", x: 5, y: 6, at: 7 },
+    });
     expect(doc.durableUpdates).toBe(before);
 
     expect(doc.getEphemeral()).toEqual({
@@ -292,6 +296,7 @@ describe("a five-second drag produces zero document updates", () => {
       session: { leader: 42 },
       voting: RUNNING_ROUND,
       ballot: { sessionId: "round-1000", key: "ballot-xyz" },
+      reaction: { id: "r1", kind: "fire", targetId: "a", x: 5, y: 6, at: 7 },
     });
   });
 
@@ -808,5 +813,28 @@ describe("this package does not reach for a global it was not given", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("ephemeral reaction (ADR-0039 section 7)", () => {
+  test("a new reaction replaces the old one and null clears it", () => {
+    const r1 = {
+      id: "r1",
+      kind: "thumbsUp",
+      targetId: null,
+      x: 1,
+      y: 2,
+      at: 10,
+    };
+    const r2 = { id: "r2", kind: "fire", targetId: "el1", x: 3, y: 4, at: 20 };
+    const withFirst = applyEphemeralPatch(EMPTY_EPHEMERAL_STATE, {
+      reaction: r1,
+    });
+    expect(withFirst.reaction).toEqual(r1);
+    expect(withFirst.cursor).toBeNull();
+    const withSecond = applyEphemeralPatch(withFirst, { reaction: r2 });
+    expect(withSecond.reaction).toEqual(r2);
+    const cleared = applyEphemeralPatch(withSecond, { reaction: null });
+    expect(cleared.reaction).toBeNull();
   });
 });

@@ -142,7 +142,37 @@ export type EphemeralState = Readonly<{
    * document; the vote records carry their own copy in the `voter` column.
    */
   ballot: EphemeralBallot | null;
+
+  /**
+   * The reaction this client is showing, or null (ADR-0039 section 7).
+   *
+   * Ephemeral because a reaction is live-meeting state: a `.firo` file must
+   * never reopen with yesterday's emoji, and nothing about a reaction belongs
+   * in undo, the activity feed, or an export. Awareness is a latest-value
+   * channel, so publishing a new reaction replaces this client's previous
+   * one; peers render a new `id` for a few seconds and forget it.
+   *
+   * Restated rather than imported, for the reason on
+   * [`EphemeralTimer`](#ephemeraltimer). An absent field means no reaction,
+   * which is what old clients publish.
+   */
+  reaction: EphemeralReaction;
 }>;
+
+/**
+ * A reaction as it travels. Structurally the serialisable half of
+ * `@firo/facilitation`'s `Reaction`, restated here for the cycle reason on
+ * [`EphemeralTimer`](#ephemeraltimer): `kind` is a plain string on the wire,
+ * and an unknown kind renders as nothing rather than breaking old clients.
+ */
+export type EphemeralReaction = Readonly<{
+  id: string;
+  kind: string;
+  targetId: string | null;
+  x: number;
+  y: number;
+  at: number;
+}> | null;
 
 /** The session claim. `null` is "this client is not driving". */
 export type EphemeralSessionClaim = Readonly<{ leader: number }> | null;
@@ -314,6 +344,7 @@ export const EMPTY_EPHEMERAL_STATE: EphemeralState = Object.freeze({
   session: null,
   voting: null,
   ballot: null,
+  reaction: null,
 });
 
 /** The `y-protocols` awareness key. Not exported as a mutable binding. */

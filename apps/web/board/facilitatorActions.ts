@@ -61,6 +61,9 @@ import {
   isRunning,
   leaders,
   boardIdConflict,
+  makeReaction,
+  REACTION_KINDS,
+  resolveReactionAnchor,
   votesFromRecords,
   VOTE_COLLECTION_ID,
 } from "@firo/facilitation";
@@ -229,7 +232,13 @@ type FacilitatorToggleName =
   | "togglePresentation"
   | "nextSlide"
   | "previousSlide"
-  | "openFramesPanel";
+  | "openFramesPanel"
+  | "sendReactionThumbsUp"
+  | "sendReactionLove"
+  | "sendReactionFire"
+  | "sendReactionWow"
+  | "sendReactionCelebration"
+  | "sendReactionWave";
 
 /*
  * Whether the host has switched this command off.
@@ -445,6 +454,77 @@ export const facilitatorActions = (
     }
     return false;
   };
+
+  /*
+   * Publish one reaction to the room (ADR-0039 section 7). Awareness only:
+   * the newest reaction replaces this client's previous one, peers render it
+   * for a few seconds, and nothing enters the document, undo, or an export.
+   * No editor role is needed — reactions are not durable writes.
+   */
+  const sendReaction = (
+    kind: typeof REACTION_KINDS[number]["kind"],
+    elements: readonly ExcalidrawElement[],
+    appState: Readonly<AppState>,
+  ): void => {
+    const zoom = appState.zoom?.value ?? 1;
+    const viewportCenter = {
+      x: ((appState.width ?? 0) / 2 - (appState.scrollX ?? 0)) / zoom,
+      y: ((appState.height ?? 0) / 2 - (appState.scrollY ?? 0)) / zoom,
+    };
+    const byId = new Map(elements.map((element) => [element.id, element]));
+    const anchor = resolveReactionAnchor({
+      selectedIds: selectedIds(elements, appState),
+      elementCenter: (id) => {
+        const element = byId.get(id);
+        return element
+          ? {
+              x: element.x + element.width / 2,
+              y: element.y + element.height / 2,
+            }
+          : null;
+      },
+      cursor: getDocument().getEphemeral().cursor,
+      viewportCenter,
+    });
+    const reaction = makeReaction({
+      id: globalThis.crypto?.randomUUID?.() ?? `r-${Date.now()}`,
+      kind,
+      anchor,
+      at: Date.now(),
+    });
+    getDocument().setEphemeral({ reaction });
+    const entry = REACTION_KINDS.find((candidate) => candidate.kind === kind);
+    announce(api, `${entry?.emoji ?? ""} ${entry?.label ?? kind}`, 2500);
+  };
+
+  const reactionActions: Action[] = REACTION_KINDS.map((entry) => {
+    const toggleName = `sendReaction${
+      entry.kind[0].toUpperCase() + entry.kind.slice(1)
+    }` as FacilitatorToggleName;
+    return {
+      name: toggleName,
+      label: `React: ${entry.label.toLowerCase()}`,
+      keywords: [
+        "reaction",
+        "emoji",
+        "react",
+        entry.kind,
+        entry.label.toLowerCase(),
+      ],
+      trackEvent: { category: "facilitation", action: "sendReaction" },
+      /*
+       * Allowed in view mode and deliberately chordless: anyone in the room may
+       * react (ADR-0039 section 7), and six more alt-chords in an already
+       * crowded space (section 9) would cost more than the palette lookup.
+       */
+      viewMode: true,
+      predicate: enabledUnless(toggleName),
+      perform: (elements, appState): ActionResult =>
+        run(() => {
+          sendReaction(entry.kind, elements, appState);
+        }),
+    };
+  });
 
   return [
     {
@@ -963,6 +1043,7 @@ export const facilitatorActions = (
           requestDialog("bulkStickyNotes");
         }),
     },
+    ...reactionActions,
   ];
 };
 
