@@ -45,6 +45,9 @@ const DISPLAY_NAME: Record<string, string> = {
   Liberation: "Liberation Sans",
   ComicShanns: "Comic Shanns",
   PlusJakartaSans: "Plus Jakarta Sans",
+  NotoSans: "Noto Sans",
+  OpenSans: "Open Sans",
+  FredokaOne: "Fredoka One",
 };
 
 /**

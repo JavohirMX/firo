@@ -83,6 +83,7 @@ export class FiroServer {
       storage: this.storage,
       server: this.httpServer,
       allowedOrigins: this.config.allowedOrigins,
+      maxPayload: this.config.wsMaxPayloadBytes,
     });
   }
 

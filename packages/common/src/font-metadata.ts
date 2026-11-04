@@ -111,6 +111,33 @@ export const FONT_METADATA: Record<number, FontMetadata> = {
     },
     private: true,
   },
+  [FONT_FAMILY["Noto Sans"]]: {
+    metrics: {
+      unitsPerEm: 1000,
+      ascender: 1069,
+      descender: -293,
+      lineHeight: 1.25,
+    },
+    private: true,
+  },
+  [FONT_FAMILY["Open Sans"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 2189,
+      descender: -600,
+      lineHeight: 1.25,
+    },
+    private: true,
+  },
+  [FONT_FAMILY["Fredoka One"]]: {
+    metrics: {
+      unitsPerEm: 1000,
+      ascender: 974,
+      descender: -236,
+      lineHeight: 1.25,
+    },
+    private: true,
+  },
   [FONT_FAMILY_FALLBACKS.Xiaolai]: {
     metrics: {
       unitsPerEm: 1000,

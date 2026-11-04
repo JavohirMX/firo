@@ -347,6 +347,17 @@
       color: var(--firo-color-text-muted, #9c9fab);
     }
   }
+
+  .firo-share-modal__copy-btn.is-copied {
+    background-color: rgba(79, 209, 142, 0.16);
+    color: var(--firo-color-success, #4fd18e);
+    border-color: rgba(79, 209, 142, 0.4);
+  }
+
+  .firo-share-modal__revoke-btn:hover {
+    background-color: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
+  }
 }
 
 // Phone widths: the create row and link rows are single flex lines sized for

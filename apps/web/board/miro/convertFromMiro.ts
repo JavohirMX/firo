@@ -12,9 +12,11 @@
  * - Multi-strategy image resolution from Miro .rtb backup archives
  * - Stratified z-index layer ordering (outer frames, inner frames, shapes, images, stickies, text, connectors on top)
  */
-import { DEFAULT_FONT_FAMILY, getFontString } from "@firo/common";
+import { DEFAULT_FONT_FAMILY, FONT_FAMILY, getFontString } from "@firo/common";
 import { measureText, wrapText } from "@firo/element";
 import { hashBytes } from "@firo/doc";
+
+import type { FontFamilyValues } from "@firo/element/types";
 
 import { miroHtmlToProseMirror } from "./htmlToProseMirror";
 import { decodeHtmlEntities, miroHtmlToPlainText } from "./htmlToText";
@@ -26,6 +28,31 @@ import type {
   MiroItem,
   MiroResourceMeta,
 } from "./types";
+
+/**
+ * Maps a Miro `style.fontFamily` token to a registered Firo family. Miro
+ * exports the same font in several shapes ("noto_sans", "NotoSans"), so
+ * tokens are normalized before lookup. Families Firo does not ship fall back
+ * to the default family, matching the pre-mapping behavior.
+ */
+export const mapMiroFontFamily = (
+  miroFontFamily: string | undefined,
+): FontFamilyValues => {
+  if (!miroFontFamily) {
+    return DEFAULT_FONT_FAMILY;
+  }
+  switch (miroFontFamily.toLowerCase().replace(/[\s_-]+/g, "")) {
+    case "notosans":
+      return FONT_FAMILY["Noto Sans"];
+    case "opensans":
+      return FONT_FAMILY["Open Sans"];
+    case "fredokaone":
+    case "fredoka":
+      return FONT_FAMILY["Fredoka One"];
+    default:
+      return DEFAULT_FONT_FAMILY;
+  }
+};
 
 const MIRO_COLOR_MAP: Readonly<Record<string, string>> = {
   light_yellow: "#fff9b8",
@@ -580,7 +607,7 @@ export const convertMiroItemsToFiro = async (
           text,
           richText,
           fontSize,
-          fontFamily: DEFAULT_FONT_FAMILY,
+          fontFamily: mapMiroFontFamily(item.style?.fontFamily),
           textAlign: item.style?.textAlign ?? "center",
           verticalAlign: item.style?.textAlignVertical ?? "middle",
           backgroundColor: bg,
@@ -667,7 +694,7 @@ export const convertMiroItemsToFiro = async (
           const exportedVAlign = item.style?.textAlignVertical;
           const labelFont = getFontString({
             fontSize,
-            fontFamily: DEFAULT_FONT_FAMILY,
+            fontFamily: mapMiroFontFamily(item.style?.fontFamily),
           });
           const wrappedText = wrapText(contentText, labelFont, bounds.width);
           const labelMetrics = measureText(wrappedText, labelFont, 1.25 as any);
@@ -692,7 +719,7 @@ export const convertMiroItemsToFiro = async (
             text: wrappedText,
             richText,
             fontSize,
-            fontFamily: DEFAULT_FONT_FAMILY,
+            fontFamily: mapMiroFontFamily(item.style?.fontFamily),
             textAlign: item.style?.textAlign ?? "center",
             verticalAlign: item.style?.textAlignVertical ?? "middle",
             strokeColor: textColor,
@@ -728,7 +755,7 @@ export const convertMiroItemsToFiro = async (
           text,
           richText,
           fontSize,
-          fontFamily: DEFAULT_FONT_FAMILY,
+          fontFamily: mapMiroFontFamily(item.style?.fontFamily),
           textAlign: item.style?.textAlign ?? "left",
           verticalAlign: item.style?.textAlignVertical ?? "top",
           strokeColor: color,
@@ -938,7 +965,7 @@ export const convertMiroItemsToFiro = async (
             text: labelText,
             richText: miroHtmlToProseMirror(labelContent),
             fontSize: 14,
-            fontFamily: DEFAULT_FONT_FAMILY,
+            fontFamily: mapMiroFontFamily(item.style?.fontFamily),
             textAlign: "center",
             verticalAlign: "middle",
             strokeColor: stroke,
@@ -1062,12 +1089,18 @@ export const convertMiroItemsToFiro = async (
           }
         }
 
-        // 6. Sequential media fallback if archive contains media files
+        // 6. Sequential media fallback if archive contains media files.
+        // Nothing in the export ties this item to a resource, so the pairing
+        // is archive order, not evidence - say so, or a guessed image looks
+        // exactly like a resolved one.
         if (!matchedMedia && mediaList.length > 0) {
           const fallbackEntry =
             mediaList[unassignedMediaIndex % mediaList.length];
           unassignedMediaIndex++;
           matchedMedia = { bytes: fallbackEntry.bytes, ext: fallbackEntry.ext };
+          warnings.push(
+            `Image matched to a media file by archive order (no resource reference in the export); the pairing is a guess - verify placement after import (id: ${id})`,
+          );
         }
 
         if (matchedMedia) {
@@ -1132,7 +1165,7 @@ export const convertMiroItemsToFiro = async (
           text: cardText,
           richText,
           fontSize: 16,
-          fontFamily: DEFAULT_FONT_FAMILY,
+          fontFamily: mapMiroFontFamily(item.style?.fontFamily),
           textAlign: "left",
           verticalAlign: "top",
           backgroundColor: "#ffffff",

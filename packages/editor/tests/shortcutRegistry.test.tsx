@@ -10,7 +10,9 @@ import {
   actionAlignRight,
   actionAlignTop,
 } from "../actions/actionAlign";
+import { actionLink } from "../actions/actionLink";
 import { getShortcutFromShortcutName } from "../actions/shortcuts";
+import { isCommandPaletteToggleShortcut } from "../components/CommandPalette/CommandPalette";
 
 import { findShapeByKey, getToolShortcuts, TOOLS } from "../components/Tools";
 import {
@@ -121,12 +123,22 @@ type Chord = {
   key: string;
   shift?: boolean;
   ctrlOrCmd?: boolean;
+  alt?: boolean;
+  code?: string;
 };
 
-const keyEvent = ({ key, shift = false, ctrlOrCmd = false }: Chord) =>
+const keyEvent = ({
+  key,
+  shift = false,
+  ctrlOrCmd = false,
+  alt = false,
+  code,
+}: Chord) =>
   ({
     key,
     shiftKey: shift,
+    altKey: alt,
+    code,
     [KEYS.CTRL_OR_CMD]: ctrlOrCmd,
   } as unknown as KeyboardEvent);
 
@@ -241,5 +253,49 @@ describe("rendered cheat sheet", () => {
       // TOOLS.freedraw ("Draw" row) binds P *and* X (plus 7); the sheet used to drop X
       expect(rowFor("Draw")).toEqual(["P", "X", "7"]);
     });
+  });
+});
+
+describe("palette and link chords (ADR-0032)", () => {
+  it("CtrlOrCmd+K is advertised for the palette and toggles it", () => {
+    expect(getShortcutFromShortcutName("commandPalette")).toContain("K");
+    expect(
+      isCommandPaletteToggleShortcut(
+        keyEvent({ key: KEYS.K, ctrlOrCmd: true, code: "KeyK" }),
+      ),
+    ).toBe(true);
+    // the inherited chords stay as extras
+    expect(
+      isCommandPaletteToggleShortcut(
+        keyEvent({ key: "/", ctrlOrCmd: true, code: "Slash" }),
+      ),
+    ).toBe(true);
+    // Alt belongs to the link action now
+    expect(
+      isCommandPaletteToggleShortcut(
+        keyEvent({ key: KEYS.K, ctrlOrCmd: true, alt: true, code: "KeyK" }),
+      ),
+    ).toBe(false);
+    // a bare K still types
+    expect(isCommandPaletteToggleShortcut(keyEvent({ key: KEYS.K }))).toBe(
+      false,
+    );
+  });
+
+  it("hyperlink moved to CtrlOrCmd+Alt+K and the registry advertises it", () => {
+    expect(
+      actionLink.keyTest?.(
+        keyEvent({ key: KEYS.K, ctrlOrCmd: true, alt: true, code: "KeyK" }),
+      ),
+    ).toBe(true);
+    // the palette owns the bare chord now
+    expect(
+      actionLink.keyTest?.(
+        keyEvent({ key: KEYS.K, ctrlOrCmd: true, code: "KeyK" }),
+      ),
+    ).not.toBe(true);
+    const advertised = getShortcutFromShortcutName("hyperlink");
+    expect(advertised).toMatch(/alt/i);
+    expect(advertised).toContain("K");
   });
 });

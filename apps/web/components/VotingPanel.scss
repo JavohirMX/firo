@@ -65,7 +65,7 @@
       border-bottom: 2px solid transparent;
 
       &.is-active {
-        border-bottom-color: var(--color-primary, #6965db);
+        border-bottom-color: var(--firo-color-accent, #5b4bff);
         font-weight: 600;
       }
     }
@@ -97,7 +97,7 @@
     font-size: 13px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: var(--color-primary-light, #e4e2fb);
+    background: var(--firo-color-active-tool, rgba(91, 75, 255, 0.1));
   }
 
   &__stepper {
@@ -177,8 +177,8 @@
   }
 
   &__start {
-    background: var(--color-primary, #6965db);
-    color: #fff;
+    background: var(--firo-color-accent, #5b4bff);
+    color: var(--firo-color-on-accent, #ffffff);
   }
 
   &__end {
@@ -239,7 +239,7 @@
   left: 8px;
   right: 396px;
   bottom: 8px;
-  border: 2px dashed var(--color-primary, #6965db);
+  border: 2px dashed var(--firo-color-accent, #5b4bff);
   border-radius: 8px;
   pointer-events: none;
   z-index: 5;

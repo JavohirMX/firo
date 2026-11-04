@@ -417,6 +417,20 @@
       color: var(--firo-color-text-muted, #9c9fab);
     }
   }
+
+  .firo-version-history-modal__notification {
+    &--success {
+      background: rgba(79, 209, 142, 0.16);
+      color: var(--firo-color-success, #4fd18e);
+      border-color: rgba(79, 209, 142, 0.4);
+    }
+
+    &--error {
+      background: rgba(248, 113, 113, 0.12);
+      color: #fca5a5;
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+  }
 }
 
 // Small screens: the revision row's two action buttons leave the info column

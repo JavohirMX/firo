@@ -99,6 +99,7 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   clearCanvas: [getShortcutKey("CtrlOrCmd+Delete")],
   imageExport: [getShortcutKey("CtrlOrCmd+Shift+E")],
   commandPalette: [
+    getShortcutKey("CtrlOrCmd+K"),
     getShortcutKey("CtrlOrCmd+/"),
     getShortcutKey("CtrlOrCmd+Shift+P"),
   ],
@@ -145,7 +146,7 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   flipHorizontal: [getShortcutKey("Shift+H")],
   flipVertical: [getShortcutKey("Shift+V")],
   viewMode: [getShortcutKey("Alt+R")],
-  hyperlink: [getShortcutKey("CtrlOrCmd+K")],
+  hyperlink: [getShortcutKey("CtrlOrCmd+Alt+K")],
   toggleElementLock: [getShortcutKey("CtrlOrCmd+Shift+L")],
   resetZoom: [getShortcutKey("CtrlOrCmd+0")],
   zoomOut: [getShortcutKey("CtrlOrCmd+-")],

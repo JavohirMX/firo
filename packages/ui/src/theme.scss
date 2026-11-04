@@ -115,6 +115,28 @@
   --color-on-primary: var(--firo-color-on-accent);
   --color-text-secondary: var(--firo-color-text-muted);
 
+  /* Second sweep: more component-read names that still fell back to light
+     literals. Accent hover gets real shades; the soft/subtle washes reuse the
+     active-tool wash; hover washes reuse the surface hover; the gray scale
+     maps onto border and muted-text roles. */
+  --firo-color-accent-hover: #4a3df0;
+  --firo-color-accent-soft: var(--firo-color-active-tool);
+  --firo-color-accent-subtle: var(--firo-color-active-tool);
+  --firo-color-hover: var(--firo-color-surface-hover);
+  --firo-color-panel-hover: var(--firo-color-surface-hover);
+  --firo-color-scrim: rgba(0, 0, 0, 0.45);
+  --firo-motion-normal: var(--firo-motion-base);
+  --color-bg: var(--firo-color-surface);
+  --color-border: var(--firo-color-border);
+  --color-gray-200: var(--firo-color-border);
+  --color-gray-400: var(--firo-color-border-strong);
+  --color-gray-500: var(--firo-color-text-muted);
+  --color-gray-600: var(--firo-color-text-muted);
+  --color-text: var(--firo-color-text);
+  --color-text-muted: var(--firo-color-text-muted);
+  --color-gray-100: var(--firo-color-button-secondary);
+  --default-border-color: var(--firo-color-border);
+
   /* Elevation */
   --firo-elevation-panel: 0 1px 2px var(--firo-color-shadow),
     0 4px 12px var(--firo-color-shadow);
@@ -171,6 +193,28 @@
   --color-surface-hover: var(--firo-color-button-secondary);
   --color-on-primary: var(--firo-color-on-accent);
   --color-text-secondary: var(--firo-color-text-muted);
+
+  /* Second sweep: more component-read names that still fell back to light
+     literals. Accent hover gets real shades; the soft/subtle washes reuse the
+     active-tool wash; hover washes reuse the surface hover; the gray scale
+     maps onto border and muted-text roles. */
+  --firo-color-accent-hover: #9f97ff;
+  --firo-color-accent-soft: var(--firo-color-active-tool);
+  --firo-color-accent-subtle: var(--firo-color-active-tool);
+  --firo-color-hover: var(--firo-color-surface-hover);
+  --firo-color-panel-hover: var(--firo-color-surface-hover);
+  --firo-color-scrim: rgba(0, 0, 0, 0.6);
+  --firo-motion-normal: var(--firo-motion-base);
+  --color-bg: var(--firo-color-surface);
+  --color-border: var(--firo-color-border);
+  --color-gray-200: var(--firo-color-border);
+  --color-gray-400: var(--firo-color-border-strong);
+  --color-gray-500: var(--firo-color-text-muted);
+  --color-gray-600: var(--firo-color-text-muted);
+  --color-text: var(--firo-color-text);
+  --color-text-muted: var(--firo-color-text-muted);
+  --color-gray-100: var(--firo-color-button-secondary);
+  --default-border-color: var(--firo-color-border);
 }
 
 /**

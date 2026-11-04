@@ -1,6 +1,6 @@
 import { getNonDeletedElements, isEmbeddableElement } from "@firo/element";
 
-import { KEYS } from "@firo/common";
+import { CODES, KEYS } from "@firo/common";
 
 import { CaptureUpdateAction } from "@firo/element";
 
@@ -34,7 +34,8 @@ export const actionLink = register({
     };
   },
   trackEvent: { category: "hyperlink", action: "click" },
-  keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.K,
+  keyTest: (event) =>
+    event[KEYS.CTRL_OR_CMD] && event.altKey && event.code === CODES.K,
   predicate: (elements, appState) => {
     const selectedElements = getSelectedElements(elements, appState);
     return selectedElements.length === 1;
@@ -53,7 +54,7 @@ export const actionLink = register({
           isEmbeddableElement(elements[0])
             ? t("labels.link.labelEmbed")
             : t("labels.link.label")
-        } - ${getShortcutKey("CtrlOrCmd+K")}`}
+        } - ${getShortcutKey("CtrlOrCmd+Alt+K")}`}
         onSelect={() => updateData(null)}
         checked={selectedElements.length === 1 && !!selectedElements[0].link}
       />

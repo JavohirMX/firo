@@ -90,7 +90,7 @@
     resize: vertical;
 
     &:focus-visible {
-      outline: 2px solid var(--color-primary, #6965db);
+      outline: 2px solid var(--firo-color-focus-ring, #0b7285);
       outline-offset: 1px;
     }
   }
@@ -117,9 +117,9 @@
     cursor: pointer;
 
     &--primary {
-      background: var(--color-primary, #6965db);
-      border-color: var(--color-primary, #6965db);
-      color: var(--color-on-primary, #ffffff);
+      background: var(--firo-color-accent, #5b4bff);
+      border-color: var(--firo-color-accent, #5b4bff);
+      color: var(--firo-color-on-accent, #ffffff);
 
       &:disabled {
         opacity: 0.5;

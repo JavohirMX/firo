@@ -77,7 +77,7 @@
     background: var(--color-surface, #ffffff);
 
     &:focus-visible {
-      outline: 2px solid var(--color-primary, #6965db);
+      outline: 2px solid var(--firo-color-focus-ring, #0b7285);
       outline-offset: 1px;
     }
   }
@@ -112,9 +112,9 @@
     cursor: pointer;
 
     &[aria-pressed="true"] {
-      background: var(--color-primary, #6965db);
-      border-color: var(--color-primary, #6965db);
-      color: var(--color-on-primary, #ffffff);
+      background: var(--firo-color-accent, #5b4bff);
+      border-color: var(--firo-color-accent, #5b4bff);
+      color: var(--firo-color-on-accent, #ffffff);
     }
   }
 
@@ -290,9 +290,9 @@
     font: inherit;
     padding: 8px 14px;
     border-radius: 8px;
-    border: 1px solid var(--color-primary, #6965db);
-    background: var(--color-primary, #6965db);
-    color: var(--color-on-primary, #ffffff);
+    border: 1px solid var(--firo-color-accent, #5b4bff);
+    background: var(--firo-color-accent, #5b4bff);
+    color: var(--firo-color-on-accent, #ffffff);
     cursor: pointer;
 
     &:disabled {
@@ -367,9 +367,9 @@
     }
 
     button.firo-template-card__btn {
-      border-color: var(--color-primary, #6965db);
-      background: var(--color-primary, #6965db);
-      color: var(--color-on-primary, #ffffff);
+      border-color: var(--firo-color-accent, #5b4bff);
+      background: var(--firo-color-accent, #5b4bff);
+      color: var(--firo-color-on-accent, #ffffff);
     }
   }
 }
