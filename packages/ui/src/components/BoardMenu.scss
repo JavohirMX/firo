@@ -35,6 +35,21 @@
     }
   }
 
+  /*
+   * The board's rendered preview (Miro parity row 1). Sized to the bar's
+   * rhythm: a little shorter than the controls, wide like the scene it
+   * previews, and cropped rather than squeezed when the scene's aspect
+   * differs.
+   */
+  &__thumbnail {
+    height: 28px;
+    width: 44px;
+    object-fit: cover;
+    border-radius: var(--firo-radius-sm);
+    border: 1px solid var(--firo-color-border);
+    background-color: var(--firo-color-surface);
+  }
+
   &__title {
     font-family: var(--firo-font-ui);
     font-size: var(--firo-font-size-md);

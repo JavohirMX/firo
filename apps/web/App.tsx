@@ -278,6 +278,10 @@ import {
 } from "./board/facilitatorActions";
 import { recordCommandPaletteItems } from "./board/recordActions";
 import { getActiveBoard, renameBoard, setActiveBoard } from "./board/library";
+import {
+  BOARD_THUMBNAIL_EVENT,
+  scheduleBoardThumbnail,
+} from "./board/thumbnail";
 import { isMinimapShortcut } from "./board/chromeShortcuts";
 import {
   readRailLayout,
@@ -1339,6 +1343,25 @@ const WebBoardMenu = () => {
   const [boardName, setBoardName] = useState(
     () => getActiveBoard()?.name ?? "Untitled",
   );
+  /*
+   * The board's rendered preview (row 1). Captures land from the change
+   * stream's debounce in `board/thumbnail.ts`, outside this component, so
+   * the bar listens for them; the first read comes from the route-time
+   * cache, same as the name.
+   */
+  const [thumbnail, setThumbnail] = useState<string | undefined>(
+    () => getActiveBoard()?.thumbnail,
+  );
+  useEffect(() => {
+    const onThumbnail = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.boardId === getActiveBoard()?.id) {
+        setThumbnail(detail.thumbnail);
+      }
+    };
+    window.addEventListener(BOARD_THUMBNAIL_EVENT, onThumbnail);
+    return () => window.removeEventListener(BOARD_THUMBNAIL_EVENT, onThumbnail);
+  }, []);
   const onRenameBoard = async (name: string) => {
     const active = getActiveBoard();
     if (!active) {
@@ -1353,6 +1376,7 @@ const WebBoardMenu = () => {
   return (
     <BoardMenu
       boardName={boardName}
+      thumbnail={thumbnail}
       onOpenHome={() => {
         window.location.assign(homeUrl());
       }}
@@ -3740,6 +3764,17 @@ const ExcalidrawWrapper = () => {
      * is what stops this from being a feedback loop.
      */
     commitBoard();
+
+    /*
+     * The board's thumbnail follows the same shape as the accessibility
+     * tree below: scheduled here, where the scene actually changed, and
+     * debounced inside so a drawing session renders one preview, not one
+     * per stroke.
+     */
+    const thumbnailBoard = getActiveBoard();
+    if (thumbnailBoard) {
+      scheduleBoardThumbnail(thumbnailBoard.id, elements, appState, files);
+    }
 
     /*
      * The accessibility tree mirrors the document, debounced. Refreshed here
