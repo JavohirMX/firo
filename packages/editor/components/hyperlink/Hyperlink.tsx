@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-import { EVENT, HYPERLINK_TOOLTIP_DELAY, KEYS } from "@firo/common";
+import { CODES, EVENT, HYPERLINK_TOOLTIP_DELAY, KEYS } from "@firo/common";
 
 import { getElementAbsoluteCoords } from "@firo/element";
 
@@ -268,8 +268,11 @@ export const Hyperlink = ({
           autoFocus
           onKeyDown={(event) => {
             event.stopPropagation();
-            // prevent cmd/ctrl+k shortcut when editing link
-            if (event[KEYS.CTRL_OR_CMD] && event.key === KEYS.K) {
+            // prevent the palette/link chords from firing while editing a link
+            if (
+              event[KEYS.CTRL_OR_CMD] &&
+              (event.key.toLowerCase() === KEYS.K || event.code === CODES.K)
+            ) {
               event.preventDefault();
             }
             if (event.key === KEYS.ENTER || event.key === KEYS.ESCAPE) {

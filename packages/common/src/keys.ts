@@ -21,6 +21,7 @@ export const CODES = {
   D: "KeyD",
   G: "KeyG",
   H: "KeyH",
+  K: "KeyK",
   M: "KeyM",
   V: "KeyV",
   Z: "KeyZ",
