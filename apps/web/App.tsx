@@ -197,6 +197,7 @@ import {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
+import { FacilitationMenu } from "./components/FacilitationMenu";
 import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { VotingPanel } from "./components/VotingPanel";
 import { FramesPanel } from "./components/FramesPanel";
@@ -4027,6 +4028,7 @@ const ExcalidrawWrapper = () => {
             collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
+            <FacilitationMenu />
             <button
               type="button"
               className="firo-collab-bar__btn"

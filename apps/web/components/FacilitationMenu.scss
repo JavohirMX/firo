@@ -1,0 +1,107 @@
+.firo-facilitation-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.firo-facilitation-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: inherit;
+
+  &[aria-expanded="true"] {
+    color: var(--firo-color-accent, #6965db);
+  }
+}
+
+.firo-facilitation-menu__popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  min-width: 220px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--island-bg-color, #ffffff);
+  border: 1px solid var(--dialog-border-color, rgba(0, 0, 0, 0.1));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.firo-facilitation-menu__reactions {
+  display: flex;
+  gap: 2px;
+  justify-content: space-between;
+  padding: 2px 2px 6px;
+}
+
+.firo-facilitation-menu__reaction {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--button-hover-bg, rgba(0, 0, 0, 0.06));
+  }
+}
+
+.firo-facilitation-menu__separator {
+  height: 1px;
+  background: var(--dialog-border-color, rgba(0, 0, 0, 0.1));
+  margin: 2px 4px 6px;
+}
+
+.firo-facilitation-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: inherit;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--button-hover-bg, rgba(0, 0, 0, 0.06));
+  }
+}
+
+.firo-facilitation-menu__check {
+  width: 16px;
+  text-align: center;
+  color: var(--firo-color-accent, #6965db);
+}
+
+.firo-facilitation-menu__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  margin: 0 4px;
+}
+
+.firo-facilitation-menu__play {
+  font-size: 11px;
+  width: 16px;
+  text-align: center;
+}
+
+.theme--dark .firo-facilitation-menu__popover {
+  background: var(--island-bg-color, #232329);
+  border-color: rgba(255, 255, 255, 0.12);
+}
