@@ -212,7 +212,7 @@ import {
 } from "./board/stickyNoteOptions";
 import { subscribeToDialogRequests } from "./board/uiRequests";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
-import { VersionHistoryModal } from "./components/VersionHistoryModal";
+import { VersionsPanel } from "./components/VersionsPanel";
 import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
 import { VoteBadges } from "./components/VoteBadges";
@@ -2421,9 +2421,10 @@ const ExcalidrawWrapper = () => {
    * boards. Ephemeral like the panel itself -- never persisted, never in
    * the Yjs document.
    */
-  const [activityScope, setActivityScope] = useState<"board" | "all">("board");
+  const [activityScope, setActivityScope] = useState<
+    "board" | "all" | "versions"
+  >("board");
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const activityFeedDialogRef = useRef<HTMLDivElement>(null);
 
   const handleExportImage = useCallback(
@@ -2957,8 +2958,22 @@ const ExcalidrawWrapper = () => {
     setExportModalOpen(true);
   }, []);
 
+  /*
+   * ADR-0035 section 3: version history lives in the activity dock's
+   * Versions tab now; the 640-wide modal is retired.
+   */
   const handleMenuVersionHistory = useCallback(() => {
-    setVersionHistoryOpen(true);
+    setActivityScope("versions");
+    setOpenDockPanel("activity");
+  }, []);
+
+  /*
+   * The menu's Activity entry is the dock's always-reachable open path:
+   * the CollabBar trigger hides at phone widths, the menu does not.
+   */
+  const handleMenuActivityFeed = useCallback(() => {
+    setActivityScope((scope) => (scope === "versions" ? "board" : scope));
+    setOpenDockPanel("activity");
   }, []);
 
   const handleFooterChange = useCallback(() => {
@@ -3064,6 +3079,9 @@ const ExcalidrawWrapper = () => {
   const refreshActivity = useCallback(async () => {
     const metaId = boardDoc().read().meta?.id;
     const currentBoardId = typeof metaId === "string" ? metaId : "default";
+    if (activityScope === "versions") {
+      return;
+    }
     const list = await listActivity(
       activityScope === "board" ? { boardId: currentBoardId } : undefined,
     );
@@ -4032,7 +4050,7 @@ const ExcalidrawWrapper = () => {
             </button>
             <SaveStatusIndicator
               collabStatus={isOffline ? "offline" : collabStatus}
-              onClick={() => setVersionHistoryOpen(true)}
+              onClick={handleMenuVersionHistory}
             />
             <FacilitatorBar />
           </CollabBar>
@@ -4356,6 +4374,9 @@ const ExcalidrawWrapper = () => {
           dialogRef={activityFeedDialogRef}
           entries={activities}
           onClear={async () => {
+            if (activityScope === "versions") {
+              return;
+            }
             const metaId = boardDoc().read().meta?.id;
             const currentBoardId =
               typeof metaId === "string" ? metaId : "default";
@@ -4367,6 +4388,20 @@ const ExcalidrawWrapper = () => {
           }}
           scope={activityScope}
           onScopeChange={setActivityScope}
+          versionsContent={
+            <VersionsPanel
+              boardId={
+                (boardDoc().read().meta?.id as string | undefined) ||
+                getActiveBoard()?.id ||
+                "default"
+              }
+              doc={boardDoc()}
+              collabStatus={isOffline ? "offline" : collabStatus}
+              onRestore={() => {
+                excalidrawAPI?.refresh();
+              }}
+            />
+          }
           onSelectBoard={(id) => window.location.assign(boardUrl(id))}
           title="Board Activity"
         />
@@ -4377,6 +4412,7 @@ const ExcalidrawWrapper = () => {
           onExport={handleMenuExport}
           onImport={handleMenuImport}
           onVersionHistory={handleMenuVersionHistory}
+          onActivityFeed={handleMenuActivityFeed}
           syncUsername={
             syncState.status === "signedIn" ? syncState.user.username : null
           }
@@ -4572,21 +4608,6 @@ const ExcalidrawWrapper = () => {
             onOpenNew={handleImportOpenNew}
           />
         )}
-
-        <VersionHistoryModal
-          isOpen={versionHistoryOpen}
-          onClose={() => setVersionHistoryOpen(false)}
-          boardId={
-            (boardDoc().read().meta?.id as string | undefined) ||
-            getActiveBoard()?.id ||
-            "default"
-          }
-          doc={boardDoc()}
-          collabStatus={isOffline ? "offline" : collabStatus}
-          onRestore={() => {
-            excalidrawAPI?.refresh();
-          }}
-        />
 
         <AIAssistantModal
           isOpen={aiModalOpen}

@@ -49,12 +49,17 @@ export interface ActivityFeedProps {
   presentation?: "dock" | "inline";
   /*
    * ADR-0035 section 2 scopes. When both are provided, the dock shows the
-   * tab strip ("This board" / "All boards"); Clear clears the visible
-   * scope, so `onClear` must follow `scope` on the host side. The Versions
-   * tab lands with row 48. The inline presentation never shows tabs.
+   * tab strip; Clear clears the visible scope, so `onClear` must follow
+   * `scope` on the host side. The inline presentation never shows tabs.
+   *
+   * "versions" (ADR-0035 section 3, row 48) swaps the feed for the host's
+   * version-history surface; the host owns that content because its data
+   * lives in the board store, not in this package. Clear hides on the
+   * Versions tab: there is nothing for it to clear there.
    */
-  scope?: "board" | "all";
-  onScopeChange?: (scope: "board" | "all") => void;
+  scope?: "board" | "all" | "versions";
+  onScopeChange?: (scope: "board" | "all" | "versions") => void;
+  versionsContent?: React.ReactNode;
 }
 
 const formatRelativeTime = (timestamp: number): string => {
@@ -103,6 +108,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   presentation = "dock",
   scope,
   onScopeChange,
+  versionsContent,
 }) => {
   React.useEffect(() => {
     if (!isOpen || presentation !== "inline") {
@@ -143,8 +149,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     { title: "Earlier", items: earlierEntries },
   ].filter((g) => g.items.length > 0);
 
+  const onVersionsTab = presentation === "dock" && scope === "versions";
+
   const clearAction =
-    entries.length > 0 && onClear ? (
+    !onVersionsTab && entries.length > 0 && onClear ? (
       <button
         type="button"
         className="firo-activity-feed__clear"
@@ -156,15 +164,18 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     ) : null;
 
   if (presentation === "dock") {
+    const tabList = [
+      { id: "board", label: "This board" },
+      { id: "all", label: "All boards" },
+      ...(versionsContent ? [{ id: "versions", label: "Versions" }] : []),
+    ];
     const scopeTabs =
       scope && onScopeChange
         ? {
-            tabs: [
-              { id: "board", label: "This board" },
-              { id: "all", label: "All boards" },
-            ],
+            tabs: tabList,
             activeTab: scope,
-            onTabChange: (id: string) => onScopeChange(id as "board" | "all"),
+            onTabChange: (id: string) =>
+              onScopeChange(id as "board" | "all" | "versions"),
           }
         : {};
     return (
@@ -176,56 +187,60 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
         headerActions={clearAction}
         {...scopeTabs}
       >
-        <div
-          className="firo-activity-feed firo-activity-feed--dock-content"
-          data-testid="firo-activity-feed"
-        >
-          <div className="firo-activity-feed__content">
-            {groups.length === 0 ? (
-              <div className="firo-activity-feed__empty">
-                <ActivityIcon size={32} />
-                <p>No activity recorded yet.</p>
-                <p>Changes, comments, and board actions will appear here.</p>
-              </div>
-            ) : (
-              groups.map((group) => (
-                <div key={group.title} className="firo-activity-feed__group">
-                  <span className="firo-activity-feed__group-title">
-                    {group.title}
-                  </span>
-                  {group.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="firo-activity-feed__item"
-                      data-testid={`activity-item-${item.id}`}
-                    >
-                      <div className="firo-activity-feed__icon">
-                        {renderIcon(item.kind)}
-                      </div>
-                      <div className="firo-activity-feed__item-body">
-                        <span className="firo-activity-feed__summary">
-                          {item.summary}
-                        </span>
-                        <div className="firo-activity-feed__meta">
-                          <span>{formatRelativeTime(item.timestamp)}</span>
-                          {item.boardName && (
-                            <button
-                              type="button"
-                              className="firo-activity-feed__board-badge"
-                              onClick={() => onSelectBoard?.(item.boardId)}
-                            >
-                              {item.boardName}
-                            </button>
-                          )}
+        {onVersionsTab ? (
+          versionsContent
+        ) : (
+          <div
+            className="firo-activity-feed firo-activity-feed--dock-content"
+            data-testid="firo-activity-feed"
+          >
+            <div className="firo-activity-feed__content">
+              {groups.length === 0 ? (
+                <div className="firo-activity-feed__empty">
+                  <ActivityIcon size={32} />
+                  <p>No activity recorded yet.</p>
+                  <p>Changes, comments, and board actions will appear here.</p>
+                </div>
+              ) : (
+                groups.map((group) => (
+                  <div key={group.title} className="firo-activity-feed__group">
+                    <span className="firo-activity-feed__group-title">
+                      {group.title}
+                    </span>
+                    {group.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="firo-activity-feed__item"
+                        data-testid={`activity-item-${item.id}`}
+                      >
+                        <div className="firo-activity-feed__icon">
+                          {renderIcon(item.kind)}
+                        </div>
+                        <div className="firo-activity-feed__item-body">
+                          <span className="firo-activity-feed__summary">
+                            {item.summary}
+                          </span>
+                          <div className="firo-activity-feed__meta">
+                            <span>{formatRelativeTime(item.timestamp)}</span>
+                            {item.boardName && (
+                              <button
+                                type="button"
+                                className="firo-activity-feed__board-badge"
+                                onClick={() => onSelectBoard?.(item.boardId)}
+                              >
+                                {item.boardName}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ))
-            )}
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </SidePanel>
     );
   }

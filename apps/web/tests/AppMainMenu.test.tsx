@@ -17,7 +17,7 @@ import { AppMainMenu } from "../components/AppMainMenu";
 import { homeUrl } from "../board/routes";
 import { useAppLangCode } from "../app-language/language-state";
 
-const TestMenuApp = () => {
+const TestMenuApp = ({ onActivityFeed }: { onActivityFeed?: () => void }) => {
   const [langCode] = useAppLangCode();
   const [theme, setTheme] = useState<Theme | "system">("light");
 
@@ -27,7 +27,12 @@ const TestMenuApp = () => {
       theme={theme === "system" ? "light" : theme}
       onThemeChange={(newTheme) => setTheme(newTheme)}
     >
-      <AppMainMenu isCollaborating={false} theme={theme} refresh={() => {}} />
+      <AppMainMenu
+        isCollaborating={false}
+        theme={theme}
+        refresh={() => {}}
+        onActivityFeed={onActivityFeed}
+      />
     </Excalidraw>
   );
 };
@@ -55,10 +60,10 @@ describe("AppMainMenu", () => {
     });
   });
 
-  const renderMainMenu = async () => {
+  const renderMainMenu = async (onActivityFeed?: () => void) => {
     await render(
       <Provider>
-        <TestMenuApp />
+        <TestMenuApp onActivityFeed={onActivityFeed} />
       </Provider>,
     );
 
@@ -90,9 +95,19 @@ describe("AppMainMenu", () => {
 
     expect(screen.getByTestId("main-menu-all-boards")).not.toBeNull();
     expect(screen.getByTestId("main-menu-new-board")).not.toBeNull();
+    expect(screen.getByTestId("main-menu-activity")).not.toBeNull();
     expect(screen.getByTestId("main-menu-version-history")).not.toBeNull();
     expect(screen.getByText("Import")).not.toBeNull();
     expect(screen.getByText("Export")).not.toBeNull();
+  });
+
+  it("opens the activity dock via the Activity menu item", async () => {
+    const onActivityFeed = vi.fn();
+    await renderMainMenu(onActivityFeed);
+    openSubmenu("main-menu-board-submenu");
+
+    fireEvent.click(screen.getByTestId("main-menu-activity"));
+    expect(onActivityFeed).toHaveBeenCalledTimes(1);
   });
 
   it("groups canvas tools under Edit", async () => {

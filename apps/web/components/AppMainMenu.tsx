@@ -3,6 +3,7 @@ import React from "react";
 
 import { isDarwin, isDevEnv } from "@firo/common";
 import {
+  ActivityIcon,
   BoardsIcon,
   ClockIcon,
   DownloadIcon,
@@ -43,6 +44,7 @@ export const AppMainMenu: React.FC<{
   onExport?: () => void;
   onImport?: () => void;
   onVersionHistory?: () => void;
+  onActivityFeed?: () => void;
   /** Name of the signed-in sync user, if any. */
   syncUsername?: string | null;
   /** Offered only when a sync server is reachable. */
@@ -92,6 +94,13 @@ export const AppMainMenu: React.FC<{
           <MainMenu.Separator />
 
           <MainMenu.DefaultItems.SaveToActiveFile />
+          <MainMenu.Item
+            icon={<ActivityIcon size={18} />}
+            onSelect={props.onActivityFeed}
+            data-testid="main-menu-activity"
+          >
+            Activity
+          </MainMenu.Item>
           <MainMenu.Item
             icon={<ClockIcon size={18} />}
             onSelect={props.onVersionHistory}

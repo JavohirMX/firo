@@ -1,0 +1,337 @@
+/*
+ * The Versions tab of the ADR-0035 activity dock (row 48). Content styles
+ * mirror the retired 640px modal's, adjusted for the 340px dock: tighter
+ * margins, no inner scroll (the SidePanel body scrolls), and revision rows
+ * stacked info-over-actions the way the modal only did under 560px.
+ */
+
+.firo-version-history__notification {
+  display: flex;
+  align-items: center;
+  gap: var(--firo-space-xs, 6px);
+  padding: 8px 16px;
+  margin: 0 0 12px;
+  border-radius: var(--firo-radius-sm, 6px);
+  font-size: var(--firo-font-size-sm, 13px);
+  font-weight: 500;
+
+  &--success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  &--error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+}
+
+.firo-version-history--panel {
+  padding: 12px 16px 16px;
+
+  .firo-version-history__storage-card {
+    margin: 0 0 12px;
+    padding: var(--firo-space-md, 14px) var(--firo-space-md, 16px);
+    background: var(--firo-color-surface, #f7f8fa);
+    border: 1px solid var(--firo-color-border, #e4e5ea);
+    border-radius: var(--firo-radius-md, 8px);
+  }
+
+  .firo-version-history__storage-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-xs, 8px);
+  }
+
+  .firo-version-history__metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--firo-space-md, 16px);
+    font-size: var(--firo-font-size-sm, 13px);
+  }
+
+  .firo-version-history__metric-label {
+    color: var(--firo-color-text-muted, #5f6270);
+    font-weight: 500;
+    font-size: var(--firo-font-size-xs, 12px);
+    letter-spacing: 0.01em;
+  }
+
+  .firo-version-history__pill {
+    padding: 2px 8px;
+    border-radius: var(--firo-radius-pill, 9999px);
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+
+    &--persisted {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
+
+    &--standard {
+      background: var(--firo-color-surface, #f1f5f9);
+      color: var(--firo-color-text-muted, #475569);
+      border-color: var(--firo-color-border, #e2e8f0);
+    }
+  }
+
+  .firo-version-history__usage-value {
+    color: var(--firo-color-text, #1e293b);
+    font-weight: 500;
+  }
+
+  .firo-version-history__connection-status {
+    font-weight: 500;
+
+    &--connected {
+      color: var(--firo-color-success, #059669);
+    }
+
+    &--local {
+      color: var(--firo-color-text-muted, #64748b);
+    }
+  }
+
+  .firo-version-history__content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .firo-version-history__content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--firo-space-sm, 10px);
+  }
+
+  .firo-version-history__content-title {
+    margin: 0;
+    font-size: var(--firo-font-size-md, 14px);
+    font-weight: var(--firo-font-weight-semibold, 600);
+    color: var(--firo-color-text, #111318);
+  }
+
+  .firo-version-history__create-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid var(--firo-color-border, #e4e5ea);
+    border-radius: var(--firo-radius-sm, 6px);
+    padding: 4px 10px;
+    font-size: var(--firo-font-size-xs, 12px);
+    font-weight: 500;
+    color: var(--firo-color-accent, #2563eb);
+    cursor: pointer;
+    transition: all 0.12s;
+
+    &:hover {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+  }
+
+  .firo-version-history__loading {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--firo-color-text-muted, #5f6270);
+    font-size: var(--firo-font-size-sm, 13px);
+  }
+
+  .firo-version-history__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 36px 16px;
+    color: var(--firo-color-text-muted, #5f6270);
+
+    &-icon {
+      color: var(--firo-color-border, #cbd5e1);
+      margin-bottom: var(--firo-space-sm, 8px);
+    }
+
+    &-title {
+      margin: 0 0 4px 0;
+      font-size: var(--firo-font-size-md, 15px);
+      font-weight: 600;
+      color: var(--firo-color-text, #111318);
+    }
+
+    &-desc {
+      margin: 0;
+      font-size: var(--firo-font-size-sm, 13px);
+      line-height: 1.4;
+    }
+  }
+
+  .firo-version-history__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--firo-space-xs, 8px);
+  }
+
+  .firo-version-history__item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--firo-space-sm, 10px);
+    padding: var(--firo-space-sm, 10px) var(--firo-space-md, 14px);
+    background: var(--firo-color-panel, #ffffff);
+    border: 1px solid var(--firo-color-border, #e4e5ea);
+    border-radius: var(--firo-radius-md, 8px);
+    transition: border-color 0.12s, box-shadow 0.12s;
+
+    &:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    &-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    &-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    &-time {
+      font-size: var(--firo-font-size-sm, 14px);
+      font-weight: 600;
+      color: var(--firo-color-text, #111318);
+    }
+
+    &-label {
+      padding: 1px 6px;
+      background: #e0e7ff;
+      color: #3730a3;
+      border-radius: var(--firo-radius-pill, 9999px);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    &-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: var(--firo-font-size-xs, 12px);
+      color: var(--firo-color-text-muted, #64748b);
+    }
+
+    &-count {
+      font-weight: 500;
+    }
+
+    &-dot {
+      opacity: 0.5;
+    }
+
+    &-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+
+      .firo-version-history__action-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
+    }
+  }
+
+  .firo-version-history__action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: var(--firo-radius-sm, 6px);
+    font-size: var(--firo-font-size-xs, 12px);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+
+    &--restore {
+      background: var(--firo-color-surface, #f1f5f9);
+      border: 1px solid var(--firo-color-border, #cbd5e1);
+      color: var(--firo-color-text, #1e293b);
+
+      &:hover:not(:disabled) {
+        background: #e2e8f0;
+        color: var(--firo-color-text, #0f172a);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &--download {
+      background: transparent;
+      border: 1px solid var(--firo-color-border, #cbd5e1);
+      color: var(--firo-color-text-muted, #475569);
+
+      &:hover {
+        background: var(--firo-color-surface, #f1f5f9);
+        color: var(--firo-color-text, #0f172a);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--firo-color-accent, #2563eb);
+      outline-offset: 1px;
+    }
+  }
+}
+
+// Dark theme: the status pill, sync line and notification used hardcoded
+// light-theme colors in the modal; same fix here.
+.theme--dark {
+  .firo-version-history__pill {
+    &--persisted {
+      background: rgba(79, 209, 142, 0.16);
+      color: var(--firo-color-success, #4fd18e);
+      border-color: rgba(79, 209, 142, 0.4);
+    }
+
+    &--standard {
+      background: var(--firo-color-surface, #151619);
+      color: var(--firo-color-text-muted, #9c9fab);
+      border-color: var(--firo-color-border, #34363d);
+    }
+  }
+
+  .firo-version-history__connection-status {
+    &--connected {
+      color: var(--firo-color-success, #4fd18e);
+    }
+
+    &--local {
+      color: var(--firo-color-text-muted, #9c9fab);
+    }
+  }
+
+  .firo-version-history__notification {
+    &--success {
+      background: rgba(79, 209, 142, 0.16);
+      color: var(--firo-color-success, #4fd18e);
+      border-color: rgba(79, 209, 142, 0.4);
+    }
+
+    &--error {
+      background: rgba(248, 113, 113, 0.12);
+      color: #fca5a5;
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+  }
+}

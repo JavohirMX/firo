@@ -162,6 +162,48 @@ describe("ActivityFeed component", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
   });
 
+  /*
+   * ADR-0035 section 3: the Versions tab swaps the feed for the host's
+   * version-history surface, and Clear hides there.
+   */
+  it("renders the Versions tab content and hides Clear", () => {
+    const onScopeChange = vi.fn();
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="versions"
+        onScopeChange={onScopeChange}
+        versionsContent={<div data-testid="versions-stub">Versions here</div>}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Versions" })).toBeDefined();
+    expect(
+      screen
+        .getByRole("tab", { name: "Versions" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(screen.getByTestId("versions-stub")).toBeDefined();
+    expect(screen.queryByTestId("firo-activity-feed")).toBeNull();
+    expect(screen.queryByTestId("activity-clear-btn")).toBeNull();
+  });
+
+  it("offers the Versions tab only when versions content is provided", () => {
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="board"
+        onScopeChange={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole("tab", { name: "Versions" })).toBeNull();
+  });
+
   it("keeps board badges selectable in the all-boards scope", () => {
     const onSelectBoard = vi.fn();
     const entries: ActivityFeedItem[] = [
