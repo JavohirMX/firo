@@ -8,6 +8,9 @@ import type {
   EphemeralTimer,
 } from "@firo/doc";
 
+import { canDriveSession } from "../board/facilitator";
+import { mayChangeSession } from "../board/sharedSession";
+
 import {
   getReveal,
   getTimer,
@@ -81,6 +84,7 @@ const useNow = (timer: EphemeralTimer | null): number => {
 };
 
 export const FacilitatorBar = (): React.JSX.Element | null => {
+  const [, setSessionVersion] = useState(0);
   const [timer, setTimer] = useState<EphemeralTimer | null>(() =>
     getTimer(boardDoc),
   );
@@ -115,6 +119,7 @@ export const FacilitatorBar = (): React.JSX.Element | null => {
       setTimer(getTimer(boardDoc));
       setReveal(getReveal(boardDoc));
       setPresentation(getPresentation(boardDoc));
+      setSessionVersion((value) => value + 1);
     };
     refresh();
     return subscribeToFacilitation(boardDoc, refresh);
@@ -208,6 +213,12 @@ export const FacilitatorBar = (): React.JSX.Element | null => {
       <button
         type="button"
         className="firo-facilitator-bar__reveal"
+        disabled={!canDriveSession() || !mayChangeSession(boardDoc)}
+        title={
+          !mayChangeSession(boardDoc)
+            ? "Another facilitator is driving this session"
+            : undefined
+        }
         onClick={() => {
           toggleRevealMode(boardDoc, refreshBoard);
           setReveal(getReveal(boardDoc));

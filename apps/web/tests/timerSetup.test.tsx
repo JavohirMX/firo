@@ -59,6 +59,7 @@ describe("timer setup popover", () => {
   });
   it("shows a ticking readout with pause, resume and reset", async () => {
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: { startedAt: Date.now(), durationMs: 60000, remainingMs: 60000 },
     });
     await setup();
@@ -75,6 +76,7 @@ describe("timer setup popover", () => {
   it("opening and ticking writes no durable or ephemeral countdown", async () => {
     vi.useFakeTimers();
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: { startedAt: Date.now(), durationMs: 60000, remainingMs: 60000 },
     });
     await setup();
@@ -112,6 +114,7 @@ describe("timer setup popover", () => {
     const view = render(<TimerSetupDialog isOpen={false} onClose={onClose} />);
     act(() => vi.advanceTimersByTime(5000));
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: { startedAt: Date.now(), durationMs: 60000, remainingMs: 60000 },
     });
     view.rerender(<TimerSetupDialog isOpen onClose={onClose} />);
@@ -132,6 +135,7 @@ describe("timer setup popover", () => {
   it("adds a minute without restarting the running anchor", async () => {
     const startedAt = Date.now();
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: { startedAt, durationMs: 60000, remainingMs: 60000 },
     });
     await setup();
@@ -140,5 +144,38 @@ describe("timer setup popover", () => {
     expect(doc.getEphemeral().timer?.durationMs).toBe(120000);
     expect(doc.getEphemeral().timer?.startedAt).toBe(startedAt);
     expect(doc.durableUpdates).toBe(before);
+  });
+  it("turns an already-open setup read-only when a remote driver starts", async () => {
+    const { applyAwarenessUpdate, encodeAwarenessUpdate } = await import(
+      "y-protocols/awareness"
+    );
+    await setup();
+    const peer = new FiroDoc(new Y.Doc());
+    peer.setEphemeral({
+      session: { leader: peer.awareness.clientID },
+      timer: { startedAt: Date.now(), durationMs: 60000, remainingMs: 60000 },
+    });
+    act(() =>
+      applyAwarenessUpdate(
+        doc.awareness,
+        encodeAwarenessUpdate(peer.awareness, [peer.awareness.clientID]),
+        "fixture",
+      ),
+    );
+    expect(
+      screen.getByText("Another facilitator is driving this session."),
+    ).toBeDefined();
+    expect(
+      (
+        screen
+          .getByTestId("timer-setup-start")
+          .closest("fieldset") as HTMLFieldSetElement
+      ).disabled,
+    ).toBe(true);
+    const before = doc.getEphemeral();
+    fireEvent.click(screen.getByRole("button", { name: "Add minute" }));
+    expect(doc.getEphemeral()).toBe(before);
+    fireEvent.click(screen.getByRole("button", { name: "Close timer" }));
+    peer.destroy();
   });
 });

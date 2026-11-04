@@ -27,11 +27,9 @@
 import {
   endRound,
   filterLiveVotes,
-  isVotingOpen,
   mintBallotKey,
   planPlacement,
   removeVote,
-  resolveDriver,
   roundId,
   startRound,
   votesFromRecords,
@@ -49,16 +47,11 @@ import type {
   Vote,
 } from "@firo/facilitation";
 import type { FiroRecord } from "@firo/schema";
-import type { EphemeralState, FiroDoc } from "@firo/doc";
+import type { FiroDoc } from "@firo/doc";
 
 import { canDriveSession } from "./facilitator";
 
-/** A round is live state for the claim check, as are the other three. */
-const hasLiveState = (state: EphemeralState): boolean =>
-  state.timer !== null ||
-  state.reveal.mode === "private" ||
-  state.presentation.active ||
-  (state.voting !== null && isVotingOpen(state.voting, Date.now()));
+import { getSession, mayChangeSession, writeSession } from "./sharedSession";
 
 export type VotingSession = Readonly<{
   /** The driving clientID, or null when no session exists. */
@@ -79,30 +72,15 @@ export type VotingSession = Readonly<{
  * full room: one client, one valid claim, itself.
  */
 export const readSession = (getDocument: () => FiroDoc): VotingSession => {
-  const doc = getDocument();
-  const peers = doc.peersEphemeral();
-  const entries = [...peers.entries()].map(([clientID, state]) => ({
-    clientID,
-    session: state.session ?? null,
-    live: hasLiveState(state),
-  }));
-  const driver = resolveDriver(entries);
-  /*
-   * With a live claim the round is the driver's. Without one, the only round
-   * still worth reading is this client's own: an ended or expired round keeps
-   * its final state in its driver's panel for display (ADR-0039 section 1),
-   * and a closed round still refuses new dots -- the next Start is the only
-   * boundary that makes voting free again.
-   */
-  const round =
-    driver !== null
-      ? peers.get(driver)?.voting ?? null
-      : doc.getEphemeral().voting ?? null;
+  const session = getSession(getDocument);
   return {
-    driver,
-    self: doc.awareness.clientID,
-    round,
-    isDriver: driver !== null && driver === doc.awareness.clientID,
+    driver: session.driver,
+    self: session.self,
+    round:
+      session.driver === null
+        ? getDocument().getEphemeral().voting ?? null
+        : session.state.voting ?? null,
+    isDriver: session.isDriver,
   };
 };
 
@@ -171,7 +149,7 @@ export const startVotingRound = (
   settings: VotingSettings,
   now: number = Date.now(),
 ): number => {
-  if (!canDriveSession()) {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
     /* Watchers watch the round; they never open one (ADR-0039 section 9). */
     return 0;
   }
@@ -182,10 +160,7 @@ export const startVotingRound = (
       { kind: "archiveRecords", ids: live.map((vote) => vote.recordId) },
     ]);
   }
-  doc.setEphemeral({
-    session: { leader: doc.awareness.clientID },
-    voting: startRound(settings, now),
-  });
+  writeSession(getDocument, { voting: startRound(settings, now) });
   return live.length;
 };
 
@@ -194,13 +169,13 @@ export const startVotingRound = (
  * box. Does not archive: Start is the only round boundary (ADR-0039).
  */
 export const endVotingRound = (getDocument: () => FiroDoc): void => {
-  if (!canDriveSession()) {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
     return;
   }
   const doc = getDocument();
   const current = doc.getEphemeral().voting;
   if (current) {
-    doc.setEphemeral({ voting: endRound(current) });
+    writeSession(getDocument, { voting: endRound(current) });
   }
 };
 

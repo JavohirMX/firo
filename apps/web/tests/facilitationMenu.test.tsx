@@ -188,3 +188,33 @@ describe("facilitation menu", () => {
     expect(executed).toEqual(["toggleBoardReveal"]);
   });
 });
+
+it("disables session controls for an editor following another driver", async () => {
+  const { applyAwarenessUpdate, encodeAwarenessUpdate } = await import(
+    "y-protocols/awareness"
+  );
+  const peer = new FiroDoc(new Y.Doc());
+  peer.setEphemeral({
+    session: { leader: peer.awareness.clientID },
+    timer: { startedAt: Date.now(), durationMs: 60000, remainingMs: 60000 },
+  });
+  applyAwarenessUpdate(
+    doc.awareness,
+    encodeAwarenessUpdate(peer.awareness, [peer.awareness.clientID]),
+    "fixture",
+  );
+  await openMenu();
+  for (const id of ["timer", "private", "present"]) {
+    expect(
+      (screen.getByTestId(`facilitation-item-${id}`) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  }
+  expect(
+    (screen.getByTestId("facilitation-item-voting") as HTMLButtonElement)
+      .disabled,
+  ).toBe(false);
+  fireEvent.click(screen.getByTestId("facilitation-reaction-love"));
+  expect(executed).toEqual(["sendReactionLove"]);
+  peer.destroy();
+});

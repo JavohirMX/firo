@@ -43,7 +43,9 @@ import type { FiroElement } from "@firo/schema";
 
 import { debounce, restoreBoard, saveBoard } from "./storage";
 
-import { refreshPresentationOrder } from "./presentation";
+import { focusFrame, refreshPresentationOrder } from "./presentation";
+import { getSession, yieldLosingClaim } from "./sharedSession";
+import { announceFacilitationChange } from "./facilitator";
 
 import { registerFileActions } from "./fileActions";
 import { registerFacilitatorActions } from "./facilitatorActions";
@@ -249,11 +251,11 @@ export const boardElements = (): ExcalidrawElement[] =>
      */
     elementsForPresentation(
       doc.read().elements,
-      doc.getEphemeral().reveal,
+      getSession(() => doc).state.reveal,
       // No `frameOf`: see above. A second, richer lookup here would make this path
       // disagree with `pull()` about which slide an element is on, which is the
       // failure this shared function exists to prevent.
-      doc.getEphemeral().presentation ?? DEFAULT_PRESENTATION,
+      getSession(() => doc).state.presentation ?? DEFAULT_PRESENTATION,
     ) as FiroElement[] | never[],
   ) as unknown as ExcalidrawElement[];
 
@@ -320,14 +322,63 @@ export const attachBoard = (
   sync = new BoardSync(
     doc as unknown as ConstructorParameters<typeof BoardSync>[0],
     bridge,
+    () => getSession(() => doc).state,
   );
   sync.start();
+  let followedSlide: string | null = null;
+  let sessionSignature = "";
+  let following = false;
+  const followSession = () => {
+    if (following) {
+      return;
+    }
+    following = true;
+    const yielded = yieldLosingClaim(() => doc);
+    if (yielded) {
+      excalidrawAPI.setToast({
+        message: "Another facilitator started a session.",
+      });
+    }
+    const session = getSession(() => doc);
+    const signature = JSON.stringify([session.driver, session.state]);
+    if (signature === sessionSignature) {
+      following = false;
+      return;
+    }
+    sessionSignature = signature;
+    if (session.driver === null) {
+      const message = excalidrawAPI.getAppState().toast?.message;
+      if (
+        message ===
+          "Another facilitator is driving this session. Follow along until it ends." ||
+        message === "Another facilitator started a session."
+      ) {
+        excalidrawAPI.setToast(null);
+      }
+    }
+    refreshBoard();
+    const presentation = session.state.presentation;
+    const frameId = presentation.active
+      ? presentation.slideIds[presentation.index] ?? null
+      : null;
+    if (!session.isDriver && frameId && frameId !== followedSlide) {
+      focusFrame(excalidrawAPI, () => doc, frameId);
+    }
+    followedSlide = frameId;
+    following = false;
+    if (yielded) {
+      announceFacilitationChange();
+    }
+  };
+  doc.awareness.on("change", followSession);
+  followSession();
   const stopPresentationOrder = doc.subscribe(() =>
     refreshPresentationOrder(() => doc, excalidrawAPI, refreshBoard),
   );
 
   return () => {
     stopPresentationOrder();
+    doc.awareness.off("change", followSession);
     sync?.stop();
     sync = null;
   };

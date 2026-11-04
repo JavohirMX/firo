@@ -48,6 +48,10 @@ import { useExcalidrawActionManager } from "@firo/editor";
 import type { VotingSettings } from "@firo/facilitation";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 
+import { canDriveSession } from "../board/facilitator";
+
+import { writeSession } from "../board/sharedSession";
+
 import { boardDoc } from "../board/board";
 import { getReveal, subscribeToFacilitation } from "../board/facilitator";
 import {
@@ -187,7 +191,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     return null;
   }
 
-  const canEditSettings = session.driver === null;
+  const canEditSettings =
+    canDriveSession() &&
+    (session.driver === null || (session.isDriver && round === null));
 
   const step = (field: "votesPerPerson" | "minutes", delta: number) => {
     const [min, max] =
@@ -427,7 +433,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                   disabled={round !== null && !session.isDriver}
                   onChange={(event) => {
                     if (round && session.isDriver) {
-                      boardDoc().setEphemeral({
+                      writeSession(boardDoc, {
                         voting: {
                           ...round,
                           settings: {
@@ -493,19 +499,21 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                   End session
                 </button>
               )}
-              {session.driver === null && (
-                <button
-                  type="button"
-                  className="voting-panel__start"
-                  onClick={start}
-                >
-                  {outstandingDots > 0
-                    ? `Start - clears ${outstandingDots} dot${
-                        outstandingDots === 1 ? "" : "s"
-                      }`
-                    : "Start"}
-                </button>
-              )}
+              {canDriveSession() &&
+                (session.driver === null ||
+                  (session.isDriver && round === null)) && (
+                  <button
+                    type="button"
+                    className="voting-panel__start"
+                    onClick={start}
+                  >
+                    {outstandingDots > 0
+                      ? `Start - clears ${outstandingDots} dot${
+                          outstandingDots === 1 ? "" : "s"
+                        }`
+                      : "Start"}
+                  </button>
+                )}
             </div>
           </div>
         )}

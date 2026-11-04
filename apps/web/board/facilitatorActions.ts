@@ -82,6 +82,8 @@ import type {
 } from "@firo/editor/types";
 import type { Vote } from "@firo/facilitation";
 
+import { mayChangeSession } from "./sharedSession";
+
 import { planCast, withdrawDots } from "./votingSession";
 
 import {
@@ -282,7 +284,7 @@ const enabledUnless =
  * the frames panel and the tally stay watcher-open and never take this
  * combinator.
  */
-const driverOnly =
+const editorOnly =
   <T>(name: FacilitatorToggleName) =>
   (
     elements: readonly T[],
@@ -450,6 +452,15 @@ export const facilitatorActions = (
   refresh: () => void,
 ): Action[] => {
   const timer = timerControls(getDocument);
+  const driverOnly =
+    <T>(name: FacilitatorToggleName) =>
+    (
+      elements: readonly T[],
+      appState: unknown,
+      props: ExcalidrawProps,
+    ): boolean =>
+      mayChangeSession(getDocument) &&
+      editorOnly<T>(name)(elements, appState, props);
 
   /**
    * Run something that touches the document, and never throw at the keyboard.
@@ -483,7 +494,7 @@ export const facilitatorActions = (
    * refusal is a toast, not a shrug. The palette never reaches this (it greys
    * the row out via the predicate); the people-bar menu never shows it.
    */
-  const runAsDriver = (work: () => void): ActionResult => {
+  const runAsEditor = (work: () => void): ActionResult => {
     if (!canDriveSession()) {
       complain(
         api,
@@ -493,6 +504,16 @@ export const facilitatorActions = (
       return false;
     }
     return run(work);
+  };
+  const runAsDriver = (work: () => void): ActionResult => {
+    if (!mayChangeSession(getDocument)) {
+      complain(
+        api,
+        "Another facilitator is driving this session. Follow along until it ends.",
+      );
+      return false;
+    }
+    return runAsEditor(work);
   };
 
   /*
@@ -833,11 +854,11 @@ export const facilitatorActions = (
        * which is the failure AC-8 exists to prevent.
        */
       predicate: (elements, appState, props) =>
-        driverOnly("addVoteToSelection")(elements, appState, props) &&
+        editorOnly("addVoteToSelection")(elements, appState, props) &&
         selectedIds(elements, appState).length > 0,
 
       perform: (elements, appState): ActionResult =>
-        runAsDriver(() => {
+        runAsEditor(() => {
           const targets = selectedIds(elements, appState);
           if (targets.length === 0) {
             complain(
@@ -932,11 +953,11 @@ export const facilitatorActions = (
        */
       keyTest: altChord(ALT_CODES.withdraw, false),
       predicate: (elements, appState, props) =>
-        driverOnly("removeVoteFromSelection")(elements, appState, props) &&
+        editorOnly("removeVoteFromSelection")(elements, appState, props) &&
         selectedIds(elements, appState).length > 0,
 
       perform: (elements, appState): ActionResult =>
-        runAsDriver(() => {
+        runAsEditor(() => {
           const targets = selectedIds(elements, appState);
           if (targets.length === 0) {
             complain(

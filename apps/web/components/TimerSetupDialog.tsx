@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+
 import {
   TIMER_PRESETS,
   formatRemaining,
   remainingMs,
 } from "@firo/facilitation";
+
+import { mayChangeSession } from "../board/sharedSession";
+import { canDriveSession } from "../board/facilitator";
 
 import {
   getTimer,
@@ -184,115 +188,133 @@ export const TimerSetupDialog: React.FC<TimerSetupDialogProps> = ({
           ×
         </button>
       </div>
-      {timer && (
-        <div className="firo-timer-setup__running">
-          <output aria-label="Time remaining">
-            {formatRemaining(remainingMs(timer, now))}
-          </output>
-          <button
-            type="button"
-            onClick={() =>
-              timer.startedAt === null
-                ? timerControls(boardDoc).start()
-                : timerControls(boardDoc).pause()
-            }
-          >
-            {timer.startedAt === null ? "Resume" : "Pause"}
-          </button>
-          <button type="button" onClick={() => timerControls(boardDoc).reset()}>
-            Reset
-          </button>
-          <button
-            type="button"
-            onClick={() => timerControls(boardDoc).addMinute()}
-          >
-            Add minute
-          </button>
-        </div>
+      {!mayChangeSession(boardDoc) && (
+        <p>Another facilitator is driving this session.</p>
       )}
-
-      <div
-        className="firo-timer-setup__presets"
-        role="group"
-        aria-label="Preset durations"
+      <fieldset
+        disabled={!canDriveSession() || !mayChangeSession(boardDoc)}
+        style={{
+          border: 0,
+          margin: 0,
+          padding: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
       >
-        {presets.map((preset) => (
+        {timer && (
+          <div className="firo-timer-setup__running">
+            <output aria-label="Time remaining">
+              {formatRemaining(remainingMs(timer, now))}
+            </output>
+            <button
+              type="button"
+              onClick={() =>
+                timer.startedAt === null
+                  ? timerControls(boardDoc).start()
+                  : timerControls(boardDoc).pause()
+              }
+            >
+              {timer.startedAt === null ? "Resume" : "Pause"}
+            </button>
+            <button
+              type="button"
+              onClick={() => timerControls(boardDoc).reset()}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => timerControls(boardDoc).addMinute()}
+            >
+              Add minute
+            </button>
+          </div>
+        )}
+
+        <div
+          className="firo-timer-setup__presets"
+          role="group"
+          aria-label="Preset durations"
+        >
+          {presets.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              className={`firo-timer-setup__preset${
+                minutes === preset.minutes && custom === ""
+                  ? " firo-timer-setup__preset--active"
+                  : ""
+              }`}
+              aria-pressed={minutes === preset.minutes && custom === ""}
+              onClick={() => {
+                setMinutes(preset.minutes);
+                setCustom("");
+              }}
+              data-testid={`timer-preset-${preset.label}`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="firo-timer-setup__custom">
           <button
-            key={preset.label}
             type="button"
-            className={`firo-timer-setup__preset${
-              minutes === preset.minutes && custom === ""
-                ? " firo-timer-setup__preset--active"
-                : ""
-            }`}
-            aria-pressed={minutes === preset.minutes && custom === ""}
+            className="firo-timer-setup__step"
+            aria-label="One minute less"
             onClick={() => {
-              setMinutes(preset.minutes);
+              setMinutes((m) => clampMinutes(m - 1));
               setCustom("");
             }}
-            data-testid={`timer-preset-${preset.label}`}
+            data-testid="timer-step-down"
           >
-            {preset.label}
+            −
           </button>
-        ))}
-      </div>
-
-      <div className="firo-timer-setup__custom">
-        <button
-          type="button"
-          className="firo-timer-setup__step"
-          aria-label="One minute less"
-          onClick={() => {
-            setMinutes((m) => clampMinutes(m - 1));
-            setCustom("");
-          }}
-          data-testid="timer-step-down"
-        >
-          −
-        </button>
-        <label className="firo-timer-setup__custom-label">
-          <span className="firo-timer-setup__custom-text">Minutes</span>
-          <input
-            className="firo-timer-setup__input"
-            type="number"
-            inputMode="numeric"
-            min={MIN_MINUTES}
-            max={MAX_MINUTES}
-            value={custom === "" ? String(minutes) : custom}
-            onChange={(event) => {
-              const raw = event.target.value;
-              setCustom(raw);
-              const parsed = Number.parseInt(raw, 10);
-              if (Number.isFinite(parsed)) {
-                setMinutes(clampMinutes(parsed));
-              }
+          <label className="firo-timer-setup__custom-label">
+            <span className="firo-timer-setup__custom-text">Minutes</span>
+            <input
+              className="firo-timer-setup__input"
+              type="number"
+              inputMode="numeric"
+              min={MIN_MINUTES}
+              max={MAX_MINUTES}
+              value={custom === "" ? String(minutes) : custom}
+              onChange={(event) => {
+                const raw = event.target.value;
+                setCustom(raw);
+                const parsed = Number.parseInt(raw, 10);
+                if (Number.isFinite(parsed)) {
+                  setMinutes(clampMinutes(parsed));
+                }
+              }}
+              onBlur={() => setCustom("")}
+              data-testid="timer-custom-minutes"
+            />
+          </label>
+          <button
+            type="button"
+            className="firo-timer-setup__step"
+            aria-label="One minute more"
+            onClick={() => {
+              setMinutes((m) => clampMinutes(m + 1));
+              setCustom("");
             }}
-            onBlur={() => setCustom("")}
-            data-testid="timer-custom-minutes"
-          />
-        </label>
+            data-testid="timer-step-up"
+          >
+            +
+          </button>
+        </div>
+
         <button
           type="button"
-          className="firo-timer-setup__step"
-          aria-label="One minute more"
-          onClick={() => {
-            setMinutes((m) => clampMinutes(m + 1));
-            setCustom("");
-          }}
-          data-testid="timer-step-up"
+          className="firo-timer-setup__start"
+          onClick={start}
+          data-testid="timer-setup-start"
         >
-          +
+          Start {minutes} minute{minutes === 1 ? "" : "s"}
         </button>
-      </div>
-
-      <button
-        type="button"
-        className="firo-timer-setup__start"
-        onClick={start}
-        data-testid="timer-setup-start"
-      >
-        Start {minutes} minute{minutes === 1 ? "" : "s"}
-      </button>
+      </fieldset>
     </div>
   );
 };

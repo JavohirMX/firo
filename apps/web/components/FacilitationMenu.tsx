@@ -4,6 +4,8 @@ import { useExcalidrawActionManager } from "@firo/editor";
 import { REACTION_KINDS } from "@firo/facilitation";
 import { SparklesIcon, ClockIcon } from "@firo/ui";
 
+import { mayChangeSession } from "../board/sharedSession";
+
 import { getReveal, subscribeToFacilitation } from "../board/facilitator";
 import { boardDoc, refreshBoard } from "../board/board";
 
@@ -55,6 +57,7 @@ export const FacilitationMenu: React.FC<{
 }> = ({ readOnlyRole = null }) => {
   const actionManager = useExcalidrawActionManager();
   const [open, setOpen] = useState(false);
+  const [, setSessionVersion] = useState(0);
   const [revealMode, setRevealMode] = useState(() => getReveal(boardDoc).mode);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -63,6 +66,7 @@ export const FacilitationMenu: React.FC<{
     () =>
       subscribeToFacilitation(boardDoc, () => {
         setRevealMode(getReveal(boardDoc).mode);
+        setSessionVersion((value) => value + 1);
         refreshBoard();
       }),
     [],
@@ -158,6 +162,12 @@ export const FacilitationMenu: React.FC<{
                 role="menuitem"
                 className="firo-facilitation-menu__item"
                 data-testid="facilitation-item-timer"
+                disabled={!mayChangeSession(boardDoc)}
+                title={
+                  !mayChangeSession(boardDoc)
+                    ? "Another facilitator is driving this session"
+                    : undefined
+                }
                 onClick={() => run("setupFacilitatorTimer")}
               >
                 <ClockIcon size={16} />
@@ -182,6 +192,12 @@ export const FacilitationMenu: React.FC<{
                 aria-checked={revealMode === "private"}
                 className="firo-facilitation-menu__item"
                 data-testid="facilitation-item-private"
+                disabled={!mayChangeSession(boardDoc)}
+                title={
+                  !mayChangeSession(boardDoc)
+                    ? "Another facilitator is driving this session"
+                    : undefined
+                }
                 onClick={() => run("toggleBoardReveal")}
               >
                 <span
@@ -201,6 +217,12 @@ export const FacilitationMenu: React.FC<{
                 role="menuitem"
                 className="firo-facilitation-menu__item"
                 data-testid="facilitation-item-present"
+                disabled={!mayChangeSession(boardDoc)}
+                title={
+                  !mayChangeSession(boardDoc)
+                    ? "Another facilitator is driving this session"
+                    : undefined
+                }
                 onClick={() => run("togglePresentation")}
               >
                 <span

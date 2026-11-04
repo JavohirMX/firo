@@ -31,7 +31,7 @@ import type { PresentationState } from "@firo/facilitation";
 import type { FiroElement } from "@firo/schema";
 
 import { announceFacilitationChange, canDriveSession } from "./facilitator";
-import { readSession } from "./votingSession";
+import { getSession, mayChangeSession, writeSession } from "./sharedSession";
 
 /**
  * The app-side seam for presentation mode.
@@ -73,7 +73,7 @@ import { readSession } from "./votingSession";
 export const getPresentation = (
   getDocument: () => FiroDoc,
 ): PresentationState =>
-  getDocument().getEphemeral().presentation ?? DEFAULT_PRESENTATION;
+  getSession(getDocument).state.presentation ?? DEFAULT_PRESENTATION;
 
 /**
  * Move the viewport to fit `frameId`.
@@ -150,7 +150,7 @@ const apply = (
   api: ExcalidrawImperativeAPI | undefined,
   refresh: (() => void) | undefined,
 ): PresentationState => {
-  getDocument().setEphemeral({ presentation: next });
+  writeSession(getDocument, { presentation: next });
   /*
    * Announced, because ephemeral state produces no document update.
    *
@@ -183,7 +183,7 @@ export const startPresenting = (
   api?: ExcalidrawImperativeAPI,
   refresh?: () => void,
 ): PresentationState => {
-  if (!canDriveSession()) {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
     /* Watchers follow the deck; they never start one (ADR-0039 section 9). */
     return getPresentation(getDocument);
   }
@@ -200,8 +200,11 @@ export const stopPresenting = (
   getDocument: () => FiroDoc,
   refresh?: () => void,
 ): PresentationState => {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
+    return getPresentation(getDocument);
+  }
   const next = endPresentation();
-  getDocument().setEphemeral({ presentation: next });
+  writeSession(getDocument, { presentation: next });
   announceFacilitationChange();
   /*
    * Repainted on the way out too, and this is the step that matters: stopping
@@ -222,7 +225,7 @@ export const stepPresentation = (
   refresh?: () => void,
 ): PresentationState => {
   const before = getPresentation(getDocument);
-  if (!canDriveSession()) {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
     return before;
   }
   const next = stepSlide(before, delta);
@@ -252,7 +255,7 @@ export const goToPresentationSlide = (
   refresh?: () => void,
 ): PresentationState => {
   const before = getPresentation(getDocument);
-  if (!canDriveSession()) {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
     return before;
   }
   const next = goToSlide(before, index);
@@ -284,13 +287,7 @@ export const refreshPresentationOrder = (
   api?: ExcalidrawImperativeAPI,
   refresh?: () => void,
 ): void => {
-  if (!canDriveSession()) {
-    return;
-  }
-  // A role permits driving, but does not make an editable follower the driver.
-  // Legacy local presentations have no claim; preserve that existing path.
-  const session = readSession(getDocument);
-  if (session.driver !== null && !session.isDriver) {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
     return;
   }
   const before = getPresentation(getDocument);

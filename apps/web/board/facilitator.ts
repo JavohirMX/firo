@@ -51,6 +51,8 @@ import type {
 import type { RevealState, Vote } from "@firo/facilitation";
 import type { FiroRecord } from "@firo/schema";
 
+import { getSession, mayChangeSession, writeSession } from "./sharedSession";
+
 /** The duration a timer starts at when the facilitator has not chosen one. */
 const DEFAULT_TIMER_MS = 5 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -146,7 +148,7 @@ const notify = (): void => {
  * @returns whether anything changed
  */
 const sync = (getDocument: () => FiroDoc): boolean => {
-  const ephemeral = getDocument().getEphemeral();
+  const ephemeral = getSession(getDocument).state;
 
   if (!primed) {
     primed = true;
@@ -217,8 +219,26 @@ export const subscribeToFacilitation = (
   listener: FacilitatorListener,
 ): (() => void) => {
   listeners.add(listener);
+  const doc = getDocument();
+  let signature = JSON.stringify(getSession(getDocument));
+  const onAwareness = (change: {
+    added: number[];
+    updated: number[];
+    removed: number[];
+  }) => {
+    const remote = [...change.added, ...change.updated, ...change.removed].some(
+      (id) => id !== doc.awareness.clientID,
+    );
+    const next = JSON.stringify(getSession(getDocument));
+    if (remote && next !== signature) {
+      listener();
+    }
+    signature = next;
+  };
+  doc.awareness.on("change", onAwareness);
   return () => {
     listeners.delete(listener);
+    doc.awareness.off("change", onAwareness);
   };
 };
 
@@ -292,7 +312,7 @@ export const timerControls = (getDocument: () => FiroDoc) => {
      * 9: "cannot start or change a session") gets a no-op everywhere at once
      * instead of a fix per entry point.
      */
-    if (!canDriveSession()) {
+    if (!canDriveSession() || !mayChangeSession(getDocument)) {
       return;
     }
     const current = document().getEphemeral().timer ?? {
@@ -318,7 +338,7 @@ export const timerControls = (getDocument: () => FiroDoc) => {
     if (sameTimer(before, next)) {
       return;
     }
-    document().setEphemeral({ timer: next });
+    writeSession(document, { timer: next });
     sync(document);
     notify();
   };
@@ -371,8 +391,8 @@ export const toggleRevealMode = (
   getDocument: () => FiroDoc,
   refresh?: () => void,
 ): RevealState => {
-  const before = getDocument().getEphemeral().reveal;
-  if (!canDriveSession()) {
+  const before = getSession(getDocument).state.reveal;
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
     /*
      * Same boundary as `withTimer`: a watcher's toggle must not paint a
      * private chip nobody else sees. Return the state as it stands.
@@ -380,7 +400,7 @@ export const toggleRevealMode = (
     return before;
   }
   const next = toggleReveal(before);
-  getDocument().setEphemeral({ reveal: next });
+  writeSession(getDocument, { reveal: next });
   /*
    * Compared against the value read immediately above rather than through the
    * module cache, for the reason `withTimer` gives: a cache with a priming flag

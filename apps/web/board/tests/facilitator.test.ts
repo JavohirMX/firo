@@ -229,7 +229,10 @@ describe("the reveal toggle", () => {
 
     // A control that repaints unconditionally would re-run `pull()` -- a full
     // document read and a scene rewrite -- for a no-op.
-    get().setEphemeral({ reveal: { mode: "private" } });
+    get().setEphemeral({
+      session: { leader: get().awareness.clientID },
+      reveal: { mode: "private" },
+    });
     const before = getReveal(get).mode;
     expect(before).toBe("private");
 
