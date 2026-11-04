@@ -21,7 +21,7 @@ export interface TimerSetupDialogProps {
 
 /** The stepper's bounds, in whole minutes. */
 const MIN_MINUTES = 1;
-const MAX_MINUTES = 99;
+const MAX_MINUTES = 60;
 
 const clampMinutes = (value: number): number =>
   Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(value)));
@@ -201,6 +201,12 @@ export const TimerSetupDialog: React.FC<TimerSetupDialogProps> = ({
           </button>
           <button type="button" onClick={() => timerControls(boardDoc).reset()}>
             Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => timerControls(boardDoc).addMinute()}
+          >
+            Add minute
           </button>
         </div>
       )}

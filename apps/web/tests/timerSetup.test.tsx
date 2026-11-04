@@ -117,4 +117,28 @@ describe("timer setup popover", () => {
     view.rerender(<TimerSetupDialog isOpen onClose={onClose} />);
     expect(screen.getByLabelText("Time remaining").textContent).toBe("1:00");
   });
+  it("clamps setup to the ADR's 1-60 minute range", async () => {
+    await setup();
+    const input = screen.getByTestId("timer-custom-minutes");
+    fireEvent.change(input, { target: { value: "99" } });
+    fireEvent.blur(input);
+    expect((input as HTMLInputElement).value).toBe("60");
+    fireEvent.click(screen.getByTestId("timer-step-up"));
+    expect((input as HTMLInputElement).value).toBe("60");
+    fireEvent.change(input, { target: { value: "0" } });
+    fireEvent.blur(input);
+    expect((input as HTMLInputElement).value).toBe("1");
+  });
+  it("adds a minute without restarting the running anchor", async () => {
+    const startedAt = Date.now();
+    doc.setEphemeral({
+      timer: { startedAt, durationMs: 60000, remainingMs: 60000 },
+    });
+    await setup();
+    const before = doc.durableUpdates;
+    fireEvent.click(screen.getByRole("button", { name: "Add minute" }));
+    expect(doc.getEphemeral().timer?.durationMs).toBe(120000);
+    expect(doc.getEphemeral().timer?.startedAt).toBe(startedAt);
+    expect(doc.durableUpdates).toBe(before);
+  });
 });

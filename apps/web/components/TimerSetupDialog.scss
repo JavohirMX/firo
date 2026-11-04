@@ -140,6 +140,9 @@
   background: var(--firo-color-panel, #fff);
   cursor: pointer;
 }
+.firo-timer-setup__running {
+  flex-wrap: wrap;
+}
 .firo-timer-setup__running output {
   font-variant-numeric: tabular-nums;
 }
