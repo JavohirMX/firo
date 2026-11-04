@@ -8,7 +8,11 @@ import {
   resolveInitialBoard,
   setActiveBoard,
 } from "./board/library";
-import { getShareProof, resolveShareToken } from "./board/collabProvider";
+import {
+  checkShareLink,
+  getShareProof,
+  resolveShareToken,
+} from "./board/collabProvider";
 import { SharePasswordGate } from "./components/SharePasswordGate";
 import { boardUrl, readRoute } from "./board/routes";
 
@@ -68,11 +72,29 @@ export const Root: React.FC = () => {
             return;
           }
           if (resolved?.boardId) {
+            /*
+             * ADR-0037 section 6: the joined board keeps its capability in
+             * the local index, so reopening it from the home can reconnect
+             * with the stored token instead of silently joining as a
+             * stranger. A re-join refreshes the record (the role may have
+             * changed) and clears any stale unavailable mark.
+             */
+            const shareRecord = {
+              token,
+              role: resolved.role,
+              joinedAt: Date.now(),
+            };
             let meta = await getBoardMeta(resolved.boardId);
             if (!meta) {
               meta = await putBoardMeta({
                 id: resolved.boardId,
                 name: "Shared Board",
+                share: shareRecord,
+              });
+            } else {
+              meta = await putBoardMeta({
+                id: resolved.boardId,
+                share: shareRecord,
               });
             }
             setActiveBoard(meta);
@@ -89,11 +111,45 @@ export const Root: React.FC = () => {
         }
 
         if (route?.kind === "board") {
-          const meta = await openBoardById(route.id);
+          let meta = await openBoardById(route.id);
           if (cancelled) {
             return;
           }
           if (meta) {
+            /*
+             * A joined board reopening from the home revalidates its link
+             * first (ADR-0037 section 6). A dead link marks the card and
+             * stays on the home rather than opening a board that can no
+             * longer sync; an unreachable server ("unknown") still opens,
+             * because the local payload is honestly available offline.
+             */
+            if (meta.share?.token) {
+              const state = await checkShareLink(meta.share.token);
+              if (cancelled) {
+                return;
+              }
+              if (state === "unavailable") {
+                await putBoardMeta({
+                  id: meta.id,
+                  share: {
+                    ...meta.share,
+                    unavailable: "Link revoked or expired",
+                  },
+                });
+                setScreen({ kind: "home" });
+                return;
+              }
+              if (state === "ok" && meta.share.unavailable) {
+                meta = await putBoardMeta({
+                  id: meta.id,
+                  share: {
+                    token: meta.share.token,
+                    role: meta.share.role,
+                    joinedAt: meta.share.joinedAt,
+                  },
+                });
+              }
+            }
             setActiveBoard(meta);
             setScreen({ kind: "board" });
           } else {

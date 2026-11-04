@@ -817,3 +817,70 @@ describe("trash upkeep", () => {
     expect(folderButton.textContent).toContain("2");
   });
 });
+
+describe("@firo/ui BoardHome - Shared with me (ADR-0037 section 6)", () => {
+  const sharedBoards: BoardCardData[] = [
+    { id: "own", name: "My board", tags: [], lastOpenedLabel: "today" },
+    {
+      id: "joined",
+      name: "Shared Board",
+      tags: [],
+      lastOpenedLabel: "yesterday",
+      shareRole: "viewer",
+    },
+    {
+      id: "dead",
+      name: "Dead Link Board",
+      tags: [],
+      shareRole: "editor",
+      shareUnavailable: "Link revoked or expired",
+    },
+  ];
+
+  it("shows the Shared with me section only when a joined board exists", () => {
+    const { unmount } = render(
+      <BoardHome boards={[{ id: "own", name: "My board", tags: [] }]} />,
+    );
+    expect(screen.queryByTestId("board-sidebar-shared")).toBeNull();
+    unmount();
+
+    render(<BoardHome boards={sharedBoards} />);
+    expect(screen.getByTestId("board-sidebar-shared")).toBeDefined();
+  });
+
+  it("lists joined boards with their role in the section", () => {
+    render(<BoardHome boards={sharedBoards} />);
+
+    fireEvent.click(screen.getByTestId("board-sidebar-shared"));
+
+    expect(screen.getByText("Shared Board")).toBeDefined();
+    expect(screen.getByText("Shared with you · viewer")).toBeDefined();
+    expect(screen.queryByText("My board")).toBeNull();
+  });
+
+  it("marks a dead link instead of hiding it", () => {
+    render(<BoardHome boards={sharedBoards} />);
+
+    fireEvent.click(screen.getByTestId("board-sidebar-shared"));
+
+    expect(screen.getByText("Link revoked or expired")).toBeDefined();
+  });
+
+  it("remove from this device fires the callback from the card menu", () => {
+    const onRemoveSharedBoard = vi.fn();
+    render(
+      <BoardHome
+        boards={sharedBoards}
+        onRemoveSharedBoard={onRemoveSharedBoard}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("board-sidebar-shared"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for Shared Board" }),
+    );
+    fireEvent.click(screen.getByTestId("board-card-remove-shared"));
+
+    expect(onRemoveSharedBoard).toHaveBeenCalledWith("joined");
+  });
+});

@@ -21,6 +21,7 @@ import {
   SearchIcon,
   SortIcon,
   StarIcon,
+  ShareIcon,
   TrashIcon,
   UploadIcon,
 } from "../icons";
@@ -101,6 +102,13 @@ export interface BoardCardData {
   starred?: boolean;
   createdAt?: number | string;
   lastOpenedAt?: number | string;
+  /**
+   * Set when the board was joined through a capability share link
+   * (ADR-0037 section 6): the granted role, and the honest reason when a
+   * revalidation found the link dead.
+   */
+  shareRole?: string;
+  shareUnavailable?: string;
 }
 
 export interface TemplateCardData {
@@ -164,6 +172,8 @@ export interface BoardHomeProps {
   onOpenBoard?: (id: string) => void;
   onRenameBoard?: (id: string, name: string) => void;
   onTrashBoard?: (id: string) => void;
+  /** Remove a share-joined board from this device (ADR-0037 section 6). */
+  onRemoveSharedBoard?: (id: string) => void;
   onRestoreBoard?: (id: string) => void;
   onDeleteBoard?: (id: string) => void;
   onCreateFromTemplate?: (templateId: string) => void;
@@ -200,6 +210,8 @@ export interface BoardCardProps {
   onMoveToFolder?: (id: string, folderId?: string) => void;
   onOpenMoveDialog?: (board: BoardCardData) => void;
   onExportBoard?: (id: string, format: "firo" | "pdf") => void;
+  /** Remove a share-joined board from this device (ADR-0037 section 6). */
+  onRemoveShared?: (id: string) => void;
 }
 
 export const BoardCard: React.FC<BoardCardProps> = ({
@@ -215,6 +227,7 @@ export const BoardCard: React.FC<BoardCardProps> = ({
   onMoveToFolder,
   onOpenMoveDialog,
   onExportBoard,
+  onRemoveShared,
 }) => {
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(board.name);
@@ -383,6 +396,25 @@ export const BoardCard: React.FC<BoardCardProps> = ({
           <div className="firo-board-card__meta">
             <ClockIcon size={13} />
             <span>{board.lastOpenedLabel}</span>
+          </div>
+        )}
+
+        {board.shareRole && (
+          <div
+            className="firo-board-card__meta firo-board-card__share"
+            data-testid="board-card-share-badge"
+          >
+            <ShareIcon size={13} />
+            <span>Shared with you · {board.shareRole}</span>
+          </div>
+        )}
+
+        {board.shareUnavailable && (
+          <div
+            className="firo-board-card__meta firo-board-card__share firo-board-card__share--unavailable"
+            data-testid="board-card-share-unavailable"
+          >
+            <span>{board.shareUnavailable}</span>
           </div>
         )}
 
@@ -566,6 +598,21 @@ export const BoardCard: React.FC<BoardCardProps> = ({
                       </button>
                     </>
                   )}
+                  {board.shareRole && onRemoveShared ? (
+                    <button
+                      type="button"
+                      className="firo-board-card__dropdown-item firo-board-card__dropdown-item--danger"
+                      role="menuitem"
+                      data-testid="board-card-remove-shared"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onRemoveShared(board.id);
+                      }}
+                    >
+                      <TrashIcon size={14} />
+                      <span>Remove from this device</span>
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="firo-board-card__dropdown-item firo-board-card__dropdown-item--danger"
@@ -639,6 +686,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   onOpenBoard,
   onRenameBoard,
   onTrashBoard,
+  onRemoveSharedBoard,
   onRestoreBoard,
   onDeleteBoard,
   onCreateFromTemplate,
@@ -903,6 +951,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
   let sectionBoards: BoardCardData[];
   if (currentSection === "trash") {
     sectionBoards = trashed;
+  } else if (currentSection === "shared") {
+    sectionBoards = live.filter((board) => Boolean(board.shareRole));
   } else if (currentSection === "starred") {
     sectionBoards = live.filter((board) => Boolean(board.starred));
   } else if (currentSection === "recent") {
@@ -962,6 +1012,8 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
       ? "Trash"
       : currentSection === "activity"
       ? "Activity"
+      : currentSection === "shared"
+      ? "Shared with me"
       : activeFolder?.name ?? "Folder";
 
   const emptyText = () => {
@@ -1051,6 +1103,21 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
               <ActivityIcon size={18} />
               <span>Activity</span>
             </button>
+            {live.some((board) => Boolean(board.shareRole)) && (
+              <button
+                type="button"
+                className={`firo-board-sidebar__item ${
+                  currentSection === "shared"
+                    ? "firo-board-sidebar__item--active"
+                    : ""
+                }`}
+                onClick={() => handleSelectSection("shared")}
+                data-testid="board-sidebar-shared"
+              >
+                <ShareIcon size={18} />
+                <span>Shared with me</span>
+              </button>
+            )}
           </div>
 
           <div className="firo-board-sidebar__folders">
@@ -1688,6 +1755,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                     onOpen={onOpenBoard}
                     onRename={onRenameBoard}
                     onTrash={onTrashBoard}
+                    onRemoveShared={onRemoveSharedBoard}
                     onRestore={onRestoreBoard}
                     onDelete={requestDelete}
                     onToggleStar={onToggleStarBoard}
@@ -1772,6 +1840,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
                   onOpen={onOpenBoard}
                   onRename={onRenameBoard}
                   onTrash={onTrashBoard}
+                  onRemoveShared={onRemoveSharedBoard}
                   onRestore={onRestoreBoard}
                   onDelete={requestDelete}
                   onToggleStar={onToggleStarBoard}

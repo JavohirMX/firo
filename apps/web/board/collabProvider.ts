@@ -135,6 +135,35 @@ export async function resolveShareToken(
 }
 
 /**
+ * Revalidates a stored share token when a joined board is reopened from the
+ * home (ADR-0037 section 6). Three honest answers: the link still grants a
+ * role ("ok"), the server says it is gone or refuses it ("unavailable"), or
+ * the question could not be asked ("unknown" - offline or unreachable, where
+ * the local-first payload may still be opened).
+ */
+export async function checkShareLink(
+  token: string,
+  apiBase = "",
+): Promise<"ok" | "unavailable" | "unknown"> {
+  try {
+    const res = await fetch(
+      `${apiBase}/api/shares/${encodeURIComponent(token)}`,
+    );
+    if (res.ok) {
+      return "ok";
+    }
+    // 404/410/403 are the server speaking about the link itself; anything
+    // else (5xx, opaque failures) is not proof the link is dead.
+    if (res.status === 404 || res.status === 410 || res.status === 403) {
+      return "unavailable";
+    }
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
  * Exchanges a share link's password for the proof the server wants on the
  * realtime connection. The error strings are meant for the person at the
  * password prompt, not the console.

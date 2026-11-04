@@ -78,6 +78,20 @@ export interface BoardMeta {
   /** epoch ms when moved to the trash; absent means the board is live. */
   trashedAt?: number;
   folderId?: string;
+  /**
+   * Present when this board was joined through a capability share link
+   * (ADR-0037 section 6): the token re-arms the connection when the board is
+   * reopened from the home, and `unavailable` carries the honest reason a
+   * revalidation failed instead of silently opening a dead board.
+   */
+  share?: {
+    token: string;
+    role: string;
+    /** epoch ms. */
+    joinedAt: number;
+    /** Human wording, e.g. "Link revoked or expired". */
+    unavailable?: string;
+  };
   starred?: boolean;
 }
 
@@ -337,6 +351,15 @@ export const setBoardFolder = async (
  * from `trashBoard`: the trash is the reversible half, and the two must not be
  * one function a caller can reach for by accident.
  */
+/**
+ * Remove a share-joined board from this device (ADR-0037 section 6): the local
+ * metadata and payload are deleted, the server copy is untouched, and opening
+ * the share link again re-joins fresh. This is the same local erasure as
+ * `deleteBoardForever`; the name marks the intent at the call site.
+ */
+export const removeSharedBoardFromDevice = async (id: string): Promise<void> =>
+  deleteBoardForever(id);
+
 export const deleteBoardForever = async (id: string): Promise<void> => {
   const index = await readIndex();
   delete index[id];

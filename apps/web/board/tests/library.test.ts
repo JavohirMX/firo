@@ -564,3 +564,54 @@ describe("content search (Task 8.2)", () => {
     expect(await searchBoardsContent("   ")).toEqual([]);
   });
 });
+
+describe("share-joined boards (ADR-0037 section 6)", () => {
+  it("keeps the share record on the board meta through put/get", async () => {
+    await putBoardMeta({
+      id: "shared-a",
+      name: "Shared Board",
+      share: { token: "tok-abc", role: "viewer", joinedAt: 123 },
+    });
+
+    const meta = await getBoardMeta("shared-a");
+    expect(meta?.share).toEqual({
+      token: "tok-abc",
+      role: "viewer",
+      joinedAt: 123,
+    });
+  });
+
+  it("a partial update keeps the stored share record", async () => {
+    await putBoardMeta({
+      id: "shared-b",
+      name: "Shared Board",
+      share: { token: "tok-def", role: "editor", joinedAt: 456 },
+    });
+    await putBoardMeta({ id: "shared-b", name: "Renamed locally" });
+
+    const meta = await getBoardMeta("shared-b");
+    expect(meta?.name).toBe("Renamed locally");
+    expect(meta?.share?.token).toBe("tok-def");
+  });
+
+  it("records the unavailable reason without losing the token", async () => {
+    await putBoardMeta({
+      id: "shared-c",
+      name: "Shared Board",
+      share: { token: "tok-ghi", role: "viewer", joinedAt: 789 },
+    });
+    await putBoardMeta({
+      id: "shared-c",
+      share: {
+        token: "tok-ghi",
+        role: "viewer",
+        joinedAt: 789,
+        unavailable: "Link revoked or expired",
+      },
+    });
+
+    const meta = await getBoardMeta("shared-c");
+    expect(meta?.share?.unavailable).toBe("Link revoked or expired");
+    expect(meta?.share?.token).toBe("tok-ghi");
+  });
+});

@@ -13,6 +13,7 @@ import {
   buildRelayWsUrl,
   claimSharePassword,
   getShareProof,
+  checkShareLink,
   resolveShareToken,
   storeShareProof,
   type CollabStatus,
@@ -746,5 +747,33 @@ describe("CollabProvider", () => {
       expect(getShareProof("tok-other")).toBeNull();
       window.localStorage.clear();
     });
+  });
+});
+
+describe("checkShareLink (ADR-0037 section 6)", () => {
+  it("returns ok when the server still grants a role", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ share: { boardId: "b", role: "viewer" } }),
+    });
+    expect(await checkShareLink("tok-live")).toBe("ok");
+  });
+
+  it.each([404, 410, 403])(
+    "returns unavailable when the server refuses the link itself (%i)",
+    async (status) => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status });
+      expect(await checkShareLink("tok-dead")).toBe("unavailable");
+    },
+  );
+
+  it("returns unknown on a server error, never a verdict on the link", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    expect(await checkShareLink("tok-flaky")).toBe("unknown");
+  });
+
+  it("returns unknown when the server cannot be reached", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("offline"));
+    expect(await checkShareLink("tok-offline")).toBe("unknown");
   });
 });

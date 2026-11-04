@@ -3166,7 +3166,14 @@ const ExcalidrawWrapper = () => {
         typeof window !== "undefined"
           ? window.location.pathname.match(/^\/s\/([^/]+)/)
           : null;
-      const shareToken = shareMatch ? shareMatch[1] : null;
+      /*
+       * The URL token wins on a fresh share entry; a board reopened from the
+       * home carries its capability in the index instead (ADR-0037
+       * section 6), and the connection re-arms from that record.
+       */
+      const shareToken = shareMatch
+        ? shareMatch[1]
+        : getActiveBoard()?.share?.token ?? null;
 
       let boardId =
         (boardDoc().read().meta?.id as string | undefined) ||
