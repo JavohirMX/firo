@@ -2108,8 +2108,43 @@ const ExcalidrawWrapper = () => {
   const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [timerSetupOpen, setTimerSetupOpen] = useState(false);
-  const [votingPanelOpen, setVotingPanelOpen] = useState(false);
-  const [framesPanelOpen, setFramesPanelOpen] = useState(false);
+  /*
+   * The right dock (ADR-0035 section 1): exactly one panel at a time. One
+   * state field makes exclusivity structural rather than a discipline of
+   * resetting sibling booleans; the derived flags keep the call sites
+   * readable. Ephemeral by design: the open panel never enters the Yjs
+   * document and is not persisted across reloads.
+   */
+  const [openDockPanel, setOpenDockPanel] = useState<
+    "activity" | "frames" | "voting" | null
+  >(null);
+  const votingPanelOpen = openDockPanel === "voting";
+  const framesPanelOpen = openDockPanel === "frames";
+  const activityFeedOpen = openDockPanel === "activity";
+
+  /*
+   * The strip yields (ADR-0035 section 1): with a panel open, the
+   * bottom-right navigation strip's inline-end inset becomes panel inset +
+   * panel width + 12. One custom property, consumed by the navigation
+   * container in LayerUI.scss -- the ADR-0022 clause-6 authorization this
+   * needs, with no editor TypeScript changes. The inspector's own :has()
+   * rule is untouched: it never renders while the dock is open.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!openDockPanel) {
+      root.style.removeProperty("--firo-navigation-inset");
+      return undefined;
+    }
+    const width = openDockPanel === "voting" ? 380 : 340;
+    root.style.setProperty(
+      "--firo-navigation-inset",
+      `calc(8px + ${width}px + 12px)`,
+    );
+    return () => {
+      root.style.removeProperty("--firo-navigation-inset");
+    };
+  }, [openDockPanel]);
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -2168,9 +2203,9 @@ const ExcalidrawWrapper = () => {
         } else if (request === "bulkStickyNotes") {
           setBulkStickyOpen(true);
         } else if (request === "votingPanel") {
-          setVotingPanelOpen(true);
+          setOpenDockPanel("voting");
         } else if (request === "framesPanel") {
-          setFramesPanelOpen(true);
+          setOpenDockPanel("frames");
         }
       }),
     [],
@@ -2380,7 +2415,6 @@ const ExcalidrawWrapper = () => {
     bytes: Uint8Array;
   } | null>(null);
   const [minimapVisible, setMinimapVisible] = useState(false);
-  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
@@ -3944,9 +3978,9 @@ const ExcalidrawWrapper = () => {
             </>
           );
         }}
-        renderInspectorUI={(_isMobile, appState) => (
-          <WebInspector appState={appState} />
-        )}
+        renderInspectorUI={(_isMobile, appState) =>
+          openDockPanel ? null : <WebInspector appState={appState} />
+        }
         renderSelectionUI={(_isMobile, appState) => (
           <WebSelectionToolbar
             appState={appState}
@@ -3963,12 +3997,16 @@ const ExcalidrawWrapper = () => {
             <button
               type="button"
               className="firo-collab-bar__btn"
-              onClick={() => setActivityFeedOpen((open) => !open)}
+              onClick={() =>
+                setOpenDockPanel((panel) =>
+                  panel === "activity" ? null : "activity",
+                )
+              }
               title="Activity history"
               aria-label="Activity history"
               data-testid="activity-feed-toggle"
               aria-expanded={activityFeedOpen}
-              aria-haspopup="dialog"
+              aria-controls="firo-dock-activity"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -4281,12 +4319,12 @@ const ExcalidrawWrapper = () => {
         />
         <VotingPanel
           isOpen={votingPanelOpen}
-          onClose={() => setVotingPanelOpen(false)}
+          onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}
         />
         <FramesPanel
           isOpen={framesPanelOpen}
-          onClose={() => setFramesPanelOpen(false)}
+          onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}
         />
         <BulkStickyDialog
@@ -4306,7 +4344,7 @@ const ExcalidrawWrapper = () => {
         />
         <ActivityFeed
           isOpen={activityFeedOpen}
-          onClose={() => setActivityFeedOpen(false)}
+          onClose={() => setOpenDockPanel(null)}
           dialogRef={activityFeedDialogRef}
           entries={activities}
           onClear={async () => {

@@ -1412,6 +1412,7 @@ export const BoardHome: React.FC<BoardHomeProps> = ({
               onSelectBoard={onOpenBoard}
               onClear={onClearActivity}
               title="Workspace Activity"
+              presentation="inline"
             />
           ) : sortedBoards.length > 0 ? (
             currentViewMode === "list" ? (

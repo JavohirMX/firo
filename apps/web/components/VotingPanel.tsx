@@ -23,6 +23,7 @@
  */
 
 import React, { useEffect, useMemo, useReducer, useState } from "react";
+import { SidePanel } from "@firo/ui";
 
 import {
   DEFAULT_VOTING_SETTINGS,
@@ -275,45 +276,23 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
        * A div, not an aside: `.excalidraw--mobile aside { display: none }`
        * hides every aside inside the editor on phone, panel included.
        * `role="complementary"` keeps the landmark. */}
-      <div
-        className="voting-panel"
-        data-testid="voting-panel"
-        role="complementary"
-        aria-label="Voting"
+      <SidePanel
+        title="Voting"
+        onClose={onClose}
+        closeLabel="Close voting panel"
+        wide
+        tabs={[
+          { id: "new", label: "New session" },
+          {
+            id: "results",
+            label: `Results${
+              outstandingDots > 0 ? ` (${outstandingDots})` : ""
+            }`,
+          },
+        ]}
+        activeTab={tab}
+        onTabChange={(id) => setTab(id as "new" | "results")}
       >
-        <div className="voting-panel__header">
-          <h2>Voting</h2>
-          <button
-            type="button"
-            className="voting-panel__close"
-            aria-label="Close voting panel"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="voting-panel__tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "new"}
-            className={tab === "new" ? "is-active" : ""}
-            onClick={() => setTab("new")}
-          >
-            New session
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "results"}
-            className={tab === "results" ? "is-active" : ""}
-            onClick={() => setTab("results")}
-          >
-            Results{outstandingDots > 0 ? ` (${outstandingDots})` : ""}
-          </button>
-        </div>
-
         {tab === "new" && (
           <div className="voting-panel__body">
             {round && (
@@ -560,7 +539,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             )}
           </div>
         )}
-      </div>
+      </SidePanel>
     </>
   );
 };

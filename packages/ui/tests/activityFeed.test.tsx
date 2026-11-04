@@ -80,7 +80,7 @@ describe("ActivityFeed component", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("attaches dialogRef to the dialog container element", () => {
+  it("attaches dialogRef to the inline container element", () => {
     const ref = React.createRef<HTMLDivElement>();
     render(
       <ActivityFeed
@@ -88,11 +88,33 @@ describe("ActivityFeed component", () => {
         isOpen={true}
         onClose={() => {}}
         dialogRef={ref}
+        presentation="inline"
       />,
     );
 
     const dialog = screen.getByRole("dialog");
     expect(ref.current).toBe(dialog);
     expect(dialog.classList.contains("firo-activity-feed")).toBe(true);
+  });
+
+  /*
+   * The dock presentation is the ADR-0035 right dock: a complementary
+   * landmark, not a modal dialog, and Escape does not close it -- the
+   * ADR-0032 Escape ladder stays on the canvas.
+   */
+  it("docks as a non-modal panel that Escape does not close", () => {
+    const onClose = vi.fn();
+    render(<ActivityFeed entries={[]} isOpen={true} onClose={onClose} />);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const panel = screen.getByRole("complementary", {
+      name: "Activity History",
+    });
+    expect(panel).toBeDefined();
+    expect(panel.getAttribute("aria-modal")).toBeNull();
+
+    fireEvent.keyDown(panel, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

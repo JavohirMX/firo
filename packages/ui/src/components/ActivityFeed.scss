@@ -206,3 +206,23 @@
     transform: translateX(0);
   }
 }
+
+/*
+ * Dock content (ADR-0035): inside the SidePanel shell the feed is plain
+ * content, so every scrap of its old floating-dialog chrome resets. The
+ * shell owns position, border, elevation and the close control.
+ */
+.firo-activity-feed--dock-content {
+  position: static;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  animation: none;
+  display: block;
+  z-index: auto;
+}
