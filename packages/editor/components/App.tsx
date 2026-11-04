@@ -318,6 +318,8 @@ import {
   actionUngroup,
   actionLink,
   actionToggleElementLock,
+  actionToggleHiddenUntilRevealed,
+  actionToggleHideInPresentation,
   actionClearContent,
   actionToggleLinearEditor,
   actionToggleObjectsSnapMode,
@@ -13093,6 +13095,9 @@ class App extends React.Component<AppProps, AppState> {
       CONTEXT_MENU_SEPARATOR,
       actionLink,
       actionToggleElementLock,
+      ...(this.props.onSetElementVisibility
+        ? [actionToggleHiddenUntilRevealed, actionToggleHideInPresentation]
+        : []),
       actionWrapSelectionInFrame,
       CONTEXT_MENU_SEPARATOR,
       infoSubmenu,

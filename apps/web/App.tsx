@@ -276,6 +276,7 @@ import {
   facilitatorCommandPaletteItems,
   facilitatorHelpRows,
 } from "./board/facilitatorActions";
+import { setElementVisibility } from "./board/visibility";
 import { recordCommandPaletteItems } from "./board/recordActions";
 import { getActiveBoard, renameBoard, setActiveBoard } from "./board/library";
 import {
@@ -3978,6 +3979,12 @@ const ExcalidrawWrapper = () => {
             (c) =>
               c.id !== VOTE_COLLECTION_ID && c.id !== DOC_BLOCK_COLLECTION_ID,
           )}
+        onSetElementVisibility={
+          isReadOnlyShare
+            ? undefined
+            : (ids, flag, value) =>
+                setElementVisibility(boardDoc, refreshBoard, ids, flag, value)
+        }
         onSaveSelectionAsTemplate={
           isReadOnlyShare ? undefined : () => setSaveTemplateOpen(true)
         }
