@@ -9,11 +9,11 @@
  *
  * ## Order
  *
- * The list order is the document's element order, which is also the order
- * `getPresentation` walks when stepping slides. One order for both surfaces
- * means a facilitator never watches the panel and the presenter disagree
- * about which frame is next.
+ * The panel and presentation share ADR-0039 reading order: top row
+ * left-to-right, then down. Moving a frame changes its position in both.
  */
+
+import { framesInReadingOrder } from "@firo/facilitation";
 
 import type { FiroElement, FrameElement } from "@firo/schema";
 
@@ -22,7 +22,7 @@ export interface FrameRow {
   readonly id: string;
   /** The frame's own name, or null when it was never given one. */
   readonly name: string | null;
-  /** 1-based position in document order, stable for the current list. */
+  /** 1-based position in reading order, stable for the current list. */
   readonly position: number;
 }
 
@@ -30,16 +30,18 @@ const isLiveFrame = (element: FiroElement): element is FrameElement =>
   element.type === "frame" && !element.isDeleted;
 
 /**
- * The board's frames in document order. Deleted and non-frame elements are
+ * The board's frames in reading order. Deleted and non-frame elements are
  * skipped; positions are assigned after filtering so the numbers the panel
  * shows have no gaps.
  */
 export const listFrames = (elements: readonly FiroElement[]): FrameRow[] =>
-  elements.filter(isLiveFrame).map((frame, index) => ({
-    id: frame.id,
-    name: frame.name,
-    position: index + 1,
-  }));
+  framesInReadingOrder(elements)
+    .filter(isLiveFrame)
+    .map((frame, index) => ({
+      id: frame.id,
+      name: frame.name,
+      position: index + 1,
+    }));
 
 /**
  * Returns a new element array with the named frame renamed, or the same

@@ -20,6 +20,7 @@ import {
   goToSlide,
   hasSlides,
   startPresentation,
+  reconcilePresentation,
   stepSlide,
 } from "@firo/facilitation";
 import { CaptureUpdateAction } from "@firo/editor";
@@ -30,6 +31,7 @@ import type { PresentationState } from "@firo/facilitation";
 import type { FiroElement } from "@firo/schema";
 
 import { announceFacilitationChange, canDriveSession } from "./facilitator";
+import { readSession } from "./votingSession";
 
 /**
  * The app-side seam for presentation mode.
@@ -275,3 +277,25 @@ export const boardHasSlides = (getDocument: () => FiroDoc): boolean =>
 
 /** Re-exported so callers need not import two modules for one question. */
 export { hasSlides };
+
+/** Follow frame moves/deletions without creating a second deck-order model. */
+export const refreshPresentationOrder = (
+  getDocument: () => FiroDoc,
+  api?: ExcalidrawImperativeAPI,
+  refresh?: () => void,
+): void => {
+  if (!canDriveSession()) {
+    return;
+  }
+  // A role permits driving, but does not make an editable follower the driver.
+  // Legacy local presentations have no claim; preserve that existing path.
+  const session = readSession(getDocument);
+  if (session.driver !== null && !session.isDriver) {
+    return;
+  }
+  const before = getPresentation(getDocument);
+  const next = reconcilePresentation(before, getDocument().read().elements);
+  if (next !== before) {
+    apply(getDocument, next, api, refresh);
+  }
+};

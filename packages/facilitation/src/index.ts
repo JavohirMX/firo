@@ -114,6 +114,9 @@ export {
 export {
   DEFAULT_PRESENTATION,
   slidesFor,
+  framesInReadingOrder,
+  reconcilePresentation,
+  type SlideElement,
   isShownInPresentation,
   elementsForPresentation,
   stepSlide,

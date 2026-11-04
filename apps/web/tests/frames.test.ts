@@ -25,7 +25,18 @@ const rect = (id: string) =>
   ({ id, type: "rectangle", isDeleted: false } as unknown as FiroElement);
 
 describe("listFrames", () => {
-  it("lists live frames in document order with 1-based positions", () => {
+  it("shares presentation reading order after frames move", () => {
+    const right = { ...frame("right"), x: 500 };
+    const left = frame("left");
+    expect(listFrames([right, left]).map((row) => row.id)).toEqual([
+      "left",
+      "right",
+    ]);
+    expect(
+      listFrames([right, { ...left, y: 300 }]).map((row) => row.id),
+    ).toEqual(["right", "left"]);
+  });
+  it("lists live frames in reading order with 1-based positions", () => {
     const rows = listFrames([rect("r1"), frame("a", "Intro"), frame("b")]);
     expect(rows).toEqual([
       { id: "a", name: "Intro", position: 1 },

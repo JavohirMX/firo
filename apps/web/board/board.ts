@@ -43,6 +43,8 @@ import type { FiroElement } from "@firo/schema";
 
 import { debounce, restoreBoard, saveBoard } from "./storage";
 
+import { refreshPresentationOrder } from "./presentation";
+
 import { registerFileActions } from "./fileActions";
 import { registerFacilitatorActions } from "./facilitatorActions";
 
@@ -320,8 +322,12 @@ export const attachBoard = (
     bridge,
   );
   sync.start();
+  const stopPresentationOrder = doc.subscribe(() =>
+    refreshPresentationOrder(() => doc, excalidrawAPI, refreshBoard),
+  );
 
   return () => {
+    stopPresentationOrder();
     sync?.stop();
     sync = null;
   };
