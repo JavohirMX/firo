@@ -47,6 +47,14 @@ export interface ActivityFeedProps {
    * not a panel.
    */
   presentation?: "dock" | "inline";
+  /*
+   * ADR-0035 section 2 scopes. When both are provided, the dock shows the
+   * tab strip ("This board" / "All boards"); Clear clears the visible
+   * scope, so `onClear` must follow `scope` on the host side. The Versions
+   * tab lands with row 48. The inline presentation never shows tabs.
+   */
+  scope?: "board" | "all";
+  onScopeChange?: (scope: "board" | "all") => void;
 }
 
 const formatRelativeTime = (timestamp: number): string => {
@@ -93,6 +101,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   title = "Activity History",
   dialogRef,
   presentation = "dock",
+  scope,
+  onScopeChange,
 }) => {
   React.useEffect(() => {
     if (!isOpen || presentation !== "inline") {
@@ -146,6 +156,17 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     ) : null;
 
   if (presentation === "dock") {
+    const scopeTabs =
+      scope && onScopeChange
+        ? {
+            tabs: [
+              { id: "board", label: "This board" },
+              { id: "all", label: "All boards" },
+            ],
+            activeTab: scope,
+            onTabChange: (id: string) => onScopeChange(id as "board" | "all"),
+          }
+        : {};
     return (
       <SidePanel
         id="firo-dock-activity"
@@ -153,6 +174,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
         onClose={onClose}
         closeLabel="Close activity feed"
         headerActions={clearAction}
+        {...scopeTabs}
       >
         <div
           className="firo-activity-feed firo-activity-feed--dock-content"

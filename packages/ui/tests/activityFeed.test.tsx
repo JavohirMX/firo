@@ -117,4 +117,75 @@ describe("ActivityFeed component", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  /*
+   * ADR-0035 section 2: the dock scopes to This board / All boards. The
+   * Versions tab lands with row 48.
+   */
+  it("shows the scope tabs when scope props are given", () => {
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="board"
+        onScopeChange={() => {}}
+      />,
+    );
+
+    const thisBoard = screen.getByRole("tab", { name: "This board" });
+    const allBoards = screen.getByRole("tab", { name: "All boards" });
+    expect(thisBoard.getAttribute("aria-selected")).toBe("true");
+    expect(allBoards.getAttribute("aria-selected")).toBe("false");
+  });
+
+  it("switching to All boards calls onScopeChange", () => {
+    const onScopeChange = vi.fn();
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="board"
+        onScopeChange={onScopeChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "All boards" }));
+    expect(onScopeChange).toHaveBeenCalledWith("all");
+  });
+
+  it("omits the tab strip when no scope handler is provided", () => {
+    render(<ActivityFeed entries={[]} isOpen={true} onClose={() => {}} />);
+
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+  });
+
+  it("keeps board badges selectable in the all-boards scope", () => {
+    const onSelectBoard = vi.fn();
+    const entries: ActivityFeedItem[] = [
+      {
+        id: "act-1",
+        boardId: "board-1",
+        boardName: "Design System",
+        timestamp: Date.now() - 30000,
+        kind: "comment",
+        summary: "Commented on sticky note",
+      },
+    ];
+    render(
+      <ActivityFeed
+        entries={entries}
+        isOpen={true}
+        onClose={() => {}}
+        scope="all"
+        onScopeChange={() => {}}
+        onSelectBoard={onSelectBoard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Design System" }));
+    expect(onSelectBoard).toHaveBeenCalledWith("board-1");
+  });
 });

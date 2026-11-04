@@ -2416,6 +2416,12 @@ const ExcalidrawWrapper = () => {
   } | null>(null);
   const [minimapVisible, setMinimapVisible] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
+  /*
+   * ADR-0035 section 2: the activity dock scopes to this board or all
+   * boards. Ephemeral like the panel itself -- never persisted, never in
+   * the Yjs document.
+   */
+  const [activityScope, setActivityScope] = useState<"board" | "all">("board");
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const activityFeedDialogRef = useRef<HTMLDivElement>(null);
@@ -3058,9 +3064,11 @@ const ExcalidrawWrapper = () => {
   const refreshActivity = useCallback(async () => {
     const metaId = boardDoc().read().meta?.id;
     const currentBoardId = typeof metaId === "string" ? metaId : "default";
-    const list = await listActivity({ boardId: currentBoardId });
+    const list = await listActivity(
+      activityScope === "board" ? { boardId: currentBoardId } : undefined,
+    );
     setActivities(list);
-  }, []);
+  }, [activityScope]);
 
   useEffect(() => {
     if (activityFeedOpen) {
@@ -4351,9 +4359,15 @@ const ExcalidrawWrapper = () => {
             const metaId = boardDoc().read().meta?.id;
             const currentBoardId =
               typeof metaId === "string" ? metaId : "default";
-            await clearActivity(currentBoardId);
+            // Clear clears the visible scope (ADR-0035 section 2).
+            await clearActivity(
+              activityScope === "board" ? currentBoardId : undefined,
+            );
             setActivities([]);
           }}
+          scope={activityScope}
+          onScopeChange={setActivityScope}
+          onSelectBoard={(id) => window.location.assign(boardUrl(id))}
           title="Board Activity"
         />
         <AppMainMenu
