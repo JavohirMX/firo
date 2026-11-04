@@ -202,6 +202,12 @@ export type ActionName =
    */
   | "setupFacilitatorTimer"
   | "bulkCreateStickyNotes"
+  | "sendReactionThumbsUp"
+  | "sendReactionLove"
+  | "sendReactionFire"
+  | "sendReactionWow"
+  | "sendReactionCelebration"
+  | "sendReactionWave"
   | "linkToElement"
   | "cropEditor"
   | "wrapSelectionInFrame"

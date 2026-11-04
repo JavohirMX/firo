@@ -1273,6 +1273,12 @@ export type CanvasActions = Partial<{
   previousSlide: boolean;
   setupFacilitatorTimer: boolean;
   bulkCreateStickyNotes: boolean;
+  sendReactionThumbsUp: boolean;
+  sendReactionLove: boolean;
+  sendReactionFire: boolean;
+  sendReactionWow: boolean;
+  sendReactionCelebration: boolean;
+  sendReactionWave: boolean;
 }>;
 
 export type UIOptions = Partial<{
