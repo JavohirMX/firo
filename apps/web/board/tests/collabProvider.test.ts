@@ -498,6 +498,70 @@ describe("CollabProvider", () => {
       provider.destroy();
     });
 
+    it("carries a peer's reaction through to the collaborator list", () => {
+      let createdWs: MockWebSocket | null = null;
+      class CustomMockWS extends MockWebSocket {
+        constructor(url: string) {
+          super(url);
+          createdWs = this;
+        }
+      }
+
+      const provider = new CollabProvider({
+        boardId: "board-reaction-test",
+        doc,
+        WebSocketPolyfill: CustomMockWS as unknown as typeof WebSocket,
+      });
+
+      createdWs!.open();
+
+      let latestCollabs: CollaboratorInfo[] = [];
+      provider.onCollaboratorsChange((c) => {
+        latestCollabs = c;
+      });
+
+      const reactionAt = Date.now();
+      const peerDoc = new Y.Doc();
+      const peerAwareness = new awarenessProtocol.Awareness(peerDoc);
+      peerAwareness.setLocalState({
+        [AWARENESS_KEY]: {
+          cursor: null,
+          laser: null,
+          idleSince: null,
+          reaction: {
+            id: "r-1",
+            kind: "fire",
+            targetId: null,
+            x: 100,
+            y: 200,
+            at: reactionAt,
+          },
+        },
+        user: { name: "Reactor" },
+      });
+
+      const awarenessUpdate = awarenessProtocol.encodeAwarenessUpdate(
+        peerAwareness,
+        [peerAwareness.clientID],
+      );
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
+      encoding.writeVarUint8Array(encoder, awarenessUpdate);
+      createdWs!.receive(encoding.toUint8Array(encoder));
+
+      expect(latestCollabs.length).toBe(1);
+      expect(latestCollabs[0].reaction).toEqual({
+        id: "r-1",
+        kind: "fire",
+        targetId: null,
+        x: 100,
+        y: 200,
+        at: reactionAt,
+      });
+
+      provider.destroy();
+    });
+
     it("broadcasts local cursor, laser, user, and tool changes", () => {
       let createdWs: MockWebSocket | null = null;
       class CustomMockWS extends MockWebSocket {
