@@ -1089,12 +1089,18 @@ export const convertMiroItemsToFiro = async (
           }
         }
 
-        // 6. Sequential media fallback if archive contains media files
+        // 6. Sequential media fallback if archive contains media files.
+        // Nothing in the export ties this item to a resource, so the pairing
+        // is archive order, not evidence - say so, or a guessed image looks
+        // exactly like a resolved one.
         if (!matchedMedia && mediaList.length > 0) {
           const fallbackEntry =
             mediaList[unassignedMediaIndex % mediaList.length];
           unassignedMediaIndex++;
           matchedMedia = { bytes: fallbackEntry.bytes, ext: fallbackEntry.ext };
+          warnings.push(
+            `Image matched to a media file by archive order (no resource reference in the export); the pairing is a guess - verify placement after import (id: ${id})`,
+          );
         }
 
         if (matchedMedia) {

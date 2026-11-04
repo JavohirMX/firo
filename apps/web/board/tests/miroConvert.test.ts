@@ -587,6 +587,55 @@ describe("Miro conversion", () => {
       expect(firstAsset.mimeType).toBe("image/png");
     });
 
+    it("warns when an image falls back to archive-order media matching", async () => {
+      const fakePng = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      const mediaFiles = new Map<string, Uint8Array>([["photo.png", fakePng]]);
+
+      const miroItems: MiroItem[] = [
+        {
+          id: "img_guess",
+          type: "image",
+          position: { x: 0, y: 0 },
+          geometry: { width: 100, height: 80 },
+        },
+      ];
+
+      const { board, warnings } = await convertMiroItemsToFiro(miroItems, {
+        mediaFiles,
+      });
+
+      expect(board.elements.length).toBe(1);
+      expect(board.elements[0].fileId).toBeTruthy();
+      expect(
+        warnings.some(
+          (w) => w.includes("archive order") && w.includes("img_guess"),
+        ),
+      ).toBe(true);
+    });
+
+    it("does not warn when an image resolves through a resource reference", async () => {
+      const fakePng = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      const mediaFiles = new Map<string, Uint8Array>([["88888", fakePng]]);
+
+      const miroItems: MiroItem[] = [
+        {
+          id: "img_exact",
+          type: "image",
+          data: {
+            url: "https://miro.com/api/v1/boards/uXjVO123/resources/88888/download",
+          },
+          position: { x: 0, y: 0 },
+          geometry: { width: 100, height: 80 },
+        },
+      ];
+
+      const { warnings } = await convertMiroItemsToFiro(miroItems, {
+        mediaFiles,
+      });
+
+      expect(warnings.some((w) => w.includes("archive order"))).toBe(false);
+    });
+
     it("picks high-contrast white text for dark sticky note backgrounds", async () => {
       const miroItems: MiroItem[] = [
         {
