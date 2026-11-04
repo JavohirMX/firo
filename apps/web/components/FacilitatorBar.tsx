@@ -63,18 +63,19 @@ const TICK_MS = 1000;
  * reading it sixty times a minute would be a document walk per second for
  * nothing.
  */
-const useNow = (active: boolean): number => {
+const useNow = (timer: EphemeralTimer | null): number => {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!active) {
+    setNow(Date.now());
+    if (timer === null) {
       return;
     }
     // `setInterval`, aligned to the next whole second, so the readout does not
     // visibly drift against the wall clock.
     const id = window.setInterval(() => setNow(Date.now()), TICK_MS);
     return () => window.clearInterval(id);
-  }, [active]);
+  }, [timer]);
 
   return now;
 };
@@ -119,7 +120,7 @@ export const FacilitatorBar = (): React.JSX.Element | null => {
     return subscribeToFacilitation(boardDoc, refresh);
   }, []);
 
-  const now = useNow(timer !== null);
+  const now = useNow(timer);
 
   /*
    * Nothing to say until a facilitator has started a clock, gone private, or begun

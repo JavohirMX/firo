@@ -411,3 +411,13 @@ describe("the facilitator bar", () => {
     expect(vi.getTimerCount()).toBe(baseline);
   });
 });
+
+describe("fresh clock on anchor change", () => {
+  it("starting after idle shows the current duration before the first tick", async () => {
+    await renderBar();
+    act(() => vi.advanceTimersByTime(5000));
+    const { timerControls } = await import("../board/facilitator");
+    act(() => timerControls(() => doc).start());
+    expect(screen.getByTestId("facilitator-timer").textContent).toBe("5:00");
+  });
+});

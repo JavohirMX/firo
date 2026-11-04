@@ -1,8 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useFocusTrap } from "@firo/editor";
-import { TIMER_PRESETS } from "@firo/facilitation";
+import {
+  TIMER_PRESETS,
+  formatRemaining,
+  remainingMs,
+} from "@firo/facilitation";
 
-import { getTimer, timerControls } from "../board/facilitator";
+import {
+  getTimer,
+  timerControls,
+  subscribeToFacilitation,
+} from "../board/facilitator";
 import { boardDoc } from "../board/board";
 
 import "./TimerSetupDialog.scss";
@@ -19,32 +26,64 @@ const MAX_MINUTES = 99;
 const clampMinutes = (value: number): number =>
   Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(value)));
 
-/**
- * The timer's setup dialog: how long, then Start.
- *
- * Parity matrix row 34. Miro's popover also offers music; that row is
- * deliberately omitted here (licensed audio — the matrix records the call).
- *
- * ## Why this is a dialog and not controls on the FacilitatorBar
- *
- * `FacilitatorBar.tsx` argues at length that the bar is a readout and carries
- * no controls, because a chip with buttons would be a second, mouse-only path
- * that drifts from the keyboard path. This dialog is opened *by* an action
- * (`setupFacilitatorTimer`, palette-reachable), so the keyboard path stays
- * primary and the bar stays a clock.
- *
- * ## What Start does to a running timer
- *
- * Starting from here sets the duration and restarts from full length. That is
- * the facilitator's meaning of "set up a timer" mid-exercise — "the next
- * block is ten minutes" — and it is the same state machine `Alt+T` drives,
- * so the two paths cannot disagree about what "running" means.
- */
+/** ADR-0039: a non-modal, menu-anchored setup popover, never a scrim. */
 export const TimerSetupDialog: React.FC<TimerSetupDialogProps> = ({
   isOpen,
   onClose,
 }) => {
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState({ top: 64, left: 8 });
+  const [timer, setTimer] = useState(() => getTimer(boardDoc));
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+    const update = () => {
+      setTimer(getTimer(boardDoc));
+      setNow(Date.now());
+    };
+    update();
+    const unsubscribe = subscribeToFacilitation(boardDoc, update);
+    const tick = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      unsubscribe();
+      window.clearInterval(tick);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+    const place = () => {
+      const trigger = document.querySelector(
+        '[data-testid="facilitation-menu-trigger"]',
+      );
+      const rect = trigger?.getBoundingClientRect();
+      const top = Math.max(
+        8,
+        Math.min(
+          (rect?.bottom ?? 56) + 8,
+          window.innerHeight - (rootRef.current?.offsetHeight ?? 400) - 8,
+        ),
+      );
+      const left = Math.max(
+        8,
+        Math.min(
+          rect?.left ?? window.innerWidth - 288,
+          window.innerWidth - 288,
+        ),
+      );
+      setPosition({ top, left });
+    };
+    place();
+    closeRef.current?.focus();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [isOpen]);
 
   // The duration the room will get, in minutes. Seeds from the current
   // timer's setting so reopening the dialog shows what is already chosen,
@@ -77,12 +116,26 @@ export const TimerSetupDialog: React.FC<TimerSetupDialogProps> = ({
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current();
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="facilitation-menu-trigger"]',
+          )
+          ?.focus();
+      }
+    };
+    const onOutside = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
         onCloseRef.current();
       }
     };
+    document.addEventListener("pointerdown", onOutside, true);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", onOutside, true);
     };
   }, [isOpen]);
 
@@ -108,106 +161,132 @@ export const TimerSetupDialog: React.FC<TimerSetupDialogProps> = ({
 
   return (
     <div
-      className="firo-timer-setup__overlay"
-      onClick={onClose}
-      data-testid="timer-setup-overlay"
+      ref={rootRef}
+      style={position}
+      className="firo-timer-setup"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="timer-setup-title"
+      onClick={(e) => e.stopPropagation()}
+      data-testid="timer-setup-dialog"
     >
-      <div
-        ref={focusTrapRef}
-        className="firo-timer-setup"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="timer-setup-title"
-        onClick={(e) => e.stopPropagation()}
-        data-testid="timer-setup-dialog"
-      >
+      <div className="firo-timer-setup__header">
         <h2 id="timer-setup-title" className="firo-timer-setup__title">
-          Set up timer
+          Timer
         </h2>
-
-        <div
-          className="firo-timer-setup__presets"
-          role="group"
-          aria-label="Preset durations"
-        >
-          {presets.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              className={`firo-timer-setup__preset${
-                minutes === preset.minutes && custom === ""
-                  ? " firo-timer-setup__preset--active"
-                  : ""
-              }`}
-              aria-pressed={minutes === preset.minutes && custom === ""}
-              onClick={() => {
-                setMinutes(preset.minutes);
-                setCustom("");
-              }}
-              data-testid={`timer-preset-${preset.label}`}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="firo-timer-setup__custom">
-          <button
-            type="button"
-            className="firo-timer-setup__step"
-            aria-label="One minute less"
-            onClick={() => {
-              setMinutes((m) => clampMinutes(m - 1));
-              setCustom("");
-            }}
-            data-testid="timer-step-down"
-          >
-            −
-          </button>
-          <label className="firo-timer-setup__custom-label">
-            <span className="firo-timer-setup__custom-text">Minutes</span>
-            <input
-              className="firo-timer-setup__input"
-              type="number"
-              inputMode="numeric"
-              min={MIN_MINUTES}
-              max={MAX_MINUTES}
-              value={custom === "" ? String(minutes) : custom}
-              onChange={(event) => {
-                const raw = event.target.value;
-                setCustom(raw);
-                const parsed = Number.parseInt(raw, 10);
-                if (Number.isFinite(parsed)) {
-                  setMinutes(clampMinutes(parsed));
-                }
-              }}
-              onBlur={() => setCustom("")}
-              data-testid="timer-custom-minutes"
-            />
-          </label>
-          <button
-            type="button"
-            className="firo-timer-setup__step"
-            aria-label="One minute more"
-            onClick={() => {
-              setMinutes((m) => clampMinutes(m + 1));
-              setCustom("");
-            }}
-            data-testid="timer-step-up"
-          >
-            +
-          </button>
-        </div>
-
         <button
+          ref={closeRef}
           type="button"
-          className="firo-timer-setup__start"
-          onClick={start}
-          data-testid="timer-setup-start"
+          className="firo-timer-setup__close"
+          aria-label="Close timer"
+          onClick={onClose}
         >
-          Start {minutes} minute{minutes === 1 ? "" : "s"}
+          ×
         </button>
       </div>
+      {timer && (
+        <div className="firo-timer-setup__running">
+          <output aria-label="Time remaining">
+            {formatRemaining(remainingMs(timer, now))}
+          </output>
+          <button
+            type="button"
+            onClick={() =>
+              timer.startedAt === null
+                ? timerControls(boardDoc).start()
+                : timerControls(boardDoc).pause()
+            }
+          >
+            {timer.startedAt === null ? "Resume" : "Pause"}
+          </button>
+          <button type="button" onClick={() => timerControls(boardDoc).reset()}>
+            Reset
+          </button>
+        </div>
+      )}
+
+      <div
+        className="firo-timer-setup__presets"
+        role="group"
+        aria-label="Preset durations"
+      >
+        {presets.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            className={`firo-timer-setup__preset${
+              minutes === preset.minutes && custom === ""
+                ? " firo-timer-setup__preset--active"
+                : ""
+            }`}
+            aria-pressed={minutes === preset.minutes && custom === ""}
+            onClick={() => {
+              setMinutes(preset.minutes);
+              setCustom("");
+            }}
+            data-testid={`timer-preset-${preset.label}`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="firo-timer-setup__custom">
+        <button
+          type="button"
+          className="firo-timer-setup__step"
+          aria-label="One minute less"
+          onClick={() => {
+            setMinutes((m) => clampMinutes(m - 1));
+            setCustom("");
+          }}
+          data-testid="timer-step-down"
+        >
+          −
+        </button>
+        <label className="firo-timer-setup__custom-label">
+          <span className="firo-timer-setup__custom-text">Minutes</span>
+          <input
+            className="firo-timer-setup__input"
+            type="number"
+            inputMode="numeric"
+            min={MIN_MINUTES}
+            max={MAX_MINUTES}
+            value={custom === "" ? String(minutes) : custom}
+            onChange={(event) => {
+              const raw = event.target.value;
+              setCustom(raw);
+              const parsed = Number.parseInt(raw, 10);
+              if (Number.isFinite(parsed)) {
+                setMinutes(clampMinutes(parsed));
+              }
+            }}
+            onBlur={() => setCustom("")}
+            data-testid="timer-custom-minutes"
+          />
+        </label>
+        <button
+          type="button"
+          className="firo-timer-setup__step"
+          aria-label="One minute more"
+          onClick={() => {
+            setMinutes((m) => clampMinutes(m + 1));
+            setCustom("");
+          }}
+          data-testid="timer-step-up"
+        >
+          +
+        </button>
+      </div>
+
+      <button
+        type="button"
+        className="firo-timer-setup__start"
+        onClick={start}
+        data-testid="timer-setup-start"
+      >
+        Start {minutes} minute{minutes === 1 ? "" : "s"}
+      </button>
     </div>
   );
 };
