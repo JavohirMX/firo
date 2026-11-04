@@ -17,6 +17,16 @@ import "./FacilitationMenu.scss";
  * menu that gathers them, so the mouse path to the timer, voting, private
  * mode, presentation and the six reactions did not exist.
  *
+ * ## Watchers watch
+ *
+ * ADR-0039 gives a viewer or commenter the room's state to read and the six
+ * reactions to answer with (section 7), and nothing else: starting the timer,
+ * opening voting, flipping private mode or presenting are owner/editor
+ * surfaces. The room was never in danger -- a watcher cannot publish a driver
+ * claim, so their clicks only painted a private chip and a timer nobody else
+ * could see -- but a menu that offers controls which lie is its own defect,
+ * so a read-only share gets the reactions row and nothing more.
+ *
  * ## Every item executes the registered action
  *
  * The menu is a second path to the same commands, not a second
@@ -40,7 +50,9 @@ const REACTION_ACTION = {
 type ActionMap = ReturnType<typeof useExcalidrawActionManager>["actions"];
 type RegisteredAction = ActionMap[keyof ActionMap];
 
-export const FacilitationMenu: React.FC = () => {
+export const FacilitationMenu: React.FC<{
+  readOnlyRole?: "viewer" | "commenter" | null;
+}> = ({ readOnlyRole = null }) => {
   const actionManager = useExcalidrawActionManager();
   const [open, setOpen] = useState(false);
   const [revealMode, setRevealMode] = useState(() => getReveal(boardDoc).mode);
@@ -138,59 +150,69 @@ export const FacilitationMenu: React.FC = () => {
               </button>
             ))}
           </div>
-          <div className="firo-facilitation-menu__separator" />
-          <button
-            type="button"
-            role="menuitem"
-            className="firo-facilitation-menu__item"
-            data-testid="facilitation-item-timer"
-            onClick={() => run("setupFacilitatorTimer")}
-          >
-            <ClockIcon size={16} />
-            <span>Timer...</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="firo-facilitation-menu__item"
-            data-testid="facilitation-item-voting"
-            onClick={() => run("openVotingPanel")}
-          >
-            <span className="firo-facilitation-menu__dot" aria-hidden="true" />
-            <span>Voting</span>
-          </button>
-          <button
-            type="button"
-            role="menuitemcheckbox"
-            aria-checked={revealMode === "private"}
-            className="firo-facilitation-menu__item"
-            data-testid="facilitation-item-private"
-            onClick={() => run("toggleBoardReveal")}
-          >
-            <span
-              className={`firo-facilitation-menu__check ${
-                revealMode === "private"
-                  ? "firo-facilitation-menu__check--on"
-                  : ""
-              }`}
-              aria-hidden="true"
-            >
-              {revealMode === "private" ? "✓" : ""}
-            </span>
-            <span>Private mode</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="firo-facilitation-menu__item"
-            data-testid="facilitation-item-present"
-            onClick={() => run("togglePresentation")}
-          >
-            <span className="firo-facilitation-menu__play" aria-hidden="true">
-              ▶
-            </span>
-            <span>Presentation</span>
-          </button>
+          {!readOnlyRole && (
+            <>
+              <div className="firo-facilitation-menu__separator" />
+              <button
+                type="button"
+                role="menuitem"
+                className="firo-facilitation-menu__item"
+                data-testid="facilitation-item-timer"
+                onClick={() => run("setupFacilitatorTimer")}
+              >
+                <ClockIcon size={16} />
+                <span>Timer...</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="firo-facilitation-menu__item"
+                data-testid="facilitation-item-voting"
+                onClick={() => run("openVotingPanel")}
+              >
+                <span
+                  className="firo-facilitation-menu__dot"
+                  aria-hidden="true"
+                />
+                <span>Voting</span>
+              </button>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={revealMode === "private"}
+                className="firo-facilitation-menu__item"
+                data-testid="facilitation-item-private"
+                onClick={() => run("toggleBoardReveal")}
+              >
+                <span
+                  className={`firo-facilitation-menu__check ${
+                    revealMode === "private"
+                      ? "firo-facilitation-menu__check--on"
+                      : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  {revealMode === "private" ? "✓" : ""}
+                </span>
+                <span>Private mode</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="firo-facilitation-menu__item"
+                data-testid="facilitation-item-present"
+                onClick={() => run("togglePresentation")}
+              >
+                <span
+                  className="firo-facilitation-menu__play"
+                  aria-hidden="true"
+                >
+                  ▶
+                </span>
+                <span>Presentation</span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

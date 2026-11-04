@@ -85,6 +85,7 @@ import type { Vote } from "@firo/facilitation";
 import { planCast, withdrawDots } from "./votingSession";
 
 import {
+  canDriveSession,
   getTimer,
   getVotes,
   timerControls,
@@ -273,6 +274,23 @@ const enabledUnless =
   ): boolean =>
     props.UIOptions?.canvasActions?.[name] !== false;
 
+/*
+ * Session controls are owner/editor-only (ADR-0039 section 9). The predicate
+ * is the boundary the chords, the palette and the people-bar menu all share,
+ * so the check lives here rather than at any one entry point: a watcher gets
+ * no phantom local timer or private chip no matter how they ask. Reactions,
+ * the frames panel and the tally stay watcher-open and never take this
+ * combinator.
+ */
+const driverOnly =
+  <T>(name: FacilitatorToggleName) =>
+  (
+    elements: readonly T[],
+    appState: unknown,
+    props: ExcalidrawProps,
+  ): boolean =>
+    canDriveSession() && enabledUnless<T>(name)(elements, appState, props);
+
 /* -------------------------------------------------------------------------- */
 /* Vocabulary                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -455,6 +473,28 @@ export const facilitatorActions = (
     return false;
   };
 
+  /**
+   * `run`, but only for the room's driver-to-be.
+   *
+   * The chords are the gap this closes: `handleKeyDown` consults `keyTest`,
+   * never `predicate`, so a watcher pressing `Alt+Shift+P` would otherwise
+   * reach the document. ADR-0039 section 9 says they cannot -- and AC-8 says
+   * a refused shortcut must explain itself rather than die silently, so the
+   * refusal is a toast, not a shrug. The palette never reaches this (it greys
+   * the row out via the predicate); the people-bar menu never shows it.
+   */
+  const runAsDriver = (work: () => void): ActionResult => {
+    if (!canDriveSession()) {
+      complain(
+        api,
+        "You are watching this board, so the room's session tools are off. " +
+          "You can still react and follow along.",
+      );
+      return false;
+    }
+    return run(work);
+  };
+
   /*
    * Publish one reaction to the room (ADR-0039 section 7). Awareness only:
    * the newest reaction replaces this client's previous one, peers render it
@@ -537,11 +577,11 @@ export const facilitatorActions = (
        * start the clock without leaving presentation to do it.
        */
       viewMode: true,
-      predicate: enabledUnless("toggleFacilitatorTimer"),
+      predicate: driverOnly("toggleFacilitatorTimer"),
       keyTest: altChord(ALT_CODES.timer, false),
 
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           /*
            * Three cases, and the middle one is why this is a single action.
            *
@@ -574,11 +614,11 @@ export const facilitatorActions = (
        * they would be one action reachable two ways, which is what `Alt+Z` already
        * is upstream and nobody chose.
        */
-      predicate: enabledUnless("resetFacilitatorTimer"),
+      predicate: driverOnly("resetFacilitatorTimer"),
       keyTest: altChord(ALT_CODES.timer, true),
 
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           /*
            * Reset outright rather than pause-then-reset, because a paused-but-still
            * anchored clock reads 5:00 and then falls, and the falling is invisible
@@ -594,11 +634,11 @@ export const facilitatorActions = (
       keywords: ["timer", "clock", "minute", "longer", "extend", "more time"],
       trackEvent: { category: "facilitation", action: "addMinute" },
       viewMode: true,
-      predicate: enabledUnless("addMinuteToTimer"),
+      predicate: driverOnly("addMinuteToTimer"),
       keyTest: altChord(ALT_CODES.minute, false),
 
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           /*
            * No argument, and that is load-bearing. `timerControls.addMinute` takes
            * a *delta*; a `now` where a delta is expected adds sixty thousand
@@ -623,11 +663,11 @@ export const facilitatorActions = (
        * private is the mnemonic, so it takes the shifted chord and leaves `Alt+P`
        * for the reset above.
        */
-      predicate: enabledUnless("toggleBoardReveal"),
+      predicate: driverOnly("toggleBoardReveal"),
       keyTest: altChord(ALT_CODES.privateMode, true),
 
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           /*
            * `refresh` is the whole reason this command is more than a write. The
            * toggle is ephemeral, so flipping it commits nothing, `FiroDoc.subscribe`
@@ -659,11 +699,11 @@ export const facilitatorActions = (
        * is already enforced where it matters, at `BoardSync.pull`, and an element
        * that never reaches the scene cannot be edited whatever this says.
        */
-      predicate: enabledUnless("togglePresentation"),
+      predicate: driverOnly("togglePresentation"),
       keyTest: altChord(ALT_CODES.present, false),
 
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           const presentation = getPresentation(getDocument);
 
           if (presentation.active) {
@@ -697,12 +737,12 @@ export const facilitatorActions = (
       keywords: ["next", "slide", "forward", "advance", "present"],
       trackEvent: { category: "facilitation", action: "nextSlide" },
       predicate: (elements, appState, props) =>
-        enabledUnless("nextSlide")(elements, appState, props) &&
+        driverOnly("nextSlide")(elements, appState, props) &&
         getPresentation(getDocument).active,
       keyTest: altChord(ALT_CODES.nextSlide, false),
 
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           /*
            * Refuses, rather than starting a deck as a side effect of pressing the
            * arrow key. Stepping while not presenting has no meaning, and the
@@ -724,12 +764,12 @@ export const facilitatorActions = (
       keywords: ["previous", "back", "slide", "present"],
       trackEvent: { category: "facilitation", action: "previousSlide" },
       predicate: (elements, appState, props) =>
-        enabledUnless("previousSlide")(elements, appState, props) &&
+        driverOnly("previousSlide")(elements, appState, props) &&
         getPresentation(getDocument).active,
       keyTest: altChord(ALT_CODES.previousSlide, false),
 
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           if (!getPresentation(getDocument).active) {
             complain(api, "Start presenting first.");
             return;
@@ -793,11 +833,11 @@ export const facilitatorActions = (
        * which is the failure AC-8 exists to prevent.
        */
       predicate: (elements, appState, props) =>
-        enabledUnless("addVoteToSelection")(elements, appState, props) &&
+        driverOnly("addVoteToSelection")(elements, appState, props) &&
         selectedIds(elements, appState).length > 0,
 
       perform: (elements, appState): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           const targets = selectedIds(elements, appState);
           if (targets.length === 0) {
             complain(
@@ -892,11 +932,11 @@ export const facilitatorActions = (
        */
       keyTest: altChord(ALT_CODES.withdraw, false),
       predicate: (elements, appState, props) =>
-        enabledUnless("removeVoteFromSelection")(elements, appState, props) &&
+        driverOnly("removeVoteFromSelection")(elements, appState, props) &&
         selectedIds(elements, appState).length > 0,
 
       perform: (elements, appState): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           const targets = selectedIds(elements, appState);
           if (targets.length === 0) {
             complain(
@@ -1005,12 +1045,12 @@ export const facilitatorActions = (
       ],
       trackEvent: { category: "facilitation", action: "setupTimer" },
       viewMode: true,
-      predicate: enabledUnless("setupFacilitatorTimer"),
+      predicate: driverOnly("setupFacilitatorTimer"),
       // Alt+Shift+M, next to Alt+M's "add a minute": the shifted chord is the
       // heavier operation (choose the whole duration) on the same letter.
       keyTest: altChord(ALT_CODES.setup, true),
       perform: (): ActionResult =>
-        run(() => {
+        runAsDriver(() => {
           requestDialog("timerSetup");
         }),
     },

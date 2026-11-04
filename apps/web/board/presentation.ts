@@ -29,7 +29,7 @@ import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 import type { PresentationState } from "@firo/facilitation";
 import type { FiroElement } from "@firo/schema";
 
-import { announceFacilitationChange } from "./facilitator";
+import { announceFacilitationChange, canDriveSession } from "./facilitator";
 
 /**
  * The app-side seam for presentation mode.
@@ -181,6 +181,10 @@ export const startPresenting = (
   api?: ExcalidrawImperativeAPI,
   refresh?: () => void,
 ): PresentationState => {
+  if (!canDriveSession()) {
+    /* Watchers follow the deck; they never start one (ADR-0039 section 9). */
+    return getPresentation(getDocument);
+  }
   const elements = getDocument().read().elements;
   const next = startPresentation(elements);
   if (!next.active) {
@@ -216,6 +220,9 @@ export const stepPresentation = (
   refresh?: () => void,
 ): PresentationState => {
   const before = getPresentation(getDocument);
+  if (!canDriveSession()) {
+    return before;
+  }
   const next = stepSlide(before, delta);
   /*
    * Compared by *index*, not by object identity.
@@ -243,6 +250,9 @@ export const goToPresentationSlide = (
   refresh?: () => void,
 ): PresentationState => {
   const before = getPresentation(getDocument);
+  if (!canDriveSession()) {
+    return before;
+  }
   const next = goToSlide(before, index);
   if (next.index === before.index) {
     return before;

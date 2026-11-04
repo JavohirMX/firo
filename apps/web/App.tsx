@@ -197,6 +197,7 @@ import {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
+import { setSessionShareRole } from "./board/facilitator";
 import { FacilitationMenu } from "./components/FacilitationMenu";
 import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { VotingPanel } from "./components/VotingPanel";
@@ -3175,6 +3176,13 @@ const ExcalidrawWrapper = () => {
       const shareToken = shareMatch
         ? shareMatch[1]
         : getActiveBoard()?.share?.token ?? null;
+      if (!shareToken) {
+        /*
+         * No share capability in play: this client is the board's owner, and
+         * the facilitation boundary must not keep a previous session's role.
+         */
+        setSessionShareRole(null);
+      }
 
       let boardId =
         (boardDoc().read().meta?.id as string | undefined) ||
@@ -3188,6 +3196,7 @@ const ExcalidrawWrapper = () => {
         }
         if (resolved?.role && !isCancelled) {
           setShareRole(resolved.role);
+          setSessionShareRole(resolved.role);
         }
       }
 
@@ -4028,7 +4037,9 @@ const ExcalidrawWrapper = () => {
             collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
-            <FacilitationMenu />
+            <FacilitationMenu
+              readOnlyRole={isReadOnlyShare ? shareRole : null}
+            />
             <button
               type="button"
               className="firo-collab-bar__btn"

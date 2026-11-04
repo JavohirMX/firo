@@ -229,6 +229,31 @@ export const getTimer = (getDocument: () => FiroDoc): EphemeralTimer | null => {
 };
 
 /** The reveal toggle. */
+/*
+ * The share role of THIS client for the current board session, mirrored from
+ * the app's share resolution (`App.tsx` sets it where it calls `setShareRole`).
+ *
+ * ADR-0039 section 9: "Viewer and commenter see the timer, private state,
+ * slide, results, and badges; they cannot start or change a session or cast a
+ * dot." The room was never at risk without this check -- a watcher cannot
+ * publish a valid driver claim, so their `Alt+Shift+P` only painted a private
+ * chip and a timer nobody else saw. But a control that lies is a defect even
+ * when it is harmless, and the predicate boundary below is the one place the
+ * chords, the palette and the people-bar menu all pass through, so guarding
+ * here retires every entry point's mirage at once. Reactions are exempt on
+ * purpose (section 7: anyone in the room may react), and read-only surfaces
+ * (frames panel, vote tally) stay open to watchers.
+ */
+let sessionShareRole: string | null = null;
+
+export const setSessionShareRole = (role: string | null): void => {
+  sessionShareRole = role;
+};
+
+/** Whether this client may start or change a facilitation session. */
+export const canDriveSession = (): boolean =>
+  sessionShareRole !== "viewer" && sessionShareRole !== "commenter";
+
 export const getReveal = (getDocument: () => FiroDoc): RevealState => {
   sync(getDocument);
   return lastReveal;
@@ -260,6 +285,16 @@ export const timerControls = (getDocument: () => FiroDoc) => {
     change: (timer: EphemeralTimer, now: number) => EphemeralTimer,
     now: number = Date.now(),
   ): void => {
+    /*
+     * The role boundary lives here, not at the callers: the action predicate,
+     * the palette, the chords, the setup dialog's Start button and any future
+     * surface all funnel through `withTimer`, so a watcher (ADR-0039 section
+     * 9: "cannot start or change a session") gets a no-op everywhere at once
+     * instead of a fix per entry point.
+     */
+    if (!canDriveSession()) {
+      return;
+    }
     const current = document().getEphemeral().timer ?? {
       startedAt: null,
       durationMs: DEFAULT_TIMER_MS,
@@ -337,6 +372,13 @@ export const toggleRevealMode = (
   refresh?: () => void,
 ): RevealState => {
   const before = getDocument().getEphemeral().reveal;
+  if (!canDriveSession()) {
+    /*
+     * Same boundary as `withTimer`: a watcher's toggle must not paint a
+     * private chip nobody else sees. Return the state as it stands.
+     */
+    return before;
+  }
   const next = toggleReveal(before);
   getDocument().setEphemeral({ reveal: next });
   /*

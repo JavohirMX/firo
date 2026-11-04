@@ -80,13 +80,13 @@ afterEach(() => {
   vi.resetModules();
 });
 
-const renderMenu = async () => {
+const renderMenu = async (readOnlyRole?: "viewer" | "commenter" | null) => {
   const { FacilitationMenu } = await import("../components/FacilitationMenu");
-  return render(<FacilitationMenu />);
+  return render(<FacilitationMenu readOnlyRole={readOnlyRole} />);
 };
 
-const openMenu = async () => {
-  await renderMenu();
+const openMenu = async (readOnlyRole?: "viewer" | "commenter" | null) => {
+  await renderMenu(readOnlyRole);
   fireEvent.click(screen.getByTestId("facilitation-menu-trigger"));
   return screen.getByTestId("facilitation-menu");
 };
@@ -150,6 +150,27 @@ describe("facilitation menu", () => {
     expect(screen.getByTestId("facilitation-menu")).toBeTruthy();
     fireEvent.pointerDown(document.body);
     expect(screen.queryByTestId("facilitation-menu")).toBeNull();
+  });
+
+  it("offers a viewer only the reactions row (ADR-0039: watchers watch)", async () => {
+    await openMenu("viewer");
+    for (const kind of [
+      "thumbsUp",
+      "love",
+      "fire",
+      "wow",
+      "celebration",
+      "wave",
+    ]) {
+      expect(screen.getByTestId(`facilitation-reaction-${kind}`)).toBeTruthy();
+    }
+    expect(screen.queryByTestId("facilitation-item-timer")).toBeNull();
+    expect(screen.queryByTestId("facilitation-item-voting")).toBeNull();
+    expect(screen.queryByTestId("facilitation-item-private")).toBeNull();
+    expect(screen.queryByTestId("facilitation-item-present")).toBeNull();
+    // ...and a reaction still dispatches for the watcher.
+    fireEvent.click(screen.getByTestId("facilitation-reaction-wave"));
+    expect(executed).toEqual(["sendReactionWave"]);
   });
 
   it("reflects the ephemeral reveal state on the Private mode row", async () => {

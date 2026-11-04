@@ -51,6 +51,8 @@ import type {
 import type { FiroRecord } from "@firo/schema";
 import type { EphemeralState, FiroDoc } from "@firo/doc";
 
+import { canDriveSession } from "./facilitator";
+
 /** A round is live state for the claim check, as are the other three. */
 const hasLiveState = (state: EphemeralState): boolean =>
   state.timer !== null ||
@@ -169,6 +171,10 @@ export const startVotingRound = (
   settings: VotingSettings,
   now: number = Date.now(),
 ): number => {
+  if (!canDriveSession()) {
+    /* Watchers watch the round; they never open one (ADR-0039 section 9). */
+    return 0;
+  }
   const doc = getDocument();
   const live = votesFromRecords(doc.read().records);
   if (live.length > 0) {
@@ -188,6 +194,9 @@ export const startVotingRound = (
  * box. Does not archive: Start is the only round boundary (ADR-0039).
  */
 export const endVotingRound = (getDocument: () => FiroDoc): void => {
+  if (!canDriveSession()) {
+    return;
+  }
   const doc = getDocument();
   const current = doc.getEphemeral().voting;
   if (current) {
@@ -242,6 +251,10 @@ export const withdrawDots = (
   elementIds: readonly string[],
   board: string,
 ): number => {
+  if (!canDriveSession()) {
+    /* A dot is a session write; watchers hold none (ADR-0039 section 9). */
+    return 0;
+  }
   const doc = getDocument();
   const session = readSession(getDocument);
   const ballot = ballotKeyFor(
