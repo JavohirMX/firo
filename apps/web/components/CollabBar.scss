@@ -194,3 +194,60 @@
     padding: 0 12px;
   }
 }
+
+/* Wrap the existing room controls instead of clipping sharing. */
+@media (max-width: 1100px) {
+  .layer-ui__wrapper__top-right:has(.firo-collab-bar),
+  .excalidraw-ui-top-right:has(.firo-collab-bar) {
+    min-width: 0;
+  }
+
+  .firo-collab-bar {
+    min-width: 0;
+    max-width: calc(100vw - 280px);
+    height: auto;
+    min-height: 40px;
+
+    &__content {
+      min-width: 0;
+    }
+  }
+
+  .firo-collab-bar-wrapper {
+    min-width: 0;
+    flex-wrap: wrap;
+
+    > * {
+      flex-shrink: 0;
+    }
+
+    .firo-facilitator-bar {
+      order: 1;
+      flex-basis: 100%;
+      box-sizing: border-box;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .excalidraw-ui-top-right:has(.firo-collab-bar) {
+    max-width: calc(100vw - 56px);
+  }
+
+  .excalidraw-ui-top-left:has(+ .excalidraw-ui-top-right .firo-collab-bar) {
+    align-self: flex-start;
+  }
+
+  .firo-collab-bar {
+    max-width: 100%;
+  }
+}
+
+/* A wrapped room bar must not cover the dock's close control. */
+@media (max-width: 768px) {
+  .excalidraw--mobile .firo-side-panel {
+    top: max(64px, var(--firo-room-bar-bottom, 64px));
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { CollabBar as ShellCollabBar, ShareIcon } from "@firo/ui";
 import { AWARENESS_KEY } from "@firo/doc";
@@ -56,6 +56,27 @@ export const CollabBar: React.FC<CollabBarProps> = ({
   doc: propDoc,
   awareness: propAwareness,
 }) => {
+  const controlsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = controlsRef.current?.closest<HTMLElement>(".firo-collab-bar");
+    const editor = bar?.closest<HTMLElement>(".excalidraw");
+    if (!bar || !editor || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const refresh = () => {
+      const bottom =
+        bar.getBoundingClientRect().bottom - editor.getBoundingClientRect().top;
+      editor.style.setProperty("--firo-room-bar-bottom", `${bottom + 8}px`);
+    };
+    const observer = new ResizeObserver(refresh);
+    observer.observe(bar);
+    refresh();
+    return () => {
+      observer.disconnect();
+      editor.style.removeProperty("--firo-room-bar-bottom");
+    };
+  }, []);
+
   const [awarenessCollaborators, setAwarenessCollaborators] = useState<
     CollabBarCollaborator[]
   >([]);
@@ -134,7 +155,7 @@ export const CollabBar: React.FC<CollabBarProps> = ({
 
   return (
     <ShellCollabBar>
-      <div className="firo-collab-bar-wrapper">
+      <div className="firo-collab-bar-wrapper" ref={controlsRef}>
         {/* Left children slots (Activity, SaveStatus, FacilitatorBar) */}
         {children}
 

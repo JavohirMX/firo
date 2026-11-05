@@ -23,7 +23,8 @@ import {
   listFrames,
   renameFrame,
 } from "../board/frames";
-import { focusFrame } from "../board/presentation";
+import { focusFrame, getPresentation } from "../board/presentation";
+import { canDriveSession, subscribeToFacilitation } from "../board/facilitator";
 
 import "./FramesPanel.scss";
 
@@ -31,16 +32,35 @@ export const FramesPanel = ({
   isOpen,
   onClose,
   excalidrawAPI,
+  readOnlyRole = null,
 }: {
   isOpen: boolean;
   onClose: () => void;
   excalidrawAPI: ExcalidrawImperativeAPI | null;
+  readOnlyRole?: string | null;
 }) => {
   // Bumped after every mutation so the memo re-reads the document; the
   // document itself does not announce element edits to React.
   const [revision, setRevision] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
+  const mayEdit = readOnlyRole !== "viewer" && readOnlyRole !== "commenter";
+  useEffect(() => {
+    if (!mayEdit) {
+      setEditingId(null);
+    }
+  }, [mayEdit]);
+  const [presentation, setPresentation] = useState(() =>
+    getPresentation(boardDoc),
+  );
+  useEffect(() => {
+    const refresh = () => setPresentation(getPresentation(boardDoc));
+    refresh();
+    return subscribeToFacilitation(boardDoc, refresh);
+  }, []);
+  const activeFrameId = presentation.active
+    ? presentation.slideIds[presentation.index]
+    : undefined;
 
   // The document absorbs scene changes asynchronously (a delete committed
   // through updateScene is not in `read()` on the same tick), so a manual
@@ -60,6 +80,9 @@ export const FramesPanel = ({
   }
 
   const applyElements = (elements: ReturnType<typeof deleteFrame>) => {
+    if (!mayEdit || !canDriveSession()) {
+      return;
+    }
     excalidrawAPI?.updateScene({
       // The document holds schema FiroElements; the scene takes the editor's
       // ExcalidrawElement. Same bridge cast the template-insert path in
@@ -71,6 +94,10 @@ export const FramesPanel = ({
   };
 
   const commitRename = (id: string) => {
+    if (!mayEdit || !canDriveSession()) {
+      setEditingId(null);
+      return;
+    }
     const name = draftName.trim();
     applyElements(renameFrame(boardDoc().read().elements, id, name || null));
     setEditingId(null);
@@ -88,7 +115,7 @@ export const FramesPanel = ({
         <ol className="frames-panel__list">
           {rows.map((row) => (
             <li key={row.id} className="frames-panel__row">
-              {editingId === row.id ? (
+              {mayEdit && editingId === row.id ? (
                 <input
                   className="frames-panel__rename"
                   aria-label="Frame name"
@@ -109,35 +136,51 @@ export const FramesPanel = ({
                   type="button"
                   className="frames-panel__jump"
                   title="Jump to frame"
+                  aria-current={row.id === activeFrameId ? "step" : undefined}
                   onClick={() =>
                     excalidrawAPI && focusFrame(excalidrawAPI, boardDoc, row.id)
                   }
                 >
                   <span className="frames-panel__position">{row.position}</span>
                   {frameLabel(row)}
+                  {row.id === activeFrameId && (
+                    <span className="frames-panel__current">Presenting</span>
+                  )}
                 </button>
               )}
-              <button
-                type="button"
-                className="frames-panel__action"
-                aria-label={`Rename ${frameLabel(row)}`}
-                onClick={() => {
-                  setEditingId(row.id);
-                  setDraftName(row.name ?? "");
-                }}
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                className="frames-panel__action"
-                aria-label={`Delete ${frameLabel(row)}`}
-                onClick={() =>
-                  applyElements(deleteFrame(boardDoc().read().elements, row.id))
-                }
-              >
-                🗑
-              </button>
+              {mayEdit && (
+                <button
+                  type="button"
+                  className="frames-panel__action"
+                  aria-label={`Rename ${frameLabel(row)}`}
+                  onClick={() => {
+                    if (!canDriveSession()) {
+                      return;
+                    }
+                    setEditingId(row.id);
+                    setDraftName(row.name ?? "");
+                  }}
+                >
+                  ✎
+                </button>
+              )}
+              {mayEdit && (
+                <button
+                  type="button"
+                  className="frames-panel__action"
+                  aria-label={`Delete ${frameLabel(row)}`}
+                  onClick={() => {
+                    if (!canDriveSession()) {
+                      return;
+                    }
+                    applyElements(
+                      deleteFrame(boardDoc().read().elements, row.id),
+                    );
+                  }}
+                >
+                  🗑
+                </button>
+              )}
             </li>
           ))}
         </ol>

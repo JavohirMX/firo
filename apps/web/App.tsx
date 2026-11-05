@@ -146,7 +146,6 @@ import {
   createDefaultDocBlockNode,
   DOC_BLOCK_COLLECTION_ID,
 } from "@firo/records";
-import { VOTE_COLLECTION_ID } from "@firo/facilitation";
 import {
   createDocBlockCollection,
   isDocBlockRecord,
@@ -277,6 +276,7 @@ import {
   facilitatorHelpRows,
 } from "./board/facilitatorActions";
 import { setElementVisibility } from "./board/visibility";
+import { hasBoardContent } from "./board/hasBoardContent";
 import { recordCommandPaletteItems } from "./board/recordActions";
 import { getActiveBoard, renameBoard, setActiveBoard } from "./board/library";
 import {
@@ -2114,6 +2114,17 @@ const ExcalidrawWrapper = () => {
   const excalidrawAPI = useExcalidrawAPI();
 
   const [errorMessage, setErrorMessage] = useState("");
+  const [suppressWelcomeScreen, setSuppressWelcomeScreen] = useState(() =>
+    hasBoardContent(boardDoc().read()),
+  );
+  useEffect(() => {
+    // Reveal and presentation filter the canvas, not the board's contents.
+    // Durable content changes still restore the hint when the board is empty.
+    const refresh = () =>
+      setSuppressWelcomeScreen(hasBoardContent(boardDoc().read()));
+    refresh();
+    return boardDoc().subscribe(refresh);
+  }, []);
 
   /*
    * Which element a comment is being written about.
@@ -3973,12 +3984,7 @@ const ExcalidrawWrapper = () => {
     >
       <Excalidraw
         defaultChromeEnabled={false}
-        suppressWelcomeScreen={boardDoc()
-          .read()
-          .collections.some(
-            (c) =>
-              c.id !== VOTE_COLLECTION_ID && c.id !== DOC_BLOCK_COLLECTION_ID,
-          )}
+        suppressWelcomeScreen={suppressWelcomeScreen}
         onSetElementVisibility={
           isReadOnlyShare
             ? undefined
@@ -4411,6 +4417,7 @@ const ExcalidrawWrapper = () => {
           excalidrawAPI={excalidrawAPI}
         />
         <FramesPanel
+          readOnlyRole={isReadOnlyShare ? shareRole : null}
           isOpen={framesPanelOpen}
           onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}

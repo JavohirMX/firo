@@ -59,12 +59,23 @@
     background: none;
     padding: 0.5rem;
     text-align: left;
+    color: inherit;
     cursor: pointer;
     border-radius: 0.375rem;
 
     &:hover {
       background: var(--button-hover-bg, #f1f1f1);
     }
+  }
+
+  &__jump[aria-current="step"] {
+    background: var(--button-hover-bg, #f1f1f1);
+    box-shadow: inset 3px 0 var(--color-primary, #6965db);
+  }
+
+  &__current {
+    margin-left: auto;
+    font-size: 0.75rem;
   }
 
   &__position {
