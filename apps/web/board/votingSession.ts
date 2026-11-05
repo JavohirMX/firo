@@ -179,6 +179,26 @@ export const endVotingRound = (getDocument: () => FiroDoc): void => {
   }
 };
 
+/** The driver may change only result visibility while a round runs. */
+export const setVotingResultsVisible = (
+  getDocument: () => FiroDoc,
+  showResults: boolean,
+): boolean => {
+  if (!canDriveSession()) {
+    return false;
+  }
+  const session = readSession(getDocument);
+  if (!session.isDriver || !session.round) {
+    return false;
+  }
+  return writeSession(getDocument, {
+    voting: {
+      ...session.round,
+      settings: { ...session.round.settings, showResults },
+    },
+  });
+};
+
 /* -------------------------------------------------------------------------- */
 /* Casting dots                                                               */
 /* -------------------------------------------------------------------------- */

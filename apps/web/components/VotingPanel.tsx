@@ -50,8 +50,6 @@ import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 
 import { canDriveSession } from "../board/facilitator";
 
-import { writeSession } from "../board/sharedSession";
-
 import { boardDoc } from "../board/board";
 import { getReveal, subscribeToFacilitation } from "../board/facilitator";
 import {
@@ -59,6 +57,7 @@ import {
   endVotingRound,
   readSession,
   startVotingRound,
+  setVotingResultsVisible,
 } from "../board/votingSession";
 
 import "./VotingPanel.scss";
@@ -67,6 +66,7 @@ export interface VotingPanelProps {
   isOpen: boolean;
   onClose: () => void;
   excalidrawAPI: ExcalidrawImperativeAPI | null;
+  readOnlyRole?: string | null;
 }
 
 type Tab = "new" | "results";
@@ -121,6 +121,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
   isOpen,
   onClose,
   excalidrawAPI,
+  readOnlyRole = null,
 }) => {
   const [tab, setTab] = useState<Tab>("new");
   const [draft, setDraft] = useState<VotingSettings>(DEFAULT_VOTING_SETTINGS);
@@ -191,8 +192,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     return null;
   }
 
+  const mayVote =
+    readOnlyRole !== "viewer" &&
+    readOnlyRole !== "commenter" &&
+    canDriveSession();
   const canEditSettings =
-    canDriveSession() &&
+    mayVote &&
     (session.driver === null || (session.isDriver && round === null));
 
   const step = (field: "votesPerPerson" | "minutes", delta: number) => {
@@ -314,7 +319,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
               </div>
             )}
 
-            {round && open && (
+            {round && open && mayVote && (
               /*
                * Cast and withdraw as buttons, not only Alt+D/Alt+W: on a phone
                * there is no Alt key, so the keyboard chords alone made voting
@@ -430,18 +435,13 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                   }
                   // The one live switch: a display choice cannot invalidate a
                   // vote, so the driver may flip it mid-round (ADR-0039 §2).
-                  disabled={round !== null && !session.isDriver}
+                  disabled={!mayVote || (round !== null && !session.isDriver)}
                   onChange={(event) => {
-                    if (round && session.isDriver) {
-                      writeSession(boardDoc, {
-                        voting: {
-                          ...round,
-                          settings: {
-                            ...round.settings,
-                            showResults: event.target.checked,
-                          },
-                        },
-                      });
+                    if (!canDriveSession() || !mayVote) {
+                      return;
+                    }
+                    if (round) {
+                      setVotingResultsVisible(boardDoc, event.target.checked);
                       bump();
                     } else {
                       setDraft((current) => ({
@@ -481,13 +481,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
             {session.driver !== null && !session.isDriver && (
               <p className="voting-panel__note">
-                Another facilitator is driving this session. You can cast dots;
-                only they can change it.
+                {mayVote
+                  ? "Another facilitator is driving this session. You can cast dots; only they can change it."
+                  : "Another facilitator is driving this session. You can follow the round and read the results."}
               </p>
             )}
 
             <div className="voting-panel__footer">
-              {round && session.isDriver && (
+              {round && session.isDriver && mayVote && (
                 <button
                   type="button"
                   className="voting-panel__end"
@@ -499,7 +500,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                   End session
                 </button>
               )}
-              {canDriveSession() &&
+              {mayVote &&
                 (session.driver === null ||
                   (session.isDriver && round === null)) && (
                   <button
@@ -522,8 +523,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           <div className="voting-panel__body">
             {rows.length === 0 ? (
               <p className="voting-panel__note">
-                No dots yet. Select a note and press Alt+D to place the first
-                one.
+                {mayVote
+                  ? "No dots yet. Select a note and press Alt+D to place the first one."
+                  : "No dots yet. Results will appear here when participants vote."}
               </p>
             ) : (
               <ul className="voting-panel__results">

@@ -4413,6 +4413,7 @@ const ExcalidrawWrapper = () => {
           }}
         />
         <VotingPanel
+          readOnlyRole={isReadOnlyShare ? shareRole : null}
           isOpen={votingPanelOpen}
           onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}
