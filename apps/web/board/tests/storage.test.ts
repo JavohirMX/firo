@@ -12,6 +12,8 @@ import { createFiroDoc } from "@firo/doc";
 
 import { createStickyNote } from "@firo/board/defaults";
 
+import { setSessionShareRole } from "../facilitator";
+
 import {
   boardStore,
   clearSavedBoard,
@@ -636,6 +638,49 @@ describe("rolling revision history", () => {
     expect(elementsAfterRestore.map((e) => e.id)).toEqual(["note-1", "note-2"]);
     expect(elementsAfterRestore[0].text).toBe("first note");
     expect(elementsAfterRestore[1].text).toBe("second note");
+  });
+
+  it.each(["viewer", "commenter"])(
+    "refuses revision restore without changing document or payload for %s",
+    async (role) => {
+      const doc = board();
+      seed(doc, 1);
+      const rev = await saveBoardRevision(doc);
+      seed(doc, 2);
+      await saveBoard(doc);
+      const before = doc.read();
+      const payload = await stored();
+      setSessionShareRole(role);
+      try {
+        expect(await restoreBoardRevision(doc, rev!.id)).toEqual({
+          status: "failed",
+          detail: "This board is read-only",
+        });
+        expect(doc.read()).toEqual(before);
+        expect(await stored()).toEqual(payload);
+      } finally {
+        setSessionShareRole(null);
+      }
+    },
+  );
+
+  it("rechecks the role after awaiting revision storage", async () => {
+    const doc = board();
+    seed(doc, 1);
+    const rev = await saveBoardRevision(doc);
+    seed(doc, 2);
+    const before = doc.read();
+    const restoring = restoreBoardRevision(doc, rev!.id);
+    setSessionShareRole("viewer");
+    try {
+      expect(await restoring).toEqual({
+        status: "failed",
+        detail: "This board is read-only",
+      });
+      expect(doc.read()).toEqual(before);
+    } finally {
+      setSessionShareRole(null);
+    }
   });
 
   it("reports failure when attempting to restore a nonexistent revision", async () => {

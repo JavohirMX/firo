@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { RestoreIcon, DownloadIcon, ClockIcon, PlusIcon } from "@firo/ui";
 
 import type { FiroDoc } from "@firo/doc";
@@ -14,6 +14,8 @@ import {
 } from "../board/storage";
 import { boardDoc, refreshBoard } from "../board/board";
 
+import { canDriveSession } from "../board/facilitator";
+
 import "./VersionsPanel.scss";
 
 export interface VersionsPanelProps {
@@ -21,6 +23,7 @@ export interface VersionsPanelProps {
   doc?: FiroDoc;
   collabStatus?: string | null;
   onRestore?: () => void;
+  readOnlyRole?: string | null;
 }
 
 export const formatBytes = (bytes?: number): string => {
@@ -77,6 +80,7 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
   doc,
   collabStatus,
   onRestore,
+  readOnlyRole = null,
 }) => {
   const [revisions, setRevisions] = useState<BoardRevision[]>([]);
   const [isPersisted, setIsPersisted] = useState(false);
@@ -92,6 +96,11 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
     message: string;
     type: "success" | "error";
   } | null>(null);
+
+  const mayRestore = readOnlyRole !== "viewer" && readOnlyRole !== "commenter";
+  const mayRestoreRef = useRef(mayRestore);
+  mayRestoreRef.current = mayRestore;
+  const canRestore = () => mayRestoreRef.current && canDriveSession();
 
   const targetBoardId = boardId ?? getActiveBoardId();
 
@@ -119,12 +128,18 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
   }, [loadData]);
 
   const handleRestore = async (rev: BoardRevision) => {
+    if (!canRestore()) {
+      return;
+    }
     try {
       setRestoringId(rev.id);
       const targetDoc = doc ?? boardDoc();
       // Reversible restore (ADR-0035 section 3): park the current state as
       // a labelled revision first, so restoring never destroys work.
       await saveBoardRevision(targetDoc, targetBoardId, "Before restore");
+      if (!canRestore()) {
+        return;
+      }
       const res = await restoreBoardRevision(targetDoc, rev.id, targetBoardId);
       if (res.status === "restored") {
         refreshBoard();
@@ -348,19 +363,21 @@ export const VersionsPanel: React.FC<VersionsPanelProps> = ({
                 </div>
 
                 <div className="firo-version-history__item-actions">
-                  <button
-                    type="button"
-                    className="firo-version-history__action-btn firo-version-history__action-btn--restore"
-                    onClick={() => handleRestore(rev)}
-                    disabled={restoringId === rev.id}
-                  >
-                    <RestoreIcon size={14} />
-                    <span>
-                      {restoringId === rev.id
-                        ? "Restoring..."
-                        : "Restore this version"}
-                    </span>
-                  </button>
+                  {mayRestore && (
+                    <button
+                      type="button"
+                      className="firo-version-history__action-btn firo-version-history__action-btn--restore"
+                      onClick={() => handleRestore(rev)}
+                      disabled={restoringId === rev.id}
+                    >
+                      <RestoreIcon size={14} />
+                      <span>
+                        {restoringId === rev.id
+                          ? "Restoring..."
+                          : "Restore this version"}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="firo-version-history__action-btn firo-version-history__action-btn--download"

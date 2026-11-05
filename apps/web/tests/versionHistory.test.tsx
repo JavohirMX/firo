@@ -10,6 +10,8 @@ import {
 } from "@testing-library/react";
 import { createFiroDoc } from "@firo/doc";
 
+import { setSessionShareRole } from "../board/facilitator";
+
 import { SaveStatusIndicator } from "../components/SaveStatusIndicator";
 import {
   VersionsPanel,
@@ -143,6 +145,8 @@ describe("VersionsPanel (ADR-0035 section 3)", () => {
   ];
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+    setSessionShareRole(null);
     vi.spyOn(storageModule, "getBoardRevisions").mockResolvedValue(
       sampleRevisions,
     );
@@ -241,6 +245,58 @@ describe("VersionsPanel (ADR-0035 section 3)", () => {
 
     expect(screen.getByText(/Successfully restored version/)).not.toBeNull();
   });
+
+  it.each(["viewer", "commenter"])(
+    "keeps history, local snapshots and download but not restore for %s",
+    async (role) => {
+      render(<VersionsPanel boardId="test-board" readOnlyRole={role} />);
+      await screen.findByTestId("revision-item-rev-1");
+      expect(screen.queryByText("Restore this version")).toBeNull();
+      expect(screen.getAllByText("Download snapshot")).toHaveLength(2);
+      expect(screen.getByText("Create snapshot")).not.toBeNull();
+    },
+  );
+
+  it("refuses a retained restore control after a live role downgrade", async () => {
+    const save = vi.spyOn(storageModule, "saveBoardRevision");
+    const restore = vi.spyOn(storageModule, "restoreBoardRevision");
+    render(<VersionsPanel boardId="test-board" />);
+    await screen.findByTestId("revision-item-rev-1");
+    setSessionShareRole("viewer");
+    fireEvent.click(screen.getAllByText("Restore this version")[0]);
+    expect(save).not.toHaveBeenCalled();
+    expect(restore).not.toHaveBeenCalled();
+    setSessionShareRole(null);
+  });
+
+  it.each(["live role", "role prop"])(
+    "refuses restore when %s changes during the safety snapshot",
+    async (change) => {
+      let finish!: (value: null) => void;
+      vi.spyOn(storageModule, "saveBoardRevision").mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const restore = vi.spyOn(storageModule, "restoreBoardRevision");
+      const view = render(<VersionsPanel boardId="test-board" />);
+      await screen.findByTestId("revision-item-rev-1");
+      fireEvent.click(screen.getAllByText("Restore this version")[0]);
+      if (change === "live role") {
+        setSessionShareRole("commenter");
+      } else {
+        view.rerender(
+          <VersionsPanel boardId="test-board" readOnlyRole="viewer" />,
+        );
+      }
+      await act(async () => {
+        finish(null);
+      });
+      expect(restore).not.toHaveBeenCalled();
+      setSessionShareRole(null);
+    },
+  );
 
   it("handles downloading snapshot file", async () => {
     const createObjectURLMock = vi.fn().mockReturnValue("blob:fake-url");

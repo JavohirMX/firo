@@ -4459,6 +4459,7 @@ const ExcalidrawWrapper = () => {
           onScopeChange={setActivityScope}
           versionsContent={
             <VersionsPanel
+              readOnlyRole={isReadOnlyShare ? shareRole : null}
               boardId={
                 (boardDoc().read().meta?.id as string | undefined) ||
                 getActiveBoard()?.id ||
