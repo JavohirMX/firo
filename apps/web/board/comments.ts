@@ -33,6 +33,7 @@ import type { FiroDoc } from "@firo/doc";
 import type { CommentAnchor, CommentEntry, CommentThread } from "@firo/schema";
 
 import { recordActivity } from "./activity";
+import { canComment } from "./facilitator";
 
 /**
  * Who a comment is attributed to.
@@ -100,6 +101,9 @@ export const createCommentThread = (
   body: string,
   options: { anchor?: CommentAnchor; elementWidth?: number } = {},
 ): string | null => {
+  if (!canComment()) {
+    return null;
+  }
   const text = body.trim();
   if (!text) {
     return null;
@@ -148,6 +152,9 @@ export const replyToCommentThread = (
   threadId: string,
   body: string,
 ): boolean => {
+  if (!canComment()) {
+    return false;
+  }
   const text = body.trim();
   const thread = doc.comment(threadId);
   if (!thread || !text) {
@@ -172,6 +179,9 @@ export const resolveCommentThread = (
   doc: FiroDoc,
   threadId: string,
 ): boolean => {
+  if (!canComment()) {
+    return false;
+  }
   if (!doc.comment(threadId)) {
     return false;
   }
@@ -192,6 +202,9 @@ export const reopenCommentThread = (
   doc: FiroDoc,
   threadId: string,
 ): boolean => {
+  if (!canComment()) {
+    return false;
+  }
   if (!doc.comment(threadId)) {
     return false;
   }
@@ -215,6 +228,9 @@ export const reanchorCommentThread = (
   threadId: string,
   anchor: CommentAnchor,
 ): boolean => {
+  if (!canComment()) {
+    return false;
+  }
   if (!doc.comment(threadId)) {
     return false;
   }
@@ -235,6 +251,9 @@ export const deleteCommentThread = (
   doc: FiroDoc,
   threadId: string,
 ): boolean => {
+  if (!canComment()) {
+    return false;
+  }
   if (!doc.comment(threadId)) {
     return false;
   }

@@ -22,6 +22,8 @@ import {
   threadsOf,
 } from "../board/comments";
 
+import { canComment } from "../board/facilitator";
+
 import "./CommentLayer.scss";
 
 export type CommentTarget =
@@ -36,6 +38,7 @@ interface CommentLayerProps {
    */
   composerTarget: CommentTarget | null;
   onCloseComposer: () => void;
+  readOnlyRole?: string | null;
 }
 
 /** The canvas position a thread's pin should sit at, or null if its element is gone. */
@@ -211,7 +214,9 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
   excalidrawAPI,
   composerTarget,
   onCloseComposer,
+  readOnlyRole = null,
 }) => {
+  const mayComment = readOnlyRole !== "viewer";
   const [, setDocRevision] = useState(0);
   const [, setViewportRevision] = useState(0);
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
@@ -307,7 +312,7 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
     : null;
 
   const submitComposer = () => {
-    if (!composerTarget) {
+    if (!mayComment || !canComment() || !composerTarget) {
       return;
     }
     let id: string | null = null;
@@ -372,7 +377,7 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
         );
       })}
 
-      {composerTarget && composerPosition && (
+      {mayComment && composerTarget && composerPosition && (
         <AvoidingPopover
           anchorLeft={composerPosition.left}
           anchorTop={composerPosition.top}
@@ -415,6 +420,7 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
 
       {openThreadId && (
         <ThreadPopover
+          mayComment={mayComment}
           threadId={openThreadId}
           elements={elements}
           viewport={viewport}
@@ -426,6 +432,7 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
 };
 
 interface ThreadPopoverProps {
+  mayComment: boolean;
   threadId: string;
   elements: readonly FiroElement[];
   viewport: { scrollX: number; scrollY: number; zoom: number };
@@ -433,6 +440,7 @@ interface ThreadPopoverProps {
 }
 
 const ThreadPopover: React.FC<ThreadPopoverProps> = ({
+  mayComment,
   threadId,
   elements,
   viewport,
@@ -505,57 +513,61 @@ const ThreadPopover: React.FC<ThreadPopoverProps> = ({
         ))}
       </ul>
 
-      <textarea
-        ref={replyRef}
-        className="firo-comment-popover__input"
-        placeholder="Reply…"
-        value={reply}
-        onChange={(event) => setReply(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault();
-            send();
-          }
-        }}
-        data-testid="comment-reply-input"
-        aria-label="Reply"
-      />
+      {mayComment && (
+        <>
+          <textarea
+            ref={replyRef}
+            className="firo-comment-popover__input"
+            placeholder="Reply…"
+            value={reply}
+            onChange={(event) => setReply(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                send();
+              }
+            }}
+            data-testid="comment-reply-input"
+            aria-label="Reply"
+          />
 
-      <div className="firo-comment-thread__actions">
-        <button
-          type="button"
-          className="firo-comment-thread__action"
-          disabled={!reply.trim()}
-          onClick={send}
-          data-testid="comment-reply-send"
-        >
-          Reply
-        </button>
-        <button
-          type="button"
-          className="firo-comment-thread__action"
-          onClick={() =>
-            thread.resolved
-              ? reopenCommentThread(doc, threadId)
-              : resolveCommentThread(doc, threadId)
-          }
-          data-testid="comment-resolve-toggle"
-        >
-          {thread.resolved ? "Reopen" : "Resolve"}
-        </button>
-        <button
-          type="button"
-          className="firo-comment-thread__action is-danger"
-          aria-label="Delete thread"
-          onClick={() => {
-            deleteCommentThread(doc, threadId);
-            onClose();
-          }}
-          data-testid="comment-delete"
-        >
-          <TrashIcon size={16} />
-        </button>
-      </div>
+          <div className="firo-comment-thread__actions">
+            <button
+              type="button"
+              className="firo-comment-thread__action"
+              disabled={!reply.trim()}
+              onClick={send}
+              data-testid="comment-reply-send"
+            >
+              Reply
+            </button>
+            <button
+              type="button"
+              className="firo-comment-thread__action"
+              onClick={() =>
+                thread.resolved
+                  ? reopenCommentThread(doc, threadId)
+                  : resolveCommentThread(doc, threadId)
+              }
+              data-testid="comment-resolve-toggle"
+            >
+              {thread.resolved ? "Reopen" : "Resolve"}
+            </button>
+            <button
+              type="button"
+              className="firo-comment-thread__action is-danger"
+              aria-label="Delete thread"
+              onClick={() => {
+                deleteCommentThread(doc, threadId);
+                onClose();
+              }}
+              data-testid="comment-delete"
+            >
+              <TrashIcon size={16} />
+            </button>
+          </div>
+        </>
+      )}
     </AvoidingPopover>
   );
 };

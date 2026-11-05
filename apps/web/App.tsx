@@ -4294,6 +4294,7 @@ const ExcalidrawWrapper = () => {
           }}
         />
         <CommentLayer
+          readOnlyRole={isReadOnlyShare ? shareRole : null}
           excalidrawAPI={excalidrawAPI}
           composerTarget={commentTarget}
           onCloseComposer={() => setCommentTarget(null)}
