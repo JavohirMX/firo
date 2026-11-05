@@ -4417,6 +4417,7 @@ const ExcalidrawWrapper = () => {
           excalidrawAPI={excalidrawAPI}
         />
         <FramesPanel
+          readOnlyRole={isReadOnlyShare ? shareRole : null}
           isOpen={framesPanelOpen}
           onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}

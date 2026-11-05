@@ -28,6 +28,7 @@ vi.mock("../board/presentation", () => ({
   focusFrame: vi.fn(),
 }));
 vi.mock("../board/facilitator", () => ({
+  canDriveSession: () => true,
   subscribeToFacilitation: (_: unknown, refresh: () => void) => {
     state.refresh = refresh;
     return state.unsubscribe;
