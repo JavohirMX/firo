@@ -51,6 +51,8 @@ import type {
 import type { RevealState, Vote } from "@firo/facilitation";
 import type { FiroRecord } from "@firo/schema";
 
+import { getSession, mayChangeSession, writeSession } from "./sharedSession";
+
 /** The duration a timer starts at when the facilitator has not chosen one. */
 const DEFAULT_TIMER_MS = 5 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -146,7 +148,7 @@ const notify = (): void => {
  * @returns whether anything changed
  */
 const sync = (getDocument: () => FiroDoc): boolean => {
-  const ephemeral = getDocument().getEphemeral();
+  const ephemeral = getSession(getDocument).state;
 
   if (!primed) {
     primed = true;
@@ -217,8 +219,26 @@ export const subscribeToFacilitation = (
   listener: FacilitatorListener,
 ): (() => void) => {
   listeners.add(listener);
+  const doc = getDocument();
+  let signature = JSON.stringify(getSession(getDocument));
+  const onAwareness = (change: {
+    added: number[];
+    updated: number[];
+    removed: number[];
+  }) => {
+    const remote = [...change.added, ...change.updated, ...change.removed].some(
+      (id) => id !== doc.awareness.clientID,
+    );
+    const next = JSON.stringify(getSession(getDocument));
+    if (remote && next !== signature) {
+      listener();
+    }
+    signature = next;
+  };
+  doc.awareness.on("change", onAwareness);
   return () => {
     listeners.delete(listener);
+    doc.awareness.off("change", onAwareness);
   };
 };
 
@@ -229,6 +249,31 @@ export const getTimer = (getDocument: () => FiroDoc): EphemeralTimer | null => {
 };
 
 /** The reveal toggle. */
+/*
+ * The share role of THIS client for the current board session, mirrored from
+ * the app's share resolution (`App.tsx` sets it where it calls `setShareRole`).
+ *
+ * ADR-0039 section 9: "Viewer and commenter see the timer, private state,
+ * slide, results, and badges; they cannot start or change a session or cast a
+ * dot." The room was never at risk without this check -- a watcher cannot
+ * publish a valid driver claim, so their `Alt+Shift+P` only painted a private
+ * chip and a timer nobody else saw. But a control that lies is a defect even
+ * when it is harmless, and the predicate boundary below is the one place the
+ * chords, the palette and the people-bar menu all pass through, so guarding
+ * here retires every entry point's mirage at once. Reactions are exempt on
+ * purpose (section 7: anyone in the room may react), and read-only surfaces
+ * (frames panel, vote tally) stay open to watchers.
+ */
+let sessionShareRole: string | null = null;
+
+export const setSessionShareRole = (role: string | null): void => {
+  sessionShareRole = role;
+};
+
+/** Whether this client may start or change a facilitation session. */
+export const canDriveSession = (): boolean =>
+  sessionShareRole !== "viewer" && sessionShareRole !== "commenter";
+
 export const getReveal = (getDocument: () => FiroDoc): RevealState => {
   sync(getDocument);
   return lastReveal;
@@ -260,6 +305,16 @@ export const timerControls = (getDocument: () => FiroDoc) => {
     change: (timer: EphemeralTimer, now: number) => EphemeralTimer,
     now: number = Date.now(),
   ): void => {
+    /*
+     * The role boundary lives here, not at the callers: the action predicate,
+     * the palette, the chords, the setup dialog's Start button and any future
+     * surface all funnel through `withTimer`, so a watcher (ADR-0039 section
+     * 9: "cannot start or change a session") gets a no-op everywhere at once
+     * instead of a fix per entry point.
+     */
+    if (!canDriveSession() || !mayChangeSession(getDocument)) {
+      return;
+    }
     const current = document().getEphemeral().timer ?? {
       startedAt: null,
       durationMs: DEFAULT_TIMER_MS,
@@ -283,7 +338,7 @@ export const timerControls = (getDocument: () => FiroDoc) => {
     if (sameTimer(before, next)) {
       return;
     }
-    document().setEphemeral({ timer: next });
+    writeSession(document, { timer: next });
     sync(document);
     notify();
   };
@@ -336,9 +391,16 @@ export const toggleRevealMode = (
   getDocument: () => FiroDoc,
   refresh?: () => void,
 ): RevealState => {
-  const before = getDocument().getEphemeral().reveal;
+  const before = getSession(getDocument).state.reveal;
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
+    /*
+     * Same boundary as `withTimer`: a watcher's toggle must not paint a
+     * private chip nobody else sees. Return the state as it stands.
+     */
+    return before;
+  }
   const next = toggleReveal(before);
-  getDocument().setEphemeral({ reveal: next });
+  writeSession(getDocument, { reveal: next });
   /*
    * Compared against the value read immediately above rather than through the
    * module cache, for the reason `withTimer` gives: a cache with a priming flag

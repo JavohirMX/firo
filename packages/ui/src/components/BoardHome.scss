@@ -1856,3 +1856,11 @@
     flex-wrap: wrap;
   }
 }
+
+.firo-board-card__share {
+  color: var(--firo-color-accent, #6965db);
+}
+
+.firo-board-card__share--unavailable {
+  color: var(--firo-color-danger, #e03131);
+}

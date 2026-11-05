@@ -494,6 +494,12 @@ export const DEFAULT_UI_OPTIONS: AppProps["UIOptions"] = {
     previousSlide: true,
     setupFacilitatorTimer: true,
     bulkCreateStickyNotes: true,
+    sendReactionThumbsUp: true,
+    sendReactionLove: true,
+    sendReactionFire: true,
+    sendReactionWow: true,
+    sendReactionCelebration: true,
+    sendReactionWave: true,
   },
   tools: {
     image: true,

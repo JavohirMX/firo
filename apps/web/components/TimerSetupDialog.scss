@@ -2,19 +2,6 @@
  * Timer setup dialog — @firo/ui token conventions (same as TemplateModal).
  */
 
-.firo-timer-setup__overlay {
-  position: fixed;
-  inset: 0;
-  background-color: var(--firo-color-scrim, rgba(0, 0, 0, 0.45));
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--firo-space-md, 16px);
-  animation: firo-fade-in var(--firo-motion-fast, 150ms) ease-out;
-}
-
 .firo-timer-setup {
   background: var(--firo-color-panel, #ffffff);
   border: 1px solid var(--firo-color-border, #e5e7eb);
@@ -24,12 +11,16 @@
     0 10px 25px -5px rgba(0, 0, 0, 0.1),
     0 8px 10px -6px rgba(0, 0, 0, 0.1)
   );
-  width: 100%;
-  max-width: 340px;
+  position: fixed;
+  z-index: 120;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--firo-space-md, 16px);
-  padding: var(--firo-space-lg, 24px);
+  padding: var(--firo-space-md, 16px);
   font-family: var(--firo-font-ui, system-ui, sans-serif);
   color: var(--firo-color-text, #111827);
   box-sizing: border-box;
@@ -130,4 +121,28 @@
       background: var(--firo-color-accent-hover, #1d4ed8);
     }
   }
+}
+
+.firo-timer-setup__header,
+.firo-timer-setup__running {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.firo-timer-setup__close,
+.firo-timer-setup__running button {
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 1px solid var(--firo-color-border, #e5e7eb);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--firo-color-panel, #fff);
+  cursor: pointer;
+}
+.firo-timer-setup__running {
+  flex-wrap: wrap;
+}
+.firo-timer-setup__running output {
+  font-variant-numeric: tabular-nums;
 }

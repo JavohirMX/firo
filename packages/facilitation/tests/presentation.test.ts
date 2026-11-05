@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  framesInReadingOrder,
+  reconcilePresentation,
   currentSlideId,
   DEFAULT_PRESENTATION,
   endPresentation,
@@ -64,7 +66,7 @@ describe("presentation mode", () => {
       expect(hasSlides(DEFAULT_PRESENTATION)).toBe(false);
     });
 
-    it("takes its slides from the frames, in document order", () => {
+    it("retains document order only for coordinate ties", () => {
       expect(slidesFor(board())).toEqual(["frame-1", "frame-2", "frame-3"]);
     });
 
@@ -355,5 +357,29 @@ describe("presentation mode", () => {
         }
       }
     });
+  });
+});
+
+describe("reading order", () => {
+  it("sorts by y then x, skips deleted frames and keeps ties stable without mutating input", () => {
+    const frames = [
+      el({ id: "bottom", type: "frame", x: 0, y: 200 }),
+      el({ id: "right", type: "frame", x: 200, y: 0 }),
+      el({ id: "left", type: "frame", x: 0, y: 0 }),
+      el({ id: "tie", type: "frame", x: 0, y: 0 }),
+      el({ id: "gone", type: "frame", x: -100, y: -100, isDeleted: true }),
+    ];
+    expect(slidesFor(frames)).toEqual(["left", "tie", "right", "bottom"]);
+    expect(frames[0].id).toBe("bottom");
+    expect(framesInReadingOrder(frames).map((f) => f.id)).toEqual(
+      slidesFor(frames),
+    );
+  });
+  it("ends the deck if its final frame is deleted", () => {
+    const state = startPresentation([el({ id: "frame", type: "frame" })]);
+    expect(reconcilePresentation(state, [])).toBe(DEFAULT_PRESENTATION);
+    expect(reconcilePresentation(DEFAULT_PRESENTATION, board())).toBe(
+      DEFAULT_PRESENTATION,
+    );
   });
 });

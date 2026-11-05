@@ -114,6 +114,9 @@ export {
 export {
   DEFAULT_PRESENTATION,
   slidesFor,
+  framesInReadingOrder,
+  reconcilePresentation,
+  type SlideElement,
   isShownInPresentation,
   elementsForPresentation,
   stepSlide,
@@ -126,3 +129,14 @@ export {
   type PresentationState,
   type PresentableElement,
 } from "./presentation.js";
+
+export {
+  REACTION_KINDS,
+  REACTION_TTL_MS,
+  isReactionLive,
+  makeReaction,
+  reactionEmoji,
+  resolveReactionAnchor,
+} from "./reactions.js";
+
+export type { Reaction, ReactionAnchor, ReactionKind } from "./reactions.js";

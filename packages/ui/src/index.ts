@@ -31,6 +31,7 @@ export * from "./components/EmbedDialog";
 export * from "./components/EmojiPanel";
 export * from "./components/BoardHome";
 export * from "./components/ActivityFeed";
+export * from "./components/SidePanel";
 export * from "./components/AccessibilityTree";
 export * from "./components/ExportModal";
 export * from "./components/ImportModal";

@@ -10,6 +10,8 @@ import {
   TrashIcon,
 } from "../icons";
 
+import { SidePanel } from "./SidePanel";
+
 import "./ActivityFeed.scss";
 
 export type ActivityActionKind =
@@ -38,6 +40,26 @@ export interface ActivityFeedProps {
   onClear?: () => void;
   title?: string;
   dialogRef?: React.Ref<HTMLDivElement>;
+  /*
+   * `dock` (default) is the right-dock panel of ADR-0035: the SidePanel
+   * shell, non-modal, no Escape-to-close. `inline` is the board-home
+   * embedded list, which keeps its legacy box because it is page content,
+   * not a panel.
+   */
+  presentation?: "dock" | "inline";
+  /*
+   * ADR-0035 section 2 scopes. When both are provided, the dock shows the
+   * tab strip; Clear clears the visible scope, so `onClear` must follow
+   * `scope` on the host side. The inline presentation never shows tabs.
+   *
+   * "versions" (ADR-0035 section 3, row 48) swaps the feed for the host's
+   * version-history surface; the host owns that content because its data
+   * lives in the board store, not in this package. Clear hides on the
+   * Versions tab: there is nothing for it to clear there.
+   */
+  scope?: "board" | "all" | "versions";
+  onScopeChange?: (scope: "board" | "all" | "versions") => void;
+  versionsContent?: React.ReactNode;
 }
 
 const formatRelativeTime = (timestamp: number): string => {
@@ -83,9 +105,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   onClear,
   title = "Activity History",
   dialogRef,
+  presentation = "dock",
+  scope,
+  onScopeChange,
+  versionsContent,
 }) => {
   React.useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || presentation !== "inline") {
       return undefined;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -97,7 +123,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, presentation]);
 
   if (!isOpen) {
     return null;
@@ -123,6 +149,102 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     { title: "Earlier", items: earlierEntries },
   ].filter((g) => g.items.length > 0);
 
+  const onVersionsTab = presentation === "dock" && scope === "versions";
+
+  const clearAction =
+    !onVersionsTab && entries.length > 0 && onClear ? (
+      <button
+        type="button"
+        className="firo-activity-feed__clear"
+        onClick={onClear}
+        data-testid="activity-clear-btn"
+      >
+        Clear
+      </button>
+    ) : null;
+
+  if (presentation === "dock") {
+    const tabList = [
+      { id: "board", label: "This board" },
+      { id: "all", label: "All boards" },
+      ...(versionsContent ? [{ id: "versions", label: "Versions" }] : []),
+    ];
+    const scopeTabs =
+      scope && onScopeChange
+        ? {
+            tabs: tabList,
+            activeTab: scope,
+            onTabChange: (id: string) =>
+              onScopeChange(id as "board" | "all" | "versions"),
+          }
+        : {};
+    return (
+      <SidePanel
+        id="firo-dock-activity"
+        title={title}
+        onClose={onClose}
+        closeLabel="Close activity feed"
+        headerActions={clearAction}
+        {...scopeTabs}
+      >
+        {onVersionsTab ? (
+          versionsContent
+        ) : (
+          <div
+            className="firo-activity-feed firo-activity-feed--dock-content"
+            data-testid="firo-activity-feed"
+          >
+            <div className="firo-activity-feed__content">
+              {groups.length === 0 ? (
+                <div className="firo-activity-feed__empty">
+                  <ActivityIcon size={32} />
+                  <p>No activity recorded yet.</p>
+                  <p>Changes, comments, and board actions will appear here.</p>
+                </div>
+              ) : (
+                groups.map((group) => (
+                  <div key={group.title} className="firo-activity-feed__group">
+                    <span className="firo-activity-feed__group-title">
+                      {group.title}
+                    </span>
+                    {group.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="firo-activity-feed__item"
+                        data-testid={`activity-item-${item.id}`}
+                      >
+                        <div className="firo-activity-feed__icon">
+                          {renderIcon(item.kind)}
+                        </div>
+                        <div className="firo-activity-feed__item-body">
+                          <span className="firo-activity-feed__summary">
+                            {item.summary}
+                          </span>
+                          <div className="firo-activity-feed__meta">
+                            <span>{formatRelativeTime(item.timestamp)}</span>
+                            {item.boardName && (
+                              <button
+                                type="button"
+                                className="firo-activity-feed__board-badge"
+                                onClick={() => onSelectBoard?.(item.boardId)}
+                              >
+                                {item.boardName}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </SidePanel>
+    );
+  }
+
   return (
     <div
       ref={dialogRef}
@@ -144,16 +266,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
           {title}
         </h3>
         <div className="firo-activity-feed__actions">
-          {entries.length > 0 && onClear && (
-            <button
-              type="button"
-              className="firo-activity-feed__clear"
-              onClick={onClear}
-              data-testid="activity-clear-btn"
-            >
-              Clear
-            </button>
-          )}
+          {clearAction}
           <button
             type="button"
             className="firo-activity-feed__close"

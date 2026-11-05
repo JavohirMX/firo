@@ -81,6 +81,9 @@ const ANCESTOR_LIMIT = 64;
 export type PresentableElement = {
   id: string;
   type?: string;
+  x?: number;
+  y?: number;
+  isDeleted?: boolean;
   frameId?: string | null;
   hiddenUntilRevealed?: boolean | null;
   hideInPresentation?: boolean | null;
@@ -122,33 +125,72 @@ export const DEFAULT_PRESENTATION: PresentationState = Object.freeze({
   index: 0,
 });
 
+/** Minimum frame geometry, including older callers without coordinates. */
+export type SlideElement = {
+  id: string;
+  type?: string;
+  x?: number;
+  y?: number;
+  isDeleted?: boolean;
+};
+
 /**
- * The frames of a board, in slide order.
- *
- * `elementOrder` is the z-order and frames carry no separate page number in v1,
- * so the order frames were drawn in *is* the running order. That is a real
- * limitation rather than a design: §4.3's "user-controlled page order" is a schema
- * field that does not exist yet, and inventing one here would put presentation
- * order in two places. When it is added, this function reads it and nothing else
- * changes.
- *
- * Frames are taken in document order and de-duplicated, because a nested frame
- * (`frameId`) is a frame that happens to be inside another. For v1 a nested frame
- * is its own slide — a facilitator who has drawn a frame inside a frame wants to
- * show it.
+ * ADR-0039: top row left-to-right, then down. Exact coordinate ties retain
+ * document order; no fuzzy row threshold or second ordering field is added.
+ * Missing/non-finite coordinates degrade to zero for legacy callers.
  */
-export const slidesFor = (
-  elements: readonly { id: string; type?: string }[],
-): string[] => {
+export const framesInReadingOrder = <T extends SlideElement>(
+  elements: readonly T[],
+): T[] => {
   const seen = new Set<string>();
-  const slides: string[] = [];
-  for (const element of elements) {
-    if (element.type === "frame" && !seen.has(element.id)) {
+  const coordinate = (value: number | undefined) =>
+    typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return elements
+    .filter((element) => {
+      if (
+        element.type !== "frame" ||
+        element.isDeleted ||
+        seen.has(element.id)
+      ) {
+        return false;
+      }
       seen.add(element.id);
-      slides.push(element.id);
-    }
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        coordinate(a.y) - coordinate(b.y) || coordinate(a.x) - coordinate(b.x),
+    );
+};
+
+/** One order for the Frames panel and presentation, including nested frames. */
+export const slidesFor = (elements: readonly SlideElement[]): string[] =>
+  framesInReadingOrder(elements).map((element) => element.id);
+
+/** Recompute a live deck, retaining the current frame by id when possible. */
+export const reconcilePresentation = (
+  state: PresentationState,
+  elements: readonly SlideElement[],
+): PresentationState => {
+  if (!state.active) {
+    return state;
   }
-  return slides;
+  const slideIds = slidesFor(elements);
+  if (!slideIds.length) {
+    return DEFAULT_PRESENTATION;
+  }
+  const current = state.slideIds[state.index];
+  const retained = slideIds.indexOf(current);
+  const index =
+    retained >= 0 ? retained : Math.min(state.index, slideIds.length - 1);
+  if (
+    index === state.index &&
+    slideIds.length === state.slideIds.length &&
+    slideIds.every((id, i) => id === state.slideIds[i])
+  ) {
+    return state;
+  }
+  return { ...state, slideIds, index };
 };
 
 /**
@@ -259,7 +301,7 @@ export const goToSlide = (
 
 /** Begin presenting, from the first slide. */
 export const startPresentation = (
-  elements: readonly { id: string; type?: string }[],
+  elements: readonly SlideElement[],
 ): PresentationState => {
   const slideIds = slidesFor(elements);
   if (!slideIds.length) {

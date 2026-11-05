@@ -9,6 +9,44 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 import { BoardMenu } from "../src";
 
+describe("BoardMenu thumbnail", () => {
+  it("renders the board's preview between home and the title", () => {
+    render(
+      <BoardMenu
+        boardName="Roadmap"
+        onOpenHome={vi.fn()}
+        onRenameBoard={vi.fn()}
+        thumbnail="data:image/png;base64,thumb"
+      />,
+    );
+    const img = screen.getByTestId("board-menu-thumbnail");
+    expect(img.getAttribute("src")).toBe("data:image/png;base64,thumb");
+    expect(img.getAttribute("alt")).toBe("");
+    // Order: hamburger, boards button, thumbnail, then the title.
+    const bar = img.parentElement!;
+    const home = screen.getByTestId("board-menu-home");
+    const title = screen.getByTestId("board-menu-rename");
+    expect(
+      home.compareDocumentPosition(img) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      img.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(bar).toBeTruthy();
+  });
+
+  it("keeps the bar compact while no capture exists", () => {
+    render(
+      <BoardMenu
+        boardName="Roadmap"
+        onOpenHome={vi.fn()}
+        onRenameBoard={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("board-menu-thumbnail")).toBeNull();
+  });
+});
+
 describe("BoardMenu title", () => {
   it("keeps the title as the home control without onRenameBoard", () => {
     const onOpenHome = vi.fn();

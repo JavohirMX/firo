@@ -197,6 +197,8 @@ import {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { FacilitatorBar } from "./components/FacilitatorBar";
+import { setSessionShareRole } from "./board/facilitator";
+import { FacilitationMenu } from "./components/FacilitationMenu";
 import { TimerSetupDialog } from "./components/TimerSetupDialog";
 import { VotingPanel } from "./components/VotingPanel";
 import { FramesPanel } from "./components/FramesPanel";
@@ -212,7 +214,7 @@ import {
 } from "./board/stickyNoteOptions";
 import { subscribeToDialogRequests } from "./board/uiRequests";
 import { SaveStatusIndicator } from "./components/SaveStatusIndicator";
-import { VersionHistoryModal } from "./components/VersionHistoryModal";
+import { VersionsPanel } from "./components/VersionsPanel";
 import { ProjectionView } from "./components/ProjectionView";
 import { CommentLayer, type CommentTarget } from "./components/CommentLayer";
 import { VoteBadges } from "./components/VoteBadges";
@@ -274,8 +276,13 @@ import {
   facilitatorCommandPaletteItems,
   facilitatorHelpRows,
 } from "./board/facilitatorActions";
+import { setElementVisibility } from "./board/visibility";
 import { recordCommandPaletteItems } from "./board/recordActions";
 import { getActiveBoard, renameBoard, setActiveBoard } from "./board/library";
+import {
+  BOARD_THUMBNAIL_EVENT,
+  scheduleBoardThumbnail,
+} from "./board/thumbnail";
 import { isMinimapShortcut } from "./board/chromeShortcuts";
 import {
   readRailLayout,
@@ -1337,6 +1344,25 @@ const WebBoardMenu = () => {
   const [boardName, setBoardName] = useState(
     () => getActiveBoard()?.name ?? "Untitled",
   );
+  /*
+   * The board's rendered preview (row 1). Captures land from the change
+   * stream's debounce in `board/thumbnail.ts`, outside this component, so
+   * the bar listens for them; the first read comes from the route-time
+   * cache, same as the name.
+   */
+  const [thumbnail, setThumbnail] = useState<string | undefined>(
+    () => getActiveBoard()?.thumbnail,
+  );
+  useEffect(() => {
+    const onThumbnail = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.boardId === getActiveBoard()?.id) {
+        setThumbnail(detail.thumbnail);
+      }
+    };
+    window.addEventListener(BOARD_THUMBNAIL_EVENT, onThumbnail);
+    return () => window.removeEventListener(BOARD_THUMBNAIL_EVENT, onThumbnail);
+  }, []);
   const onRenameBoard = async (name: string) => {
     const active = getActiveBoard();
     if (!active) {
@@ -1351,6 +1377,7 @@ const WebBoardMenu = () => {
   return (
     <BoardMenu
       boardName={boardName}
+      thumbnail={thumbnail}
       onOpenHome={() => {
         window.location.assign(homeUrl());
       }}
@@ -2108,8 +2135,43 @@ const ExcalidrawWrapper = () => {
   const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [timerSetupOpen, setTimerSetupOpen] = useState(false);
-  const [votingPanelOpen, setVotingPanelOpen] = useState(false);
-  const [framesPanelOpen, setFramesPanelOpen] = useState(false);
+  /*
+   * The right dock (ADR-0035 section 1): exactly one panel at a time. One
+   * state field makes exclusivity structural rather than a discipline of
+   * resetting sibling booleans; the derived flags keep the call sites
+   * readable. Ephemeral by design: the open panel never enters the Yjs
+   * document and is not persisted across reloads.
+   */
+  const [openDockPanel, setOpenDockPanel] = useState<
+    "activity" | "frames" | "voting" | null
+  >(null);
+  const votingPanelOpen = openDockPanel === "voting";
+  const framesPanelOpen = openDockPanel === "frames";
+  const activityFeedOpen = openDockPanel === "activity";
+
+  /*
+   * The strip yields (ADR-0035 section 1): with a panel open, the
+   * bottom-right navigation strip's inline-end inset becomes panel inset +
+   * panel width + 12. One custom property, consumed by the navigation
+   * container in LayerUI.scss -- the ADR-0022 clause-6 authorization this
+   * needs, with no editor TypeScript changes. The inspector's own :has()
+   * rule is untouched: it never renders while the dock is open.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!openDockPanel) {
+      root.style.removeProperty("--firo-navigation-inset");
+      return undefined;
+    }
+    const width = openDockPanel === "voting" ? 380 : 340;
+    root.style.setProperty(
+      "--firo-navigation-inset",
+      `calc(8px + ${width}px + 12px)`,
+    );
+    return () => {
+      root.style.removeProperty("--firo-navigation-inset");
+    };
+  }, [openDockPanel]);
   const [bulkStickyOpen, setBulkStickyOpen] = useState(false);
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -2168,9 +2230,9 @@ const ExcalidrawWrapper = () => {
         } else if (request === "bulkStickyNotes") {
           setBulkStickyOpen(true);
         } else if (request === "votingPanel") {
-          setVotingPanelOpen(true);
+          setOpenDockPanel("voting");
         } else if (request === "framesPanel") {
-          setFramesPanelOpen(true);
+          setOpenDockPanel("frames");
         }
       }),
     [],
@@ -2380,10 +2442,16 @@ const ExcalidrawWrapper = () => {
     bytes: Uint8Array;
   } | null>(null);
   const [minimapVisible, setMinimapVisible] = useState(false);
-  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
+  /*
+   * ADR-0035 section 2: the activity dock scopes to this board or all
+   * boards. Ephemeral like the panel itself -- never persisted, never in
+   * the Yjs document.
+   */
+  const [activityScope, setActivityScope] = useState<
+    "board" | "all" | "versions"
+  >("board");
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const activityFeedDialogRef = useRef<HTMLDivElement>(null);
 
   const handleExportImage = useCallback(
@@ -2917,8 +2985,22 @@ const ExcalidrawWrapper = () => {
     setExportModalOpen(true);
   }, []);
 
+  /*
+   * ADR-0035 section 3: version history lives in the activity dock's
+   * Versions tab now; the 640-wide modal is retired.
+   */
   const handleMenuVersionHistory = useCallback(() => {
-    setVersionHistoryOpen(true);
+    setActivityScope("versions");
+    setOpenDockPanel("activity");
+  }, []);
+
+  /*
+   * The menu's Activity entry is the dock's always-reachable open path:
+   * the CollabBar trigger hides at phone widths, the menu does not.
+   */
+  const handleMenuActivityFeed = useCallback(() => {
+    setActivityScope((scope) => (scope === "versions" ? "board" : scope));
+    setOpenDockPanel("activity");
   }, []);
 
   const handleFooterChange = useCallback(() => {
@@ -3024,9 +3106,14 @@ const ExcalidrawWrapper = () => {
   const refreshActivity = useCallback(async () => {
     const metaId = boardDoc().read().meta?.id;
     const currentBoardId = typeof metaId === "string" ? metaId : "default";
-    const list = await listActivity({ boardId: currentBoardId });
+    if (activityScope === "versions") {
+      return;
+    }
+    const list = await listActivity(
+      activityScope === "board" ? { boardId: currentBoardId } : undefined,
+    );
     setActivities(list);
-  }, []);
+  }, [activityScope]);
 
   useEffect(() => {
     if (activityFeedOpen) {
@@ -3106,7 +3193,21 @@ const ExcalidrawWrapper = () => {
         typeof window !== "undefined"
           ? window.location.pathname.match(/^\/s\/([^/]+)/)
           : null;
-      const shareToken = shareMatch ? shareMatch[1] : null;
+      /*
+       * The URL token wins on a fresh share entry; a board reopened from the
+       * home carries its capability in the index instead (ADR-0037
+       * section 6), and the connection re-arms from that record.
+       */
+      const shareToken = shareMatch
+        ? shareMatch[1]
+        : getActiveBoard()?.share?.token ?? null;
+      if (!shareToken) {
+        /*
+         * No share capability in play: this client is the board's owner, and
+         * the facilitation boundary must not keep a previous session's role.
+         */
+        setSessionShareRole(null);
+      }
 
       let boardId =
         (boardDoc().read().meta?.id as string | undefined) ||
@@ -3120,6 +3221,7 @@ const ExcalidrawWrapper = () => {
         }
         if (resolved?.role && !isCancelled) {
           setShareRole(resolved.role);
+          setSessionShareRole(resolved.role);
         }
       }
 
@@ -3665,6 +3767,17 @@ const ExcalidrawWrapper = () => {
     commitBoard();
 
     /*
+     * The board's thumbnail follows the same shape as the accessibility
+     * tree below: scheduled here, where the scene actually changed, and
+     * debounced inside so a drawing session renders one preview, not one
+     * per stroke.
+     */
+    const thumbnailBoard = getActiveBoard();
+    if (thumbnailBoard) {
+      scheduleBoardThumbnail(thumbnailBoard.id, elements, appState, files);
+    }
+
+    /*
      * The accessibility tree mirrors the document, debounced. Refreshed here
      * rather than derived from `app.scene` on every render because the rebuild
      * is O(elements), and this is the point at which the scene actually
@@ -3866,6 +3979,12 @@ const ExcalidrawWrapper = () => {
             (c) =>
               c.id !== VOTE_COLLECTION_ID && c.id !== DOC_BLOCK_COLLECTION_ID,
           )}
+        onSetElementVisibility={
+          isReadOnlyShare
+            ? undefined
+            : (ids, flag, value) =>
+                setElementVisibility(boardDoc, refreshBoard, ids, flag, value)
+        }
         onSaveSelectionAsTemplate={
           isReadOnlyShare ? undefined : () => setSaveTemplateOpen(true)
         }
@@ -3944,9 +4063,9 @@ const ExcalidrawWrapper = () => {
             </>
           );
         }}
-        renderInspectorUI={(_isMobile, appState) => (
-          <WebInspector appState={appState} />
-        )}
+        renderInspectorUI={(_isMobile, appState) =>
+          openDockPanel ? null : <WebInspector appState={appState} />
+        }
         renderSelectionUI={(_isMobile, appState) => (
           <WebSelectionToolbar
             appState={appState}
@@ -3960,15 +4079,22 @@ const ExcalidrawWrapper = () => {
             collaborators={collaborators}
             onOpenShare={() => setShareModalOpen(true)}
           >
+            <FacilitationMenu
+              readOnlyRole={isReadOnlyShare ? shareRole : null}
+            />
             <button
               type="button"
               className="firo-collab-bar__btn"
-              onClick={() => setActivityFeedOpen((open) => !open)}
+              onClick={() =>
+                setOpenDockPanel((panel) =>
+                  panel === "activity" ? null : "activity",
+                )
+              }
               title="Activity history"
               aria-label="Activity history"
               data-testid="activity-feed-toggle"
               aria-expanded={activityFeedOpen}
-              aria-haspopup="dialog"
+              aria-controls="firo-dock-activity"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -3986,7 +4112,7 @@ const ExcalidrawWrapper = () => {
             </button>
             <SaveStatusIndicator
               collabStatus={isOffline ? "offline" : collabStatus}
-              onClick={() => setVersionHistoryOpen(true)}
+              onClick={handleMenuVersionHistory}
             />
             <FacilitatorBar />
           </CollabBar>
@@ -4281,12 +4407,12 @@ const ExcalidrawWrapper = () => {
         />
         <VotingPanel
           isOpen={votingPanelOpen}
-          onClose={() => setVotingPanelOpen(false)}
+          onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}
         />
         <FramesPanel
           isOpen={framesPanelOpen}
-          onClose={() => setFramesPanelOpen(false)}
+          onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}
         />
         <BulkStickyDialog
@@ -4306,16 +4432,39 @@ const ExcalidrawWrapper = () => {
         />
         <ActivityFeed
           isOpen={activityFeedOpen}
-          onClose={() => setActivityFeedOpen(false)}
+          onClose={() => setOpenDockPanel(null)}
           dialogRef={activityFeedDialogRef}
           entries={activities}
           onClear={async () => {
+            if (activityScope === "versions") {
+              return;
+            }
             const metaId = boardDoc().read().meta?.id;
             const currentBoardId =
               typeof metaId === "string" ? metaId : "default";
-            await clearActivity(currentBoardId);
+            // Clear clears the visible scope (ADR-0035 section 2).
+            await clearActivity(
+              activityScope === "board" ? currentBoardId : undefined,
+            );
             setActivities([]);
           }}
+          scope={activityScope}
+          onScopeChange={setActivityScope}
+          versionsContent={
+            <VersionsPanel
+              boardId={
+                (boardDoc().read().meta?.id as string | undefined) ||
+                getActiveBoard()?.id ||
+                "default"
+              }
+              doc={boardDoc()}
+              collabStatus={isOffline ? "offline" : collabStatus}
+              onRestore={() => {
+                excalidrawAPI?.refresh();
+              }}
+            />
+          }
+          onSelectBoard={(id) => window.location.assign(boardUrl(id))}
           title="Board Activity"
         />
         <AppMainMenu
@@ -4325,6 +4474,7 @@ const ExcalidrawWrapper = () => {
           onExport={handleMenuExport}
           onImport={handleMenuImport}
           onVersionHistory={handleMenuVersionHistory}
+          onActivityFeed={handleMenuActivityFeed}
           syncUsername={
             syncState.status === "signedIn" ? syncState.user.username : null
           }
@@ -4520,21 +4670,6 @@ const ExcalidrawWrapper = () => {
             onOpenNew={handleImportOpenNew}
           />
         )}
-
-        <VersionHistoryModal
-          isOpen={versionHistoryOpen}
-          onClose={() => setVersionHistoryOpen(false)}
-          boardId={
-            (boardDoc().read().meta?.id as string | undefined) ||
-            getActiveBoard()?.id ||
-            "default"
-          }
-          doc={boardDoc()}
-          collabStatus={isOffline ? "offline" : collabStatus}
-          onRestore={() => {
-            excalidrawAPI?.refresh();
-          }}
-        />
 
         <AIAssistantModal
           isOpen={aiModalOpen}

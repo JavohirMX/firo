@@ -12,6 +12,8 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import { CaptureUpdateAction } from "@firo/editor";
 
+import { SidePanel } from "@firo/ui";
+
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 
 import { boardDoc } from "../board/board";
@@ -75,21 +77,9 @@ export const FramesPanel = ({
   };
 
   return (
-    // A div, not an aside: upstream excalidraw hides every aside on mobile
-    // (`.excalidraw--mobile aside { display: none }`), which would blank the
-    // panel exactly where a docked list matters most. role keeps the landmark.
-    <div className="frames-panel" role="complementary" aria-label="Frames">
-      <div className="frames-panel__header">
-        <h2>Frames</h2>
-        <button
-          type="button"
-          className="frames-panel__close"
-          aria-label="Close frames panel"
-          onClick={onClose}
-        >
-          ×
-        </button>
-      </div>
+    // The dock shell (ADR-0035 section 1) owns the landmark, the geometry,
+    // the header and the close control; this component is only the list.
+    <SidePanel title="Frames" onClose={onClose} closeLabel="Close frames panel">
       {rows.length === 0 ? (
         <p className="frames-panel__empty">
           No frames yet. Pick the frame tool on the toolbar and drag one out.
@@ -152,6 +142,6 @@ export const FramesPanel = ({
           ))}
         </ol>
       )}
-    </div>
+    </SidePanel>
   );
 };

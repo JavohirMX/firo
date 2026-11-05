@@ -26,6 +26,7 @@ import {
   createBoardFromTemplate,
   createFolder,
   deleteBoardForever,
+  removeSharedBoardFromDevice,
   deleteFolder,
   duplicateBoard,
   formatLastOpened,
@@ -104,6 +105,8 @@ const toCard = (meta: BoardMeta, foldersList: BoardFolder[]): BoardCardData => {
     starred: Boolean(meta.starred),
     createdAt: meta.created,
     lastOpenedAt: meta.lastOpened,
+    shareRole: meta.share?.role,
+    shareUnavailable: meta.share?.unavailable,
   };
 };
 
@@ -487,6 +490,13 @@ export const BoardHomeScreen: React.FC = () => {
     await refresh();
   };
 
+  // ADR-0037 section 6: the local copy is erased; the server board is
+  // untouched and the share link re-joins fresh if it is still live.
+  const handleRemoveShared = async (id: string) => {
+    await removeSharedBoardFromDevice(id);
+    await refresh();
+  };
+
   const handleToggleStar = async (id: string, starred: boolean) => {
     await toggleStarBoard(id, starred);
     await refresh();
@@ -542,6 +552,9 @@ export const BoardHomeScreen: React.FC = () => {
     if (activeSection === "starred") {
       return live.filter((b) => Boolean(b.starred));
     }
+    if (activeSection === "shared") {
+      return live.filter((b) => Boolean(b.share));
+    }
     if (activeSection === "all") {
       return live;
     }
@@ -589,6 +602,7 @@ export const BoardHomeScreen: React.FC = () => {
         onOpenBoard={open}
         onRenameBoard={handleRename}
         onTrashBoard={handleTrash}
+        onRemoveSharedBoard={handleRemoveShared}
         onRestoreBoard={handleRestore}
         onDeleteBoard={handleDelete}
         onCreateFromTemplate={handleCreateFromTemplate}

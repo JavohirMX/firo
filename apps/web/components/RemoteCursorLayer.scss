@@ -105,3 +105,58 @@
     text-overflow: ellipsis;
   }
 }
+
+/*
+ * Reactions (ADR-0039 section 7): a peer's emoji floats up from its anchor
+ * and is gone in four seconds. Decorative only — the element is aria-hidden,
+ * and reduced motion swaps the travel for a plain fade.
+ */
+.firo-remote-reaction {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 28px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 3;
+  animation: firo-remote-reaction-float 4s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes firo-remote-reaction-float {
+  0% {
+    opacity: 0;
+    margin-top: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    margin-top: -48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .firo-remote-reaction {
+    animation: firo-remote-reaction-fade 4s linear forwards;
+  }
+}
+
+@keyframes firo-remote-reaction-fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

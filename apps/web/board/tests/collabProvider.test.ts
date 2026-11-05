@@ -13,6 +13,7 @@ import {
   buildRelayWsUrl,
   claimSharePassword,
   getShareProof,
+  checkShareLink,
   resolveShareToken,
   storeShareProof,
   type CollabStatus,
@@ -498,6 +499,70 @@ describe("CollabProvider", () => {
       provider.destroy();
     });
 
+    it("carries a peer's reaction through to the collaborator list", () => {
+      let createdWs: MockWebSocket | null = null;
+      class CustomMockWS extends MockWebSocket {
+        constructor(url: string) {
+          super(url);
+          createdWs = this;
+        }
+      }
+
+      const provider = new CollabProvider({
+        boardId: "board-reaction-test",
+        doc,
+        WebSocketPolyfill: CustomMockWS as unknown as typeof WebSocket,
+      });
+
+      createdWs!.open();
+
+      let latestCollabs: CollaboratorInfo[] = [];
+      provider.onCollaboratorsChange((c) => {
+        latestCollabs = c;
+      });
+
+      const reactionAt = Date.now();
+      const peerDoc = new Y.Doc();
+      const peerAwareness = new awarenessProtocol.Awareness(peerDoc);
+      peerAwareness.setLocalState({
+        [AWARENESS_KEY]: {
+          cursor: null,
+          laser: null,
+          idleSince: null,
+          reaction: {
+            id: "r-1",
+            kind: "fire",
+            targetId: null,
+            x: 100,
+            y: 200,
+            at: reactionAt,
+          },
+        },
+        user: { name: "Reactor" },
+      });
+
+      const awarenessUpdate = awarenessProtocol.encodeAwarenessUpdate(
+        peerAwareness,
+        [peerAwareness.clientID],
+      );
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
+      encoding.writeVarUint8Array(encoder, awarenessUpdate);
+      createdWs!.receive(encoding.toUint8Array(encoder));
+
+      expect(latestCollabs.length).toBe(1);
+      expect(latestCollabs[0].reaction).toEqual({
+        id: "r-1",
+        kind: "fire",
+        targetId: null,
+        x: 100,
+        y: 200,
+        at: reactionAt,
+      });
+
+      provider.destroy();
+    });
+
     it("broadcasts local cursor, laser, user, and tool changes", () => {
       let createdWs: MockWebSocket | null = null;
       class CustomMockWS extends MockWebSocket {
@@ -682,5 +747,33 @@ describe("CollabProvider", () => {
       expect(getShareProof("tok-other")).toBeNull();
       window.localStorage.clear();
     });
+  });
+});
+
+describe("checkShareLink (ADR-0037 section 6)", () => {
+  it("returns ok when the server still grants a role", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ share: { boardId: "b", role: "viewer" } }),
+    });
+    expect(await checkShareLink("tok-live")).toBe("ok");
+  });
+
+  it.each([404, 410, 403])(
+    "returns unavailable when the server refuses the link itself (%i)",
+    async (status) => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status });
+      expect(await checkShareLink("tok-dead")).toBe("unavailable");
+    },
+  );
+
+  it("returns unknown on a server error, never a verdict on the link", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    expect(await checkShareLink("tok-flaky")).toBe("unknown");
+  });
+
+  it("returns unknown when the server cannot be reached", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("offline"));
+    expect(await checkShareLink("tok-offline")).toBe("unknown");
   });
 });

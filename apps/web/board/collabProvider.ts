@@ -10,6 +10,8 @@ import {
   type FiroDoc,
 } from "@firo/doc";
 
+import type { Reaction } from "@firo/facilitation";
+
 import { getCollaboratorColor } from "../components/RemoteCursorLayer";
 
 export const MESSAGE_SYNC = 0;
@@ -30,6 +32,8 @@ export interface CollaboratorInfo {
   tool?: string;
   idleSince?: number | null;
   isIdle?: boolean;
+  /** The reaction this collaborator is showing, if any (ADR-0039 section 7). */
+  reaction?: Reaction | null;
 }
 
 export interface CollabProviderOptions {
@@ -127,6 +131,35 @@ export async function resolveShareToken(
   } catch (err) {
     console.error("[CollabProvider] Failed to resolve share token:", err);
     return null;
+  }
+}
+
+/**
+ * Revalidates a stored share token when a joined board is reopened from the
+ * home (ADR-0037 section 6). Three honest answers: the link still grants a
+ * role ("ok"), the server says it is gone or refuses it ("unavailable"), or
+ * the question could not be asked ("unknown" - offline or unreachable, where
+ * the local-first payload may still be opened).
+ */
+export async function checkShareLink(
+  token: string,
+  apiBase = "",
+): Promise<"ok" | "unavailable" | "unknown"> {
+  try {
+    const res = await fetch(
+      `${apiBase}/api/shares/${encodeURIComponent(token)}`,
+    );
+    if (res.ok) {
+      return "ok";
+    }
+    // 404/410/403 are the server speaking about the link itself; anything
+    // else (5xx, opaque failures) is not proof the link is dead.
+    if (res.status === 404 || res.status === 410 || res.status === 403) {
+      return "unavailable";
+    }
+    return "unknown";
+  } catch {
+    return "unknown";
   }
 }
 
@@ -301,6 +334,13 @@ export class CollabProvider {
       const role = user?.role;
       const avatar = user?.avatar;
       const tool = user?.tool;
+      /*
+       * The wire `kind` is a plain string (`EphemeralReaction`); the layer's
+       * `Reaction` narrows it. The cast is the same one RemoteCursorLayer
+       * makes on its own awareness path: an unknown kind yields no emoji and
+       * renders nothing rather than breaking the list.
+       */
+      const reaction = (firoState?.reaction as Reaction | null) ?? null;
       const isIdle =
         idleSince !== null && Date.now() - (idleSince as number) > 5000;
 
@@ -315,6 +355,7 @@ export class CollabProvider {
         tool,
         idleSince,
         isIdle,
+        reaction,
       });
     });
 

@@ -20,6 +20,7 @@ import {
   goToSlide,
   hasSlides,
   startPresentation,
+  reconcilePresentation,
   stepSlide,
 } from "@firo/facilitation";
 import { CaptureUpdateAction } from "@firo/editor";
@@ -29,7 +30,8 @@ import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 import type { PresentationState } from "@firo/facilitation";
 import type { FiroElement } from "@firo/schema";
 
-import { announceFacilitationChange } from "./facilitator";
+import { announceFacilitationChange, canDriveSession } from "./facilitator";
+import { getSession, mayChangeSession, writeSession } from "./sharedSession";
 
 /**
  * The app-side seam for presentation mode.
@@ -71,7 +73,7 @@ import { announceFacilitationChange } from "./facilitator";
 export const getPresentation = (
   getDocument: () => FiroDoc,
 ): PresentationState =>
-  getDocument().getEphemeral().presentation ?? DEFAULT_PRESENTATION;
+  getSession(getDocument).state.presentation ?? DEFAULT_PRESENTATION;
 
 /**
  * Move the viewport to fit `frameId`.
@@ -148,7 +150,7 @@ const apply = (
   api: ExcalidrawImperativeAPI | undefined,
   refresh: (() => void) | undefined,
 ): PresentationState => {
-  getDocument().setEphemeral({ presentation: next });
+  writeSession(getDocument, { presentation: next });
   /*
    * Announced, because ephemeral state produces no document update.
    *
@@ -181,6 +183,10 @@ export const startPresenting = (
   api?: ExcalidrawImperativeAPI,
   refresh?: () => void,
 ): PresentationState => {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
+    /* Watchers follow the deck; they never start one (ADR-0039 section 9). */
+    return getPresentation(getDocument);
+  }
   const elements = getDocument().read().elements;
   const next = startPresentation(elements);
   if (!next.active) {
@@ -194,8 +200,11 @@ export const stopPresenting = (
   getDocument: () => FiroDoc,
   refresh?: () => void,
 ): PresentationState => {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
+    return getPresentation(getDocument);
+  }
   const next = endPresentation();
-  getDocument().setEphemeral({ presentation: next });
+  writeSession(getDocument, { presentation: next });
   announceFacilitationChange();
   /*
    * Repainted on the way out too, and this is the step that matters: stopping
@@ -216,6 +225,9 @@ export const stepPresentation = (
   refresh?: () => void,
 ): PresentationState => {
   const before = getPresentation(getDocument);
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
+    return before;
+  }
   const next = stepSlide(before, delta);
   /*
    * Compared by *index*, not by object identity.
@@ -243,6 +255,9 @@ export const goToPresentationSlide = (
   refresh?: () => void,
 ): PresentationState => {
   const before = getPresentation(getDocument);
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
+    return before;
+  }
   const next = goToSlide(before, index);
   if (next.index === before.index) {
     return before;
@@ -265,3 +280,19 @@ export const boardHasSlides = (getDocument: () => FiroDoc): boolean =>
 
 /** Re-exported so callers need not import two modules for one question. */
 export { hasSlides };
+
+/** Follow frame moves/deletions without creating a second deck-order model. */
+export const refreshPresentationOrder = (
+  getDocument: () => FiroDoc,
+  api?: ExcalidrawImperativeAPI,
+  refresh?: () => void,
+): void => {
+  if (!canDriveSession() || !mayChangeSession(getDocument)) {
+    return;
+  }
+  const before = getPresentation(getDocument);
+  const next = reconcilePresentation(before, getDocument().read().elements);
+  if (next !== before) {
+    apply(getDocument, next, api, refresh);
+  }
+};

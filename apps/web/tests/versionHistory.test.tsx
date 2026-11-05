@@ -12,10 +12,10 @@ import { createFiroDoc } from "@firo/doc";
 
 import { SaveStatusIndicator } from "../components/SaveStatusIndicator";
 import {
-  VersionHistoryModal,
+  VersionsPanel,
   formatBytes,
   formatRelativeTime,
-} from "../components/VersionHistoryModal";
+} from "../components/VersionsPanel";
 import * as storageModule from "../board/storage";
 
 let mockSaveStatusListener: ((status: string) => void) | null = null;
@@ -113,7 +113,7 @@ describe("SaveStatusIndicator Visual Sync Status", () => {
   });
 });
 
-describe("VersionHistoryModal", () => {
+describe("VersionsPanel (ADR-0035 section 3)", () => {
   const sampleRevisions: storageModule.BoardRevision[] = [
     {
       id: "rev-1",
@@ -154,23 +154,8 @@ describe("VersionHistoryModal", () => {
     });
   });
 
-  it("does not render when isOpen is false", () => {
-    render(<VersionHistoryModal isOpen={false} onClose={vi.fn()} />);
-    expect(screen.queryByRole("dialog")).toBeNull();
-  });
-
-  it("renders header, storage health card, and revisions when isOpen is true", async () => {
-    render(
-      <VersionHistoryModal
-        isOpen={true}
-        onClose={vi.fn()}
-        collabStatus="connected"
-        boardId="test-board"
-      />,
-    );
-
-    expect(screen.getByRole("dialog")).not.toBeNull();
-    expect(screen.getByText("Version History & Storage")).not.toBeNull();
+  it("renders the storage health card and revisions", async () => {
+    render(<VersionsPanel collabStatus="connected" boardId="test-board" />);
 
     // Storage Health Card
     await waitFor(() => {
@@ -198,13 +183,7 @@ describe("VersionHistoryModal", () => {
   });
 
   it("displays offline sync status when disconnected", async () => {
-    render(
-      <VersionHistoryModal
-        isOpen={true}
-        onClose={vi.fn()}
-        collabStatus="offline"
-      />,
-    );
+    render(<VersionsPanel collabStatus="offline" />);
 
     await waitFor(() => {
       const syncInfo = screen.getByTestId("sync-connection-info");
@@ -214,17 +193,25 @@ describe("VersionHistoryModal", () => {
     });
   });
 
-  it("restores a revision when 'Restore this version' button is clicked", async () => {
+  it("saves a 'Before restore' safety revision before restoring (reversible restore)", async () => {
+    const callOrder: string[] = [];
+    const saveSpy = vi
+      .spyOn(storageModule, "saveBoardRevision")
+      .mockImplementation(async (_doc, _boardId, label) => {
+        callOrder.push(`save:${label}`);
+        return null;
+      });
     const restoreSpy = vi
       .spyOn(storageModule, "restoreBoardRevision")
-      .mockResolvedValue({ status: "restored", elements: 42 });
+      .mockImplementation(async () => {
+        callOrder.push("restore");
+        return { status: "restored", elements: 42 };
+      });
     const onRestoreMock = vi.fn();
     const testDoc = createFiroDoc();
 
     render(
-      <VersionHistoryModal
-        isOpen={true}
-        onClose={vi.fn()}
+      <VersionsPanel
         doc={testDoc}
         boardId="test-board"
         onRestore={onRestoreMock}
@@ -243,6 +230,15 @@ describe("VersionHistoryModal", () => {
       expect(onRestoreMock).toHaveBeenCalledTimes(1);
     });
 
+    // The safety snapshot parks the current state BEFORE the restore runs,
+    // so the action is undoable through the same list.
+    expect(saveSpy).toHaveBeenCalledWith(
+      testDoc,
+      "test-board",
+      "Before restore",
+    );
+    expect(callOrder).toEqual(["save:Before restore", "restore"]);
+
     expect(screen.getByText(/Successfully restored version/)).not.toBeNull();
   });
 
@@ -256,13 +252,7 @@ describe("VersionHistoryModal", () => {
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => {});
 
-    render(
-      <VersionHistoryModal
-        isOpen={true}
-        onClose={vi.fn()}
-        boardId="test-board"
-      />,
-    );
+    render(<VersionsPanel boardId="test-board" />);
 
     await waitFor(() => {
       expect(screen.getByTestId("revision-item-rev-1")).not.toBeNull();
@@ -274,23 +264,6 @@ describe("VersionHistoryModal", () => {
     expect(createObjectURLMock).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
     clickSpy.mockRestore();
-  });
-
-  it("supports keyboard navigation: closes on Escape key", async () => {
-    const onCloseMock = vi.fn();
-    render(<VersionHistoryModal isOpen={true} onClose={onCloseMock} />);
-
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(onCloseMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("closes when the close button is clicked", async () => {
-    const onCloseMock = vi.fn();
-    render(<VersionHistoryModal isOpen={true} onClose={onCloseMock} />);
-
-    const closeBtn = screen.getByLabelText("Close dialog");
-    fireEvent.click(closeBtn);
-    expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 });
 

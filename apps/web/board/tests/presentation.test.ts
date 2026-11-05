@@ -6,6 +6,7 @@ import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 import type { FiroElement } from "@firo/schema";
 
 import {
+  refreshPresentationOrder,
   boardHasSlides,
   focusFrame,
   getPresentation,
@@ -113,17 +114,14 @@ describe("starting a presentation", () => {
     expect(next.index).toBe(0);
   });
 
-  it("takes slides in the order the frames were drawn", () => {
-    // Z-order is the only ordering v1 has. Documenting it as a test means that when
-    // §4.3's user-controlled page order arrives, this is the assertion that changes
-    // rather than the one that quietly stops describing what happens.
+  it("takes slides in reading order rather than draw order", () => {
     const { getDocument } = boardWith(
       frame("f2", 500),
       note("n1"),
       frame("f1", 0),
     );
 
-    expect(startPresenting(getDocument).slideIds).toEqual(["f2", "f1"]);
+    expect(startPresenting(getDocument).slideIds).toEqual(["f1", "f2"]);
   });
 
   it("commits nothing to the document", () => {
@@ -360,5 +358,60 @@ describe("whether there is anything to present", () => {
     const { getDocument } = boardWith(note("n1"));
 
     expect(boardHasSlides(getDocument)).toBe(false);
+  });
+});
+
+describe("live deck order", () => {
+  it("preserves the current frame after a move, clamps a deleted slide and writes no durable state", () => {
+    const { doc, getDocument, refresh } = boardWith(
+      frame("left", 0),
+      frame("right", 500),
+    );
+    startPresenting(getDocument);
+    doc.commit([
+      {
+        kind: "updateElements",
+        updates: [{ id: "left", changes: { x: 900 } }],
+      },
+    ]);
+    const before = doc.durableUpdates;
+    refreshPresentationOrder(getDocument, undefined, refresh);
+    expect(getPresentation(getDocument)).toMatchObject({
+      slideIds: ["right", "left"],
+      index: 1,
+    });
+    expect(doc.durableUpdates).toBe(before);
+    doc.commit([{ kind: "deleteElements", ids: ["left"] }]);
+    refreshPresentationOrder(getDocument, undefined, refresh);
+    expect(getPresentation(getDocument)).toMatchObject({
+      slideIds: ["right"],
+      index: 0,
+    });
+  });
+});
+
+describe("reading-order reconciliation ownership", () => {
+  it("does not publish a reordered local deck while another client drives", () => {
+    const { doc, getDocument, refresh } = boardWith(
+      frame("right", 500),
+      frame("left"),
+    );
+    startPresenting(getDocument);
+    const before = getPresentation(getDocument);
+    const remote = doc.awareness.clientID + 1;
+    vi.spyOn(doc, "peersEphemeral").mockReturnValue(
+      new Map([
+        [remote, { ...doc.getEphemeral(), session: { leader: remote } }],
+      ]),
+    );
+    doc.commit([
+      {
+        kind: "updateElements",
+        updates: [{ id: "left", changes: { x: 1000 } }],
+      },
+    ]);
+    refreshPresentationOrder(getDocument, undefined, refresh);
+    expect(getPresentation(getDocument)).toBe(before);
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

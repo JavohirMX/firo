@@ -1,0 +1,122 @@
+/*
+ * The right-dock shell (Miro parity matrix row 16, ADR-0035 section 1).
+ *
+ * Geometry is token-derived: inline-end and block-end are SPACE.sm,
+ * block-start is SPACE.sm + BAR.height + SPACE.sm (8 + 48 + 8 = 64), width
+ * is PANEL.width (340) with PANEL.widthWide (380) reserved for voting.
+ */
+
+.firo-side-panel {
+  position: fixed;
+  top: calc(
+    var(--firo-space-sm, 8px) + var(--firo-bar-height, 48px) +
+      var(--firo-space-sm, 8px)
+  );
+  right: var(--firo-space-sm, 8px);
+  bottom: var(--firo-space-sm, 8px);
+  width: var(--firo-panel-width, 340px);
+  max-width: calc(100vw - 2 * var(--firo-space-sm, 8px));
+  background-color: var(--firo-color-panel-raised, #ffffff);
+  border: 1px solid var(--firo-color-border, #e4e5ea);
+  border-radius: var(--firo-radius-lg, 12px);
+  box-shadow: var(--firo-elevation-floating, 0 8px 30px rgba(0, 0, 0, 0.12));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 100;
+  font-family: var(--firo-font-ui, system-ui, sans-serif);
+  color: var(--firo-color-text, #111318);
+
+  &--wide {
+    width: var(--firo-panel-width-wide, 380px);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--firo-space-sm, 8px);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--firo-color-border, #e4e5ea);
+    flex: none;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  &__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--firo-radius-sm, 6px);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--firo-color-surface, #f4f4f6);
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    gap: var(--firo-space-xs, 4px);
+    padding: 8px 16px 0;
+    border-bottom: 1px solid var(--firo-color-border, #e4e5ea);
+    flex: none;
+  }
+
+  &__tab {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 10px 8px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    opacity: 0.7;
+
+    &--active {
+      border-bottom-color: var(--firo-color-accent, #6965db);
+      opacity: 1;
+    }
+  }
+
+  &__body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+}
+
+/*
+ * Upstream excalidraw hides every aside on mobile
+ * (`.excalidraw--mobile.excalidraw aside { display: none }`, specificity
+ * 0-2-1), which would blank the dock exactly where a docked list matters
+ * most. The host renders the dock inside the editor root, so the shell
+ * must win that rule outright: the doubled class lifts specificity above
+ * it regardless of stylesheet order.
+ */
+.excalidraw--mobile.excalidraw aside.firo-side-panel.firo-side-panel {
+  display: flex;
+}
+
+/*
+ * Phone: a 340px dock on a 390px screen is fiction. The panel spans the
+ * insets instead, same argument the frames panel's phone rule makes.
+ */
+@media (max-width: 640px) {
+  .firo-side-panel,
+  .firo-side-panel--wide {
+    width: auto;
+    left: var(--firo-space-sm, 8px);
+  }
+}

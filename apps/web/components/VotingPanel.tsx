@@ -23,6 +23,7 @@
  */
 
 import React, { useEffect, useMemo, useReducer, useState } from "react";
+import { SidePanel } from "@firo/ui";
 
 import {
   DEFAULT_VOTING_SETTINGS,
@@ -46,6 +47,10 @@ import { useExcalidrawActionManager } from "@firo/editor";
 
 import type { VotingSettings } from "@firo/facilitation";
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
+
+import { canDriveSession } from "../board/facilitator";
+
+import { writeSession } from "../board/sharedSession";
 
 import { boardDoc } from "../board/board";
 import { getReveal, subscribeToFacilitation } from "../board/facilitator";
@@ -186,7 +191,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     return null;
   }
 
-  const canEditSettings = session.driver === null;
+  const canEditSettings =
+    canDriveSession() &&
+    (session.driver === null || (session.isDriver && round === null));
 
   const step = (field: "votesPerPerson" | "minutes", delta: number) => {
     const [min, max] =
@@ -275,45 +282,23 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
        * A div, not an aside: `.excalidraw--mobile aside { display: none }`
        * hides every aside inside the editor on phone, panel included.
        * `role="complementary"` keeps the landmark. */}
-      <div
-        className="voting-panel"
-        data-testid="voting-panel"
-        role="complementary"
-        aria-label="Voting"
+      <SidePanel
+        title="Voting"
+        onClose={onClose}
+        closeLabel="Close voting panel"
+        wide
+        tabs={[
+          { id: "new", label: "New session" },
+          {
+            id: "results",
+            label: `Results${
+              outstandingDots > 0 ? ` (${outstandingDots})` : ""
+            }`,
+          },
+        ]}
+        activeTab={tab}
+        onTabChange={(id) => setTab(id as "new" | "results")}
       >
-        <div className="voting-panel__header">
-          <h2>Voting</h2>
-          <button
-            type="button"
-            className="voting-panel__close"
-            aria-label="Close voting panel"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="voting-panel__tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "new"}
-            className={tab === "new" ? "is-active" : ""}
-            onClick={() => setTab("new")}
-          >
-            New session
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "results"}
-            className={tab === "results" ? "is-active" : ""}
-            onClick={() => setTab("results")}
-          >
-            Results{outstandingDots > 0 ? ` (${outstandingDots})` : ""}
-          </button>
-        </div>
-
         {tab === "new" && (
           <div className="voting-panel__body">
             {round && (
@@ -448,7 +433,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                   disabled={round !== null && !session.isDriver}
                   onChange={(event) => {
                     if (round && session.isDriver) {
-                      boardDoc().setEphemeral({
+                      writeSession(boardDoc, {
                         voting: {
                           ...round,
                           settings: {
@@ -514,19 +499,21 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                   End session
                 </button>
               )}
-              {session.driver === null && (
-                <button
-                  type="button"
-                  className="voting-panel__start"
-                  onClick={start}
-                >
-                  {outstandingDots > 0
-                    ? `Start - clears ${outstandingDots} dot${
-                        outstandingDots === 1 ? "" : "s"
-                      }`
-                    : "Start"}
-                </button>
-              )}
+              {canDriveSession() &&
+                (session.driver === null ||
+                  (session.isDriver && round === null)) && (
+                  <button
+                    type="button"
+                    className="voting-panel__start"
+                    onClick={start}
+                  >
+                    {outstandingDots > 0
+                      ? `Start - clears ${outstandingDots} dot${
+                          outstandingDots === 1 ? "" : "s"
+                        }`
+                      : "Start"}
+                  </button>
+                )}
             </div>
           </div>
         )}
@@ -560,7 +547,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             )}
           </div>
         )}
-      </div>
+      </SidePanel>
     </>
   );
 };

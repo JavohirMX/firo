@@ -128,6 +128,8 @@ export type ActionName =
   | "bindText"
   | "unlockAllElements"
   | "toggleElementLock"
+  | "toggleHiddenUntilRevealed"
+  | "toggleHideInPresentation"
   | "clearContent"
   | "toggleLinearEditor"
   | "selectAllElementsInFrame"
@@ -202,6 +204,12 @@ export type ActionName =
    */
   | "setupFacilitatorTimer"
   | "bulkCreateStickyNotes"
+  | "sendReactionThumbsUp"
+  | "sendReactionLove"
+  | "sendReactionFire"
+  | "sendReactionWow"
+  | "sendReactionCelebration"
+  | "sendReactionWave"
   | "linkToElement"
   | "cropEditor"
   | "wrapSelectionInFrame"
@@ -256,7 +264,10 @@ export interface Action<TData = any> {
     appProps: ExcalidrawProps,
     app: AppClassProperties,
   ) => boolean;
-  checked?: (appState: Readonly<UIAppState>) => boolean;
+  checked?: (
+    appState: Readonly<UIAppState>,
+    elements?: readonly ExcalidrawElement[],
+  ) => boolean;
   trackEvent:
     | false
     | {

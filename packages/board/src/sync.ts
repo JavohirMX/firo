@@ -423,6 +423,10 @@ export class BoardSync {
       };
     },
     private readonly editor: EditorBridge,
+    private readonly readSession?: () => {
+      readonly reveal: RevealState;
+      readonly presentation?: EphemeralPresentation;
+    },
   ) {}
 
   /**
@@ -434,7 +438,8 @@ export class BoardSync {
    * ever be stale. The cost is one property read per pull.
    */
   private revealState = (): RevealState =>
-    this.doc.getEphemeral?.().reveal ?? DEFAULT_REVEAL_STATE;
+    (this.readSession?.() ?? this.doc.getEphemeral?.())?.reveal ??
+    DEFAULT_REVEAL_STATE;
 
   /**
    * The presentation state, as the document holds it right now.
@@ -462,7 +467,8 @@ export class BoardSync {
   private presentationState = (
     elements: readonly FiroElement[],
   ): PresentationState => {
-    const stored = this.doc.getEphemeral?.().presentation;
+    const stored = (this.readSession?.() ?? this.doc.getEphemeral?.())
+      ?.presentation;
     const presentation: PresentationState = stored ?? DEFAULT_PRESENTATION;
 
     if (!presentation.active || !presentation.slideIds.length) {

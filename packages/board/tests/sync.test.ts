@@ -1083,3 +1083,32 @@ describe("BoardSync", () => {
     expect(sync.push()).toEqual([]);
   });
 });
+
+describe("resolved room projection", () => {
+  it("uses the injected driver's fields instead of the follower's own awareness", () => {
+    const doc = newDoc();
+    doc.commit([
+      {
+        kind: "createElement",
+        element: note("hidden", { hiddenUntilRevealed: true }),
+      },
+    ]);
+    const editor = fakeEditor();
+    let mode: "private" | "revealed" = "private";
+    const sync = new BoardSync(doc, editor.bridge, () => ({
+      reveal: { mode },
+    }));
+    sync.start();
+    expect(editor.elements).toHaveLength(0);
+    const before = doc.durableUpdates;
+    mode = "revealed";
+    sync.pull();
+    expect(editor.elements.some((element) => element.id === "hidden")).toBe(
+      true,
+    );
+    expect(doc.getEphemeral().reveal.mode).toBe("revealed");
+    expect(doc.durableUpdates).toBe(before);
+    sync.stop();
+    doc.destroy();
+  });
+});

@@ -490,3 +490,73 @@ describe("Client Collaboration and Presence UI", () => {
     });
   });
 });
+
+describe("RemoteCursorLayer reactions (ADR-0039 section 7)", () => {
+  const reactor = (
+    reaction: RemoteCollaborator["reaction"],
+  ): RemoteCollaborator => ({
+    clientId: 77,
+    name: "Reactor",
+    cursor: { x: 10, y: 20 },
+    reaction,
+  });
+
+  it("renders a live reaction at its anchor, aria-hidden", () => {
+    render(
+      <RemoteCursorLayer
+        excalidrawAPI={fakeEditor()}
+        collaborators={[
+          reactor({
+            id: "r1",
+            kind: "fire",
+            targetId: null,
+            x: 30,
+            y: 40,
+            at: Date.now(),
+          }),
+        ]}
+      />,
+    );
+    const el = screen.getByTestId("remote-reaction-77");
+    expect(el.textContent).toBe("🔥");
+    expect(el.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("does not render an expired reaction", () => {
+    render(
+      <RemoteCursorLayer
+        excalidrawAPI={fakeEditor()}
+        collaborators={[
+          reactor({
+            id: "r2",
+            kind: "wave",
+            targetId: null,
+            x: 30,
+            y: 40,
+            at: Date.now() - 10_000,
+          }),
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId("remote-reaction-77")).toBeNull();
+  });
+
+  it("does not render an unknown kind", () => {
+    render(
+      <RemoteCursorLayer
+        excalidrawAPI={fakeEditor()}
+        collaborators={[
+          reactor({
+            id: "r3",
+            kind: "nonsense" as never,
+            targetId: null,
+            x: 30,
+            y: 40,
+            at: Date.now(),
+          }),
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId("remote-reaction-77")).toBeNull();
+  });
+});

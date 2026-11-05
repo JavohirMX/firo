@@ -309,6 +309,8 @@ function CommandPaletteInner({
 
     if (uiAppState && app.scene && actionManager) {
       const elementsCommands: CommandPaletteItem[] = [
+        actionManager.actions.toggleHiddenUntilRevealed,
+        actionManager.actions.toggleHideInPresentation,
         actionManager.actions.group,
         actionManager.actions.ungroup,
         actionManager.actions.cut,

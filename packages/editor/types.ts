@@ -1096,6 +1096,12 @@ export interface ExcalidrawProps {
    * (ADR-0038). When unset, the row and its palette entry stay hidden.
    */
   onSaveSelectionAsTemplate?: () => void;
+  /** Durable visibility authoring belongs to the host document (ADR-0039). */
+  onSetElementVisibility?: (
+    ids: readonly string[],
+    flag: "hiddenUntilRevealed" | "hideInPresentation",
+    value: boolean,
+  ) => void;
   /**
    * Host hook for the two lanes' **Add comment** rows (ADR-0033): the editor
    * owns the menu items and resolves the target — the menu anchor's scene
@@ -1273,6 +1279,12 @@ export type CanvasActions = Partial<{
   previousSlide: boolean;
   setupFacilitatorTimer: boolean;
   bulkCreateStickyNotes: boolean;
+  sendReactionThumbsUp: boolean;
+  sendReactionLove: boolean;
+  sendReactionFire: boolean;
+  sendReactionWow: boolean;
+  sendReactionCelebration: boolean;
+  sendReactionWave: boolean;
 }>;
 
 export type UIOptions = Partial<{

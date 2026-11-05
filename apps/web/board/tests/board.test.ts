@@ -104,6 +104,7 @@ const fakeEditorApi = (scene: unknown[] = []) => ({
   getSceneElementsIncludingDeleted: vi.fn(() => scene),
   updateScene: vi.fn(),
   getAppState: vi.fn(() => ({})),
+  setToast: vi.fn(),
 });
 
 const asApi = (
@@ -205,6 +206,7 @@ describe("attachBoard", () => {
     const { attachBoard, commitBoard, refreshBoard } = await importBoard();
     const teardown = attachBoard(asApi(fakeEditorApi()));
     const sync = lastSync();
+    sync.pull.mockClear();
 
     teardown();
     refreshBoard();
@@ -228,6 +230,7 @@ describe("attachBoard", () => {
     const { attachBoard, commitBoard, refreshBoard } = await importBoard();
     attachBoard(asApi(fakeEditorApi()));
     const sync = lastSync();
+    sync.pull.mockClear();
 
     commitBoard();
     refreshBoard();
@@ -240,6 +243,7 @@ describe("attachBoard", () => {
     const { attachBoard } = await importBoard();
     attachBoard(asApi(fakeEditorApi()));
     const sync = lastSync();
+    sync.pull.mockClear();
 
     const refresh = h.registerFacilitatorActions.mock.calls[0]?.[2] as
       | (() => void)
@@ -248,6 +252,54 @@ describe("attachBoard", () => {
     refresh?.();
 
     expect(sync.pull).toHaveBeenCalledTimes(1);
+  });
+  it("repaints only resolved awareness changes and detaches that listener", async () => {
+    const { FiroDoc } = await import("@firo/doc");
+    const Y = await import("yjs");
+    const {
+      applyAwarenessUpdate,
+      encodeAwarenessUpdate,
+      removeAwarenessStates,
+    } = await import("y-protocols/awareness");
+    const { attachBoard, boardDoc } = await importBoard();
+    const rawApi = fakeEditorApi();
+    const teardown = attachBoard(asApi(rawApi));
+    const sync = lastSync();
+    sync.pull.mockClear();
+    const peer = new FiroDoc(new Y.Doc());
+    const relay = () =>
+      applyAwarenessUpdate(
+        boardDoc().awareness,
+        encodeAwarenessUpdate(peer.awareness, [peer.awareness.clientID]),
+        "fixture",
+      );
+    peer.setEphemeral({
+      session: { leader: peer.awareness.clientID },
+      reveal: { mode: "private" },
+    });
+    relay();
+    expect(sync.pull).toHaveBeenCalledTimes(1);
+    peer.setEphemeral({ cursor: { x: 50, y: 25 } });
+    relay();
+    expect(sync.pull).toHaveBeenCalledTimes(1);
+    rawApi.getAppState.mockReturnValue({
+      toast: {
+        message:
+          "Another facilitator is driving this session. Follow along until it ends.",
+      },
+    } as never);
+    removeAwarenessStates(
+      boardDoc().awareness,
+      [peer.awareness.clientID],
+      "disconnect",
+    );
+    expect(sync.pull).toHaveBeenCalledTimes(2);
+    expect(rawApi.setToast).toHaveBeenCalledWith(null);
+    teardown();
+    peer.setEphemeral({ cursor: { x: 10, y: 10 } });
+    relay();
+    expect(sync.pull).toHaveBeenCalledTimes(2);
+    peer.destroy();
   });
 });
 
@@ -424,7 +476,10 @@ describe("boardElements", () => {
 
     const idsFor = () => boardElements().map((element) => element.id);
 
-    boardDoc().setEphemeral({ reveal: { mode: "private" } });
+    boardDoc().setEphemeral({
+      session: { leader: boardDoc().awareness.clientID },
+      reveal: { mode: "private" },
+    });
     expect(idsFor()).toContain("note-a");
     expect(idsFor().some((id) => id.startsWith("note-b"))).toBe(false);
 

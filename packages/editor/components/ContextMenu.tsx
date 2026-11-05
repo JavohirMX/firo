@@ -284,7 +284,9 @@ export const ContextMenu = React.memo(
         }
       }
 
-      const checked = item.checked ? !!item.checked(appState) : undefined;
+      const checked = item.checked
+        ? !!item.checked(appState, elements)
+        : undefined;
 
       return (
         <li

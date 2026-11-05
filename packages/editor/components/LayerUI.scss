@@ -207,7 +207,11 @@
 
   .firo-navigation-container {
     position: absolute;
-    right: 1rem;
+    // The dock's strip yield (ADR-0035 section 1): the host raises
+    // `--firo-navigation-inset` while a right-dock panel is open; the
+    // inspector's :has() rule below still wins when it applies, because the
+    // inspector and the dock never render at the same time.
+    right: var(--firo-navigation-inset, 1rem);
     bottom: 1rem;
     z-index: 10;
     pointer-events: var(--ui-pointerEvents);

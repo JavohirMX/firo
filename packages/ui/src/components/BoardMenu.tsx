@@ -24,6 +24,12 @@ export interface BoardMenuProps {
    * Escape cancels. When absent the title keeps its previous behaviour.
    */
   onRenameBoard?: (name: string) => void | Promise<void>;
+  /**
+   * A rendered preview of the board (Miro parity row 1: the board bar
+   * carries the board's thumbnail between home and the title). Omitted
+   * while no capture exists — the bar keeps its compact shape then.
+   */
+  thumbnail?: string;
   children?: React.ReactNode;
 }
 
@@ -32,6 +38,7 @@ export const BoardMenu: React.FC<BoardMenuProps> = ({
   onOpenMenu,
   onOpenHome,
   onRenameBoard,
+  thumbnail,
   children,
 }) => {
   const [editing, setEditing] = React.useState(false);
@@ -74,6 +81,14 @@ export const BoardMenu: React.FC<BoardMenuProps> = ({
         >
           <BoardsIcon size={18} />
         </button>
+      )}
+      {thumbnail && (
+        <img
+          className="firo-board-menu__thumbnail"
+          src={thumbnail}
+          alt=""
+          data-testid="board-menu-thumbnail"
+        />
       )}
       {onRenameBoard ? (
         editing ? (

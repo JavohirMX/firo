@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 
-import { useFocusTrap } from "@firo/editor";
 import { ActivityFeed } from "@firo/ui";
 
 import { BoardHome } from "@firo/ui";
@@ -252,28 +251,37 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
       },
     ];
 
+    /*
+     * The harness mirrors the ADR-0035 host contract: the trigger carries
+     * aria-expanded/aria-controls, and closing returns focus to it. There is
+     * no focus trap -- the dock is non-modal and the canvas stays
+     * interactive.
+     */
     const ActivityFeedHarness: React.FC<{
       entries?: ActivityFeedItem[];
       onClear?: () => void;
       onSelectBoard?: (id: string) => void;
     }> = ({ entries = sampleEntries, onClear = () => {}, onSelectBoard }) => {
       const [isOpen, setIsOpen] = useState(false);
-      const trapRef = useFocusTrap<HTMLDivElement>(isOpen);
+      const triggerRef = React.useRef<HTMLButtonElement>(null);
       return (
         <div>
           <button
             type="button"
+            ref={triggerRef}
             data-testid="feed-trigger-btn"
             onClick={() => setIsOpen((prev) => !prev)}
             aria-expanded={isOpen}
-            aria-haspopup="dialog"
+            aria-controls="firo-dock-activity"
           >
             Activity
           </button>
           <ActivityFeed
             isOpen={isOpen}
-            onClose={() => setIsOpen(false)}
-            dialogRef={trapRef}
+            onClose={() => {
+              setIsOpen(false);
+              triggerRef.current?.focus();
+            }}
             entries={entries}
             onClear={onClear}
             onSelectBoard={onSelectBoard}
@@ -282,7 +290,7 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
       );
     };
 
-    it("opening via keyboard opens the feed and traps focus inside", () => {
+    it("opening via keyboard opens the panel and moves focus inside", () => {
       render(<ActivityFeedHarness />);
       const trigger = screen.getByTestId("feed-trigger-btn");
       trigger.focus();
@@ -290,43 +298,45 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
 
       fireEvent.click(trigger);
 
-      const feed = screen.getByRole("dialog", { name: "Activity Feed" });
+      const feed = screen.getByRole("complementary", {
+        name: "Activity History",
+      });
       expect(feed).toBeDefined();
-      expect(feed.getAttribute("aria-modal")).toBe("true");
+      // Non-modal (ADR-0035): no dialog role, no aria-modal.
+      expect(feed.getAttribute("aria-modal")).toBeNull();
 
-      // Focus has moved inside the feed container
+      // Focus has moved into the panel (the close control)
       expect(feed.contains(document.activeElement)).toBe(true);
     });
 
-    it("tab navigation stays within the feed container and wraps at ends", () => {
+    it("does not trap focus: shift-tab on the first control does not wrap", () => {
       render(<ActivityFeedHarness />);
       fireEvent.click(screen.getByTestId("feed-trigger-btn"));
 
       const clearBtn = screen.getByTestId("activity-clear-btn");
       const boardBtn = screen.getByRole("button", { name: "Design System" });
 
-      // First focusable element is clearBtn, last is boardBtn
+      // A trap would wrap to the last control; the dock stays out of the way.
       clearBtn.focus();
       fireEvent.keyDown(clearBtn, { key: "Tab", shiftKey: true });
-      expect(document.activeElement).toBe(boardBtn);
-
-      boardBtn.focus();
-      fireEvent.keyDown(boardBtn, { key: "Tab" });
-      expect(document.activeElement).toBe(clearBtn);
+      expect(document.activeElement).not.toBe(boardBtn);
     });
 
-    it("escape dismisses the activity feed and restores focus to the trigger", () => {
+    it("escape does not dismiss the docked feed (ADR-0035)", () => {
       render(<ActivityFeedHarness />);
       const trigger = screen.getByTestId("feed-trigger-btn");
       trigger.focus();
       fireEvent.click(trigger);
 
-      expect(screen.getByRole("dialog")).toBeDefined();
+      expect(
+        screen.getByRole("complementary", { name: "Activity History" }),
+      ).toBeDefined();
 
       fireEvent.keyDown(document.activeElement!, { key: "Escape" });
 
-      expect(screen.queryByRole("dialog")).toBeNull();
-      expect(document.activeElement).toBe(trigger);
+      expect(
+        screen.getByRole("complementary", { name: "Activity History" }),
+      ).toBeDefined();
     });
 
     it("activating the close button dismisses the feed and restores focus to the trigger", () => {
@@ -335,10 +345,12 @@ describe("Phase 9 Keyboard Parity & Focus Management", () => {
       trigger.focus();
       fireEvent.click(trigger);
 
-      const closeBtn = screen.getByTestId("activity-close-btn");
+      const closeBtn = screen.getByRole("button", {
+        name: "Close activity feed",
+      });
       fireEvent.click(closeBtn);
 
-      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("complementary")).toBeNull();
       expect(document.activeElement).toBe(trigger);
     });
   });

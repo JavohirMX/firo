@@ -80,7 +80,7 @@ describe("ActivityFeed component", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("attaches dialogRef to the dialog container element", () => {
+  it("attaches dialogRef to the inline container element", () => {
     const ref = React.createRef<HTMLDivElement>();
     render(
       <ActivityFeed
@@ -88,11 +88,146 @@ describe("ActivityFeed component", () => {
         isOpen={true}
         onClose={() => {}}
         dialogRef={ref}
+        presentation="inline"
       />,
     );
 
     const dialog = screen.getByRole("dialog");
     expect(ref.current).toBe(dialog);
     expect(dialog.classList.contains("firo-activity-feed")).toBe(true);
+  });
+
+  /*
+   * The dock presentation is the ADR-0035 right dock: a complementary
+   * landmark, not a modal dialog, and Escape does not close it -- the
+   * ADR-0032 Escape ladder stays on the canvas.
+   */
+  it("docks as a non-modal panel that Escape does not close", () => {
+    const onClose = vi.fn();
+    render(<ActivityFeed entries={[]} isOpen={true} onClose={onClose} />);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const panel = screen.getByRole("complementary", {
+      name: "Activity History",
+    });
+    expect(panel).toBeDefined();
+    expect(panel.getAttribute("aria-modal")).toBeNull();
+
+    fireEvent.keyDown(panel, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  /*
+   * ADR-0035 section 2: the dock scopes to This board / All boards. The
+   * Versions tab lands with row 48.
+   */
+  it("shows the scope tabs when scope props are given", () => {
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="board"
+        onScopeChange={() => {}}
+      />,
+    );
+
+    const thisBoard = screen.getByRole("tab", { name: "This board" });
+    const allBoards = screen.getByRole("tab", { name: "All boards" });
+    expect(thisBoard.getAttribute("aria-selected")).toBe("true");
+    expect(allBoards.getAttribute("aria-selected")).toBe("false");
+  });
+
+  it("switching to All boards calls onScopeChange", () => {
+    const onScopeChange = vi.fn();
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="board"
+        onScopeChange={onScopeChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "All boards" }));
+    expect(onScopeChange).toHaveBeenCalledWith("all");
+  });
+
+  it("omits the tab strip when no scope handler is provided", () => {
+    render(<ActivityFeed entries={[]} isOpen={true} onClose={() => {}} />);
+
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+  });
+
+  /*
+   * ADR-0035 section 3: the Versions tab swaps the feed for the host's
+   * version-history surface, and Clear hides there.
+   */
+  it("renders the Versions tab content and hides Clear", () => {
+    const onScopeChange = vi.fn();
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="versions"
+        onScopeChange={onScopeChange}
+        versionsContent={<div data-testid="versions-stub">Versions here</div>}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Versions" })).toBeDefined();
+    expect(
+      screen
+        .getByRole("tab", { name: "Versions" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(screen.getByTestId("versions-stub")).toBeDefined();
+    expect(screen.queryByTestId("firo-activity-feed")).toBeNull();
+    expect(screen.queryByTestId("activity-clear-btn")).toBeNull();
+  });
+
+  it("offers the Versions tab only when versions content is provided", () => {
+    render(
+      <ActivityFeed
+        entries={[]}
+        isOpen={true}
+        onClose={() => {}}
+        scope="board"
+        onScopeChange={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole("tab", { name: "Versions" })).toBeNull();
+  });
+
+  it("keeps board badges selectable in the all-boards scope", () => {
+    const onSelectBoard = vi.fn();
+    const entries: ActivityFeedItem[] = [
+      {
+        id: "act-1",
+        boardId: "board-1",
+        boardName: "Design System",
+        timestamp: Date.now() - 30000,
+        kind: "comment",
+        summary: "Commented on sticky note",
+      },
+    ];
+    render(
+      <ActivityFeed
+        entries={entries}
+        isOpen={true}
+        onClose={() => {}}
+        scope="all"
+        onScopeChange={() => {}}
+        onSelectBoard={onSelectBoard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Design System" }));
+    expect(onSelectBoard).toHaveBeenCalledWith("board-1");
   });
 });

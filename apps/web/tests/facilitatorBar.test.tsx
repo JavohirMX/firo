@@ -223,6 +223,7 @@ describe("the facilitator bar", () => {
 
   it("appears once a timer is started", async () => {
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: {
         startedAt: Date.now(),
         durationMs: 300_000,
@@ -251,6 +252,7 @@ describe("the facilitator bar", () => {
     // stored timer must be byte-identical before and after ten seconds, whether
     // the readout ticks or not. That is what a mutation cannot fake.
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: {
         startedAt: Date.now(),
         durationMs: 300_000,
@@ -282,6 +284,7 @@ describe("the facilitator bar", () => {
 
   it("says the time is up rather than showing a negative clock", async () => {
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: { startedAt: Date.now(), durationMs: 1_000, remainingMs: 1_000 },
     });
     await renderBar();
@@ -299,6 +302,7 @@ describe("the facilitator bar", () => {
     // "3:00" alone reads as three hundred, or as a coordinate. The label says
     // what the number is, and AC-8 makes accessibility a gate.
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: {
         startedAt: Date.now(),
         durationMs: 300_000,
@@ -314,6 +318,7 @@ describe("the facilitator bar", () => {
 
   it("announces politely rather than interrupting every second", async () => {
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: {
         startedAt: Date.now(),
         durationMs: 300_000,
@@ -330,7 +335,10 @@ describe("the facilitator bar", () => {
   });
 
   it("shows private mode and its way back", async () => {
-    doc.setEphemeral({ reveal: { mode: "private" } });
+    doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
+      reveal: { mode: "private" },
+    });
     await renderBar();
 
     expect(screen.getByTestId("facilitator-private")).toBeDefined();
@@ -343,7 +351,10 @@ describe("the facilitator bar", () => {
     // The one control this bar has, and it earns its place: hiding a board
     // changes what is on screen without changing any control's appearance, so
     // without this the state is legible only to whoever remembers pressing it.
-    doc.setEphemeral({ reveal: { mode: "private" } });
+    doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
+      reveal: { mode: "private" },
+    });
     await renderBar();
 
     const toggle = screen.getByTestId("facilitator-reveal-toggle");
@@ -369,6 +380,7 @@ describe("the facilitator bar", () => {
     const { announceFacilitationChange } = await import("../board/facilitator");
     act(() => {
       doc.setEphemeral({
+        session: { leader: doc.awareness.clientID },
         timer: {
           startedAt: Date.now(),
           durationMs: 300_000,
@@ -396,6 +408,7 @@ describe("the facilitator bar", () => {
     // mounted when this one counted. An absolute count measures the whole file;
     // the question is whether *this* component left anything behind.
     doc.setEphemeral({
+      session: { leader: doc.awareness.clientID },
       timer: {
         startedAt: Date.now(),
         durationMs: 300_000,
@@ -409,5 +422,15 @@ describe("the facilitator bar", () => {
     expect(vi.getTimerCount()).toBe(baseline + 1);
     unmount();
     expect(vi.getTimerCount()).toBe(baseline);
+  });
+});
+
+describe("fresh clock on anchor change", () => {
+  it("starting after idle shows the current duration before the first tick", async () => {
+    await renderBar();
+    act(() => vi.advanceTimersByTime(5000));
+    const { timerControls } = await import("../board/facilitator");
+    act(() => timerControls(() => doc).start());
+    expect(screen.getByTestId("facilitator-timer").textContent).toBe("5:00");
   });
 });

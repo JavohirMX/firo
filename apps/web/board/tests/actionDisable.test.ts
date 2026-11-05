@@ -1,3 +1,5 @@
+import * as Y from "yjs";
+import { FiroDoc } from "@firo/doc";
 import { DEFAULT_UI_OPTIONS } from "@firo/common";
 
 import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
@@ -61,15 +63,13 @@ const appState = {} as never;
  */
 const noApp = undefined as never;
 
+const idleDocument = new FiroDoc(new Y.Doc());
+
 const actionNamed = (name: Action["name"]): Action => {
   const action = facilitatorActions(
     {} as ExcalidrawImperativeAPI,
-    // Throwing rather than returning a stub: a predicate has no business reading the
-    // document, so if one ever starts, this fails loudly instead of quietly passing
-    // against an empty board.
-    () => {
-      throw new Error("predicates must not read the document");
-    },
+    // Ownership predicates now read awareness; an idle local board has no driver.
+    () => idleDocument,
     () => {},
   ).find((candidate) => candidate.name === name);
   if (!action) {
