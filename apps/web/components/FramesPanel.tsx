@@ -23,7 +23,8 @@ import {
   listFrames,
   renameFrame,
 } from "../board/frames";
-import { focusFrame } from "../board/presentation";
+import { focusFrame, getPresentation } from "../board/presentation";
+import { subscribeToFacilitation } from "../board/facilitator";
 
 import "./FramesPanel.scss";
 
@@ -41,6 +42,17 @@ export const FramesPanel = ({
   const [revision, setRevision] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
+  const [presentation, setPresentation] = useState(() =>
+    getPresentation(boardDoc),
+  );
+  useEffect(() => {
+    const refresh = () => setPresentation(getPresentation(boardDoc));
+    refresh();
+    return subscribeToFacilitation(boardDoc, refresh);
+  }, []);
+  const activeFrameId = presentation.active
+    ? presentation.slideIds[presentation.index]
+    : undefined;
 
   // The document absorbs scene changes asynchronously (a delete committed
   // through updateScene is not in `read()` on the same tick), so a manual
@@ -109,12 +121,16 @@ export const FramesPanel = ({
                   type="button"
                   className="frames-panel__jump"
                   title="Jump to frame"
+                  aria-current={row.id === activeFrameId ? "step" : undefined}
                   onClick={() =>
                     excalidrawAPI && focusFrame(excalidrawAPI, boardDoc, row.id)
                   }
                 >
                   <span className="frames-panel__position">{row.position}</span>
                   {frameLabel(row)}
+                  {row.id === activeFrameId && (
+                    <span className="frames-panel__current">Presenting</span>
+                  )}
                 </button>
               )}
               <button
