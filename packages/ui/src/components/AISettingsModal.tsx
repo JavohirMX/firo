@@ -13,6 +13,8 @@ export interface AISettingsConfig {
 
 export interface AISettingsModalProps {
   isOpen: boolean;
+  enabled?: boolean;
+  onEnabledChange?: (enabled: boolean) => void;
   onClose: () => void;
   config?: AISettingsConfig;
   onSave?: (config: AISettingsConfig) => void;
@@ -31,12 +33,15 @@ const DEFAULT_CONFIG: AISettingsConfig = {
 
 export const AISettingsModal: React.FC<AISettingsModalProps> = ({
   isOpen,
+  enabled,
+  onEnabledChange,
   onClose,
   config = DEFAULT_CONFIG,
   onSave,
   client,
   onTestConnection,
 }) => {
+  const [toolsEnabled, setToolsEnabled] = useState(enabled ?? false);
   const [provider, setProvider] = useState<"ollama" | "openai-compatible">(
     config.provider || "ollama",
   );
@@ -54,6 +59,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
   // Sync state when config changes or modal opens
   useEffect(() => {
     if (isOpen) {
+      setToolsEnabled(enabled ?? false);
       setProvider(config.provider || "ollama");
       setEndpoint(
         config.endpoint ||
@@ -66,7 +72,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
       setPingStatus("idle");
       setPingMessage("");
     }
-  }, [isOpen, config]);
+  }, [isOpen, config, enabled]);
 
   // Keyboard navigation (Escape to close)
   useEffect(() => {
@@ -173,6 +179,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
       apiKey: apiKey.trim(),
     };
     onSave?.(newConfig);
+    onEnabledChange?.(toolsEnabled);
     onClose();
   };
 
@@ -202,8 +209,8 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
               Local AI Engine Settings
             </h2>
             <p className="firo-ai-settings-modal__subtitle">
-              Strictly local inference. Zero cloud network calls or telemetry
-              (NFR-3).
+              Use your own model endpoint. Board content is sent only when you
+              run an AI action. No model service is included.
             </p>
           </div>
           <button
@@ -219,6 +226,24 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
 
         {/* Form Body */}
         <div className="firo-ai-settings-modal__body">
+          {onEnabledChange && (
+            <label className="firo-ai-settings-modal__field">
+              <span>
+                <input
+                  type="checkbox"
+                  checked={toolsEnabled}
+                  onChange={(event) => setToolsEnabled(event.target.checked)}
+                  data-testid="ai-enable-tools"
+                />{" "}
+                Enable AI tools on this device
+              </span>
+              <span className="firo-ai-settings-modal__hint">
+                Off by default. Configure an endpoint and model below. An API
+                key is optional for providers that need one. Configuration is
+                stored in this browser.
+              </span>
+            </label>
+          )}
           {/* Provider Selection */}
           <div className="firo-ai-settings-modal__field">
             <label className="firo-ai-settings-modal__label">

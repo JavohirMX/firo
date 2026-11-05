@@ -45,6 +45,7 @@ export const AppMainMenu: React.FC<{
   onImport?: () => void;
   onVersionHistory?: () => void;
   onActivityFeed?: () => void;
+  onAISettings?: () => void;
   /** Name of the signed-in sync user, if any. */
   syncUsername?: string | null;
   /** Offered only when a sync server is reachable. */
@@ -198,6 +199,15 @@ export const AppMainMenu: React.FC<{
         </MainMenu.Sub.Trigger>
         <MainMenu.Sub.Content>
           <MainMenu.DefaultItems.Preferences />
+          {props.onAISettings && (
+            <MainMenu.Item
+              icon={<SettingsIcon size={18} />}
+              onSelect={props.onAISettings}
+              data-testid="main-menu-ai-settings"
+            >
+              AI settings...
+            </MainMenu.Item>
+          )}
           <MainMenu.ItemCustom>
             <div className="main-menu-language-row">
               <span className="main-menu-language-label">

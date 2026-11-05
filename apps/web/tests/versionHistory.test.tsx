@@ -92,6 +92,51 @@ describe("SaveStatusIndicator Visual Sync Status", () => {
     expect(indicator.textContent).toContain("Error saving");
   });
 
+  it("shows compact truthful details and history access", () => {
+    const history = vi.fn();
+    render(
+      <SaveStatusIndicator
+        compact
+        collabStatus="connected"
+        onClick={history}
+      />,
+    );
+    act(() => mockSaveStatusListener?.("saved"));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Board status: Saved on this device/,
+      }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Board status details" }),
+    ).not.toBeNull();
+    expect(screen.getByText("Saved on this device")).not.toBeNull();
+    expect(screen.getByText("Connected to server")).not.toBeNull();
+    expect(screen.getByText(/does not confirm the latest edit/)).not.toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(
+      screen.queryByRole("dialog", { name: "Board status details" }),
+    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Board status: Saved on this device/,
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Version history and storage" }),
+    );
+    expect(history).toHaveBeenCalledOnce();
+  });
+
+  it("never hides a save failure in compact mode", () => {
+    render(<SaveStatusIndicator compact collabStatus="offline" />);
+    act(() => mockSaveStatusListener?.("error"));
+    expect(screen.getByText("Save failed")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Error saving/ }));
+    expect(screen.getByText("Error saving")).not.toBeNull();
+    expect(screen.getByText("Offline or local-only")).not.toBeNull();
+  });
+
   it("pill is interactive, supports clicking to open Version History", () => {
     const handleClick = vi.fn();
     render(

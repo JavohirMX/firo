@@ -831,6 +831,44 @@ export const renderSceneToSvg = (
     return;
   }
 
+  // Frame surfaces are below their contents, independently of element order.
+  if (
+    renderConfig.frameRendering.enabled &&
+    renderConfig.frameRendering.outline
+  ) {
+    elements
+      .filter((element) => element.type === "frame" && !element.isDeleted)
+      .sort((a, b) => b.width * b.height - a.width * a.height)
+      .forEach((frame) => {
+        const background = svgRoot.ownerDocument.createElementNS(
+          SVG_NS,
+          "rect",
+        );
+        background.setAttribute("data-frame-background", frame.id);
+        background.setAttribute("x", String(frame.x + renderConfig.offsetX));
+        background.setAttribute("y", String(frame.y + renderConfig.offsetY));
+        background.setAttribute("width", String(frame.width));
+        background.setAttribute("height", String(frame.height));
+        background.setAttribute(
+          "transform",
+          `rotate(${(frame.angle * 180) / Math.PI} ${
+            frame.x + renderConfig.offsetX + frame.width / 2
+          } ${frame.y + renderConfig.offsetY + frame.height / 2})`,
+        );
+        background.setAttribute("opacity", String(frame.opacity / 100));
+        background.setAttribute(
+          "fill",
+          applyDarkModeFilter(
+            frame.backgroundColor === "transparent"
+              ? "#ffffff"
+              : frame.backgroundColor,
+            renderConfig.theme === THEME.DARK,
+          ),
+        );
+        svgRoot.appendChild(background);
+      });
+  }
+
   // render elements
   elements
     .filter((el) => !isIframeLikeElement(el))
