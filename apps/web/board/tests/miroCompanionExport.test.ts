@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { webcrypto } from "node:crypto";
 
 import { expect, it, vi } from "vitest";
@@ -5,12 +6,18 @@ import { expect, it, vi } from "vitest";
 import { MIRO_COMPANION_EXPORT_SCRIPT } from "../miro/companionExport";
 
 it("exports media byte hashes with item IDs while preserving non-media items", async () => {
-  const bytes = new Uint8Array([1, 2, 3, 4]);
+  const bytes = Buffer.from([1, 2, 3, 4]);
   const image = {
     id: "copied-image",
     type: "image",
     url: "",
-    getFile: async () => ({ arrayBuffer: async () => bytes.buffer }),
+    getFile: async () => ({
+      arrayBuffer: async () =>
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength,
+        ),
+    }),
   };
   const missing = {
     id: "unreadable",
