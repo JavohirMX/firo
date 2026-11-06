@@ -28,15 +28,21 @@ export const actionToggleGridMode = register({
   perform(elements, appState, formData) {
     let nextGridModeEnabled: boolean;
     let nextGridType: GridType = appState.gridType ?? "dots";
+    // The ambient backdrop follows only the explicit menu choices: "Hide
+    // grid" (boolean false) blanks the canvas, picking a grid type brings it
+    // back. Keyboard cycling changes grid mode alone, never the backdrop.
+    let nextCanvasBackdropEnabled = appState.canvasBackdropEnabled;
 
     if (typeof formData === "boolean") {
       nextGridModeEnabled = formData;
+      nextCanvasBackdropEnabled = formData;
     } else if (
       typeof formData === "string" &&
       GRID_TYPES.includes(formData as GridType)
     ) {
       nextGridModeEnabled = true;
       nextGridType = formData as GridType;
+      nextCanvasBackdropEnabled = true;
     } else if (formData === "toggle") {
       nextGridModeEnabled = !appState.gridModeEnabled;
     } else if (!appState.gridModeEnabled) {
@@ -60,6 +66,7 @@ export const actionToggleGridMode = register({
         ...appState,
         gridModeEnabled: nextGridModeEnabled,
         gridType: nextGridType,
+        canvasBackdropEnabled: nextCanvasBackdropEnabled,
       },
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };

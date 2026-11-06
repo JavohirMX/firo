@@ -4,6 +4,7 @@ import { vi } from "vitest";
 import { createStickyNote } from "@firo/board/defaults";
 
 import { importBoardFile } from "../files";
+import { zipFiles } from "../zip";
 
 /*
  * Faithful in-memory idb-keyval: the import module chain opens stores at
@@ -163,6 +164,70 @@ const nonEmptyDoc = () => {
 };
 
 describe("Miro import into a non-empty board", () => {
+  it("rejects unsupported ZIP bytes without treating them as CSV", async () => {
+    const doc = createFiroDoc();
+    const bytes = zipFiles(
+      new Map([["notes.txt", new TextEncoder().encode("a,b\n1,2")]]),
+    );
+    const result = await importBoardFile(doc, bytes, { force: true });
+    expect(result).toMatchObject({ ok: false, reason: "unreadable" });
+    expect(doc.read().elements).toHaveLength(0);
+  });
+  it("preserves supplied fractional and large Miro font sizes through document import", async () => {
+    const doc = createFiroDoc();
+    const items = [
+      {
+        id: "font_text",
+        type: "text",
+        x: 100,
+        y: 100,
+        width: 500,
+        height: 100,
+        content: "Exact annotation",
+        style: { fontSize: 46.24860638131844 },
+      },
+      {
+        id: "font_shape",
+        type: "shape",
+        x: 700,
+        y: 100,
+        width: 1200,
+        height: 600,
+        data: { shape: "rectangle", content: "Large label" },
+        style: { fontSize: 129 },
+      },
+      {
+        id: "font_sticky",
+        type: "sticky_note",
+        x: 2000,
+        y: 100,
+        width: 300,
+        height: 300,
+        content: "Exact sticky",
+        style: { fontSize: 25.5 },
+      },
+    ];
+    const bytes = new TextEncoder().encode(JSON.stringify(items));
+    const result = await importBoardFile(doc, bytes, {
+      insertMode: "replace",
+      force: true,
+    });
+    expect(result.ok).toBe(true);
+    const elements = doc.read().elements;
+    const fontSizeForText = (text: string) => {
+      const el = elements.find(
+        (candidate) => candidate.type === "text" && candidate.text === text,
+      );
+      return el && "fontSize" in el ? el.fontSize : undefined;
+    };
+    expect(fontSizeForText("Exact annotation")).toBe(46.24860638131844);
+    expect(fontSizeForText("Large label")).toBe(129);
+    const sticky = elements.find((el) => el.type === "stickynote");
+    expect(sticky && "fontSize" in sticky ? sticky.fontSize : undefined).toBe(
+      25.5,
+    );
+  });
+
   it("insert mode resolves and commits the converted elements", async () => {
     const doc = nonEmptyDoc();
     const result = await importBoardFile(doc, miroBytes(), {

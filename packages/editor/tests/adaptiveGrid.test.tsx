@@ -410,6 +410,32 @@ describe("Adaptive multi-scale grid and zoom < 1%", () => {
       expect(resBool.appState.objectsSnapModeEnabled).toBe(true);
     });
 
+    it("keeps a visible backdrop independent of keyboard snapping changes", () => {
+      const state = { ...dummyAppState, canvasBackdropEnabled: true };
+      const first = actionToggleGridMode.perform([], state, undefined) as any;
+      expect(first.appState.gridModeEnabled).toBe(true);
+      expect(first.appState.canvasBackdropEnabled).toBe(true);
+      const hidden = actionToggleGridMode.perform(
+        [],
+        first.appState,
+        false,
+      ) as any;
+      expect(hidden.appState.gridModeEnabled).toBe(false);
+      expect(hidden.appState.canvasBackdropEnabled).toBe(false);
+      const keyboard = actionToggleGridMode.perform(
+        [],
+        hidden.appState,
+        undefined,
+      ) as any;
+      expect(keyboard.appState.canvasBackdropEnabled).toBe(false);
+      const restored = actionToggleGridMode.perform(
+        [],
+        hidden.appState,
+        "dots",
+      ) as any;
+      expect(restored.appState.canvasBackdropEnabled).toBe(true);
+    });
+
     it("coexists cleanly with actionToggleObjectsSnapMode without disabling grid", () => {
       const gridOnState = {
         gridModeEnabled: true,

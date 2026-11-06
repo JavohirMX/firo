@@ -63,7 +63,7 @@ describe("element pixel snap", () => {
     "blits an unrotated %s on whole device pixels at any zoom",
     async (_, props) => {
       API.setElements([API.createElement({ x: 10.37, y: 20.61, ...props })]);
-      for (const zoom of [1, 1.5, 0.73, 2.2]) {
+      for (const zoom of [0.04, 0.05, 1, 1.5, 0.73, 2.2]) {
         const blits = await renderAt(zoom, 3.3, -7.77);
         for (const blit of blits) {
           expect(distanceToWholePixel(blit)).toBeLessThan(1e-6);
@@ -71,6 +71,74 @@ describe("element pixel snap", () => {
       }
     },
   );
+
+  it("keeps low-zoom link badges drawable without shifting following objects", async () => {
+    const create = document.createElement.bind(document);
+    const canvases: HTMLCanvasElement[] = [];
+    const spy = vi.spyOn(document, "createElement").mockImplementation(((
+      tag: string,
+      options?: ElementCreationOptions,
+    ) => {
+      const element = create(tag, options);
+      if (tag === "canvas") {
+        canvases.push(element as HTMLCanvasElement);
+      }
+      return element;
+    }) as typeof document.createElement);
+    try {
+      API.setElements([
+        {
+          ...API.createElement({
+            type: "rectangle",
+            x: 10,
+            y: 10,
+            width: 200,
+            height: 100,
+          }),
+          link: "https://example.com",
+        },
+        API.createElement({
+          type: "rectangle",
+          x: 400,
+          y: 200,
+          width: 200,
+          height: 100,
+        }),
+      ]);
+      API.setAppState({ selectedElementIds: {} });
+      for (const zoom of [0.04, 0.05]) {
+        await renderAt(zoom, 0, 0);
+        expect(canvases.length).toBeGreaterThan(0);
+        expect(
+          canvases.every((canvas) => canvas.width > 0 && canvas.height > 0),
+        ).toBe(true);
+      }
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("keeps far-from-origin geometry stable at four and five percent", async () => {
+    for (const zoom of [0.04, 0.05]) {
+      API.setElements([
+        API.createElement({
+          type: "rectangle",
+          x: -21054.53,
+          y: -18324.76,
+          width: 3000,
+          height: 2000,
+        }),
+      ]);
+      const [first] = await renderAt(zoom, 22000.37, 19000.61);
+      const [panned] = await renderAt(
+        zoom,
+        22000.37 + 100 / zoom,
+        19000.61 + 80 / zoom,
+      );
+      expect(panned.x - first.x).toBeCloseTo(100, 6);
+      expect(panned.y - first.y).toBeCloseTo(80, 6);
+    }
+  });
 
   it.each([Math.PI / 2, (3 * Math.PI) / 2])(
     "snaps a right-angle rotation (%s rad) without displacing it",

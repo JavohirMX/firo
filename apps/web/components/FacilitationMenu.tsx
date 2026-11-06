@@ -2,7 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { useExcalidrawActionManager } from "@firo/editor";
 import { REACTION_KINDS } from "@firo/facilitation";
-import { SparklesIcon, ClockIcon } from "@firo/ui";
+import {
+  SparklesIcon,
+  ClockIcon,
+  VotingIcon,
+  EyeOffIcon,
+  PresentationIcon,
+} from "@firo/ui";
 
 import { mayChangeSession } from "../board/sharedSession";
 
@@ -180,10 +186,7 @@ export const FacilitationMenu: React.FC<{
                 data-testid="facilitation-item-voting"
                 onClick={() => run("openVotingPanel")}
               >
-                <span
-                  className="firo-facilitation-menu__dot"
-                  aria-hidden="true"
-                />
+                <VotingIcon size={16} />
                 <span>Voting</span>
               </button>
               <button
@@ -200,6 +203,8 @@ export const FacilitationMenu: React.FC<{
                 }
                 onClick={() => run("toggleBoardReveal")}
               >
+                <EyeOffIcon size={16} />
+                <span>Private mode</span>
                 <span
                   className={`firo-facilitation-menu__check ${
                     revealMode === "private"
@@ -210,7 +215,6 @@ export const FacilitationMenu: React.FC<{
                 >
                   {revealMode === "private" ? "✓" : ""}
                 </span>
-                <span>Private mode</span>
               </button>
               <button
                 type="button"
@@ -225,12 +229,7 @@ export const FacilitationMenu: React.FC<{
                 }
                 onClick={() => run("togglePresentation")}
               >
-                <span
-                  className="firo-facilitation-menu__play"
-                  aria-hidden="true"
-                >
-                  ▶
-                </span>
+                <PresentationIcon size={16} />
                 <span>Presentation</span>
               </button>
             </>
