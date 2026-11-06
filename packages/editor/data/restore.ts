@@ -784,6 +784,7 @@ const repairContainerElement = (
           acc.push(binding);
 
           if (
+            binding.type === "text" &&
             isTextElement(boundElement) &&
             // being slightly conservative here, preserving existing containerId
             // if defined, lest boundElements is stale
