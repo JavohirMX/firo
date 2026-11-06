@@ -11,7 +11,6 @@ import {
   STATS_PANELS,
   THEME,
   DEFAULT_GRID_STEP,
-  isTestEnv,
   DEFAULT_STICKY_NOTE_BG,
 } from "@firo/common";
 
@@ -44,7 +43,10 @@ export const getDefaultAppState = (): Omit<
     // The default size a fresh sticky is created at; "m" is the size Firo
     // has always created, so nothing moves for an existing user.
     currentItemStickynoteSize: "m",
-    currentItemRoundness: isTestEnv() ? "sharp" : "round",
+    // Sharp corners are the product default (Miro parity): a fresh board
+    // draws rectangles and diamonds with square corners until the user picks
+    // round ones for the next element.
+    currentItemRoundness: "sharp",
     currentItemArrowType: ARROW_TYPE.round,
     currentItemStrokeStyle: DEFAULT_ELEMENT_PROPS.strokeStyle,
     currentItemStrokeWidthKey: DEFAULT_ELEMENT_STROKE_WIDTH_KEY,
@@ -77,6 +79,8 @@ export const getDefaultAppState = (): Omit<
     gridSize: DEFAULT_GRID_SIZE,
     gridStep: DEFAULT_GRID_STEP,
     gridModeEnabled: false,
+    // Visual backdrop only; snapping remains controlled by grid mode.
+    canvasBackdropEnabled: true,
     showSelectionDimensions: false,
     isBindingEnabled: true,
     bindingPreference: "enabled",
@@ -233,6 +237,7 @@ const APP_STATE_STORAGE_CONF = (<
   gridStep: { browser: true, export: true, server: true },
   gridModeEnabled: { browser: true, export: true, server: true },
   gridType: { browser: true, export: true, server: true },
+  canvasBackdropEnabled: { browser: true, export: true, server: true },
   height: { browser: false, export: false, server: false },
   isBindingEnabled: { browser: true, export: false, server: false },
   boxSelectionMode: { browser: true, export: false, server: false },

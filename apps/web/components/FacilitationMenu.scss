@@ -81,27 +81,30 @@
   }
 }
 
+/*
+ * State marker for the checkable rows (Private mode): it sits at the row's
+ * far end, after the label, so the leading icon always carries the command's
+ * meaning and the mark only ever carries its state.
+ */
 .firo-facilitation-menu__check {
+  margin-left: auto;
   width: 16px;
   text-align: center;
   color: var(--firo-color-accent, #6965db);
 }
 
-.firo-facilitation-menu__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-  margin: 0 4px;
-}
-
-.firo-facilitation-menu__play {
-  font-size: 11px;
-  width: 16px;
-  text-align: center;
-}
-
 .theme--dark .firo-facilitation-menu__popover {
   background: var(--island-bg-color, #232329);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 768px) {
+  .firo-facilitation-menu__popover {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    left: auto;
+    box-sizing: border-box;
+    max-width: calc(100vw - 24px);
+  }
 }

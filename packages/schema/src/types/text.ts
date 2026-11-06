@@ -50,6 +50,7 @@ import {
   nullableNumber,
   nullableString,
   number,
+  positiveNumber,
   oneOf,
   preserveUnknownFields,
   string,
@@ -61,9 +62,6 @@ import type { RepairLog } from "../validate.js";
 
 const TEXT_ALIGN = ["left", "center", "right"] as const;
 const VERTICAL_ALIGN = ["top", "middle", "bottom"] as const;
-
-/** Excalidraw's text sizes. Inherited, and the same set the note uses. */
-const FONT_SIZES = [16, 20, 28, 36] as const;
 
 const KNOWN_FIELDS = [
   "text",
@@ -216,7 +214,7 @@ const validate = (
      * Same reasoning, and the same bug, as the sticky note's label.
      */
     text: string(raw.text, "", log, "text"),
-    fontSize: oneOf(raw.fontSize, FONT_SIZES, 20, log, "fontSize"),
+    fontSize: positiveNumber(raw.fontSize, 20, log, "fontSize"),
     fontFamily: number(raw.fontFamily, 6, log, "fontFamily"),
     textAlign: oneOf(raw.textAlign, TEXT_ALIGN, "left", log, "textAlign"),
     verticalAlign: oneOf(

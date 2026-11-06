@@ -43,6 +43,7 @@ import {
 import { canPickDirectory, writeFiroDirectory } from "./firoDownload";
 import { generateMiroCreationScript, type MiroRtbArchive } from "./miro";
 import { injectAssetsIntoEditor } from "./assets";
+import { MIRO_COMPANION_EXPORT_SCRIPT } from "./miro/companionExport";
 
 let pendingMiroRtb: MiroRtbArchive | null = null;
 
@@ -275,7 +276,7 @@ export const registerFileActions = (
             `Miro backup canvas is encrypted by Miro KMS. Extracted ${
               result.rtbArchive?.mediaFiles.size ?? 0
             } media assets! ` +
-            `Now run: copy(JSON.stringify(await miro.board.get())) in your Miro console, save as items.json, and import it to finish.`,
+            `Now run this in your Miro console, save the copied JSON as items.json, and import it to finish:\n${MIRO_COMPANION_EXPORT_SCRIPT}`,
           closable: true,
           duration: 15000,
         });

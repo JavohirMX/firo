@@ -205,37 +205,35 @@
     pointer-events: var(--ui-pointerEvents);
   }
 
+  // Keep both history buttons in reach without clipping rail flyouts.
+  @media (max-height: 700px) {
+    .firo-creation-rail-container .firo-rail__item {
+      height: 32px;
+      min-height: 32px;
+      margin-block: 0;
+    }
+  }
+
   .firo-navigation-container {
     position: absolute;
     // The dock's strip yield (ADR-0035 section 1): the host raises
-    // `--firo-navigation-inset` while a right-dock panel is open; the
-    // inspector's :has() rule below still wins when it applies, because the
-    // inspector and the dock never render at the same time.
+    // `--firo-navigation-inset` while a right-dock panel is open. A full-height
+    // dock would cover the strip; the inspector does not push it.
     right: var(--firo-navigation-inset, 1rem);
     bottom: 1rem;
-    z-index: 10;
+    // Above the inspector (z-index 10): the strip is anchored bottom-right and
+    // never moves when the properties panel opens, so on short viewports where
+    // the two would touch, the strip draws over the panel and stays clickable.
+    z-index: 12;
     pointer-events: var(--ui-pointerEvents);
-    // Keep the strip clickable when the inspector opens: see below.
     transition: right var(--firo-motion-base, 180ms)
       var(--firo-motion-ease, ease);
   }
 
-  /*
-   * Miro parity matrix row 16: the side panel PUSHES the bottom-right strip
-   * rather than overlapping it. Without the push, an open inspector (right
-   * dock, 244px) covers the navigation cluster entirely - with a selection
-   * the zoom menu became unreachable by pointer. The inspector renders an
-   * empty container when closed, so the :has() matches only a live panel.
-   */
-  &:has(.firo-inspector-container .firo-inspector) .firo-navigation-container {
-    right: calc(1rem + 244px + 0.75rem);
-  }
-
-  @media (max-width: 1024px) {
-    &:has(.firo-inspector-container .firo-inspector)
-      .firo-navigation-container {
-      right: calc(1rem + 200px + 0.75rem);
-    }
+  // Reserve the anchored navigation strip's footprint in the inspector's
+  // own scroll area, rather than moving the strip or covering controls.
+  .firo-inspector-container .firo-inspector {
+    max-height: calc(100vh - 9rem);
   }
 
   .firo-board-menu-container {

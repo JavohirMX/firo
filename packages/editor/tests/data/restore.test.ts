@@ -1376,6 +1376,28 @@ describe("repairing bindings", () => {
     ]);
   });
 
+  it("does not turn a connector relation into a bound text label", () => {
+    const text = API.createElement({ type: "text", containerId: null });
+    const arrow = API.createElement({
+      type: "arrow",
+      boundElements: [{ type: "arrow", id: text.id }],
+    });
+    const error = vi.spyOn(console, "error");
+    try {
+      const restoredElements = restore.restoreElements([text, arrow], null, {
+        repairBindings: true,
+      });
+      expect(restoredElements.map((element) => element.id)).toEqual([
+        text.id,
+        arrow.id,
+      ]);
+      expect(restoredElements[0]).toMatchObject({ containerId: null });
+      expect(error).not.toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
+  });
+
   it("should repair containerId of boundElements when repair is true", () => {
     const boundElement = API.createElement({
       type: "text",

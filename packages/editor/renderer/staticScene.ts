@@ -552,9 +552,17 @@ const renderLinkIcon = (
       linkCanvas = Object.assign(document.createElement("canvas"), {
         zoom: appState.zoom.value,
       });
-      linkCanvas.width = width * window.devicePixelRatio * appState.zoom.value;
-      linkCanvas.height =
-        height * window.devicePixelRatio * appState.zoom.value;
+      // Canvas dimensions truncate to integers. At 4-5%, a link badge can
+      // be smaller than one pixel; a zero-sized cache throws during blitting
+      // and leaves the icon transform active for the following elements.
+      linkCanvas.width = Math.max(
+        1,
+        Math.ceil(width * window.devicePixelRatio * appState.zoom.value),
+      );
+      linkCanvas.height = Math.max(
+        1,
+        Math.ceil(height * window.devicePixelRatio * appState.zoom.value),
+      );
       linkIconCanvasCache[canvasKey] = linkCanvas;
 
       const linkCanvasCacheContext = linkCanvas.getContext("2d")!;

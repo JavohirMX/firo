@@ -534,6 +534,12 @@ export interface AppState {
   gridModeEnabled: boolean;
   showSelectionDimensions: boolean;
   gridType?: GridType;
+  /**
+   * Renders the current grid style as an ambient canvas backdrop without
+   * turning on grid mode (no snapping). Undefined behaves as on; the
+   * navigation menu's "Hide grid" turns it off.
+   */
+  canvasBackdropEnabled?: boolean;
   viewModeEnabled: boolean;
 
   /** top-most selected groups (i.e. does not include nested groups) */

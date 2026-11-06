@@ -325,7 +325,14 @@ export const UndoIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     {...props}
   >
     <path
-      d="M7 6H4M4 6V9M4 6L8.5 10.5C11.5 13.5 16.5 12.5 16.5 8.5"
+      d="M8 4.5L3.5 9L8 13.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M3.5 9H12.5C15 9 17 11 17 13.5C17 16 15 18 12.5 18H10"
       stroke="currentColor"
       strokeWidth="1.75"
       strokeLinecap="round"
@@ -344,12 +351,114 @@ export const RedoIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
     {...props}
   >
     <path
-      d="M13 6H16M16 6V9M16 6L11.5 10.5C8.5 13.5 3.5 12.5 3.5 8.5"
+      d="M12 4.5L16.5 9L12 13.5"
       stroke="currentColor"
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
+    <path
+      d="M16.5 9H7.5C5 9 3 11 3 13.5C3 16 5 18 7.5 18H10"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const VotingIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M4.5 6C4.5 5.17 5.17 4.5 6 4.5H14C14.83 4.5 15.5 5.17 15.5 6V16H4.5V6Z"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M3 16H17"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+    <path
+      d="M7.5 9.75L9.25 11.5L12.5 8.25"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const EyeOffIcon: React.FC<IconProps> = ({ size = 20, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M8.94 4.23C9.29 4.08 9.64 4 10 4C14.37 4 17.5 7.05 18.86 9.34C19.05 9.74 19.05 10.26 18.86 10.66C18.51 11.53 18 12.36 17.36 13.11"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+    <path
+      d="M14.57 14.58C13.16 14.9 11.6 15 10 15C5.63 15 2.5 12.95 1.14 10.66C0.95 10.26 0.95 9.74 1.14 9.34C1.87 7.7 2.93 6.28 4.34 5.18"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+    <path
+      d="M11.74 11.8C10.88 12.66 9.5 12.61 8.75 11.61C8 10.61 8.25 9.27 9.2 8.7"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+    <path
+      d="M2.5 2.5L17.5 17.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const PresentationIcon: React.FC<IconProps> = ({
+  size = 20,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M2.5 3.5H17.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+    <path
+      d="M16 3.5V12C16 12.83 15.33 13.5 14.5 13.5H5.5C4.67 13.5 4 12.83 4 12V3.5"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinejoin="round"
+    />
+    <path d="M8.75 6.25L12.75 8.5L8.75 10.75V6.25Z" fill="currentColor" />
   </svg>
 );
 
