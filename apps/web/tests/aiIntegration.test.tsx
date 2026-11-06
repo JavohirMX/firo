@@ -1,7 +1,13 @@
 import "fake-indexeddb/auto";
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { createFiroDoc, type FiroDoc } from "@firo/doc";
 
 import { AISettingsModal } from "@firo/ui";
@@ -352,8 +358,50 @@ describe("AISettingsModal UI Component (§10.1)", () => {
     await waitFor(() => {
       expect(mockPing).toHaveBeenCalled();
       expect(screen.getByTestId("ai-status-success")).toBeDefined();
-      expect(screen.getByText(/Connection verified/i)).toBeDefined();
+      expect(screen.getByText(/Endpoint reachable/i)).toBeDefined();
     });
+  });
+  it.each(["ai-endpoint-input", "ai-model-input", "ai-apikey-input"])(
+    "discards a connection result after %s changes",
+    async (field) => {
+      let finish!: (value: boolean) => void;
+      const ping = vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            finish = resolve;
+          }),
+      );
+      render(<AISettingsModal isOpen onClose={vi.fn()} client={{ ping }} />);
+      fireEvent.click(screen.getByTestId("ai-test-connection-btn"));
+      fireEvent.change(screen.getByTestId(field), {
+        target: { value: "changed-draft-value" },
+      });
+      await act(async () => {
+        finish(true);
+      });
+      expect(screen.queryByTestId("ai-status-success")).toBeNull();
+      expect(screen.getByTestId("ai-test-connection-btn")).not.toBeDisabled();
+    },
+  );
+
+  it("discards an old probe after closing and reopening settings", async () => {
+    let finish!: (value: boolean) => void;
+    const ping = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const props = { onClose: vi.fn(), client: { ping } };
+    const view = render(<AISettingsModal isOpen {...props} />);
+    fireEvent.click(screen.getByTestId("ai-test-connection-btn"));
+    view.rerender(<AISettingsModal isOpen={false} {...props} />);
+    view.rerender(<AISettingsModal isOpen {...props} />);
+    await act(async () => {
+      finish(false);
+    });
+    expect(screen.queryByTestId("ai-status-error")).toBeNull();
+    expect(screen.queryByTestId("ai-status-message")).toBeNull();
   });
 });
 

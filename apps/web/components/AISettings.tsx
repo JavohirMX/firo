@@ -18,9 +18,11 @@ export const useAIAvailable = () => {
   const [available, setAvailable] = useState(false);
   useEffect(() => {
     let active = true;
+    let request = 0;
     const refresh = () => {
+      const current = ++request;
       void getAIAvailable().then((value) => {
-        if (active) {
+        if (active && current === request) {
           setAvailable(value);
         }
       });
@@ -46,9 +48,17 @@ export const AISettings = ({
 }) => {
   const [config, setConfig] = useState<AIConfig>(DEFAULT_AI_CONFIG);
   useEffect(() => {
+    let active = true;
     if (isOpen) {
-      void getAIConfig().then(setConfig);
+      void getAIConfig().then((value) => {
+        if (active) {
+          setConfig(value);
+        }
+      });
     }
+    return () => {
+      active = false;
+    };
   }, [isOpen]);
   return (
     <AISettingsModal
