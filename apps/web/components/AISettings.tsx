@@ -47,12 +47,15 @@ export const AISettings = ({
   onClose: () => void;
 }) => {
   const [config, setConfig] = useState<AIConfig>(DEFAULT_AI_CONFIG);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
     if (isOpen) {
+      setLoading(true);
       void getAIConfig().then((value) => {
         if (active) {
           setConfig(value);
+          setLoading(false);
         }
       });
     }
@@ -65,6 +68,7 @@ export const AISettings = ({
       isOpen={isOpen}
       onClose={onClose}
       config={config}
+      loading={loading}
       enabled={readAIEnabled()}
       onSave={(next) => {
         void setAIConfig(next).then(() => {
