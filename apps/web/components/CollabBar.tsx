@@ -25,6 +25,7 @@ export interface CollabBarProps {
   connectionStatus?: ConnectionStatus;
   /** Set for viewer/commenter share links so the bar can show a view-only badge. */
   readOnlyRole?: string | null;
+  hideConnectionStatus?: boolean;
   collaborators?: readonly CollabBarCollaborator[];
   onOpenShare?: () => void;
   children?: React.ReactNode;
@@ -50,6 +51,7 @@ export const getInitials = (name?: string): string => {
 export const CollabBar: React.FC<CollabBarProps> = ({
   connectionStatus = "connected",
   readOnlyRole = null,
+  hideConnectionStatus = false,
   collaborators: explicitCollaborators,
   onOpenShare,
   children,
@@ -160,25 +162,26 @@ export const CollabBar: React.FC<CollabBarProps> = ({
         {children}
 
         {/* Connection status pill */}
-        <div
-          className="firo-connection-pill"
-          data-testid="connection-status-pill"
-          data-status={connectionStatus}
-          title={`Status: ${connectionStatus}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span
-            className={`firo-connection-pill__dot firo-connection-pill__dot--${connectionStatus}`}
-            data-testid={`connection-dot-${connectionStatus}`}
-          />
-          <span className="firo-connection-pill__label">
-            {connectionStatus === "connected" && "Connected"}
-            {connectionStatus === "connecting" && "Connecting..."}
-            {connectionStatus === "offline" && "Offline"}
-          </span>
-        </div>
-
+        {!hideConnectionStatus && (
+          <div
+            className="firo-connection-pill"
+            data-testid="connection-status-pill"
+            data-status={connectionStatus}
+            title={`Status: ${connectionStatus}`}
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              className={`firo-connection-pill__dot firo-connection-pill__dot--${connectionStatus}`}
+              data-testid={`connection-dot-${connectionStatus}`}
+            />
+            <span className="firo-connection-pill__label">
+              {connectionStatus === "connected" && "Connected"}
+              {connectionStatus === "connecting" && "Connecting..."}
+              {connectionStatus === "offline" && "Offline"}
+            </span>
+          </div>
+        )}
         {readOnlyRole && (
           <div
             className="firo-connection-pill"

@@ -152,7 +152,7 @@ import {
   serializeBoard,
   type DocBlockRecord,
 } from "@firo/schema";
-import { newElement } from "@firo/element";
+import { newElement, newFrameElement } from "@firo/element";
 
 import type { AccessibilityTreeItem, ActivityFeedItem } from "@firo/ui";
 
@@ -225,6 +225,7 @@ import { TemplateModal } from "./components/TemplateModal";
 import { SaveTemplateDialog } from "./components/SaveTemplateDialog";
 import { AuthDialog } from "./components/AuthDialog";
 import { syncSession, useSyncSession } from "./sync/session";
+import { AISettings, useAIAvailable } from "./components/AISettings";
 import { AIAssistantModal } from "./components/AIAssistantModal";
 
 import {
@@ -600,10 +601,14 @@ export const WebCreationRail = ({
   onOpenBulkSticky,
   onCreateStickyStack,
   readOnlyRole = null,
+  aiAvailable = false,
+  onCreateFramePreset,
 }: {
   appState: UIAppState;
   /** viewer/commenter share links: only navigation (and, for commenters, comments). */
   readOnlyRole?: string | null;
+  aiAvailable?: boolean;
+  onCreateFramePreset?: (width: number, height: number) => void;
   commentMode?: boolean;
   onToggleCommentMode?: () => void;
   docBlockMode?: boolean;
@@ -857,6 +862,30 @@ export const WebCreationRail = ({
       };
     }
 
+    if (id === "frame") {
+      return {
+        id: "frame",
+        kind: "options",
+        label: "Frame (F)",
+        icon: RAIL_TOOL_ICONS.frame,
+        activeOn: ["frame"],
+        optionGroups: [
+          {
+            id: "ratio",
+            label: "Frame size",
+            layout: "list",
+            items: [
+              { id: "freeform", label: "Custom: draw a frame" },
+              { id: "16:9", label: "Presentation (16:9)" },
+              { id: "4:3", label: "Presentation (4:3)" },
+              { id: "1:1", label: "Square (1:1)" },
+              { id: "a4", label: "A4 portrait" },
+            ],
+          },
+        ],
+      };
+    }
+
     if (id === "stickynote") {
       return {
         id: "stickynote",
@@ -991,11 +1020,15 @@ export const WebCreationRail = ({
     ...layout.order
       .filter(isKnownTool)
       .filter(isAllowedForRole)
+      .filter((id) => id !== "ai" || aiAvailable)
       .map(buildRailTool),
   ];
   const hiddenTools: RailToolItem[] = readOnlyRole
     ? []
-    : layout.unpinned.filter(isKnownTool).map(buildRailTool);
+    : layout.unpinned
+        .filter(isKnownTool)
+        .filter((id) => id !== "ai" || aiAvailable)
+        .map(buildRailTool);
 
   return (
     <CreationRail
@@ -1158,6 +1191,21 @@ export const WebCreationRail = ({
         }
       }}
       onSelectOption={(tool, option) => {
+        if (tool === "frame") {
+          const sizes: Record<string, [number, number]> = {
+            "16:9": [960, 540],
+            "4:3": [800, 600],
+            "1:1": [600, 600],
+            a4: [595, 842],
+          };
+          const size = sizes[option.id];
+          if (size && !readOnlyRole) {
+            onCreateFramePreset?.(...size);
+          } else if (option.id === "freeform") {
+            app.setActiveTool({ type: "frame", locked: false });
+          }
+          return;
+        }
         if (tool !== "stickynote") {
           return;
         }
@@ -2145,6 +2193,8 @@ const ExcalidrawWrapper = () => {
   }, []);
   const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiSettingsOpen, setAISettingsOpen] = useState(false);
+  const aiAvailable = useAIAvailable();
   const [timerSetupOpen, setTimerSetupOpen] = useState(false);
   /*
    * The right dock (ADR-0035 section 1): exactly one panel at a time. One
@@ -3350,16 +3400,25 @@ const ExcalidrawWrapper = () => {
           icon: RAIL_TOOL_ICONS.templates as JSX.Element,
           onSelect: () => setTemplateModalOpen(true),
         },
-        {
-          id: "ai",
-          label: "AI Assistant",
-          icon: RAIL_TOOL_ICONS.ai as JSX.Element,
-          onSelect: () => setAiModalOpen(true),
-        },
       );
     }
+    if (canCreate && aiAvailable) {
+      tools.push({
+        id: "ai",
+        label: "AI Assistant",
+        icon: RAIL_TOOL_ICONS.ai as JSX.Element,
+        onSelect: () => setAiModalOpen(true),
+      });
+    }
     return tools;
-  }, [isReadOnlyShare, shareRole, commentMode, docBlockMode, excalidrawAPI]);
+  }, [
+    isReadOnlyShare,
+    shareRole,
+    commentMode,
+    docBlockMode,
+    excalidrawAPI,
+    aiAvailable,
+  ]);
 
   /*
    * A board opens at scroll 0,0, which hides content that sits near the origin
@@ -3984,6 +4043,7 @@ const ExcalidrawWrapper = () => {
     >
       <Excalidraw
         defaultChromeEnabled={false}
+        aiEnabled={false}
         suppressWelcomeScreen={suppressWelcomeScreen}
         onSetElementVisibility={
           isReadOnlyShare
@@ -4002,6 +4062,33 @@ const ExcalidrawWrapper = () => {
         renderCreationRailUI={(_isMobile, appState) => (
           <WebCreationRail
             appState={appState}
+            aiAvailable={aiAvailable}
+            onCreateFramePreset={(width, height) => {
+              if (!excalidrawAPI || isReadOnlyShare) {
+                return;
+              }
+              const center = viewportCenter(excalidrawAPI);
+              const frame = newFrameElement({
+                x: center.x - width / 2,
+                y: center.y - height / 2,
+                width,
+                height,
+                name: `Frame ${
+                  excalidrawAPI
+                    .getSceneElements()
+                    .filter(
+                      (element) =>
+                        element.type === "frame" && !element.isDeleted,
+                    ).length + 1
+                }`,
+              });
+              excalidrawAPI.updateScene({
+                elements: [...excalidrawAPI.getSceneElements(), frame],
+                appState: { selectedElementIds: { [frame.id]: true } },
+                captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+              });
+              excalidrawAPI.setActiveTool({ type: "selection" });
+            }}
             readOnlyRole={isReadOnlyShare ? shareRole : null}
             commentMode={commentMode}
             onToggleCommentMode={() => {
@@ -4080,6 +4167,7 @@ const ExcalidrawWrapper = () => {
         )}
         renderTopRightUI={() => (
           <CollabBar
+            hideConnectionStatus
             connectionStatus={isOffline ? "offline" : collabStatus}
             readOnlyRole={isReadOnlyShare ? shareRole : null}
             collaborators={collaborators}
@@ -4117,6 +4205,7 @@ const ExcalidrawWrapper = () => {
               <ActivityIcon size={18} />
             </button>
             <SaveStatusIndicator
+              compact
               collabStatus={isOffline ? "offline" : collabStatus}
               onClick={handleMenuVersionHistory}
             />
@@ -4294,6 +4383,7 @@ const ExcalidrawWrapper = () => {
           }}
         />
         <CommentLayer
+          readOnlyRole={isReadOnlyShare ? shareRole : null}
           excalidrawAPI={excalidrawAPI}
           composerTarget={commentTarget}
           onCloseComposer={() => setCommentTarget(null)}
@@ -4412,6 +4502,7 @@ const ExcalidrawWrapper = () => {
           }}
         />
         <VotingPanel
+          readOnlyRole={isReadOnlyShare ? shareRole : null}
           isOpen={votingPanelOpen}
           onClose={() => setOpenDockPanel(null)}
           excalidrawAPI={excalidrawAPI}
@@ -4459,6 +4550,7 @@ const ExcalidrawWrapper = () => {
           onScopeChange={setActivityScope}
           versionsContent={
             <VersionsPanel
+              readOnlyRole={isReadOnlyShare ? shareRole : null}
               boardId={
                 (boardDoc().read().meta?.id as string | undefined) ||
                 getActiveBoard()?.id ||
@@ -4482,6 +4574,7 @@ const ExcalidrawWrapper = () => {
           onImport={handleMenuImport}
           onVersionHistory={handleMenuVersionHistory}
           onActivityFeed={handleMenuActivityFeed}
+          onAISettings={() => setAISettingsOpen(true)}
           syncUsername={
             syncState.status === "signedIn" ? syncState.user.username : null
           }
@@ -4678,8 +4771,12 @@ const ExcalidrawWrapper = () => {
           />
         )}
 
+        <AISettings
+          isOpen={aiSettingsOpen}
+          onClose={() => setAISettingsOpen(false)}
+        />
         <AIAssistantModal
-          isOpen={aiModalOpen}
+          isOpen={aiModalOpen && aiAvailable && !isReadOnlyShare}
           onClose={() => setAiModalOpen(false)}
           doc={boardDoc()}
           selectedElements={

@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render } from "@testing-library/react";
 import * as Y from "yjs";
 
@@ -12,6 +12,7 @@ import type { ExcalidrawImperativeAPI } from "@firo/editor/types";
 
 import { CommentLayer } from "../../components/CommentLayer";
 import { createCommentThread, resolveCommentThread } from "../comments";
+import { setSessionShareRole } from "../facilitator";
 import * as boardModule from "../board";
 
 const note = (id: string): FiroElement =>
@@ -65,6 +66,8 @@ const fakeEditor = (): ExcalidrawImperativeAPI =>
     onScrollChange: () => () => {},
   } as unknown as ExcalidrawImperativeAPI);
 
+afterEach(() => setSessionShareRole(null));
+
 describe("CommentLayer", () => {
   const setup = () => {
     const doc = new FiroDoc(new Y.Doc());
@@ -72,6 +75,73 @@ describe("CommentLayer", () => {
     doc.commit([{ kind: "createElement", element: note("el-1") }]);
     return { doc, spyBoardDoc };
   };
+
+  it("lets a viewer read a thread without edit controls or composer", () => {
+    const { doc, spyBoardDoc } = setup();
+    const id = createCommentThread(doc, "el-1", "Readable")!;
+    const view = render(
+      <CommentLayer
+        excalidrawAPI={fakeEditor()}
+        composerTarget="el-1"
+        onCloseComposer={() => {}}
+        readOnlyRole="viewer"
+      />,
+    );
+    fireEvent.click(view.getByTestId(`comment-pin-${id}`));
+    expect(view.getByText("Readable")).toBeDefined();
+    for (const testId of [
+      "comment-composer",
+      "comment-reply-input",
+      "comment-reply-send",
+      "comment-resolve-toggle",
+      "comment-delete",
+    ]) {
+      expect(view.queryByTestId(testId)).toBeNull();
+    }
+    expect(view.getByTestId("comment-thread-close")).toBeDefined();
+    spyBoardDoc.mockRestore();
+  });
+
+  it("retains commenter controls and removes them on viewer prop downgrade", () => {
+    const { doc, spyBoardDoc } = setup();
+    const id = createCommentThread(doc, "el-1", "Readable")!;
+    const props = {
+      excalidrawAPI: fakeEditor(),
+      composerTarget: null,
+      onCloseComposer: () => {},
+    };
+    const view = render(<CommentLayer {...props} readOnlyRole="commenter" />);
+    fireEvent.click(view.getByTestId(`comment-pin-${id}`));
+    expect(view.getByTestId("comment-reply-input")).toBeDefined();
+    view.rerender(<CommentLayer {...props} readOnlyRole="viewer" />);
+    expect(view.getByText("Readable")).toBeDefined();
+    expect(view.queryByTestId("comment-reply-input")).toBeNull();
+    expect(view.queryByTestId("comment-resolve-toggle")).toBeNull();
+    spyBoardDoc.mockRestore();
+  });
+
+  it("refuses a retained reply and delete after a live viewer downgrade", () => {
+    const { doc, spyBoardDoc } = setup();
+    const id = createCommentThread(doc, "el-1", "Original")!;
+    const view = render(
+      <CommentLayer
+        excalidrawAPI={fakeEditor()}
+        composerTarget={null}
+        onCloseComposer={() => {}}
+      />,
+    );
+    fireEvent.click(view.getByTestId(`comment-pin-${id}`));
+    fireEvent.change(view.getByTestId("comment-reply-input"), {
+      target: { value: "Blocked" },
+    });
+    setSessionShareRole("viewer");
+    fireEvent.click(view.getByTestId("comment-reply-send"));
+    fireEvent.click(view.getByTestId("comment-resolve-toggle"));
+    fireEvent.click(view.getByTestId("comment-delete"));
+    expect(doc.comment(id)?.comments).toHaveLength(1);
+    expect(doc.comment(id)?.resolved).toBe(false);
+    spyBoardDoc.mockRestore();
+  });
 
   it("places a pin per thread and opens the thread on click", () => {
     const { doc, spyBoardDoc } = setup();

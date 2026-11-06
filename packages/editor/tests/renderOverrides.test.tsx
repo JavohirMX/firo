@@ -1280,3 +1280,37 @@ describe("render override geometry", () => {
     });
   });
 });
+
+describe("frame artboard surfaces", () => {
+  it("exports white behind frame children without covering them", async () => {
+    const child = API.createElement({
+      type: "rectangle",
+      id: "child",
+      x: 30,
+      y: 30,
+      width: 50,
+      height: 50,
+      frameId: "artboard",
+      backgroundColor: "#ff0000",
+    });
+    const frame = API.createElement({
+      type: "frame",
+      id: "artboard",
+      x: 10,
+      y: 10,
+      width: 200,
+      height: 160,
+      opacity: 50,
+    });
+    await render(<Excalidraw initialData={{ elements: [child, frame] }} />);
+    const svg = await exportToSvg(h.app.api.getSceneElements(), h.state, null);
+    const background = svg.querySelector('[data-frame-background="artboard"]')!;
+    expect(background.getAttribute("fill")).toBe("#ffffff");
+    expect(background.getAttribute("opacity")).toBe("0.5");
+    expect(
+      background.compareDocumentPosition(
+        svg.querySelector('[data-id="child"]')!,
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});

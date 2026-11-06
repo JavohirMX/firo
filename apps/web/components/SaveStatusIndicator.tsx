@@ -11,6 +11,7 @@ import "./SaveStatusIndicator.scss";
 export interface SaveStatusIndicatorProps {
   collabStatus?: string | null;
   onClick?: () => void;
+  compact?: boolean;
 }
 
 const CloudIcon: React.FC<{ size?: number }> = ({ size = 12 }) => (
@@ -56,7 +57,32 @@ const DeviceIcon: React.FC<{ size?: number }> = ({ size = 12 }) => (
 export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
   collabStatus,
   onClick,
+  compact = false,
 }) => {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!detailsOpen) {
+      return;
+    }
+    const close = (event: PointerEvent) => {
+      if (!detailsRef.current?.contains(event.target as Node)) {
+        setDetailsOpen(false);
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDetailsOpen(false);
+        detailsRef.current?.querySelector("button")?.focus();
+      }
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", escape, true);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", escape, true);
+    };
+  }, [detailsOpen]);
   const [status, setStatus] = useState<SaveStatus>(() => getSaveStatus());
 
   useEffect(() => {
@@ -65,7 +91,7 @@ export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
     });
   }, []);
 
-  if (status === "idle") {
+  if (status === "idle" && !compact) {
     return null;
   }
 
@@ -87,6 +113,64 @@ export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
       isConnected || isOfflineOrLocal ? "Saved on this device" : "Saved";
   } else if (status === "error") {
     statusText = "Error saving";
+  }
+
+  if (compact) {
+    const connectionText = isConnected
+      ? "Connected to server"
+      : collabStatus === "connecting"
+      ? "Connecting to server"
+      : "Offline or local-only";
+    const localText = statusText || "No local save yet";
+    return (
+      <div className="firo-status-control" ref={detailsRef}>
+        <button
+          type="button"
+          className={`firo-save-status firo-save-status--${status} firo-save-status--compact firo-save-status--interactive`}
+          data-testid="firo-save-status"
+          data-connection={collabStatus ?? "local"}
+          aria-label={`Board status: ${localText}. ${connectionText}`}
+          aria-expanded={detailsOpen}
+          aria-controls="firo-status-details"
+          title="Board status"
+          onClick={() => setDetailsOpen((open) => !open)}
+        >
+          <span className="firo-save-status__dot" aria-hidden="true" />
+          <DeviceIcon size={14} />
+          {status === "error" && <span>Save failed</span>}
+        </button>
+        {detailsOpen && (
+          <div
+            className="firo-status-details"
+            id="firo-status-details"
+            role="dialog"
+            aria-label="Board status details"
+          >
+            <strong>Board status</strong>
+            <p role="status" aria-live="polite">
+              {localText}
+            </p>
+            <p>{connectionText}</p>
+            <p className="firo-status-details__hint">
+              Saving on this device and connecting to the server are separate. A
+              connection does not confirm the latest edit was saved on the
+              server.
+            </p>
+            {onClick && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailsOpen(false);
+                  onClick();
+                }}
+              >
+                Version history and storage
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

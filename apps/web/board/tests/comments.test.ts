@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
 import { FiroDoc } from "@firo/doc";
@@ -16,12 +16,43 @@ import {
   unresolvedCountForElement,
 } from "../comments";
 
+import { setSessionShareRole } from "../facilitator";
+
+afterEach(() => setSessionShareRole(null));
+
 describe("the comment domain operations", () => {
   let doc: FiroDoc;
 
   beforeEach(() => {
     doc = new FiroDoc(new Y.Doc());
   });
+
+  it("refuses every comment mutation after a viewer downgrade", () => {
+    const id = createCommentThread(doc, "el-1", "Original")!;
+    const before = doc.read().comments;
+    setSessionShareRole("viewer");
+    expect(createCommentThread(doc, "el-1", "Blocked")).toBeNull();
+    expect(replyToCommentThread(doc, id, "Blocked")).toBe(false);
+    expect(resolveCommentThread(doc, id)).toBe(false);
+    expect(reopenCommentThread(doc, id)).toBe(false);
+    expect(reanchorCommentThread(doc, id, { x: 1, y: 2 })).toBe(false);
+    expect(deleteCommentThread(doc, id)).toBe(false);
+    expect(threadsOf(doc)).toEqual(before);
+  });
+
+  it.each([null, "owner", "editor", "commenter"])(
+    "preserves the comment mutation lane for %s",
+    (role) => {
+      setSessionShareRole(role);
+      const id = createCommentThread(doc, "el-1", "Original")!;
+      expect(id).not.toBeNull();
+      expect(replyToCommentThread(doc, id, "Reply")).toBe(true);
+      expect(resolveCommentThread(doc, id)).toBe(true);
+      expect(reopenCommentThread(doc, id)).toBe(true);
+      expect(reanchorCommentThread(doc, id, { x: 1, y: 2 })).toBe(true);
+      expect(deleteCommentThread(doc, id)).toBe(true);
+    },
+  );
 
   it("creates a thread with the placeholder author and an unresolved state", () => {
     const id = createCommentThread(doc, "el-1", "  Please clarify  ");

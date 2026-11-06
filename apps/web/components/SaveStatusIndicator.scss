@@ -94,3 +94,60 @@
     background: rgba(248, 113, 113, 0.12);
   }
 }
+
+.firo-status-control {
+  position: relative;
+}
+.firo-save-status--compact {
+  min-width: 32px;
+  min-height: 32px;
+  justify-content: center;
+  padding: 5px;
+}
+.firo-save-status--compact[data-connection="offline"],
+.firo-save-status--compact[data-connection="connecting"] {
+  .firo-save-status__dot {
+    background-color: #c77c00;
+  }
+}
+.firo-status-details {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: min(280px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid var(--firo-color-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--firo-color-surface, white);
+  color: var(--firo-color-text, #1e293b);
+  box-shadow: 0 4px 16px #0002;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.firo-status-details p {
+  margin: 8px 0;
+}
+.firo-status-details__hint {
+  color: var(--firo-color-text-secondary, #475569);
+  font-size: 12px;
+}
+.firo-status-details button {
+  padding: 8px;
+  border: 1px solid var(--firo-color-border, #e2e8f0);
+  border-radius: 6px;
+  background: var(--firo-color-surface, white);
+  color: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .firo-status-details {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 92px;
+    width: auto;
+  }
+}

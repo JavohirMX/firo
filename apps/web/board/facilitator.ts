@@ -274,6 +274,9 @@ export const setSessionShareRole = (role: string | null): void => {
 export const canDriveSession = (): boolean =>
   sessionShareRole !== "viewer" && sessionShareRole !== "commenter";
 
+/** Commenters may write only the comment lane; viewers may only read it. */
+export const canComment = (): boolean => sessionShareRole !== "viewer";
+
 export const getReveal = (getDocument: () => FiroDoc): RevealState => {
   sync(getDocument);
   return lastReveal;

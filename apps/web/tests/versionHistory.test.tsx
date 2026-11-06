@@ -10,6 +10,8 @@ import {
 } from "@testing-library/react";
 import { createFiroDoc } from "@firo/doc";
 
+import { setSessionShareRole } from "../board/facilitator";
+
 import { SaveStatusIndicator } from "../components/SaveStatusIndicator";
 import {
   VersionsPanel,
@@ -90,6 +92,51 @@ describe("SaveStatusIndicator Visual Sync Status", () => {
     expect(indicator.textContent).toContain("Error saving");
   });
 
+  it("shows compact truthful details and history access", () => {
+    const history = vi.fn();
+    render(
+      <SaveStatusIndicator
+        compact
+        collabStatus="connected"
+        onClick={history}
+      />,
+    );
+    act(() => mockSaveStatusListener?.("saved"));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Board status: Saved on this device/,
+      }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Board status details" }),
+    ).not.toBeNull();
+    expect(screen.getByText("Saved on this device")).not.toBeNull();
+    expect(screen.getByText("Connected to server")).not.toBeNull();
+    expect(screen.getByText(/does not confirm the latest edit/)).not.toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(
+      screen.queryByRole("dialog", { name: "Board status details" }),
+    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Board status: Saved on this device/,
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Version history and storage" }),
+    );
+    expect(history).toHaveBeenCalledOnce();
+  });
+
+  it("never hides a save failure in compact mode", () => {
+    render(<SaveStatusIndicator compact collabStatus="offline" />);
+    act(() => mockSaveStatusListener?.("error"));
+    expect(screen.getByText("Save failed")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Error saving/ }));
+    expect(screen.getByText("Error saving")).not.toBeNull();
+    expect(screen.getByText("Offline or local-only")).not.toBeNull();
+  });
+
   it("pill is interactive, supports clicking to open Version History", () => {
     const handleClick = vi.fn();
     render(
@@ -143,6 +190,8 @@ describe("VersionsPanel (ADR-0035 section 3)", () => {
   ];
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+    setSessionShareRole(null);
     vi.spyOn(storageModule, "getBoardRevisions").mockResolvedValue(
       sampleRevisions,
     );
@@ -241,6 +290,58 @@ describe("VersionsPanel (ADR-0035 section 3)", () => {
 
     expect(screen.getByText(/Successfully restored version/)).not.toBeNull();
   });
+
+  it.each(["viewer", "commenter"])(
+    "keeps history, local snapshots and download but not restore for %s",
+    async (role) => {
+      render(<VersionsPanel boardId="test-board" readOnlyRole={role} />);
+      await screen.findByTestId("revision-item-rev-1");
+      expect(screen.queryByText("Restore this version")).toBeNull();
+      expect(screen.getAllByText("Download snapshot")).toHaveLength(2);
+      expect(screen.getByText("Create snapshot")).not.toBeNull();
+    },
+  );
+
+  it("refuses a retained restore control after a live role downgrade", async () => {
+    const save = vi.spyOn(storageModule, "saveBoardRevision");
+    const restore = vi.spyOn(storageModule, "restoreBoardRevision");
+    render(<VersionsPanel boardId="test-board" />);
+    await screen.findByTestId("revision-item-rev-1");
+    setSessionShareRole("viewer");
+    fireEvent.click(screen.getAllByText("Restore this version")[0]);
+    expect(save).not.toHaveBeenCalled();
+    expect(restore).not.toHaveBeenCalled();
+    setSessionShareRole(null);
+  });
+
+  it.each(["live role", "role prop"])(
+    "refuses restore when %s changes during the safety snapshot",
+    async (change) => {
+      let finish!: (value: null) => void;
+      vi.spyOn(storageModule, "saveBoardRevision").mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const restore = vi.spyOn(storageModule, "restoreBoardRevision");
+      const view = render(<VersionsPanel boardId="test-board" />);
+      await screen.findByTestId("revision-item-rev-1");
+      fireEvent.click(screen.getAllByText("Restore this version")[0]);
+      if (change === "live role") {
+        setSessionShareRole("commenter");
+      } else {
+        view.rerender(
+          <VersionsPanel boardId="test-board" readOnlyRole="viewer" />,
+        );
+      }
+      await act(async () => {
+        finish(null);
+      });
+      expect(restore).not.toHaveBeenCalled();
+      setSessionShareRole(null);
+    },
+  );
 
   it("handles downloading snapshot file", async () => {
     const createObjectURLMock = vi.fn().mockReturnValue("blob:fake-url");

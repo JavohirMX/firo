@@ -65,6 +65,7 @@ import { loadBoard, serializeBoard } from "@firo/schema";
 import type { FiroDoc } from "@firo/doc";
 
 import { recordActivity } from "./activity";
+import { canDriveSession } from "./facilitator";
 
 /**
  * Where the board is stored.
@@ -512,8 +513,15 @@ export const restoreBoardRevision = async (
   revisionId: string,
   boardId?: string,
 ): Promise<RestoreResult> => {
+  if (!canDriveSession()) {
+    return { status: "failed", detail: "This board is read-only" };
+  }
   const targetId = boardId ?? activeBoardId;
   const revisions = await getBoardRevisions(targetId);
+  // A role can change while IndexedDB is reading the revision.
+  if (!canDriveSession()) {
+    return { status: "failed", detail: "This board is read-only" };
+  }
   const revision = revisions.find((r) => r.id === revisionId);
   if (!revision) {
     return {

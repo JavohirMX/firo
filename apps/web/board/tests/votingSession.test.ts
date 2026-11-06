@@ -21,8 +21,11 @@ import {
   planCast,
   readSession,
   startVotingRound,
+  setVotingResultsVisible,
   withdrawDots,
 } from "../votingSession";
+
+import { setSessionShareRole } from "../facilitator";
 
 /*
  * The app-side voting session seam.
@@ -80,6 +83,8 @@ const seedVote = (
   doc.commit([{ kind: "createRecord", record }]);
   return record;
 };
+
+afterEach(() => setSessionShareRole(null));
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -287,5 +292,44 @@ describe("countableVotes", () => {
     seedVote(doc, "e2", "a");
     const votes = countableVotes(getDocument, new Set(["e1"]));
     expect(votes.map((vote) => vote.elementId)).toEqual(["e1"]);
+  });
+});
+
+describe("live voting result visibility", () => {
+  it("lets the current editor driver toggle results without changing round settings", () => {
+    const { doc, getDocument } = newBoard();
+    startVotingRound(getDocument, DEFAULT_VOTING_SETTINGS);
+    const before = readSession(getDocument).round!;
+    expect(setVotingResultsVisible(getDocument, false)).toBe(true);
+    expect(readSession(getDocument).round).toEqual({
+      ...before,
+      settings: { ...before.settings, showResults: false },
+    });
+    expect(doc.read().records).toHaveLength(0);
+  });
+  it.each(["viewer", "commenter"])(
+    "refuses a retained driver switch after downgrade to %s",
+    (role) => {
+      const { getDocument } = newBoard();
+      startVotingRound(getDocument, DEFAULT_VOTING_SETTINGS);
+      const before = readSession(getDocument).round;
+      setSessionShareRole(role);
+      expect(setVotingResultsVisible(getDocument, false)).toBe(false);
+      expect(readSession(getDocument).round).toEqual(before);
+    },
+  );
+  it("refuses a follower even if an old control thought it was the driver", () => {
+    const { doc, getDocument } = newBoard();
+    const round = startRound(DEFAULT_VOTING_SETTINGS, Date.now());
+    injectPeer(
+      doc,
+      doc.awareness.clientID + 1,
+      ephemeral({
+        voting: round,
+        session: { leader: doc.awareness.clientID + 1 },
+      }),
+    );
+    expect(setVotingResultsVisible(getDocument, false)).toBe(false);
+    expect(readSession(getDocument).round?.settings.showResults).toBe(true);
   });
 });

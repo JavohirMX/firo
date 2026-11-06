@@ -315,9 +315,28 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
     });
   });
 
+  it("offers frame ratios without removing custom drawing", () => {
+    const create = vi.fn();
+    render(
+      <WebCreationRail appState={mockAppState} onCreateFramePreset={create} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Frame (F)" }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: "Presentation (16:9)" }),
+    );
+    expect(create).toHaveBeenCalledWith(960, 540);
+  });
+
+  it("hides AI by default and shows it only when configured and enabled", () => {
+    const view = render(<WebCreationRail appState={mockAppState} />);
+    expect(screen.queryByRole("button", { name: /AI Assistant/i })).toBeNull();
+    view.rerender(<WebCreationRail appState={mockAppState} aiAvailable />);
+    expect(screen.getByRole("button", { name: /AI Assistant/i })).toBeDefined();
+  });
+
   describe("the arrangement", () => {
     it("persists a reorder to localStorage, where a preference belongs", () => {
-      render(<WebCreationRail appState={mockAppState} />);
+      render(<WebCreationRail appState={mockAppState} aiAvailable />);
 
       fireEvent.dragStart(screen.getByRole("button", { name: /Draw/i }));
       fireEvent.dragOver(screen.getByRole("button", { name: /AI Assistant/i }));

@@ -712,6 +712,41 @@ const _renderStaticScene = ({
     }
   };
 
+  // Frames are artboards: paint their surface behind their children, which
+  // precede the frame in document z-order. Never fill in the outline pass.
+  if (appState.frameRendering.enabled && appState.frameRendering.outline) {
+    visibleElements
+      .filter((element) => element.type === "frame")
+      .sort((a, b) => b.width * b.height - a.width * a.height)
+      .forEach((element) => {
+        const state = getRenderState(element);
+        const frame = getRenderElementWithPositionOverride(
+          element,
+          state.offset,
+        );
+        context.save();
+        context.globalAlpha = state.opacity;
+        context.fillStyle = applyDarkModeFilter(
+          element.backgroundColor === "transparent"
+            ? "#ffffff"
+            : element.backgroundColor,
+          appState.theme === THEME.DARK,
+        );
+        context.translate(
+          frame.x + appState.scrollX + frame.width / 2,
+          frame.y + appState.scrollY + frame.height / 2,
+        );
+        context.rotate(frame.angle);
+        context.fillRect(
+          -frame.width / 2,
+          -frame.height / 2,
+          frame.width,
+          frame.height,
+        );
+        context.restore();
+      });
+  }
+
   // Paint visible elements
   visibleElements
     .filter((el) => !isIframeLikeElement(el))

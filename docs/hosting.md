@@ -39,7 +39,7 @@ The compose file publishes `8080:8080`, which listens on **all** interfaces - fi
 
    then `docker compose up -d` to apply.
 
-That is the whole setup. There is nothing else to configure; every server setting has a working default (see the environment table in the [README](../README.md#self-hosting-the-server)).
+That is the whole setup. There is nothing else to configure; server settings have defaults in [`apps/server/src/config.ts`](../apps/server/src/config.ts). The Compose file overrides open registration; review that setting before network exposure.
 
 ## Data, backups, upgrades
 
