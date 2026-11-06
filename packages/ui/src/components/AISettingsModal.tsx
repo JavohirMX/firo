@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { CloseIcon, SettingsIcon, CheckIcon } from "../icons";
 
@@ -55,6 +55,21 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
     "idle" | "testing" | "success" | "error"
   >("idle");
   const [pingMessage, setPingMessage] = useState("");
+
+  const probeRequest = useRef(0);
+  const probeController = useRef<AbortController | null>(null);
+
+  // A response describes the tested draft only, never a later edit or session.
+  useEffect(() => {
+    probeRequest.current += 1;
+    probeController.current?.abort();
+    setPingStatus("idle");
+    setPingMessage("");
+    return () => {
+      probeRequest.current += 1;
+      probeController.current?.abort();
+    };
+  }, [isOpen, provider, endpoint, model, apiKey]);
 
   // Sync state when config changes or modal opens
   useEffect(() => {
@@ -115,6 +130,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
   };
 
   const handleTestConnection = async () => {
+    const request = ++probeRequest.current;
     setPingStatus("testing");
     setPingMessage("Testing connection to local model endpoint...");
 
@@ -135,6 +151,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
         // Fallback probe
         const probeUrl = currentConfig.endpoint.replace(/\/+$/, "");
         const controller = new AbortController();
+        probeController.current = controller;
         const timeout = setTimeout(() => controller.abort(), 4000);
         try {
           const res = await fetch(probeUrl, {
@@ -152,9 +169,14 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
         }
       }
 
+      if (request !== probeRequest.current) {
+        return;
+      }
       if (isReachable) {
         setPingStatus("success");
-        setPingMessage("Connection verified. Local model server is reachable!");
+        setPingMessage(
+          "Endpoint reachable. This does not verify the selected model.",
+        );
       } else {
         setPingStatus("error");
         setPingMessage(
@@ -162,6 +184,9 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
         );
       }
     } catch (err: unknown) {
+      if (request !== probeRequest.current) {
+        return;
+      }
       setPingStatus("error");
       setPingMessage(
         `Connection failed: ${
