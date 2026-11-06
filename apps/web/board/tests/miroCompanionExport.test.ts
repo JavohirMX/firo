@@ -1,3 +1,5 @@
+import { webcrypto } from "node:crypto";
+
 import { expect, it, vi } from "vitest";
 
 import { MIRO_COMPANION_EXPORT_SCRIPT } from "../miro/companionExport";
@@ -29,7 +31,7 @@ it("exports media byte hashes with item IDs while preserving non-media items", a
   );
   await run(
     { board: { get: async () => [image, missing, text] } },
-    crypto,
+    webcrypto,
     copy,
     { warn },
   );
