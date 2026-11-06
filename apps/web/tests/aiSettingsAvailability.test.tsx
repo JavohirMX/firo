@@ -25,10 +25,18 @@ vi.mock("@firo/ui", () => ({
   AISettingsModal: ({
     isOpen,
     config,
+    loading,
   }: {
     isOpen: boolean;
     config: { model: string };
-  }) => (isOpen ? <div data-testid="model">{config.model}</div> : null),
+    loading?: boolean;
+  }) =>
+    isOpen ? (
+      <div>
+        <div data-testid="model">{config.model}</div>
+        <div data-testid="loading">{String(loading)}</div>
+      </div>
+    ) : null,
 }));
 
 const deferred = <T,>() => {
@@ -77,5 +85,20 @@ describe("AI settings async ordering", () => {
       old.resolve({ ...next, model: "old-model" });
     });
     expect(screen.getByTestId("model").textContent).toBe("new-model");
+  });
+  it("keeps a new settings session loading until its saved config arrives", async () => {
+    const load = deferred<Awaited<ReturnType<typeof getAIConfig>>>();
+    vi.mocked(getAIConfig).mockReturnValue(load.promise);
+    render(<AISettings isOpen onClose={() => {}} />);
+    expect(screen.getByTestId("loading").textContent).toBe("true");
+    await act(async () => {
+      load.resolve({
+        provider: "ollama",
+        endpoint: "http://localhost:11434",
+        model: "saved-model",
+      });
+    });
+    expect(screen.getByTestId("loading").textContent).toBe("false");
+    expect(screen.getByTestId("model").textContent).toBe("saved-model");
   });
 });

@@ -97,6 +97,9 @@
 }
 
 .firo-ai-settings-modal__body {
+  border: 0;
+  margin: 0;
+  min-width: 0;
   padding: var(--firo-space-lg, 20px) var(--firo-space-xl, 24px);
   display: flex;
   flex-direction: column;

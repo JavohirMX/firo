@@ -51,6 +51,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   onError,
 }) => {
   const [config, setConfig] = useState<AIConfig>(DEFAULT_AI_CONFIG);
+  const [configLoading, setConfigLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AIAssistantTab>("cluster");
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<
@@ -67,8 +68,15 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
 
   // Load configuration on mount or open
   useEffect(() => {
+    let active = true;
     if (isOpen) {
-      getAIConfig().then(setConfig);
+      setConfigLoading(true);
+      void getAIConfig().then((value) => {
+        if (active) {
+          setConfig(value);
+          setConfigLoading(false);
+        }
+      });
       setStatus("idle");
       setStatusMessage("");
       setPrompt("");
@@ -83,6 +91,9 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         setActiveTab("diagram");
       }
     }
+    return () => {
+      active = false;
+    };
   }, [isOpen, initialTab, hasStickies, hasElements]);
 
   // Handle escape key
@@ -483,6 +494,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       {/* Settings Modal */}
       <AISettingsModal
         isOpen={isSettingsOpen}
+        loading={configLoading}
         onClose={() => setIsSettingsOpen(false)}
         config={config}
         onSave={handleSettingsSave}

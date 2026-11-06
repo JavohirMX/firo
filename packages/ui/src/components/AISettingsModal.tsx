@@ -13,6 +13,7 @@ export interface AISettingsConfig {
 
 export interface AISettingsModalProps {
   isOpen: boolean;
+  loading?: boolean;
   enabled?: boolean;
   onEnabledChange?: (enabled: boolean) => void;
   onClose: () => void;
@@ -33,6 +34,7 @@ const DEFAULT_CONFIG: AISettingsConfig = {
 
 export const AISettingsModal: React.FC<AISettingsModalProps> = ({
   isOpen,
+  loading = false,
   enabled,
   onEnabledChange,
   onClose,
@@ -130,6 +132,9 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
   };
 
   const handleTestConnection = async () => {
+    if (loading) {
+      return;
+    }
     const request = ++probeRequest.current;
     setPingStatus("testing");
     setPingMessage("Testing connection to local model endpoint...");
@@ -197,6 +202,9 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
   };
 
   const handleSave = () => {
+    if (loading) {
+      return;
+    }
     const newConfig: AISettingsConfig = {
       provider,
       endpoint: endpoint.trim() || DEFAULT_CONFIG.endpoint,
@@ -250,7 +258,12 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <div className="firo-ai-settings-modal__body">
+        <fieldset
+          className="firo-ai-settings-modal__body"
+          disabled={loading}
+          aria-busy={loading}
+        >
+          {loading && <p role="status">Loading saved settings...</p>}
           {onEnabledChange && (
             <label className="firo-ai-settings-modal__field">
               <span>
@@ -433,7 +446,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
               </span>
             )}
           </div>
-        </div>
+        </fieldset>
 
         {/* Footer */}
         <div className="firo-ai-settings-modal__footer">
@@ -450,6 +463,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({
             className="firo-ai-settings-modal__btn firo-ai-settings-modal__btn--primary"
             onClick={handleSave}
             data-testid="ai-save-btn"
+            disabled={loading}
           >
             Save Settings
           </button>

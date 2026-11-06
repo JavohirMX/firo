@@ -341,6 +341,19 @@ describe("AISettingsModal UI Component (§10.1)", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("does not allow editing or saving a settings draft before loading completes", () => {
+    const save = vi.fn();
+    render(<AISettingsModal isOpen loading onClose={vi.fn()} onSave={save} />);
+    expect(screen.getByTestId("ai-endpoint-input")).toBeDisabled();
+    expect(screen.getByTestId("ai-test-connection-btn")).toBeDisabled();
+    expect(screen.getByTestId("ai-save-btn")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("ai-save-btn"));
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toContain(
+      "Loading saved settings",
+    );
+  });
+
   it("Test Connection button calls client.ping() and displays status", async () => {
     const mockPing = vi.fn().mockResolvedValue(true);
 
