@@ -3,8 +3,10 @@
 # Run `make help` to list them.
 
 YARN ?= yarn
-# Test and typecheck runs are stable at this heap on small dev hosts.
-TEST_NODE_OPTIONS ?= --max-old-space-size=1536
+# A single full-suite pass accumulates heap per worker across files; 1536
+# OOMs workers mid-run. 3072 completed 356 files / 5161 tests green on an
+# 8 GB host (2026-11-13, head 83cef557). Override per host as needed.
+TEST_NODE_OPTIONS ?= --max-old-space-size=3072
 
 .PHONY: help install start build test coverage typecheck lint format fix verify check
 
