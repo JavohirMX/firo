@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { hashBytes } from "@firo/doc";
+
 import { DEFAULT_FONT_FAMILY, FONT_FAMILY } from "@firo/common";
 
 import {
@@ -587,7 +589,7 @@ describe("Miro conversion", () => {
       expect(firstAsset.mimeType).toBe("image/png");
     });
 
-    it("warns when an image falls back to archive-order media matching", async () => {
+    it("leaves unresolved images pending instead of guessing from archive order", async () => {
       const fakePng = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
       const mediaFiles = new Map<string, Uint8Array>([["photo.png", fakePng]]);
 
@@ -600,15 +602,20 @@ describe("Miro conversion", () => {
         },
       ];
 
-      const { board, warnings } = await convertMiroItemsToFiro(miroItems, {
-        mediaFiles,
-      });
+      const { board, warnings, assetsToPut } = await convertMiroItemsToFiro(
+        miroItems,
+        {
+          mediaFiles,
+        },
+      );
 
       expect(board.elements.length).toBe(1);
-      expect(board.elements[0].fileId).toBeTruthy();
+      expect(board.elements[0].fileId).toBeNull();
+      expect(board.elements[0].status).toBe("pending");
+      expect(assetsToPut.size).toBe(0);
       expect(
         warnings.some(
-          (w) => w.includes("archive order") && w.includes("img_guess"),
+          (w) => w.includes("not matched") && w.includes("img_guess"),
         ),
       ).toBe(true);
     });
@@ -1124,7 +1131,7 @@ describe("Miro conversion", () => {
       expect(label?.fontFamily).toBe(FONT_FAMILY["Open Sans"]);
     });
 
-    it("quantizes sticky note font size to valid schema values [16, 20, 28, 36]", async () => {
+    it("preserves explicit sticky note font sizes without preset quantization", async () => {
       const miroItems: MiroItem[] = [
         {
           id: "sticky-1",
@@ -1155,12 +1162,83 @@ describe("Miro conversion", () => {
       const { board } = await convertMiroItemsToFiro(miroItems);
       expect(board.elements.length).toBe(3);
 
-      expect(board.elements[0].fontSize).toBe(16);
+      expect(board.elements[0].fontSize).toBe(13);
       expect(board.elements[0].textAlign).toBe("center");
       expect(board.elements[0].verticalAlign).toBe("middle");
 
-      expect(board.elements[1].fontSize).toBe(20);
-      expect(board.elements[2].fontSize).toBe(36);
+      expect(board.elements[1].fontSize).toBe(22);
+      expect(board.elements[2].fontSize).toBe(34);
+    });
+
+    it("does not choose between duplicate archive resource titles", async () => {
+      const { board, assetsToPut } = await convertMiroItemsToFiro(
+        [{ id: "unidentified", type: "image", title: "image.png" }],
+        {
+          resources: [
+            { id: "111111", name: "image.png", extension: "png" },
+            { id: "222222", name: "image.png", extension: "png" },
+          ],
+          mediaFiles: new Map([
+            ["111111.png", new Uint8Array([137, 80, 78, 71, 1])],
+            ["222222.png", new Uint8Array([137, 80, 78, 71, 2])],
+          ]),
+        },
+      );
+      expect(board.elements[0]).toMatchObject({
+        fileId: null,
+        status: "pending",
+      });
+      expect(assetsToPut.size).toBe(0);
+    });
+
+    it("matches remapped media by byte identity instead of archive order or title", async () => {
+      const right = new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]);
+      const wrong = new Uint8Array([137, 80, 78, 71, 9, 8, 7, 6]);
+      const mediaSha256 = await hashBytes(right.buffer);
+      const { board, assetsToPut } = await convertMiroItemsToFiro(
+        [
+          {
+            id: "copied-id",
+            type: "image",
+            title: "wrong.png",
+            mediaSha256,
+            x: 120,
+            y: 300,
+            width: 400,
+            height: 200,
+          },
+        ],
+        {
+          mediaFiles: new Map([
+            ["wrong.png", wrong],
+            ["original-resource.png", right],
+          ]),
+        },
+      );
+      expect(board.elements[0]).toMatchObject({
+        fileId: mediaSha256,
+        x: -80,
+        y: 200,
+        width: 400,
+        height: 200,
+      });
+      expect(assetsToPut.get(mediaSha256)?.bytes).toEqual(right);
+      const unresolved = await convertMiroItemsToFiro(
+        [
+          {
+            id: "copied-id",
+            type: "image",
+            title: "wrong.png",
+            mediaSha256: "0".repeat(64),
+          },
+        ],
+        { mediaFiles: new Map([["wrong.png", wrong]]) },
+      );
+      expect(unresolved.board.elements[0]).toMatchObject({
+        fileId: null,
+        status: "pending",
+      });
+      expect(unresolved.assetsToPut.size).toBe(0);
     });
 
     it("extracts and indexes media files into assetsToPut", async () => {

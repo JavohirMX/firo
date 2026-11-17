@@ -4,7 +4,12 @@ import { EXPORT_DATA_TYPES, MIME_TYPES } from "@firo/common";
 
 import type { ExcalidrawTextElement } from "@firo/element/types";
 
-import { getDefaultAppState } from "../appState";
+import {
+  getDefaultAppState,
+  clearAppStateForLocalStorage,
+  cleanAppStateForExport,
+  clearAppStateForDatabase,
+} from "../appState";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
@@ -14,6 +19,27 @@ import { fireEvent, queryByTestId, render, waitFor } from "./test-utils";
 const { h } = window;
 
 describe("appState", () => {
+  it("defaults to sharp edges and a visible backdrop without enabling snapping", () => {
+    const state = getDefaultAppState();
+    expect(state.currentItemRoundness).toBe("sharp");
+    expect(state.canvasBackdropEnabled).toBe(true);
+    expect(state.gridModeEnabled).toBe(false);
+  });
+
+  it.each([true, false])(
+    "preserves the backdrop choice %s in saved and exported state",
+    (visible) => {
+      const state = { ...getDefaultAppState(), canvasBackdropEnabled: visible };
+      for (const clean of [
+        clearAppStateForLocalStorage,
+        cleanAppStateForExport,
+        clearAppStateForDatabase,
+      ]) {
+        expect(clean(state).canvasBackdropEnabled).toBe(visible);
+        expect(clean(state).gridModeEnabled).toBe(false);
+      }
+    },
+  );
   it("drag&drop file doesn't reset non-persisted appState", async () => {
     const defaultAppState = getDefaultAppState();
     const exportBackground = !defaultAppState.exportBackground;

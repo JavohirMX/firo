@@ -376,8 +376,8 @@ export const convertMiroItemsToFiro = async (
     { bytes: Uint8Array; ext: string }
   >();
   const mediaByFilename = new Map<string, { bytes: Uint8Array; ext: string }>();
-  const mediaList: Array<{ name: string; bytes: Uint8Array; ext: string }> = [];
-  let unassignedMediaIndex = 0;
+
+  const mediaByHash = new Map<string, { bytes: Uint8Array; ext: string }>();
 
   if (options.mediaFiles) {
     for (const [rawFilename, bytes] of options.mediaFiles) {
@@ -424,7 +424,11 @@ export const convertMiroItemsToFiro = async (
       }
 
       const mediaEntry = { bytes, ext };
-      mediaList.push({ name: cleanFilename, bytes, ext });
+      const buffer = bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer;
+      mediaByHash.set(await hashBytes(buffer), mediaEntry);
 
       // Match numeric IDs anywhere in filename (e.g. "999111.png", "img_34587645123456789_0.png")
       const digitMatches = cleanFilename.match(/\d{5,25}/g);
@@ -463,13 +467,17 @@ export const convertMiroItemsToFiro = async (
   }
 
   // Also map resource names and ids from resources.json
-  const resourceIdByName = new Map<string, string>();
+  const resourceIdByName = new Map<string, string | null>();
   if (options.resources) {
     for (const res of options.resources) {
       const resId = res.id != null ? String(res.id) : "";
       const resName = res.name ? String(res.name).toLowerCase() : "";
       if (resName && resId) {
-        resourceIdByName.set(resName, resId);
+        const previous = resourceIdByName.get(resName);
+        resourceIdByName.set(
+          resName,
+          previous === undefined || previous === resId ? resId : null,
+        );
       }
       if (resId && resName) {
         const media =
@@ -576,18 +584,11 @@ export const convertMiroItemsToFiro = async (
         const bg = normalizeMiroColor(item.style?.fillColor, "#fff9b8");
         const textColor = getContrastingTextColor(bg);
 
-        // Normalize font size to schema-supported sizes: 16 | 20 | 28 | 36
+        // Preserve an explicit Miro size; presets are only defaults.
         const rawFontSize = Number(item.style?.fontSize ?? item.fontSize);
-        let fontSize: 16 | 20 | 28 | 36;
-        if (!isNaN(rawFontSize) && rawFontSize > 0) {
-          fontSize =
-            rawFontSize <= 18
-              ? 16
-              : rawFontSize <= 24
-              ? 20
-              : rawFontSize <= 32
-              ? 28
-              : 36;
+        let fontSize: number;
+        if (Number.isFinite(rawFontSize) && rawFontSize > 0) {
+          fontSize = rawFontSize;
         } else {
           fontSize =
             text.length > 200
@@ -667,8 +668,8 @@ export const convertMiroItemsToFiro = async (
             : getContrastingTextColor(bg);
           const rawFontSize = Number(item.style?.fontSize ?? item.fontSize);
           let fontSize: number;
-          if (!isNaN(rawFontSize) && rawFontSize > 0) {
-            fontSize = Math.max(10, Math.min(64, Math.round(rawFontSize)));
+          if (Number.isFinite(rawFontSize) && rawFontSize > 0) {
+            fontSize = rawFontSize;
           } else {
             const defaultBase =
               contentText.length > 120 ? 14 : contentText.length > 50 ? 16 : 20;
@@ -741,12 +742,11 @@ export const convertMiroItemsToFiro = async (
           Number(
             item.scale ?? item.data?.scale ?? (item.geometry as any)?.scale,
           ) || 1;
+        const rawFontSize = Number(item.style?.fontSize ?? item.fontSize);
         const baseFontSize =
-          Number(item.style?.fontSize ?? item.fontSize) || 18;
-        const fontSize = Math.max(
-          10,
-          Math.min(64, Math.round(baseFontSize * scale)),
-        );
+          Number.isFinite(rawFontSize) && rawFontSize > 0 ? rawFontSize : 18;
+        const fontSize =
+          baseFontSize * (Number.isFinite(scale) && scale > 0 ? scale : 1);
 
         elements.push({
           ...baseFields,
@@ -1017,11 +1017,25 @@ export const convertMiroItemsToFiro = async (
 
         let matchedMedia: { bytes: Uint8Array; ext: string } | undefined;
 
+        // A companion export can carry a SHA-256 from Miro image.getFile().
+        // That byte identity survives copied boards with remapped item IDs.
+        const mediaHash =
+          typeof item.mediaSha256 === "string"
+            ? item.mediaSha256.toLowerCase()
+            : "";
+        if (mediaHash) {
+          matchedMedia = mediaByHash.get(mediaHash);
+        }
+
         // 1. Check explicit resourceId
         const explicitResId = String(
           item.resourceId ?? item.data?.resourceId ?? "",
         );
-        if (explicitResId && mediaByResourceId.has(explicitResId)) {
+        if (
+          !mediaHash &&
+          explicitResId &&
+          mediaByResourceId.has(explicitResId)
+        ) {
           matchedMedia = mediaByResourceId.get(explicitResId);
         }
 
@@ -1033,7 +1047,7 @@ export const convertMiroItemsToFiro = async (
             item.data?.previewUrl ??
             "",
         );
-        if (!matchedMedia && url) {
+        if (!mediaHash && !matchedMedia && url) {
           const resMatch =
             url.match(/\/resources\/([a-zA-Z0-9_-]+)/) ||
             url.match(/\/(\d{15,22})/);
@@ -1058,10 +1072,12 @@ export const convertMiroItemsToFiro = async (
         )
           .toLowerCase()
           .trim();
-        if (!matchedMedia && title) {
+        if (!mediaHash && !matchedMedia && title) {
           if (resourceIdByName.has(title)) {
-            const resId = resourceIdByName.get(title)!;
-            matchedMedia = mediaByResourceId.get(resId);
+            const resId = resourceIdByName.get(title);
+            if (resId) {
+              matchedMedia = mediaByResourceId.get(resId);
+            }
           } else if (mediaByFilename.has(title)) {
             matchedMedia = mediaByFilename.get(title);
           }
@@ -1069,6 +1085,7 @@ export const convertMiroItemsToFiro = async (
 
         // 4. Check item.id as resourceId
         if (
+          !mediaHash &&
           !matchedMedia &&
           item.id &&
           mediaByResourceId.has(String(item.id))
@@ -1077,7 +1094,7 @@ export const convertMiroItemsToFiro = async (
         }
 
         // 5. Check extra resource properties
-        if (!matchedMedia) {
+        if (!mediaHash && !matchedMedia) {
           const extraResId = String(
             item.data?.imageResourceId ??
               item.data?.documentResourceId ??
@@ -1089,17 +1106,11 @@ export const convertMiroItemsToFiro = async (
           }
         }
 
-        // 6. Sequential media fallback if archive contains media files.
-        // Nothing in the export ties this item to a resource, so the pairing
-        // is archive order, not evidence - say so, or a guessed image looks
-        // exactly like a resolved one.
-        if (!matchedMedia && mediaList.length > 0) {
-          const fallbackEntry =
-            mediaList[unassignedMediaIndex % mediaList.length];
-          unassignedMediaIndex++;
-          matchedMedia = { bytes: fallbackEntry.bytes, ext: fallbackEntry.ext };
+        // Archive order is not an identity link. Keep unresolved media in its
+        // original position without inserting a different image as a guess.
+        if (!matchedMedia) {
           warnings.push(
-            `Image matched to a media file by archive order (no resource reference in the export); the pairing is a guess - verify placement after import (id: ${id})`,
+            `Image not matched to an archive resource; kept as a pending placeholder (id: ${id})`,
           );
         }
 

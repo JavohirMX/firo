@@ -56,7 +56,10 @@ import {
 } from "./board/files";
 import { readBoardPayload } from "./board/storage";
 
-import type { MiroRtbArchive } from "./board/miro";
+import {
+  MIRO_COMPANION_EXPORT_SCRIPT,
+  type MiroRtbArchive,
+} from "./board/miro";
 
 import type { BoardFolder, BoardMeta } from "./board/library";
 
@@ -711,9 +714,12 @@ export const BoardHomeScreen: React.FC = () => {
                       borderRadius: 4,
                       fontSize: 12,
                       userSelect: "all",
+                      whiteSpace: "pre-wrap",
+                      maxHeight: 180,
+                      overflow: "auto",
                     }}
                   >
-                    copy(JSON.stringify(await miro.board.get()))
+                    {MIRO_COMPANION_EXPORT_SCRIPT}
                   </code>
                   <button
                     type="button"
@@ -727,7 +733,7 @@ export const BoardHomeScreen: React.FC = () => {
                     }}
                     onClick={() => {
                       void navigator.clipboard?.writeText(
-                        "copy(JSON.stringify(await miro.board.get()))",
+                        MIRO_COMPANION_EXPORT_SCRIPT,
                       );
                       setCopiedCmd(true);
                       setTimeout(() => setCopiedCmd(false), 2000);

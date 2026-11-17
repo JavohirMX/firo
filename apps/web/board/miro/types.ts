@@ -85,6 +85,8 @@ export interface MiroItem {
   endItem?: { id: string };
   captions?: MiroCaption[];
   resourceId?: string | number;
+  /** SHA-256 of getFile() bytes from a companion SDK export. */
+  mediaSha256?: string;
   [key: string]: unknown;
 }
 

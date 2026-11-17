@@ -37,6 +37,7 @@ import {
   nullableString,
   nullableNumber,
   number,
+  positiveNumber,
   oneOf,
   preserveUnknownFields,
   string,
@@ -45,9 +46,6 @@ import {
 import type { Binding, GroupId, StickyNoteElement } from "../types.js";
 import type { ElementSpec } from "../registry.js";
 import type { RepairLog } from "../validate.js";
-
-/** Excalidraw's sticky-note sizes, in px. Width is always height * 1.3. */
-const SIZES = [100, 150, 200, 250] as const;
 
 const TEXT_ALIGN = ["left", "center", "right"] as const;
 const VERTICAL_ALIGN = ["top", "middle", "bottom"] as const;
@@ -79,17 +77,10 @@ const validate = (
    */
   const base = preserveUnknownFields(raw, allKnownFields("stickynote"), log);
 
-  const width = number(raw.width, 150, log, "width");
-  // Excalidraw's aspect ratio, and the source of the "sticky notes are
-  // 5:4-ish" look. Clamped to the supported sizes, because a note at an
-  // arbitrary size is a note with a corrupted `width`.
-  const height = clamp(
-    number(raw.height, 150, log, "height"),
-    SIZES[0],
-    SIZES[SIZES.length - 1],
-    log,
-    "height",
-  );
+  // Imported notes may be much larger than toolbar presets. A preset is
+  // not a document limit: clamping height changes both layout and label fit.
+  const width = positiveNumber(raw.width, 150, log, "width");
+  const height = positiveNumber(raw.height, 150, log, "height");
 
   /*
    * The note is a container only if it is a `section`. A `true` here means the
@@ -229,13 +220,7 @@ const validate = (
     ...elementTags(raw, log),
 
     text: string(raw.text, "", log, "text"),
-    fontSize: oneOf(
-      raw.fontSize,
-      [16, 20, 28, 36] as const,
-      20,
-      log,
-      "fontSize",
-    ),
+    fontSize: positiveNumber(raw.fontSize, 20, log, "fontSize"),
     fontFamily: number(raw.fontFamily, 6, log, "fontFamily"),
     textAlign: oneOf(raw.textAlign, TEXT_ALIGN, "left", log, "textAlign"),
     verticalAlign: oneOf(

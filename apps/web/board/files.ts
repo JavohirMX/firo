@@ -945,7 +945,7 @@ const importBoardFileInner = async (
             encryptionVersion ?? "1.1"
           }). Extracted ${
             mediaFiles.size
-          } media assets. Run \`copy(JSON.stringify(await miro.board.get()))\` on your Miro board to provide the items.`,
+          } media assets. Use the companion export in the import dialog to include item layout and media identities.`,
           rtbArchive: {
             board: boardMeta,
             resources,
@@ -956,6 +956,13 @@ const importBoardFileInner = async (
         };
       }
     }
+    // A ZIP that is not a supported board container is still binary. Never
+    // parse its compressed bytes as CSV and create thousands of bogus notes.
+    return {
+      ok: false,
+      reason: "unreadable",
+      detail: "This ZIP does not contain a supported Firo or Miro board.",
+    };
   }
 
   // 2. Text, CSV, or JSON handling

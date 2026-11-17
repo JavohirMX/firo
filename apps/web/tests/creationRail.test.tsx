@@ -59,6 +59,30 @@ describe("WebCreationRail One-Time Tools Revert and Locking", () => {
     expect(CREATION_TOOLS.has("eraser")).toBe(false);
   });
 
+  it("routes plain sticky dragging to canvas without native rail dragging", () => {
+    render(<WebCreationRail appState={mockAppState} />);
+    const sticky = screen.getByRole("button", { name: /Sticky note/i });
+    expect(sticky.getAttribute("draggable")).toBe("false");
+    fireEvent.pointerDown(sticky, { button: 0 });
+    expect(handleButtonPointerDownMock).toHaveBeenCalledWith(
+      "stickynote",
+      expect.anything(),
+    );
+    expect(sticky.getAttribute("draggable")).toBe("false");
+  });
+
+  it("reserves Alt-drag for rail rearrangement instead of canvas placement", () => {
+    render(<WebCreationRail appState={mockAppState} />);
+    const sticky = screen.getByRole("button", { name: /Sticky note/i });
+    const altPointerDown = new Event("pointerdown", { bubbles: true });
+    Object.defineProperty(altPointerDown, "altKey", { value: true });
+    fireEvent(sticky, altPointerDown);
+    expect(sticky.getAttribute("draggable")).toBe("true");
+    expect(handleButtonPointerDownMock).not.toHaveBeenCalled();
+    fireEvent.pointerDown(sticky, { button: 0 });
+    expect(sticky.getAttribute("draggable")).toBe("false");
+  });
+
   it("single-clicking a creation tool activates it with locked: false (one-time placement)", () => {
     render(<WebCreationRail appState={mockAppState} />);
 

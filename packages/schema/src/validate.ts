@@ -168,6 +168,20 @@ export const number = (
   return fallback;
 };
 
+/** Preserve positive finite sizes, including fractional imported typography. */
+export const positiveNumber = (
+  value: unknown,
+  fallback: number,
+  log?: RepairLog,
+  field = "value",
+): number => {
+  if (isFiniteNumber(value) && value > 0) {
+    return value;
+  }
+  reportWrongValue(log, field, value, fallback);
+  return fallback;
+};
+
 export const integer = (
   value: unknown,
   fallback: number,

@@ -113,6 +113,8 @@ export interface RailToolItem {
    * another tool on it lands the tool *after* it.
    */
   pinned?: boolean;
+  /** Plain drag places this tool on the canvas; Alt-drag reorders the rail. */
+  dragToCanvas?: boolean;
   /**
    * The tool ids that light this entry up. Defaults to `[id]`. The merged
    * Select/Hand entry passes both, because one control represents two tools
@@ -377,7 +379,9 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                 }${dragging === index ? " firo-rail__item--dragging" : ""}${
                   hasFlyout ? " firo-rail__item--has-flyout" : ""
                 }`}
-                draggable={!tool.pinned && Boolean(onReorder)}
+                draggable={
+                  !tool.pinned && !tool.dragToCanvas && Boolean(onReorder)
+                }
                 onClick={(event) => {
                   if (kind === "surface") {
                     setOpenFlyoutFor(null);
@@ -402,6 +406,15 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                   }
                 }}
                 onPointerDown={(event) => {
+                  if (tool.dragToCanvas) {
+                    // Decide before native drag detection. Native HTML dragging
+                    // cancels the pointer stream used by canvas placement.
+                    event.currentTarget.draggable =
+                      Boolean(onReorder) && event.altKey;
+                    if (event.altKey) {
+                      return;
+                    }
+                  }
                   if (kind !== "surface") {
                     onPointerDownTool?.(tool.activeSubTool ?? tool.id, event);
                   }
@@ -414,7 +427,8 @@ export const CreationRail: React.FC<CreationRailProps> = ({
                   setMenuFor(menuOpen ? null : tool.id);
                 }}
                 onDragStart={(event) => {
-                  if (tool.pinned) {
+                  if (tool.pinned || (tool.dragToCanvas && !event.altKey)) {
+                    event.preventDefault();
                     return;
                   }
                   setDragging(index);

@@ -1021,7 +1021,16 @@ export const WebCreationRail = ({
       .filter(isKnownTool)
       .filter(isAllowedForRole)
       .filter((id) => id !== "ai" || aiAvailable)
-      .map(buildRailTool),
+      .map(buildRailTool)
+      .map((tool) => ({
+        ...tool,
+        dragToCanvas: [
+          "stickynote",
+          "rectangle",
+          "diamond",
+          "ellipse",
+        ].includes(tool.activeSubTool ?? tool.id),
+      })),
   ];
   const hiddenTools: RailToolItem[] = readOnlyRole
     ? []
@@ -1305,7 +1314,9 @@ export const WebNavToolbar = ({
         onZoomOut={() => actionManager.executeAction(actionZoomOut)}
         onResetZoom={() => actionManager.executeAction(actionResetZoom)}
         onZoomToFit={() => actionManager.executeAction(actionZoomToFit)}
-        gridEnabled={appState.gridModeEnabled}
+        gridEnabled={
+          appState.gridModeEnabled || appState.canvasBackdropEnabled !== false
+        }
         gridType={appState.gridType}
         onToggleGrid={() => actionManager.executeAction(actionToggleGridMode)}
         onSelectGridType={(type) =>

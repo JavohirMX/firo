@@ -176,11 +176,11 @@ describe("repairs are reported, not silent", () => {
     expect(Number.isFinite(element.width)).toBe(true);
   });
 
-  test("an out-of-range sticky note height is clamped to a real size", () => {
+  test("a large sticky note height is preserved instead of treated as a preset", () => {
     const log = new RepairLog();
     const { element } = migrateElement(note({ height: 9999 }), log);
-    expect(element.height).toBe(250);
-    expect(log.all.some((r) => r.kind === "clamped")).toBe(true);
+    expect(element.height).toBe(9999);
+    expect(log.all.some((r) => r.kind === "clamped")).toBe(false);
   });
 
   test("summary groups by kind, so one bad field does not produce five lines", () => {
